@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Environment
+.env
+.env.local
+
+# Build outputs
+dist/
+build/
+out/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Electron
+release/
+
+# Data
+*.db
+*.sqlite
+jarvis_memory/
+chroma_data/
+
+# Logs
+*.log
+logs/
+
+# Audio temp files
+*.wav
+*.mp3
+*.ogg
+!frontend/src/assets/*.mp3
+
+# Whisper models
+models/
+
+# Tesseract
+tesseract/
