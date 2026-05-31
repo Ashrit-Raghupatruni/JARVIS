@@ -29,6 +29,7 @@ class SettingsUpdate(BaseModel):
     tts_voice: Optional[str] = None
     tts_rate: Optional[str] = None
     openai_model: Optional[str] = None
+    ai_model: Optional[str] = None
     wake_word_enabled: Optional[bool] = None
     whisper_model: Optional[str] = None
 
@@ -68,9 +69,19 @@ async def system_status(request: Request):
         }
 
     if hasattr(app.state, "llm_service"):
-        services["llm"] = {
-            "status": "online" if app.state.llm_service else "offline",
+        llm = app.state.llm_service
+        llm_info = {
+            "status": "online" if llm else "offline",
         }
+        if llm:
+            llm_info["provider"] = getattr(llm, "primary_provider", "unknown")
+            if llm.primary_provider == "ollama":
+                llm_info["model"] = getattr(llm, "ollama_model_name", "unknown")
+            elif llm.primary_provider == "gemini":
+                llm_info["model"] = getattr(llm, "gemini_model_name", "unknown")
+            else:
+                llm_info["model"] = getattr(llm, "openai_model_name", "unknown")
+        services["llm"] = llm_info
 
     if hasattr(app.state, "automation_service"):
         services["automation"] = {
@@ -176,9 +187,30 @@ async def update_settings(settings: SettingsUpdate, request: Request):
             app.state.tts_service._rate = settings.tts_rate
             updated.append(f"tts_rate={settings.tts_rate}")
 
-        if settings.openai_model and hasattr(app.state, "llm_service") and app.state.llm_service:
-            app.state.llm_service._model = settings.openai_model
-            updated.append(f"openai_model={settings.openai_model}")
+        # Handle model update — supports all providers (ollama, gemini, openai)
+        model_value = settings.ai_model or settings.openai_model
+        if model_value and hasattr(app.state, "llm_service") and app.state.llm_service:
+            llm = app.state.llm_service
+            # Detect which provider the model belongs to and update accordingly
+            if "qwen" in model_value or "llama" in model_value or "codestral" in model_value or ":" in model_value:
+                # Ollama model (identified by colon in name like "qwen2.5-coder:3b")
+                llm.ollama_model_name = model_value
+                llm.primary_provider = "ollama"
+                updated.append(f"ollama_model={model_value}")
+            elif "gemini" in model_value:
+                llm.gemini_model_name = model_value
+                llm.primary_provider = "gemini"
+                updated.append(f"gemini_model={model_value}")
+            elif "gpt" in model_value or "o1" in model_value:
+                llm.openai_model_name = model_value
+                llm.primary_provider = "openai"
+                updated.append(f"openai_model={model_value}")
+            else:
+                # Default: assume Ollama for unknown models
+                llm.ollama_model_name = model_value
+                llm.primary_provider = "ollama"
+                updated.append(f"ollama_model={model_value}")
+            logger.info(f"LLM provider switched to: {llm.primary_provider} (model: {model_value})")
 
         logger.info(f"Settings updated: {', '.join(updated)}")
         return {"status": "ok", "updated": updated}

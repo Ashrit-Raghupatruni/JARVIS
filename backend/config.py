@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     # ── LLM Settings ─────────────────────────────────────────────────────
     LLM_PROVIDER: str = Field(
         default="gemini",
-        description="Primary LLM provider to use: gemini or openai.",
+        description="Primary LLM provider to use: gemini, openai, or ollama.",
     )
     GEMINI_API_KEY: Optional[str] = Field(
         default=None,
@@ -59,6 +59,16 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = Field(
         default="gpt-4o",
         description="OpenAI model identifier for chat completions.",
+    )
+
+    # ── Ollama Settings ──────────────────────────────────────────────────
+    OLLAMA_BASE_URL: str = Field(
+        default="http://localhost:11434",
+        description="Base URL for the Ollama API server.",
+    )
+    OLLAMA_MODEL: str = Field(
+        default="qwen2.5-coder:3b",
+        description="Ollama model identifier for local chat completions.",
     )
 
 

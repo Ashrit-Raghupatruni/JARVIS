@@ -2,7 +2,8 @@
 JARVIS AI Desktop Assistant - LLM Service.
 
 Handles all LLM interactions, supporting:
-- Primary LLM: Google Gemini 1.5 Flash via google-generativeai.
+- Primary LLM: Ollama (local models via OpenAI-compatible API).
+- Fallback LLM: Google Gemini 1.5 Flash via google-generativeai.
 - Fallback LLM: OpenAI GPT-4o.
 - Automatic failover in case of rate limits, quota limits, or server downtime.
 - Real-time streaming completions.
@@ -390,8 +391,8 @@ TOOL_DEFINITIONS: List[Dict[str, Any]] = [
 
 class LLMService:
     """
-    Manages all LLM interactions, dynamically switching between Google Gemini
-    (primary) and OpenAI (failover) depending on availability and server health.
+    Manages all LLM interactions, dynamically switching between Ollama (local),
+    Google Gemini, and OpenAI depending on availability and server health.
     """
 
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None) -> None:
@@ -407,10 +408,26 @@ class LLMService:
         self.openai_key = api_key or settings.OPENAI_API_KEY
         self.openai_model_name = settings.OPENAI_MODEL or "gpt-4o"
 
+        # Ollama configs
+        self.ollama_base_url = settings.OLLAMA_BASE_URL or "http://localhost:11434"
+        self.ollama_model_name = settings.OLLAMA_MODEL or "qwen2.5-coder:3b"
+
         # Token & usage statistics
         self.total_prompt_tokens: int = 0
         self.total_completion_tokens: int = 0
         self.total_requests: int = 0
+
+        # Initialize Ollama Client (OpenAI-compatible API)
+        self.ollama_client = None
+        try:
+            self.ollama_client = AsyncOpenAI(
+                base_url=f"{self.ollama_base_url}/v1",
+                api_key="ollama",  # Ollama doesn't require a real API key
+            )
+            logger.info("✓ Ollama client initialized (model={}, url={})",
+                        self.ollama_model_name, self.ollama_base_url)
+        except Exception as e:
+            logger.error("Failed to initialize Ollama client: {}", e)
 
         # Initialize OpenAI Client
         self.openai_client = None
@@ -428,15 +445,16 @@ class LLMService:
                 import google.generativeai as genai
                 genai.configure(api_key=self.gemini_key)
                 self.gemini_available = True
-                logger.info("✓ Google Gemini 1.5 Flash client initialized successfully")
+                logger.info("✓ Google Gemini client initialized successfully")
             except ImportError:
                 logger.warning("google-generativeai package not installed. Gemini is disabled.")
             except Exception as e:
                 logger.error("Failed to configure Google Gemini: {}", e)
 
         logger.info(
-            "LLMService initialized. Provider={}. Gemini Online={}, OpenAI Fallback Online={}",
+            "LLMService initialized. Provider={}. Ollama Online={}, Gemini Online={}, OpenAI Fallback Online={}",
             self.primary_provider,
+            self.ollama_client is not None,
             self.gemini_available,
             self.openai_client is not None
         )
@@ -451,13 +469,35 @@ class LLMService:
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Process a user message with streaming and tool-call support.
-        If Gemini is the primary LLM and fails or isn't configured,
-        it automatically falls back to OpenAI to ensure a seamless experience.
+        Routes to the configured primary provider (ollama, gemini, or openai)
+        and automatically falls back through the chain on failure.
         """
-        use_gemini = (self.primary_provider == "gemini" and self.gemini_available)
+        use_ollama = (self.primary_provider == "ollama" and self.ollama_client is not None)
+        use_gemini = (self.primary_provider == "gemini" and self.gemini_available) or (
+            self.primary_provider == "ollama" and self.gemini_available  # gemini is fallback for ollama
+        )
         has_real_openai = self.openai_key and not self.openai_key.startswith("sk-your-")
 
-        if use_gemini:
+        # ── Try Ollama (local LLM) first ──
+        if use_ollama:
+            try:
+                logger.info("Directing request to Ollama API (model={})...", self.ollama_model_name)
+                async for event in self._process_message_ollama(user_message, conversation_history, tool_executor):
+                    yield event
+                return
+            except Exception as e:
+                logger.error("Ollama API error: {}. Falling back...", e)
+                if self.gemini_available or has_real_openai:
+                    yield {
+                        "type": "text_delta",
+                        "content": "\n\n*[System Warning: Ollama is currently unavailable. Switching to fallback...]*\n\n"
+                    }
+                else:
+                    yield {"type": "error", "error": f"Ollama API error: {e}. No fallback providers available."}
+                    return
+
+        # ── Try Gemini ──
+        if self.gemini_available and self.primary_provider in ("gemini", "ollama"):
             try:
                 logger.info("Directing request to Google Gemini API...")
                 async for event in self._process_message_gemini(user_message, conversation_history, tool_executor):
@@ -475,9 +515,9 @@ class LLMService:
                     "content": "\n\n*[System Warning: Gemini API is currently unavailable. Switching to OpenAI fallback...]*\n\n"
                 }
 
-        # Fallback to OpenAI
+        # ── Fallback to OpenAI ──
         if not has_real_openai:
-            yield {"type": "error", "error": "No LLM clients are initialized/configured. Please check your Gemini API key."}
+            yield {"type": "error", "error": "No LLM clients are initialized/configured. Please check your API keys or Ollama server."}
             return
 
         logger.info("Directing request to OpenAI API (fallback/direct path)...")
@@ -493,9 +533,31 @@ class LLMService:
     ) -> str:
         """
         Non-streaming single-turn completion without tools. Handles failover.
+        Tries: Ollama → Gemini → OpenAI.
         """
-        use_gemini = (self.primary_provider == "gemini" and self.gemini_available)
+        # ── Try Ollama first ──
+        if self.primary_provider == "ollama" and self.ollama_client:
+            try:
+                messages = [
+                    {"role": "system", "content": system_prompt or JARVIS_SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ]
+                response = await self.ollama_client.chat.completions.create(
+                    model=self.ollama_model_name,
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+                self.total_requests += 1
+                if response.usage:
+                    self.total_prompt_tokens += response.usage.prompt_tokens
+                    self.total_completion_tokens += response.usage.completion_tokens
+                return response.choices[0].message.content or ""
+            except Exception as e:
+                logger.error("Ollama simple completion failed: {}. Falling back...", e)
 
+        # ── Try Gemini ──
+        use_gemini = self.gemini_available and self.primary_provider in ("gemini", "ollama")
         if use_gemini:
             try:
                 import google.generativeai as genai
@@ -515,7 +577,7 @@ class LLMService:
             except Exception as e:
                 logger.error("Gemini simple completion failed: {}. Falling back to OpenAI...", e)
 
-        # OpenAI Fallback
+        # ── OpenAI Fallback ──
         if not self.openai_client:
             return "I apologise, sir, but no LLM client is configured."
 
@@ -549,8 +611,11 @@ class LLMService:
     ) -> str:
         """
         Analyse an image using Gemini Vision, falling back to OpenAI GPT-4o Vision.
+        Note: Ollama text-only models are skipped — vision always uses cloud providers.
         """
-        use_gemini = (self.primary_provider == "gemini" and self.gemini_available)
+        # Always try Gemini for vision (regardless of primary_provider)
+        # since Ollama local models don't support image input
+        use_gemini = self.gemini_available
 
         if use_gemini:
             try:
@@ -616,6 +681,160 @@ class LLMService:
             return f"I'm unable to analyse the screen at the moment, sir: {e}"
 
     # ── LLM Engine Implementations ────────────────────────────────────────
+
+    async def _process_message_ollama(
+        self,
+        user_message: Any,
+        conversation_history: Optional[List[Dict[str, Any]]] = None,
+        tool_executor: Any = None,
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """
+        Ollama-specific message streaming and tool dispatch engine.
+        Uses Ollama's OpenAI-compatible API at /v1, so the logic mirrors
+        _process_message_openai but uses the ollama_client and ollama_model_name.
+        """
+        if not self.ollama_client:
+            yield {"type": "error", "error": "Ollama client is not initialized."}
+            return
+
+        messages = self._build_messages(user_message, conversation_history)
+        yield_final = True
+
+        try:
+            while True:
+                full_text = ""
+                current_tool_calls: Dict[int, Dict[str, Any]] = {}
+
+                # Attempt to use tools — some Ollama models support function calling
+                try:
+                    stream = await self.ollama_client.chat.completions.create(
+                        model=self.ollama_model_name,
+                        messages=messages,
+                        tools=TOOL_DEFINITIONS,
+                        tool_choice="auto",
+                        stream=True,
+                        temperature=0.7,
+                        max_tokens=4096,
+                    )
+                except Exception:
+                    # If tools aren't supported, retry without tools
+                    logger.warning("Ollama model may not support tools. Retrying without tool definitions...")
+                    stream = await self.ollama_client.chat.completions.create(
+                        model=self.ollama_model_name,
+                        messages=messages,
+                        stream=True,
+                        temperature=0.7,
+                        max_tokens=4096,
+                    )
+
+                async for chunk in stream:
+                    delta = chunk.choices[0].delta if chunk.choices else None
+                    if delta is None:
+                        continue
+
+                    # Handle text content
+                    if delta.content:
+                        full_text += delta.content
+                        yield {"type": "text_delta", "content": delta.content}
+
+                    # Handle tool calls
+                    if delta.tool_calls:
+                        for tc in delta.tool_calls:
+                            idx = tc.index
+                            if idx not in current_tool_calls:
+                                current_tool_calls[idx] = {
+                                    "id": tc.id or "",
+                                    "name": "",
+                                    "arguments": "",
+                                }
+                            if tc.id:
+                                current_tool_calls[idx]["id"] = tc.id
+                            if tc.function and tc.function.name:
+                                current_tool_calls[idx]["name"] = tc.function.name
+                            if tc.function and tc.function.arguments:
+                                current_tool_calls[idx]["arguments"] += tc.function.arguments
+
+                    # Track usage
+                    if hasattr(chunk, 'usage') and chunk.usage:
+                        self.total_prompt_tokens += chunk.usage.prompt_tokens
+                        self.total_completion_tokens += chunk.usage.completion_tokens
+
+                self.total_requests += 1
+
+                if current_tool_calls:
+                    tool_call_messages = []
+                    for idx in sorted(current_tool_calls.keys()):
+                        tc = current_tool_calls[idx]
+                        tool_call_messages.append({
+                            "id": tc["id"],
+                            "type": "function",
+                            "function": {
+                                "name": tc["name"],
+                                "arguments": tc["arguments"],
+                            },
+                        })
+
+                    assistant_msg: Dict[str, Any] = {
+                        "role": "assistant",
+                        "content": full_text or None,
+                        "tool_calls": tool_call_messages,
+                    }
+                    messages.append(assistant_msg)
+
+                    for tc_msg in tool_call_messages:
+                        tool_name = tc_msg["function"]["name"]
+                        try:
+                            tool_args = json.loads(tc_msg["function"]["arguments"])
+                        except json.JSONDecodeError:
+                            tool_args = {}
+
+                        yield {
+                            "type": "tool_call",
+                            "name": tool_name,
+                            "arguments": tool_args,
+                            "tool_call_id": tc_msg["id"],
+                        }
+
+                        if tool_executor:
+                            try:
+                                result = await tool_executor(tool_name, tool_args)
+                            except Exception as e:
+                                result = f"Error executing {tool_name}: {e}"
+                                logger.error("Tool execution error: {}", e)
+                        else:
+                            result = f"Tool '{tool_name}' executed successfully (no executor connected)."
+
+                        yield {
+                            "type": "tool_result",
+                            "name": tool_name,
+                            "result": str(result),
+                            "tool_call_id": tc_msg["id"],
+                        }
+
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tc_msg["id"],
+                            "name": tool_name,
+                            "content": str(result),
+                        })
+
+                    full_text = ""
+                    continue
+
+                if full_text and yield_final:
+                    yield {"type": "text_done", "content": full_text}
+
+                yield {
+                    "type": "usage",
+                    "prompt_tokens": self.total_prompt_tokens,
+                    "completion_tokens": self.total_completion_tokens,
+                    "total_requests": self.total_requests,
+                }
+                break
+
+        except Exception as e:
+            logger.error("Ollama processing error: {}", e)
+            yield {"type": "error", "error": str(e)}
 
     async def _process_message_gemini(
         self,

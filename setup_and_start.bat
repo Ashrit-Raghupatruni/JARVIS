@@ -24,18 +24,29 @@ if %errorlevel% neq 0 (
 )
 echo [OK] Node.js found
 
+:: Check Ollama
+ollama --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARNING] Ollama is not installed or not in PATH.
+    echo   Download from https://ollama.com/ for local AI inference.
+    echo   JARVIS will fall back to Gemini/OpenAI cloud providers without it.
+    echo.
+) else (
+    echo [OK] Ollama found
+)
+
 :: Check for .env file
 if not exist ".env" (
     echo.
     echo [INFO] Creating .env file from template...
     copy .env.example .env
-    echo [IMPORTANT] Please edit .env and add your GEMINI_API_KEY (and optionally OPENAI_API_KEY as fallback)
+    echo [IMPORTANT] Edit .env to configure your LLM provider (default: ollama)
     echo.
 )
 
 :: Setup Backend
 echo.
-echo [1/4] Setting up Python backend...
+echo [1/5] Setting up Python backend...
 cd backend
 if not exist "venv" (
     python -m venv venv
@@ -46,13 +57,23 @@ echo [OK] Backend dependencies installed
 
 :: Download openwakeword models
 echo.
-echo [2/4] Downloading wake word models...
+echo [2/5] Downloading wake word models...
 python -c "import openwakeword; openwakeword.utils.download_models()" 2>nul
 echo [OK] Wake word models ready
 
+:: Pull Ollama model
+echo.
+echo [3/5] Pulling Ollama model (qwen2.5-coder:3b)...
+ollama pull qwen2.5-coder:3b 2>nul
+if %errorlevel% neq 0 (
+    echo [SKIP] Ollama not available - skipping model pull
+) else (
+    echo [OK] Ollama model ready
+)
+
 :: Install Playwright browsers
 echo.
-echo [3/4] Installing Playwright browsers...
+echo [4/5] Installing Playwright browsers...
 playwright install chromium 2>nul
 echo [OK] Playwright browsers installed
 
@@ -60,7 +81,7 @@ cd ..
 
 :: Setup Frontend
 echo.
-echo [4/4] Setting up frontend...
+echo [5/5] Setting up frontend...
 cd frontend
 call npm install
 cd ..
@@ -70,8 +91,14 @@ echo ============================================
 echo   Setup Complete!
 echo ============================================
 echo.
-echo   Make sure your .env file has your GEMINI_API_KEY configured.
+echo Next steps:
+echo   1. Make sure Ollama is running: ollama serve
+echo   2. (Optional) Edit .env to add GEMINI_API_KEY for cloud fallback + vision
+echo   3. Run start.bat to launch JARVIS
 echo.
+pause
+
+
 
 :: Ask user if they want to launch JARVIS now
 set /p LAUNCH="Launch JARVIS now? (Y/n): "

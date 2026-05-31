@@ -44,7 +44,15 @@ async def lifespan(app: FastAPI):
         from backend.services.llm import LLMService
         llm_service = LLMService()
         app.state.llm_service = llm_service
-        logger.info(f"✓ LLM service initialized (model: {settings.OPENAI_MODEL})")
+        # Log active provider and model
+        provider = settings.LLM_PROVIDER or "gemini"
+        if provider == "ollama":
+            active_model = settings.OLLAMA_MODEL
+        elif provider == "gemini":
+            active_model = settings.GEMINI_MODEL
+        else:
+            active_model = settings.OPENAI_MODEL
+        logger.info(f"✓ LLM service initialized (provider: {provider}, model: {active_model})")
     except Exception as e:
         logger.error(f"✗ LLM service failed: {e}")
         app.state.llm_service = None

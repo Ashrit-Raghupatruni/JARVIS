@@ -23,11 +23,12 @@
 - **Push-to-Talk** — Press `Ctrl+Space` as a fallback
 
 ### 🧠 AI Brain
-- **Google Gemini 1.5 Flash Powered** — Primary LLM providing extremely fast and intelligent context-aware reasoning
-- **Seamless Failover** — Automatically switches to OpenAI GPT-4o if Gemini is offline, rate-limited, or not configured
+- **Ollama Local LLM (Primary)** — Runs `qwen2.5-coder:3b` locally via Ollama for fast, free, and private inference
+- **Seamless Cloud Failover** — Automatically switches to Google Gemini → OpenAI GPT-4o if Ollama is offline
 - **Multi-turn Context** — Remembers conversation history
 - **Tool Calling** — Executes real actions on your computer
 - **Agent Architecture** — Planner → Automation/Browser/Screen/Memory agents
+- **Multimodal Vision** — Screen analysis via Gemini/OpenAI Vision (cloud)
 
 ### 🖥️ Computer Control
 - Open & close applications
@@ -71,8 +72,9 @@
 - **Python 3.11+** — [Download](https://python.org)
 - **Node.js 20+** — [Download](https://nodejs.org)
 - **Git** — [Download](https://git-scm.com)
-- **Google Gemini API Key** — [Get one](https://aistudio.google.com/) (Primary AI Brain)
-- **OpenAI API Key** — [Get one](https://platform.openai.com/api-keys) (Optional, for automatic failover/fallback)
+- **Ollama** — [Download](https://ollama.com/) (Primary AI Brain — runs locally, free)
+- **Google Gemini API Key** — [Get one](https://aistudio.google.com/) (Optional, for cloud fallback & vision)
+- **OpenAI API Key** — [Get one](https://platform.openai.com/api-keys) (Optional, for additional fallback)
 - **Tesseract OCR** (optional, for screen reading) — [Download](https://github.com/UB-Mannheim/tesseract/wiki)
 
 ### Installation
@@ -105,12 +107,15 @@ pip install -r requirements.txt
 cd ..\frontend
 npm install
 
-# 4. Configure environment
+# 4. Pull the Ollama model
+ollama pull qwen2.5-coder:3b
+
+# 5. Configure environment
 cd ..
 copy .env.example .env
-# Edit .env and add your GEMINI_API_KEY (and optionally OPENAI_API_KEY)
+# Edit .env — defaults to Ollama (no API keys needed for basic use)
 
-# 5. Launch JARVIS
+# 6. Launch JARVIS
 start.bat
 ```
 
@@ -137,13 +142,17 @@ Copy `.env.example` to `.env` and configure:
 
 ```env
 # Primary LLM Provider Configuration
-LLM_PROVIDER=gemini           # Options: gemini, openai
+LLM_PROVIDER=ollama           # Options: ollama, gemini, openai
 
-# Google Gemini API Settings (Primary)
+# Ollama Settings (Primary — Local, Free)
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=qwen2.5-coder:3b
+
+# Google Gemini API Settings (Cloud Fallback + Vision)
 GEMINI_API_KEY=AIzaSy...your-gemini-key-here
-GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MODEL=gemini-2.0-flash
 
-# OpenAI API Settings (Fallback/Optional)
+# OpenAI API Settings (Cloud Fallback/Optional)
 OPENAI_API_KEY=sk-your-openai-key-here
 OPENAI_MODEL=gpt-4o
 
@@ -153,21 +162,28 @@ TTS_VOICE=en-US-GuyNeural     # Text-to-speech voice
 WAKE_WORD_THRESHOLD=0.5       # Wake word sensitivity
 ```
 
-### 🧠 Gemini 1.5 Flash & Failover Setup
+### 🧠 Ollama + Cloud Failover Setup
 
-JARVIS uses a production-grade dual-engine AI system designed to ensure 100% uptime and low-latency responses:
+JARVIS uses a production-grade triple-engine AI system designed to ensure 100% uptime:
 
-1. **Primary AI Brain (Google Gemini 1.5 Flash)**
-   - **Performance**: Near-instant speech-to-text-to-speech loops (~1.5s latency).
-   - **API Key**: Obtain a free API key from [Google AI Studio](https://aistudio.google.com/).
-   - **Native Multimodality**: Allows JARVIS to natively analyze your screen screenshots with Gemini's vision capability.
+1. **Primary AI Brain (Ollama — Local)**
+   - **Performance**: Fast local inference with zero API costs and full privacy.
+   - **Model**: `qwen2.5-coder:3b` — a capable coding/assistant model that runs on most hardware.
+   - **Setup**: Install [Ollama](https://ollama.com/), then run `ollama pull qwen2.5-coder:3b`.
+   - **No API key required** — everything runs on your machine.
 
-2. **Automatic Failover Brain (OpenAI GPT-4o)**
-   - **Robustness**: If Gemini's API key is not supplied, or if the Gemini service encounters rate limits, quota limits, or server downtime, the core system **automatically and transparently fails over to OpenAI**.
-   - **API Key**: Add your `OPENAI_API_KEY` under the OpenAI API settings in the `.env` file to enable this safety backup.
+2. **First Failover (Google Gemini)**
+   - **Robustness**: If Ollama is offline or fails, JARVIS **automatically and transparently fails over to Gemini**.
+   - **API Key**: Obtain a free API key from [Google AI Studio](https://aistudio.google.com/) and add it to `.env`.
+   - **Vision**: Screen analysis ("what's on my screen?") always uses Gemini/OpenAI since the local model is text-only.
 
-3. **Multimodal Screen Vision Fallback**
-   - Screen analysis requests (`"what's on my screen?"`) will use Gemini Vision as primary. If it encounters a connection issue or is unconfigured, it seamlessly utilizes OpenAI GPT-4o Vision to provide the answer without interrupting the user.
+3. **Second Failover (OpenAI GPT-4o)**
+   - **Safety net**: If both Ollama and Gemini are unavailable, JARVIS falls back to OpenAI.
+   - **API Key**: Add your `OPENAI_API_KEY` in `.env` to enable this backup.
+
+4. **Multimodal Screen Vision**
+   - Screen analysis requests use Gemini Vision as primary, with OpenAI GPT-4o Vision as fallback.
+   - Vision always uses cloud providers (Gemini/OpenAI) since local models don't support image input.
 
 ---
 
@@ -225,7 +241,7 @@ JARVIS/
 
 ```
 User speaks → Mic capture → WebSocket → Wake Word Detection
-→ Speech-to-Text (Whisper) → LLM (Gemini 1.5 Flash w/ OpenAI Fallback) → Tool Execution
+→ Speech-to-Text (Whisper) → LLM (Ollama Local → Gemini → OpenAI Fallback) → Tool Execution
 → Response → Text-to-Speech (edge-tts) → WebSocket → Speaker
 ```
 
@@ -269,7 +285,7 @@ npm run build
 |-----------|-----------|
 | Frontend | Electron + React 19 + Tailwind CSS 4 |
 | Backend | Python + FastAPI |
-| AI Brain | Google Gemini 1.5 Flash (Primary) + OpenAI GPT-4o (Fallback) |
+| AI Brain | Ollama qwen2.5-coder:3b (Local Primary) + Gemini (Fallback) + OpenAI GPT-4o (Fallback) |
 | Speech-to-Text | faster-whisper |
 | Text-to-Speech | edge-tts |
 | Wake Word | openwakeword |

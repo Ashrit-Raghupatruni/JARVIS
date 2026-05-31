@@ -13,9 +13,10 @@ const VOICE_OPTIONS = [
 ]
 
 const MODEL_OPTIONS = [
-  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (Primary)' },
-  { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (Capable)' },
-  { value: 'gpt-4o', label: 'GPT-4o (Fallback / OpenAI)' },
+  { value: 'qwen2.5-coder:3b', label: 'Qwen 2.5 Coder 3B (Ollama / Local)' },
+  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (Cloud)' },
+  { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (Cloud)' },
+  { value: 'gpt-4o', label: 'GPT-4o (OpenAI)' },
   { value: 'gpt-4o-mini', label: 'GPT-4o Mini (OpenAI)' },
 ]
 
