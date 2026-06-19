@@ -256,7 +256,7 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
           console.error('[WS] Failed to get system info for backend port:', err)
         }
       }
-      const wsUrl = `ws://localhost:${port}/ws`
+      const wsUrl = `ws://127.0.0.1:${port}/ws`
       console.log(`[WS] Connecting to ${wsUrl}`)
       const ws = new WebSocket(wsUrl)
       wsRef.current = ws

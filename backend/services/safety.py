@@ -13,6 +13,21 @@ from enum import Enum
 from typing import List, Tuple
 
 from backend.utils.logger import logger
+import asyncio
+from backend.models.schemas import WSMessage
+
+
+def mask_sensitive_data(text: str) -> str:
+    """Masks API keys, passwords, and other credentials inside logged strings."""
+    if not text:
+        return text
+    # Mask keys
+    text = re.sub(r'sk-[a-zA-Z0-9]{32,}', 'sk-****[REDACTED]****', text)
+    text = re.sub(r'AIzaSy[a-zA-Z0-9_-]{33}', 'AIzaSy****[REDACTED]****', text)
+    text = re.sub(r'sk-or-v1-[a-zA-Z0-9]{48,}', 'sk-or-v1-****[REDACTED]****', text)
+    # Mask common password patterns
+    text = re.sub(r'(password|passwd|pwd|pass)\s*[:=]\s*["\']?[^\s"\'&,;]+["\']?', r'\1=****[REDACTED]****', text, flags=re.IGNORECASE)
+    return text
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -225,6 +240,13 @@ class SafetyService:
         self.confirm_dangerous = confirm_dangerous
         self.allow_terminal = allow_terminal
         self._pending_confirmations: dict[str, str] = {}
+        self._pending_requests: dict[str, asyncio.Event] = {}
+        self._request_responses: dict[str, bool] = {}
+        self._dangerous_tools = {
+            "safe_delete", "delete_file", "kill_process", 
+            "set_wifi_power", "set_system_power_action", 
+            "run_terminal_command"
+        }
         logger.info(
             "SafetyService initialised — confirm_dangerous={}, allow_terminal={}",
             confirm_dangerous,
@@ -267,6 +289,45 @@ class SafetyService:
         """
         category, _ = self.check_action(action_description)
         return category == ActionCategory.SAFE
+
+    async def request_user_permission(self, tool_name: str, args: dict, app) -> bool:
+        """Prompts the user over WebSocket to authorize a dangerous action."""
+        if tool_name not in self._dangerous_tools:
+            return True
+
+        import uuid
+        request_id = f"req_{uuid.uuid4().hex[:8]}"
+        event = asyncio.Event()
+        self._pending_requests[request_id] = event
+        
+        manager = getattr(app.state, "connection_manager", None)
+        if manager:
+            # Broadcast permission request message
+            await manager.broadcast(WSMessage(
+                type="permission_request",
+                data={
+                    "request_id": request_id,
+                    "tool_name": tool_name,
+                    "args": args
+                }
+            ))
+            
+            logger.info("Waiting for user permission on request '{}' for tool '{}'...", request_id, tool_name)
+            try:
+                # 30 seconds timeout
+                await asyncio.wait_for(event.wait(), timeout=30.0)
+                allowed = self._request_responses.get(request_id, False)
+                logger.info("User permission result for '{}': {}", request_id, allowed)
+                return allowed
+            except asyncio.TimeoutError:
+                logger.warning("Permission request '{}' timed out. Defaulting to block.", request_id)
+                return False
+            finally:
+                self._pending_requests.pop(request_id, None)
+                self._request_responses.pop(request_id, None)
+        else:
+            logger.warning("No WebSocket connection manager active to ask for permission. Blocking dangerous tool.")
+            return False
 
     # ── Terminal Command Safety ──────────────────────────────────────────
 

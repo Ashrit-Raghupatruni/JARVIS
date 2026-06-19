@@ -15,6 +15,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
 
   const [inputText, setInputText] = useState('')
   const [isMinimized, setIsMinimized] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const [attachedFile, setAttachedFile] = useState<{ name: string; content: string; type: string } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -28,18 +30,24 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
 
   const handleSend = useCallback(() => {
     const trimmed = inputText.trim()
-    if (!trimmed) return
+    if (!trimmed && !attachedFile) return
+
+    let finalContent = trimmed
+    if (attachedFile) {
+      finalContent = `[File Attachment: ${attachedFile.name}]\n\nContent:\n\`\`\`${attachedFile.type}\n${attachedFile.content}\n\`\`\`\n\n${trimmed}`
+    }
 
     const msg: ConversationMessage = {
       id: Date.now().toString(36) + Math.random().toString(36).substring(2, 9),
       role: 'user',
-      content: trimmed,
+      content: attachedFile ? `📄 Attached file: ${attachedFile.name}\n${trimmed}` : trimmed,
       timestamp: new Date().toISOString()
     }
     useAppStore.getState().addMessage(msg)
-    onSendMessage?.(trimmed)
+    onSendMessage?.(finalContent)
     setInputText('')
-  }, [inputText, onSendMessage])
+    setAttachedFile(null)
+  }, [inputText, attachedFile, onSendMessage])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -64,7 +72,31 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
 
   return (
     <div
-      className={`flex flex-col glass-heavy rounded-xl overflow-hidden transition-all duration-500 ${
+      onDragOver={(e) => {
+        e.preventDefault()
+        setIsDragging(true)
+      }}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={(e) => {
+        e.preventDefault()
+        setIsDragging(false)
+        const file = e.dataTransfer.files[0]
+        if (file) {
+          const reader = new FileReader()
+          reader.onload = (event) => {
+            const content = event.target?.result as string
+            setAttachedFile({
+              name: file.name,
+              content: content || '',
+              type: file.type || file.name.split('.').pop() || 'unknown'
+            })
+          }
+          reader.readAsText(file)
+        }
+      }}
+      className={`flex flex-col glass-heavy rounded-xl overflow-hidden transition-all duration-500 relative ${
+        isDragging ? 'border border-jarvis-accent bg-jarvis-bg/85' : ''
+      } ${
         isMinimized ? 'h-12' : 'h-full'
       }`}
       style={{
@@ -73,6 +105,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
         boxShadow: '0 0 30px rgba(0, 0, 0, 0.3), 0 0 15px rgba(0, 212, 255, 0.05)'
       }}
     >
+      {isDragging && (
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 border border-jarvis-accent rounded-xl animate-fade-in pointer-events-none">
+          <svg className="w-12 h-12 text-jarvis-accent animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+          </svg>
+          <span className="text-sm font-medium text-jarvis-accent mt-3">Drop file to attach</span>
+          <span className="text-xs text-jarvis-text-dim mt-1">Supports source code, logs, text, markdown</span>
+        </div>
+      )}
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 h-12 border-b border-jarvis-border cursor-pointer shrink-0"
@@ -171,6 +212,17 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
 
           {/* Input */}
           <div className="px-3 pb-3 pt-1 border-t border-jarvis-border shrink-0">
+            {attachedFile && (
+              <div className="flex items-center justify-between mx-1 mb-2 px-3 py-1.5 rounded bg-white/5 border border-white/10 text-xs text-jarvis-text animate-fade-in">
+                <span className="truncate max-w-[85%]">📄 {attachedFile.name}</span>
+                <button
+                  onClick={() => setAttachedFile(null)}
+                  className="text-jarvis-text-dim hover:text-jarvis-accent transition-fast"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
             <div className="flex items-center gap-2 glass rounded-lg px-3 py-1.5">
               <input
                 ref={inputRef}
@@ -183,7 +235,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
               />
               <button
                 onClick={handleSend}
-                disabled={!inputText.trim()}
+                disabled={!inputText.trim() && !attachedFile}
                 className="w-7 h-7 flex items-center justify-center rounded-md bg-jarvis-accent/20 hover:bg-jarvis-accent/30 disabled:opacity-30 disabled:cursor-not-allowed transition-fast"
               >
                 <svg

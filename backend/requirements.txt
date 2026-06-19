@@ -20,6 +20,7 @@ faster-whisper==1.1.1
 
 # Text-to-Speech
 edge-tts>=7.2.8
+elevenlabs>=1.50,<3
 
 # Wake Word Detection
 openwakeword==0.6.0
@@ -50,3 +51,9 @@ aiosqlite==0.21.0
 # Utilities
 loguru==0.7.3
 aiofiles==24.1.0
+
+# Advanced Upgrades
+send2trash>=1.8.0
+psutil>=6.0.0
+pyperclip>=1.8.2
+pywhatkit>=5.4

@@ -46,6 +46,18 @@ class PlannerAgent:
         self._conversation_history: list[dict] = []
         self._max_history = 20  # Keep last 20 messages for context
 
+        from backend.services.skills.registry import SkillRegistry
+        self.skills_registry = SkillRegistry(
+            automation_service=self.automation,
+            browser_service=self.browser,
+            memory_service=self.memory,
+            screen_service=self.screen,
+            safety_service=self.safety,
+            planner_agent=self
+        )
+        if self.llm:
+            self.llm.skills_registry = self.skills_registry
+
     async def plan_and_execute(
         self, user_message: str, conversation_history: Optional[list[dict]] = None
     ) -> AsyncGenerator[WSMessage, None]:
@@ -54,12 +66,15 @@ class PlannerAgent:
 
         Yields WSMessage objects for real-time updates to the frontend.
         """
-        if conversation_history is not None:
-            self._conversation_history = conversation_history
+        # Use local history instead of modifying self._conversation_history directly to avoid concurrency conflicts
+        history = list(conversation_history) if conversation_history is not None else list(self._conversation_history)
 
         # Add user message to history
-        self._conversation_history.append({"role": "user", "content": user_message})
-        self._trim_history()
+        history.append({"role": "user", "content": user_message})
+        
+        # Trim local history
+        if len(history) > self._max_history:
+            history = history[-self._max_history:]
 
         # Signal processing state
         yield WSMessage(
@@ -76,7 +91,7 @@ class PlannerAgent:
                 logger.warning(f"Failed to get memory context: {e}")
 
         # Build messages for LLM
-        messages_for_llm = list(self._conversation_history)
+        messages_for_llm = list(history)
         if context:
             # Inject context as a system message before the user's message
             messages_for_llm.insert(
@@ -92,113 +107,79 @@ class PlannerAgent:
             response_text = ""
             tool_calls_made = []
 
-            async for event in self.llm.process_message(messages_for_llm):
+            steps_list = []
+            async for event in self.llm.process_message(messages_for_llm, tool_executor=self._execute_tool):
                 if event["type"] == "text_delta":
                     response_text += event["content"]
 
                 elif event["type"] == "text_done":
                     response_text = event["content"]
 
-                elif event["type"] == "tool_calls":
-                    tool_calls = event["tool_calls"]
-                    tool_results = []
-
+                elif event["type"] == "tool_call":
+                    # Tool call initiated
+                    tool_name = event["name"]
+                    tool_args = event["arguments"]
+                    tool_call_id = event["tool_call_id"]
+                    
+                    # Add to steps list
+                    step_desc = f"{tool_name}({self._summarize_args(json.dumps(tool_args))})"
+                    new_step = AgentStep(
+                        id=tool_call_id,
+                        description=step_desc,
+                        tool_name=tool_name,
+                        tool_args=tool_args,
+                        status=AgentStepStatus.RUNNING,
+                    )
+                    steps_list.append(new_step)
+                    
                     # Yield progress update
-                    steps = [
-                        AgentStep(
-                            description=f"{tc['function']['name']}({self._summarize_args(tc['function']['arguments'])})",
-                            status=AgentStepStatus.PENDING,
-                        )
-                        for tc in tool_calls
-                    ]
+                    completed_count = sum(1 for s in steps_list if s.status in (AgentStepStatus.COMPLETED, AgentStepStatus.FAILED))
+                    progress = completed_count / len(steps_list) if steps_list else 0
                     yield WSMessage(
                         type="agent_progress",
                         data={
                             "task": user_message[:100],
-                            "steps": [s.model_dump() for s in steps],
-                            "current_step": 0,
+                            "steps": [s.model_dump() for s in steps_list],
+                            "progress": progress,
                         },
                     )
 
-                    # Execute each tool call
-                    for i, tool_call in enumerate(tool_calls):
-                        func_name = tool_call["function"]["name"]
-                        func_args_str = tool_call["function"]["arguments"]
-                        tool_call_id = tool_call["id"]
-
-                        try:
-                            func_args = json.loads(func_args_str)
-                        except json.JSONDecodeError:
-                            func_args = {}
-
-                        # Update progress — mark current step as running
-                        steps[i].status = AgentStepStatus.RUNNING
-                        yield WSMessage(
-                            type="agent_progress",
-                            data={
-                                "task": user_message[:100],
-                                "steps": [s.model_dump() for s in steps],
-                                "current_step": i,
-                            },
-                        )
-
-                        # Safety check
-                        safety_category = self.safety.classify_action(
-                            f"{func_name}: {json.dumps(func_args)}"
-                        )
-
-                        if safety_category == ActionCategory.BLOCKED:
-                            result = f"Action blocked by safety system: {func_name} is not allowed."
-                            steps[i].status = AgentStepStatus.FAILED
-                            logger.warning(f"Blocked action: {func_name}")
-                        elif safety_category == ActionCategory.NEEDS_CONFIRMATION:
-                            # For now, add a warning but still execute
-                            # In production, this would pause and ask the user
-                            logger.info(f"Action needs confirmation: {func_name}")
-                            result = await self._execute_tool(func_name, func_args)
-                            steps[i].status = AgentStepStatus.COMPLETED
-                        else:
-                            result = await self._execute_tool(func_name, func_args)
-                            steps[i].status = AgentStepStatus.COMPLETED
-
-                        tool_results.append(
-                            {
-                                "tool_call_id": tool_call_id,
-                                "content": str(result),
-                            }
-                        )
-                        tool_calls_made.append(
-                            {"function": func_name, "args": func_args, "result": str(result)[:200]}
-                        )
-
-                        # Update progress
-                        yield WSMessage(
-                            type="agent_progress",
-                            data={
-                                "task": user_message[:100],
-                                "steps": [s.model_dump() for s in steps],
-                                "current_step": i,
-                            },
-                        )
-
-                    # Feed tool results back to LLM for final response
-                    async for follow_up in self.llm.process_tool_results(
-                        messages_for_llm, tool_calls, tool_results
-                    ):
-                        if follow_up["type"] == "text_done":
-                            response_text = follow_up["content"]
-                        elif follow_up["type"] == "tool_calls":
-                            # Handle chained tool calls (recursive execution)
-                            for tc in follow_up["tool_calls"]:
-                                fn = tc["function"]["name"]
-                                try:
-                                    fa = json.loads(tc["function"]["arguments"])
-                                except json.JSONDecodeError:
-                                    fa = {}
-                                chained_result = await self._execute_tool(fn, fa)
-                                tool_results.append(
-                                    {"tool_call_id": tc["id"], "content": str(chained_result)}
-                                )
+                elif event["type"] == "tool_result":
+                    # Tool call completed
+                    tool_name = event["name"]
+                    result = event["result"]
+                    tool_call_id = event["tool_call_id"]
+                    
+                    # Update status in steps list
+                    for s in steps_list:
+                        if s.id == tool_call_id:
+                            s.status = AgentStepStatus.COMPLETED
+                            s.result = str(result)
+                            break
+                    else:
+                        steps_list.append(AgentStep(
+                            id=tool_call_id,
+                            description=f"{tool_name} completed",
+                            tool_name=tool_name,
+                            status=AgentStepStatus.COMPLETED,
+                            result=str(result),
+                        ))
+                    
+                    tool_calls_made.append(
+                        {"function": tool_name, "args": {}, "result": str(result)[:200]}
+                    )
+                    
+                    # Yield progress update
+                    completed_count = sum(1 for s in steps_list if s.status in (AgentStepStatus.COMPLETED, AgentStepStatus.FAILED))
+                    progress = completed_count / len(steps_list) if steps_list else 0
+                    yield WSMessage(
+                        type="agent_progress",
+                        data={
+                            "task": user_message[:100],
+                            "steps": [s.model_dump() for s in steps_list],
+                            "progress": progress,
+                        },
+                    )
 
                 elif event["type"] == "error":
                     error_detail = event.get("error") or event.get("content") or "Unknown error"
@@ -206,9 +187,13 @@ class PlannerAgent:
 
             # Add assistant response to history
             if response_text:
-                self._conversation_history.append(
+                history.append(
                     {"role": "assistant", "content": response_text}
                 )
+
+            # Update instance history if no custom history was passed (so the main chat keeps history)
+            if conversation_history is None:
+                self._conversation_history = history
 
             # Log command to memory
             if self.memory and tool_calls_made:
@@ -242,6 +227,21 @@ class PlannerAgent:
         """Route a tool call to the appropriate service and execute it."""
         try:
             logger.info(f"Executing tool: {func_name}({json.dumps(func_args)[:100]})")
+
+            # Check dangerous permissions before execution
+            if self.safety:
+                from backend.main import app
+                allowed = await self.safety.request_user_permission(func_name, func_args, app)
+                if not allowed:
+                    logger.warning("Tool execution denied by user: {}", func_name)
+                    return f"Action blocked: user denied permission to execute '{func_name}'."
+
+            # Dispatch via dynamic skills registry if available
+            try:
+                res = await self.skills_registry.execute_tool(func_name, func_args)
+                return str(res)
+            except ValueError:
+                pass
 
             # Automation tools
             if func_name == "open_application":
@@ -306,6 +306,28 @@ class PlannerAgent:
                 return await asyncio.to_thread(self.automation.minimize_all_windows)
             elif func_name == "get_system_info":
                 return json.dumps(await asyncio.to_thread(self.automation.get_system_info))
+            elif func_name == "adjust_volume":
+                direction = func_args.get("direction", "up")
+                amount = func_args.get("amount")
+                return await asyncio.to_thread(self.automation.adjust_volume, direction, amount)
+            elif func_name == "control_media":
+                action = func_args.get("action", "playpause")
+                return await asyncio.to_thread(self.automation.control_media, action)
+            elif func_name == "select_monitor":
+                monitor = func_args.get("monitor", "all")
+                if monitor == "all":
+                    self.screen.selected_monitor = None
+                elif monitor == "active":
+                    self.screen.selected_monitor = "active"
+                else:
+                    try:
+                        self.screen.selected_monitor = int(monitor)
+                    except ValueError:
+                        self.screen.selected_monitor = None
+                return f"Monitor focus set to '{monitor}'."
+            elif func_name == "focus_window":
+                title = func_args.get("title", "")
+                return await asyncio.to_thread(self.automation.focus_window, title)
 
             # Screen tools
             elif func_name == "take_screenshot":
@@ -327,6 +349,8 @@ class PlannerAgent:
                 return await self.browser.open_url(func_args.get("url", ""))
             elif func_name == "search_web":
                 return await self.browser.search_web(func_args.get("query", ""))
+            elif func_name == "play_music":
+                return await self.browser.play_music(func_args.get("query", ""))
             elif func_name == "browser_navigate":
                 return await self.browser.navigate(func_args.get("action", ""))
             elif func_name == "get_page_content":

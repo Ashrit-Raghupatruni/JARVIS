@@ -126,6 +126,85 @@ class STTService:
         Returns:
             Transcribed text string (empty string if nothing detected).
         """
+        from backend.config import get_settings
+        settings = get_settings()
+
+        # 1. Try Google Gemini API if key is present (highly accurate and fast)
+        if settings.GEMINI_API_KEY and not settings.GEMINI_API_KEY.startswith("AIzaSy-your"):
+            try:
+                import google.generativeai as genai
+                import io
+                import wave
+
+                wav_buffer = io.BytesIO()
+                with wave.open(wav_buffer, 'wb') as wav_file:
+                    wav_file.setnchannels(1)
+                    wav_file.setsampwidth(2)  # 16-bit PCM
+                    wav_file.setframerate(16000)
+                    wav_file.writeframes(audio_data)
+
+                wav_data = wav_buffer.getvalue()
+
+                genai.configure(api_key=settings.GEMINI_API_KEY)
+                model_name = settings.GEMINI_MODEL or "gemini-2.0-flash"
+                model = genai.GenerativeModel(model_name)
+
+                logger.info(f"Transcribing speech via Google Gemini API ({model_name})...")
+                start_time = time.perf_counter()
+
+                response = await model.generate_content_async(
+                    contents=[
+                        {"mime_type": "audio/wav", "data": wav_data},
+                        "Transcribe the audio exactly as spoken. Do not include any translation, markdown formatting, explanations, or introductory remarks. Only output the transcribed text."
+                    ]
+                )
+
+                text = response.text.strip()
+                elapsed = time.perf_counter() - start_time
+
+                if text:
+                    logger.info(
+                        "Gemini transcription completed in {:.2f}s — text='{}'",
+                        elapsed, text[:80]
+                    )
+                    return text
+            except Exception as e:
+                logger.error(f"Gemini API speech-to-text failed: {e}. Falling back...")
+
+        # 2. Try OpenAI Whisper API if key is present
+        if settings.OPENAI_API_KEY and not settings.OPENAI_API_KEY.startswith("sk-your"):
+            try:
+                from openai import AsyncOpenAI
+                import io
+                import wave
+
+                client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+
+                wav_buffer = io.BytesIO()
+                with wave.open(wav_buffer, 'wb') as wav_file:
+                    wav_file.setnchannels(1)
+                    wav_file.setsampwidth(2)
+                    wav_file.setframerate(16000)
+                    wav_file.writeframes(audio_data)
+
+                wav_buffer.seek(0)
+                file_obj = ("audio.wav", wav_buffer, "audio/wav")
+
+                logger.info("Transcribing speech via OpenAI Whisper API...")
+                start_time = time.perf_counter()
+                response = await client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=file_obj,
+                    language="en",
+                )
+                text = response.text.strip()
+                elapsed = time.perf_counter() - start_time
+                logger.info(f"OpenAI transcription completed in {elapsed:.2f}s — text='{text}'")
+                return text
+            except Exception as e:
+                logger.error(f"OpenAI Whisper API speech-to-text failed: {e}. Falling back...")
+
+        # 3. Fallback to local faster-whisper
         if not self._is_loaded or self._model is None:
             logger.warning("STT model not loaded — attempting load now")
             await self.load_model()
@@ -169,8 +248,10 @@ class STTService:
         try:
             segments, info = self._model.transcribe(
                 audio_array,
-                beam_size=5,
+                beam_size=3,
                 language="en",
+                temperature=0.0,
+                condition_on_previous_text=False,
                 vad_filter=True,
                 vad_parameters={
                     "min_silence_duration_ms": 500,

@@ -297,9 +297,13 @@ class MemoryService:
 
         try:
             from backend.models.database import CommandLog
+            from backend.services.safety import mask_sensitive_data
+
+            masked_command = mask_sensitive_data(command)
+            masked_result = mask_sensitive_data(result[:2000])
 
             async with self._session_factory() as session:
-                log = CommandLog(command=command, result=result[:2000], status=status)
+                log = CommandLog(command=masked_command, result=masked_result, status=status)
                 session.add(log)
                 await session.commit()
         except Exception as e:

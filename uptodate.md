@@ -1,0 +1,242 @@
+# JARVIS — Comprehensive Status, Tech Stack, & Features Overview
+
+This document serves as the single source of truth for JARVIS's current capabilities, system architecture, tech stack, and development status.
+
+**Last Updated:** June 19, 2026
+
+---
+
+## 📋 Tech Stack
+
+The architecture is split into a **React + Electron** desktop client (frontend) and a **FastAPI + WebSockets** backend service (Python).
+
+### Frontend (Desktop Client)
+* **Shell/Container:** Electron v35.0.0 (manages OS-level desktop windows, system tray, global shortcut registration)
+* **Framework:** React v19.1.0 + TypeScript v5.8.0 + Vite v6.3.0
+* **Build System:** `electron-vite` v3.1.0 + `electron-builder` v25.1.0
+* **Styling:** Tailwind CSS v4.1.0 + `@tailwindcss/vite`
+* **State Management:** Zustand v5.0.0
+* **Communication:** Native WebSockets for real-time bidirectional status, audio stream, and command events
+
+### Backend (Python Service)
+* **Core Web Server:** FastAPI v0.115.9 + Uvicorn v0.34.2 (runs locally on port 8000)
+* **Database (Relational):** SQLite + SQLAlchemy ORM v2.0.41 + `aiosqlite` v0.21.0 (non-blocking async transactions)
+* **Database (Vector):** ChromaDB v1.0.7 (vector storage for semantic long-term memory)
+* **Embeddings Model:** `sentence-transformers` v4.1.0 (runs `all-MiniLM-L6-v2` locally for context matching; falls back to default ChromaDB embeddings on failure)
+* **Task Scheduling:** Background tasks run asynchronously inside FastAPI lifespan context
+* **Utilities:** `loguru` v0.7.3 (structured logging), `python-dotenv` v1.1.0 (config management)
+
+### AI Models & Integrations
+* **LLM Engine:** Multi-provider client wrapper supporting:
+  * **Local Primary:** Ollama (default: `qwen2.5-coder:3b` via local port 11434)
+  * **Cloud Failover Providers:** Groq API (`llama-3.3-70b-versatile`), Google Gemini API (`gemini-2.0-flash` or `gemini-1.5-pro` for reasoning/vision), OpenAI API (`gpt-4o` / `gpt-4o-mini`), and OpenRouter API (`meta-llama/llama-3.3-70b-instruct:free`, `qwen-2.5-coder-32b`, etc.)
+  * **Smart Failover & Timeout Logic:** Automatically switches between providers (Groq → Gemini → OpenRouter → OpenAI → Ollama) if a model times out after **30 seconds** or throws an error (e.g. out of credits/authentication issues).
+* **Speech-to-Text (STT):** Local `faster-whisper` v1.1.1 (based on CTranslate2 base/small model) with automated API failover to Gemini Audio API or OpenAI Whisper API
+* **Text-to-Speech (TTS):** Microsoft `edge-tts` v7.2.8 (local/online hybrid with British English `en-GB-RyanNeural` and American `en-US-GuyNeural`) + ElevenLabs v1.50 (optional premium API)
+* **Wake Word:** `openwakeword` v0.6.0 (running ONNX runtime for local "Hey Jarvis" keyword trigger)
+
+---
+
+## 🛠️ Architecture & Major Modules
+
+```
+                             ┌──────────────────────────────────┐
+                             │        ELECTRON FRONTEND         │
+                             │   (React 19, Zustand, UI Orb)    │
+                             └────────────────┬─────────────────┘
+                                              │ (WebSocket port 8000)
+                                              ▼
+                             ┌──────────────────────────────────┐
+                             │         FASTAPI BACKEND          │
+                             └────────────────┬─────────────────┘
+                                              │
+         ┌───────────────────────────┬────────┴───────────────────┬──────────────────────────┐
+         ▼                           ▼                           ▼                          ▼
+┌───────────────────┐       ┌───────────────────┐       ┌───────────────────┐      ┌───────────────────┐
+│   VOICE AGENT     │       │   PLANNER AGENT   │       │   SYNC SERVICE    │      │   CLAP LISTENER   │
+│ - Wake Word       │       │ - Tool Execution  │       │ - UDP Heartbeats  │      │ - sounddevice RMS │
+│ - Mic Audio Loop  │       │ - Skill Registry  │       │ - AES WebSocket   │      │ - Welcome Flow    │
+└───────────────────┘       └───────────────────┘       └───────────────────┘      └───────────────────┘
+```
+
+### 1. Voice Agent Pipeline (`backend/agents/voice.py`)
+Coordinates microphone recording, wake word detection, STT transcription, LLM command execution, and TTS playback. It manages the following state machine transitions:
+* `idle` ⇄ `listening` ⇄ `processing` ⇄ `speaking` ⇄ `executing`
+* Supports **Push-to-Talk (PTT)** (shortcut `Ctrl + Space` triggered from Electron via `onPushToTalk`) and wake-word activation.
+* Sends real-time binary audio packets (16kHz PCM) and interrupts speaking playback instantly upon receiving an `interrupt` command.
+
+### 2. Planner Agent (`backend/agents/planner.py`)
+Central orchestrator that coordinates natural language parsing, tool selection, and execution steps.
+* Runs LLM completions with dynamic tool definitions.
+* Spawns multi-step plans and streams progress updates (`type="agent_progress"`).
+* Integrates thread-safe local history lists to isolate background sub-agents and prevent concurrent runs from corrupting user history.
+
+### 3. Skill Plugin Registry (`backend/services/skills/`)
+Implements an extensible plugin architecture where new skills inherit from `BaseSkill` and expose tools decorated with `@skill_tool`. The active skills registered inside `registry.py` are:
+* **FileSkill:** Local disk manipulation with duplicate detection (MD5), download folders sorting by type, meeting notes templates, and Recycle Bin safety (`send2trash`).
+* **CommunicationSkill:** SMTP/IMAP client, `pywhatkit` WhatsApp triggers, Slack/Discord webhooks, ADB Android integration for calls/SMS, and local SQLite calendar events storage (`calendar.db`).
+* **SystemSkill:** CPU/Memory process monitor, `psutil` task manager (process kill), clipboard copy/paste, startup program registries, and WiFi/System power triggers.
+* **AppControlSkill:** Excel & Word COM automation (`win32com.client`), VS Code project launcher, and browser tab keystroke macros.
+* **ContextSkill:** Active window titles/executables scanner and pomodoro focus session limits.
+* **AgentSkill:** Autonomous sub-agent syndicate controller (creates headless async tasks to execute background goals).
+
+### 4. Memory & Database Layer (`backend/services/memory.py` / `backend/models/database.py`)
+* **SQLite Database (`data/jarvis.db`):** Houses structured ORM tables:
+  * `conversations` & `messages`: Multi-turn chat persistence.
+  * `user_preferences`: Key-value configuration.
+  * `command_logs` & `task_logs`: Audit logs for desktop automation and multi-step plan steps.
+* **ChromaDB Vector Store (`data/chroma_data/`):** Contains semantic collections:
+  * `conversations`: Conversation logs for history recall.
+  * `knowledge`: User preferences, facts, and synced peer states.
+
+### 5. Double-Clap Listener (`backend/services/clap.py`)
+* Listens continuously to the default system microphone for two high-RMS transients spaced between 0.05s and 0.35s apart.
+* Tracks adaptive noise floors dynamically to calibrate sensitivity.
+* Spawns a customized **Welcome Flow** on trigger:
+  * Plays a specified song URL/URI (Spotify or browser).
+  * Automatically opens Claude.ai and Binance BTC in separate Chrome windows.
+  * Arranges windows on specific monitors (monitors 1 and 3) and fullscreens them.
+  * Foregrounds/launches Cursor IDE and activates fullscreen.
+  * Synthesizes and speaks a home greeting synthesized via ElevenLabs (cached locally).
+
+### 6. Security Shield (`backend/services/safety.py`)
+* **Sensitive Data Redaction:** Runs regex filters to scrub sk- API keys, passwords, and tokens from logging streams.
+* **Action Classification:** Flags commands matching destructive keywords (e.g. `rm -rf`, `format C:`, `shutdown`, `reg delete`) as `NEEDS_CONFIRMATION` or `BLOCKED`.
+* **Dangerous Tool Interceptor:** Pauses the execution of dangerous tools (`safe_delete`, `kill_process`, `run_terminal_command`, etc.), broadcasts a `permission_request` WebSocket payload, and blocks execution until the user selects "Allow" or "Deny" from the frontend dialog.
+
+### 7. Cross-Device Sync Service (`backend/services/sync_service.py`)
+* **Discovery:** Broadcasts UDP heartbeats every 10s on port `18270` advertising local IP and FastAPI server port.
+* **Encryption:** Encrypts all packets symmetrically using Fernet (AES-128 in CBC mode) with a shared base64-encoded key (`SYNC_KEY`).
+* **WebSocket Syncer:** Opens connections to `/sync` to exchange context state packets (process name, window title, active project) and records merged state updates to the ChromaDB vector database.
+
+---
+
+## 🔌 APIs, Services, and Workflows
+
+### REST API Endpoints
+* `GET /health` - Basic uptime and status check.
+* `GET /status` - State of all modular services (STT, TTS, Wake Word, LLM, Memory, Screen, Browser).
+* `POST /command` - Process text query directly through the voice agent pipeline.
+* `GET /history` - Get recent conversation logs from SQLite.
+* `POST /settings` - Dynamically update active LLM providers, model names, TTS voice, or rate.
+* `GET /voices` - Retrieve available Microsoft edge-tts voices.
+* `GET /monitors` - Retrieve list of active display monitors, coordinates, and screen dimensions.
+
+### WebSocket Protocols
+
+#### Assistant Loop (`/ws`)
+* **Client to Server Frames:**
+  * `push_to_talk_start` / `push_to_talk_stop` - Starts/stops microphone capture.
+  * `text_command` - Sends a text command from the chat panel.
+  * `audio_data` - Streams raw audio bytes.
+  * `interrupt` - Cancels current speech playback immediately.
+  * `settings` - Pushes updated display/API settings.
+  * `permission_response` - Returns `allowed: true/false` for a pending safety check.
+* **Server to Client Frames:**
+  * `status` - Updates assistant state (idle, listening, processing, speaking).
+  * `transcript` - Returns real-time speech transcription results.
+  * `response` - Streams response text.
+  * `tts_audio` - Streams synthesized speech MP3 chunks.
+  * `agent_progress` - Pushes steps list, description, and completion progress.
+  * `permission_request` - Triggers a permission pop-up on the frontend for user confirmation.
+  * `subagent_status` - Pushes sub-agent updates (logs, status, progress, final result).
+
+#### Synchronization Tunnel (`/sync`)
+* Receives context packets from peer devices, decrypts them, merges values, and writes them to local databases.
+
+---
+
+## ⚙️ Configuration & Environment Variables
+
+These variables are defined in the project's `.env` configuration file:
+
+| Environment Variable | Default Value | Description |
+|---|---|---|
+| **`LLM_PROVIDER`** | `gemini` | Primary AI engine (`gemini`, `openai`, `ollama`). |
+| **`GEMINI_API_KEY`** | *None* | Google Gemini API key. |
+| **`GEMINI_MODEL`** | `gemini-2.0-flash` | Gemini model name. |
+| **`OPENAI_API_KEY`** | *None* | OpenAI API key. |
+| **`OPENAI_MODEL`** | `gpt-4o` | OpenAI model identifier. |
+| **`OPENROUTER_API_KEY`**| *None* | OpenRouter API Key. |
+| **`OPENROUTER_MODEL`**  | `meta-llama/llama-3.3-70b-instruct:free` | OpenRouter model name. |
+| **`OLLAMA_BASE_URL`** | `http://localhost:11434`| Local Ollama API server address. |
+| **`OLLAMA_MODEL`** | `qwen2.5-coder:3b` | Local Ollama model. |
+| **`WHISPER_MODEL`** | `base` | Local Faster-Whisper model size (`tiny`, `base`, `small`, `medium`, `large-v3`). |
+| **`WHISPER_DEVICE`** | `auto` | Device for inference (`auto`, `cpu`, `cuda`). |
+| **`WHISPER_COMPUTE_TYPE`**| `int8` | Inference quantization (`int8`, `float16`, `float32`). |
+| **`TTS_ENGINE`** | `edge-tts` | TTS engine (`edge-tts` or `elevenlabs`). |
+| **`TTS_VOICE`** | `en-GB-RyanNeural` | edge-tts voice identifier. |
+| **`TTS_RATE`** | `+0%` | edge-tts speech rate shift. |
+| **`ELEVENLABS_API_KEY`**| *None* | Premium voice API Key. |
+| **`ELEVENLABS_VOICE_ID`**| *None* | Premium ElevenLabs voice ID. |
+| **`CLAP_ENABLED`** | `true` | Enables background double-clap listener. |
+| **`SYNC_ENABLED`** | `true` | Enables peer device context synchronization. |
+| **`SYNC_KEY`** | `U3VwZXJTZWNyZXRLZXlGb3JKQVJWSVMyc3luYw==` | 32-byte symmetric Fernet key base64 string. |
+| **`SYNC_PORT`** | `18270` | Peer search UDP port. |
+| **`FRIENDLY_DEVICE_NAME`**| `JARVIS Windows` | Device label broadcasted on network. |
+| **`WAKE_WORD_THRESHOLD`**| `0.5` | Wake word trigger confidence threshold. |
+| **`SAFETY_CONFIRM_DANGEROUS`**| `true` | Requiring approval prompts for destructive tools. |
+| **`SAFETY_ALLOW_TERMINAL`**| `true` | Allows running shell commands on host machine. |
+| **`DATA_DIR`** | `./data` | persistent storage path (sqlite, calendar, vector db). |
+
+---
+
+## 📦 Dependencies & Purpose
+
+### Python Dependencies (Backend)
+* **`fastapi` / `uvicorn` / `websockets`:** Asynchronous web server and WebSocket networking.
+* **`openai` / `google-generativeai`:** Integration for OpenAI, OpenRouter, and Google Gemini API clients.
+* **`faster-whisper`:** High-performance transcription using quantized CTranslate2 engine.
+* **`edge-tts` / `elevenlabs`:** Synthesizes voice waveforms.
+* **`openwakeword`:** Local wake-word trigger system.
+* **`sounddevice` / `numpy`:** Low-level microphone streaming and RMS math calculations for clap listener.
+* **`pyautogui` / `pywinauto` / `pywin32` / `keyboard`:** Controls Windows applications, handles window placement, coordinates, keystrokes, and keyboard hooks.
+* **`pytesseract` / `Pillow`:** Tesseract OCR wrapper and PIL images helper.
+* **`playwright`:** Headless browser automation.
+* **`chromadb` / `sentence-transformers`:** Local vector storage database and semantic text embeddings.
+* **`sqlalchemy` / `aiosqlite`:** Async SQLite ORM connection.
+* **`cryptography`:** Symmetrically encrypts cross-device synchronization state packets.
+* **`send2trash`:** Safe file deletion (moves files to the Recycle Bin instead of deleting permanently).
+* **`psutil`:** Inspects processes and monitors system load.
+* **`pyperclip`:** Clipboard integration.
+* **`pywhatkit`:** Secondary backup helper for WhatsApp web messaging.
+
+---
+
+## 🛠️ Recently Completed Work
+
+1. **Phase P5 (Contextual Awareness):** Created `ContextSkill` to track active window titles and infer work projects. Integrated background polling checks inside `main.py` every 5 seconds.
+2. **Phase P6 (Cross-Device Sync):** Added symmetric AES packet encryption (`SyncService`), UDP heartbeats, and WebSocket synchronization routes.
+3. **Phase P7 (Autonomous Sub-Agents):** Created `SubAgentInstance` background task runner, implemented `AgentSkill` tool definitions (`spawn_subagent`, `get_active_agents`, and `abort_subagent`), and added WebSocket commands to retrieve sub-agent status or cancel tasks dynamically.
+4. **Local History Safety:** Refactored conversation history handling inside `PlannerAgent` to utilize concurrent-safe local variables to prevent background agents from corrupting user chat.
+
+---
+
+## ⚠️ Limitations & Bugs
+
+* **OS Platform Locks:** Desktop control hooks (`win32gui`, `pywinauto`) lock the application solely to **Windows OS**. It will not run on macOS or Linux without extensive service refactoring.
+* **Headless Browser Bans:** Headless browser crawls (Playwright) are frequently flagged by Cloudflare or CAPTCHA blockers, requiring a manual headed browser run or fallback search.
+* **Clap Calibration Spike:** The adaptive noise floor calculation requires a 2-second calibration period on launch; triggers during this window are ignored.
+* **Tesseract Executable Path:** OCR features fail if the Tesseract-OCR binary is not pre-installed or its folder is missing from the environment PATH.
+
+---
+
+## 🎯 Progress Summary & Recommended Roadmap
+
+```
+Phase P0 (Core Registry & File System) ───────────────── 100%
+Phase P1 (Communication Hub) ────────────────────────── 100%
+Phase P2 (Proactive Mode) ───────────────────────────── 100%
+Phase P3 (Deep App Integration) ──────────────────────── 100%
+Phase P4 (Security Shield) ───────────────────────────── 100%
+Phase P5 (Contextual Awareness) ──────────────────────── 100%
+Phase P6 (Cross-Device Sync) ────────────────────────── 100%
+Phase P7 (Autonomous Agent Syndicate) ────────────────── 100%
+```
+
+**Overall Project Progress: 95%**
+
+### Next Recommended Milestones
+1. **Cross-Platform Compatibility:** Abstract Win32 COM and window manager libraries (using alternative libraries like `pygetwindow` or `pyautogui` equivalents) to enable startup on macOS.
+2. **Frontend UI Sub-Agent Widgets:** Implement React dashboard displays in the Electron client to list active background sub-agents, view real-time log lists, and display progress bars.
+3. **Delta DB Merging:** Extend `SyncService` to synchronize database calendar event entries (`events` table) across devices, resolving merge conflicts using timestamps.

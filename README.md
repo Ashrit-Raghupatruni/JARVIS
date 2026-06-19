@@ -24,7 +24,11 @@
 
 ### 🧠 AI Brain
 - **Ollama Local LLM (Primary)** — Runs `qwen2.5-coder:3b` locally via Ollama for fast, free, and private inference
-- **Seamless Cloud Failover** — Automatically switches to Google Gemini → OpenAI GPT-4o if Ollama is offline
+- **OpenRouter Integration** — Route completions and tool-calling through free-tier and premium OpenRouter models
+- **Groq Integration** — High-speed completions fallback via Groq API (using `llama-3.3-70b-versatile`)
+- **Smart Failover & Auto-switching** — Automatically switches between models (Groq → Gemini → OpenRouter → OpenAI → Ollama) if a provider runs out of credits, errors, or fails to respond within **30 seconds**
+- **Double-Clap Welcome Flow** — Managed background listener (`ClapService`) that triggers a customized welcome actions sequence (Spotify song, side-by-side Chrome panels, ElevenLabs TTS welcome greeting, and Cursor activation) on double claps
+- **Drag-and-Drop File Upload** — Drag and drop text, source code, logs, and markdown files directly into the frontend chat panel to easily analyze them
 - **Multi-turn Context** — Remembers conversation history
 - **Tool Calling** — Executes real actions on your computer
 - **Agent Architecture** — Planner → Automation/Browser/Screen/Memory agents
@@ -116,13 +120,16 @@ copy .env.example .env
 # Edit .env — defaults to Ollama (no API keys needed for basic use)
 
 # 6. Launch JARVIS
-start.bat
+.\start.bat
 ```
 
 ### Running JARVIS
 
-#### Option A: Double-click `start.bat` (Recommended)
-The simplest way — just double-click `start.bat` in the project root.
+#### Option A: Run `start.bat` (Recommended)
+- **File Explorer**: Double-click `start.bat` in the project root.
+- **PowerShell / CMD**: Type `.\start.bat` and press Enter. 
+
+> ⚠️ **Important:** Do NOT run `python start.bat` or `python setup.bat`. Batch files (`.bat`) are Windows Command Prompt scripts, and running them with python will result in a python syntax error.
 
 #### Option B: From PowerShell
 ```powershell
@@ -134,7 +141,7 @@ npm run dev
 > ```powershell
 > $env:ELECTRON_RUN_AS_NODE=""; npm run dev
 > ```
-> Or simply use `start.bat` which handles this automatically.
+> Or simply use `.\start.bat` which handles this automatically.
 
 ### Configuration
 
@@ -152,6 +159,14 @@ OLLAMA_MODEL=qwen2.5-coder:3b
 GEMINI_API_KEY=AIzaSy...your-gemini-key-here
 GEMINI_MODEL=gemini-2.0-flash
 
+# Groq API Settings (High-Speed Cloud Fallback)
+GROQ_API_KEY=gsk_your-groq-key-here
+GROQ_MODEL=llama-3.3-70b-versatile
+
+# OpenRouter API Settings (Cloud Fallback)
+OPENROUTER_API_KEY=sk-or-v1-your-openrouter-key-here
+OPENROUTER_MODEL=meta-llama/llama-3.3-70b-instruct:free
+
 # OpenAI API Settings (Cloud Fallback/Optional)
 OPENAI_API_KEY=sk-your-openai-key-here
 OPENAI_MODEL=gpt-4o
@@ -162,28 +177,28 @@ TTS_VOICE=en-US-GuyNeural     # Text-to-speech voice
 WAKE_WORD_THRESHOLD=0.5       # Wake word sensitivity
 ```
 
-### 🧠 Ollama + Cloud Failover Setup
+### 🧠 Ollama + Multi-Cloud Failover Setup
 
-JARVIS uses a production-grade triple-engine AI system designed to ensure 100% uptime:
+JARVIS uses a production-grade, highly resilient multi-provider AI system designed to ensure 100% availability:
 
 1. **Primary AI Brain (Ollama — Local)**
-   - **Performance**: Fast local inference with zero API costs and full privacy.
-   - **Model**: `qwen2.5-coder:3b` — a capable coding/assistant model that runs on most hardware.
+   - **Performance**: Fast local inference with zero API costs and complete privacy.
+   - **Model**: `qwen2.5-coder:3b` — a capable coding/assistant model that runs on standard hardware.
    - **Setup**: Install [Ollama](https://ollama.com/), then run `ollama pull qwen2.5-coder:3b`.
-   - **No API key required** — everything runs on your machine.
+   - **No API key required** — everything runs locally on your machine.
 
-2. **First Failover (Google Gemini)**
-   - **Robustness**: If Ollama is offline or fails, JARVIS **automatically and transparently fails over to Gemini**.
-   - **API Key**: Obtain a free API key from [Google AI Studio](https://aistudio.google.com/) and add it to `.env`.
-   - **Vision**: Screen analysis ("what's on my screen?") always uses Gemini/OpenAI since the local model is text-only.
+2. **Autonomous Cloud Failover Chain**
+   - If the active provider is offline, runs out of credits, errors out, or fails to respond within **30 seconds**, JARVIS automatically switches to the next provider in the chain:
+     * **Groq API** (`llama-3.3-70b-versatile`)
+     * **Google Gemini API** (`gemini-2.0-flash`)
+     * **OpenRouter API** (`meta-llama/llama-3.3-70b-instruct:free`)
+     * **OpenAI API** (`gpt-4o`)
+     * **Ollama API** (Local Fallback)
+   - Failovers are handled in real-time on a per-request basis to prevent user-facing downtime.
 
-3. **Second Failover (OpenAI GPT-4o)**
-   - **Safety net**: If both Ollama and Gemini are unavailable, JARVIS falls back to OpenAI.
-   - **API Key**: Add your `OPENAI_API_KEY` in `.env` to enable this backup.
-
-4. **Multimodal Screen Vision**
-   - Screen analysis requests use Gemini Vision as primary, with OpenAI GPT-4o Vision as fallback.
-   - Vision always uses cloud providers (Gemini/OpenAI) since local models don't support image input.
+3. **Multimodal Screen Vision**
+   - Screen analysis requests ("what's on my screen?") require vision capabilities and route to **Gemini Vision** as primary, with **OpenAI GPT-4o Vision** as backup.
+   - Vision requests run over the cloud since the local model runs on text-only architectures.
 
 ---
 

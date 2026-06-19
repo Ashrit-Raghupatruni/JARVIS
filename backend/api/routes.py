@@ -237,3 +237,17 @@ async def list_voices():
             "voices": [],
             "error": str(e),
         }
+
+
+@router.get("/monitors")
+async def list_monitors(request: Request):
+    """List connected display monitors."""
+    app = request.app
+    if hasattr(app.state, "screen_service") and app.state.screen_service:
+        try:
+            monitors = app.state.screen_service.get_monitors()
+            return {"status": "ok", "monitors": monitors}
+        except Exception as e:
+            logger.error(f"Failed to list monitors: {e}")
+            return {"status": "ok", "monitors": [], "error": str(e)}
+    return {"status": "ok", "monitors": []}

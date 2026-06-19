@@ -70,11 +70,14 @@ const defaultSettings: Settings = {
   },
   ai: {
     model: 'gpt-4o',
-    temperature: 0.7
+    temperature: 0.7,
+    openrouterApiKey: '',
+    openaiApiKey: ''
   },
   display: {
     alwaysOnTop: false,
-    theme: 'dark'
+    theme: 'dark',
+    selectedMonitor: 'all'
   }
 }
 

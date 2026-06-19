@@ -10,6 +10,7 @@ import asyncio
 import io
 import random
 import time
+import re
 from enum import Enum
 from typing import AsyncGenerator, Optional
 
@@ -36,6 +37,31 @@ ACKNOWLEDGMENTS = [
     "Listening, sir.",
     "Go ahead, sir.",
 ]
+
+
+def clean_text_for_tts(text: str) -> str:
+    """Clean markdown, code blocks, and formatting from text for TTS."""
+    if not text:
+        return ""
+    # 1. Remove code blocks (``` ... ```)
+    text = re.sub(r'```[\s\S]*?```', '', text)
+    
+    # 2. Remove inline code backticks (`code`)
+    text = re.sub(r'`([^`]+)`', r'\1', text)
+    
+    # 3. Remove markdown formatting asterisks/underscores
+    text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)
+    text = re.sub(r'\*([^*]+)\*', r'\1', text)
+    text = re.sub(r'__([^_]+)__', r'\1', text)
+    text = re.sub(r'_([^_]+)_', r'\1', text)
+    
+    # 4. Remove links (e.g., [text](url) -> text)
+    text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
+    
+    # 5. Clean up extra whitespace/newlines
+    text = re.sub(r'\s+', ' ', text).strip()
+    
+    return text
 
 
 class VoiceAgent:
@@ -312,7 +338,12 @@ class VoiceAgent:
         )
 
     async def _speak(self, text: str) -> AsyncGenerator[WSMessage, None]:
-        """Generate and stream TTS audio for the given text."""
+        """Generate and play TTS audio for the given text."""
+        cleaned_text = clean_text_for_tts(text)
+        if not cleaned_text or not cleaned_text.strip():
+            logger.debug("TTS received empty text after cleaning, skipping speech")
+            return
+
         self._is_speaking = True
         self._cancel_speech = False
         self.state = AssistantState.SPEAKING
@@ -323,14 +354,12 @@ class VoiceAgent:
         )
 
         try:
-            async for audio_chunk in self.tts.stream_speech(text):
-                if self._cancel_speech:
-                    logger.info("Speech cancelled by interruption")
-                    break
-
-                # Send audio chunk as base64 in JSON
+            logger.info(f"Synthesizing full TTS: '{cleaned_text[:60]}...'")
+            audio_bytes = await self.tts.synthesize(cleaned_text)
+            
+            if audio_bytes and not self._cancel_speech:
                 import base64
-                audio_b64 = base64.b64encode(audio_chunk).decode("utf-8")
+                audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
                 yield WSMessage(
                     type="tts_audio",
                     data={"audio": audio_b64, "format": "mp3"},

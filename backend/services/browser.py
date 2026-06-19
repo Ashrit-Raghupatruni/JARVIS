@@ -102,7 +102,7 @@ class BrowserService:
 
     async def search_web(self, query: str) -> str:
         """
-        Search the web using Google.
+        Search the web using Google, falling back to DuckDuckGo if Playwright fails.
 
         Args:
             query: Search query string.
@@ -110,8 +110,8 @@ class BrowserService:
         Returns:
             Search results summary.
         """
-        await self._ensure_started()
         try:
+            await self._ensure_started()
             search_url = f"https://www.google.com/search?q={query}"
             await self._page.goto(search_url, wait_until="domcontentloaded", timeout=15000)
 
@@ -139,22 +139,69 @@ class BrowserService:
                 }
             """)
 
-            if not results:
-                return f"Searched Google for '{query}' — page loaded but couldn't extract results."
-
-            summary_lines = [f"Search results for '{query}':"]
-            for i, r in enumerate(results, 1):
-                summary_lines.append(f"{i}. {r['title']}")
-                if r.get("snippet"):
-                    summary_lines.append(f"   {r['snippet'][:150]}")
-                summary_lines.append(f"   URL: {r['url']}")
-
-            summary = "\n".join(summary_lines)
-            logger.info(f"Web search completed: {len(results)} results for '{query}'")
-            return summary
+            if results:
+                summary_lines = [f"Search results for '{query}':"]
+                for i, r in enumerate(results, 1):
+                    summary_lines.append(f"{i}. {r['title']}")
+                    if r.get("snippet"):
+                        summary_lines.append(f"   {r['snippet'][:150]}")
+                    summary_lines.append(f"   URL: {r['url']}")
+                summary = "\n".join(summary_lines)
+                logger.info(f"Web search completed: {len(results)} results for '{query}'")
+                return summary
         except Exception as e:
-            logger.error(f"Web search failed for '{query}': {e}")
-            return f"Search failed: {str(e)}"
+            logger.warning(f"Google search via Playwright failed: {e}. Falling back to DuckDuckGo HTML search...")
+
+        # Fallback using DuckDuckGo HTML search (lightweight HTTP request)
+        try:
+            import urllib.request
+            import urllib.parse
+            import re
+
+            url = "https://html.duckduckgo.com/html/?" + urllib.parse.urlencode({"q": query})
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+            )
+            
+            def fetch_ddg():
+                with urllib.request.urlopen(req, timeout=8) as response:
+                    return response.read().decode("utf-8")
+                    
+            html = await asyncio.to_thread(fetch_ddg)
+            
+            results = []
+            blocks = re.findall(r'<div class="result__body">.*?</div>\s*</div>', html, re.DOTALL)
+            for block in blocks[:5]:
+                title_match = re.search(r'<a class="result__url"[^>]*>(.*?)</a>', block, re.DOTALL)
+                snippet_match = re.search(r'<a class="result__snippet"[^>]*>(.*?)</a>', block, re.DOTALL)
+                href_match = re.search(r'href="([^"]+)"', block)
+                if title_match and href_match:
+                    title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip()
+                    snippet = re.sub(r'<[^>]+>', '', snippet_match.group(1)).strip() if snippet_match else ""
+                    href = href_match.group(1)
+                    if "uddg=" in href:
+                        href = urllib.parse.unquote(href.split("uddg=")[1].split("&")[0])
+                    results.append({
+                        "title": title,
+                        "url": href,
+                        "snippet": snippet
+                    })
+            
+            if results:
+                summary_lines = [f"Search results for '{query}' (via DuckDuckGo fallback):"]
+                for i, r in enumerate(results, 1):
+                    summary_lines.append(f"{i}. {r['title']}")
+                    if r.get("snippet"):
+                        summary_lines.append(f"   {r['snippet'][:150]}")
+                    summary_lines.append(f"   URL: {r['url']}")
+                summary = "\n".join(summary_lines)
+                logger.info(f"DuckDuckGo fallback search completed: {len(results)} results for '{query}'")
+                return summary
+        except Exception as ex:
+            logger.error(f"DuckDuckGo fallback search failed: {ex}")
+            
+        return f"Search failed. Google Playwright search and DuckDuckGo fallback search both encountered errors."
 
     async def get_page_content(self) -> str:
         """
@@ -295,6 +342,43 @@ class BrowserService:
         if self._page:
             return await self._page.title()
         return ""
+
+    async def play_music(self, query: str) -> str:
+        """Search YouTube for the query, find the first video, and open it in the default browser."""
+        import urllib.parse
+        import webbrowser
+
+        logger.info(f"Requested to play music: {query}")
+        encoded_query = urllib.parse.quote(query)
+        search_url = f"https://www.youtube.com/results?search_query={encoded_query}"
+
+        try:
+            await self._ensure_started()
+            page = await self._context.new_page()
+            await page.goto(search_url, wait_until="domcontentloaded", timeout=12000)
+            
+            await page.wait_for_selector("a#video-title", timeout=6000)
+            video_url = await page.evaluate("""
+                () => {
+                    const linkEl = document.querySelector('a#video-title');
+                    return linkEl ? linkEl.href : null;
+                }
+            """)
+            await page.close()
+
+            if video_url:
+                logger.info(f"Opening YouTube video in default browser: {video_url}")
+                webbrowser.open(video_url)
+                return f"Playing '{query}' on YouTube: {video_url}"
+        except Exception as e:
+            logger.warning(f"Failed to extract direct YouTube video link headlessly: {e}. Opening search results page directly.")
+
+        try:
+            webbrowser.open(search_url)
+            return f"Opened YouTube search results for '{query}' in your default browser."
+        except Exception as e:
+            logger.error(f"Failed to open YouTube search URL: {e}")
+            return f"Error trying to play music: {e}"
 
     @property
     def is_started(self) -> bool:

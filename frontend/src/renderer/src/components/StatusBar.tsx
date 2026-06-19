@@ -20,6 +20,7 @@ export default function StatusBar({ onToggleChat, onToggleHistory }: StatusBarPr
   const assistantState = useAppStore((s) => s.assistantState)
   const audioLevel = useAppStore((s) => s.audioLevel)
   const toggleSettings = useAppStore((s) => s.toggleSettings)
+  const settings = useAppStore((s) => s.settings)
 
   const currentState = stateConfig[assistantState]
 
@@ -93,6 +94,12 @@ export default function StatusBar({ onToggleChat, onToggleHistory }: StatusBarPr
             />
           </div>
         </div>
+      </div>
+
+      {/* Center section: Active model indicator */}
+      <div className="hidden md:flex items-center gap-1.5 text-[10px] tracking-wider uppercase" style={{ color: 'var(--jarvis-text-dim)' }}>
+        <span>Model:</span>
+        <span className="font-medium text-jarvis-accent">{settings.ai.model}</span>
       </div>
 
       {/* Right section */}

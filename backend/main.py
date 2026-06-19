@@ -93,6 +93,18 @@ async def lifespan(app: FastAPI):
         logger.warning(f"✗ Wake word service unavailable: {e}")
         app.state.wake_word_service = None
 
+    # Clap Service
+    clap_service = None
+    try:
+        from backend.services.clap import ClapService
+        clap_service = ClapService()
+        clap_service.start()
+        app.state.clap_service = clap_service
+        logger.info("✓ Clap service initialized and listening")
+    except Exception as e:
+        logger.error(f"✗ Clap service failed: {e}")
+        app.state.clap_service = None
+
     # Automation Service
     automation_service = None
     try:
@@ -154,6 +166,7 @@ async def lifespan(app: FastAPI):
                 safety_service=safety_service,
             )
             app.state.planner_agent = planner_agent
+            app.state.active_subagents = {}
             logger.info("✓ Planner agent initialized")
         except Exception as e:
             logger.error(f"✗ Planner agent failed: {e}")
@@ -177,6 +190,66 @@ async def lifespan(app: FastAPI):
         logger.error(f"✗ Voice agent failed: {e}")
         app.state.voice_agent = None
 
+    # Proactive Skill & background worker
+    proactive_task = None
+    try:
+        from backend.services.skills.proactive_skill import ProactiveSkill
+        proactive_skill = ProactiveSkill(app_state=app.state)
+        app.state.proactive_skill = proactive_skill
+        
+        # Register in skills registry if planner exists
+        if planner_agent and hasattr(planner_agent, "skills_registry"):
+            planner_agent.skills_registry.register_skill(proactive_skill)
+            
+        async def proactive_worker():
+            logger.info("✓ Proactive background worker started")
+            while True:
+                try:
+                    await proactive_skill.check_triggers()
+                except Exception as ex:
+                    logger.error("Error in proactive check loop: {}", ex)
+                await asyncio.sleep(10)  # Check every 10 seconds
+                
+        import asyncio
+        proactive_task = asyncio.create_task(proactive_worker())
+        app.state.proactive_task = proactive_task
+        logger.info("✓ Proactive background checks initialized")
+    except Exception as e:
+        logger.error(f"✗ Proactive checks failed: {e}")
+
+    # Context Skill background worker
+    context_task = None
+    try:
+        if planner_agent and hasattr(planner_agent, "skills_registry"):
+            context_skill = planner_agent.skills_registry.skills.get("ContextSkill")
+            if context_skill:
+                async def context_worker():
+                    logger.info("✓ Context background worker started")
+                    while True:
+                        try:
+                            # Update active foreground window
+                            context_skill.update_active_window()
+                        except Exception as ex:
+                            logger.error("Error in context scanner loop: {}", ex)
+                        await asyncio.sleep(5)  # Check every 5 seconds
+                
+                import asyncio
+                context_task = asyncio.create_task(context_worker())
+                app.state.context_task = context_task
+                logger.info("✓ Context background scanner initialized")
+    except Exception as e:
+        logger.error(f"✗ Context worker initialization failed: {e}")
+
+    # Sync Service
+    sync_service = None
+    try:
+        from backend.services.sync_service import SyncService
+        sync_service = SyncService(app_state=app.state)
+        sync_service.start()
+        app.state.sync_service = sync_service
+    except Exception as e:
+        logger.error(f"✗ Sync service failed: {e}")
+
     elapsed = time.time() - start_time
     logger.info("=" * 60)
     logger.info(f"  JARVIS is online! (startup: {elapsed:.1f}s)")
@@ -189,6 +262,33 @@ async def lifespan(app: FastAPI):
 
     # ── Shutdown ──────────────────────────────────────────────
     logger.info("JARVIS shutting down...")
+
+    if hasattr(app.state, "proactive_task") and app.state.proactive_task:
+        try:
+            app.state.proactive_task.cancel()
+            logger.info("✓ Proactive background worker cancelled")
+        except Exception as e:
+            logger.error(f"Proactive checks cleanup error: {e}")
+
+    if hasattr(app.state, "context_task") and app.state.context_task:
+        try:
+            app.state.context_task.cancel()
+            logger.info("✓ Context background worker cancelled")
+        except Exception as e:
+            logger.error(f"Context worker cleanup error: {e}")
+
+    if hasattr(app.state, "sync_service") and app.state.sync_service:
+        try:
+            app.state.sync_service.stop()
+        except Exception as e:
+            logger.error(f"Sync service cleanup error: {e}")
+
+    if hasattr(app.state, "clap_service") and app.state.clap_service:
+        try:
+            app.state.clap_service.stop()
+            logger.info("✓ Clap service stopped cleanly")
+        except Exception as e:
+            logger.error(f"Clap service cleanup error: {e}")
 
     if browser_service and browser_service.is_started:
         try:

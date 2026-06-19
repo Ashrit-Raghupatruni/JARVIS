@@ -60,6 +60,23 @@ class Settings(BaseSettings):
         default="gpt-4o",
         description="OpenAI model identifier for chat completions.",
     )
+    OPENROUTER_API_KEY: Optional[str] = Field(
+        default=None,
+        description="OpenRouter API key for LLM completions.",
+    )
+    OPENROUTER_MODEL: str = Field(
+        default="meta-llama/llama-3.3-70b-instruct:free",
+        description="OpenRouter model identifier.",
+    )
+    GROQ_API_KEY: Optional[str] = Field(
+        default=None,
+        description="Groq API key for high-speed LLM completions.",
+    )
+    GROQ_MODEL: str = Field(
+        default="llama-3.3-70b-versatile",
+        description="Groq model identifier.",
+    )
+
 
     # ── Ollama Settings ──────────────────────────────────────────────────
     OLLAMA_BASE_URL: str = Field(
@@ -74,7 +91,7 @@ class Settings(BaseSettings):
 
     # ── Whisper / STT Settings ───────────────────────────────────────────
     WHISPER_MODEL: str = Field(
-        default="small",
+        default="base",
         description="Faster-whisper model size: tiny, base, small, medium, large-v2, large-v3.",
     )
     WHISPER_DEVICE: str = Field(
@@ -92,7 +109,7 @@ class Settings(BaseSettings):
         description="TTS engine to use: edge-tts or elevenlabs.",
     )
     TTS_VOICE: str = Field(
-        default="en-US-GuyNeural",
+        default="en-GB-RyanNeural",
         description="Voice identifier for the TTS engine.",
     )
     TTS_RATE: str = Field(
@@ -104,6 +121,148 @@ class Settings(BaseSettings):
     ELEVENLABS_API_KEY: Optional[str] = Field(
         default=None,
         description="ElevenLabs API key for premium TTS (optional).",
+    )
+    ELEVENLABS_VOICE_ID: Optional[str] = Field(
+        default=None,
+        description="ElevenLabs voice ID for premium TTS.",
+    )
+    ELEVENLABS_MODEL_ID: str = Field(
+        default="eleven_multilingual_v2",
+        description="ElevenLabs TTS model ID.",
+    )
+    ELEVENLABS_OUTPUT_FORMAT: str = Field(
+        default="pcm_24000",
+        description="ElevenLabs output audio format.",
+    )
+    ELEVENLABS_PCM_SAMPLE_RATE: Optional[int] = Field(
+        default=None,
+        description="ElevenLabs sample rate override (defaults to parsing format).",
+    )
+
+    # ── Clap Listener Settings ───────────────────────────────────────────
+    CLAP_ENABLED: bool = Field(
+        default=True,
+        description="Whether to enable the background clap listener.",
+    )
+    CLAP_SAMPLE_RATE: int = Field(
+        default=44100,
+        description="Sample rate for microphone audio capture.",
+    )
+    CLAP_BLOCK_MS: int = Field(
+        default=40,
+        description="Analysis block size in milliseconds.",
+    )
+    CLAP_SPIKE_RATIO: float = Field(
+        default=7.0,
+        description="Spike ratio relative to noise floor to detect a clap.",
+    )
+    CLAP_COOLDOWN_S: float = Field(
+        default=0.45,
+        description="Cooldown period in seconds between detections.",
+    )
+    CLAP_MIN_DOUBLE_GAP_S: float = Field(
+        default=0.05,
+        description="Minimum gap between double claps.",
+    )
+    CLAP_MAX_DOUBLE_GAP_S: float = Field(
+        default=0.35,
+        description="Maximum gap between double claps.",
+    )
+    CLAP_RETRIGGER_RATIO: float = Field(
+        default=0.55,
+        description="Retrigger ratio to arm next detection.",
+    )
+    CLAP_NOISE_FLOOR_ALPHA: float = Field(
+        default=0.992,
+        description="Adaptive noise floor tracking alpha coefficient.",
+    )
+    CLAP_MIN_RMS: float = Field(
+        default=0.012,
+        description="Absolute minimum RMS amplitude to consider.",
+    )
+    CLAP_QUIET_GATE_MULT: float = Field(
+        default=2.2,
+        description="Gate multiplier below which noise floor is updated.",
+    )
+
+    # ── Double Clap Welcome Flow Actions ─────────────────────────────────
+    CLAP_SONG_URI: str = Field(
+        default="",
+        description="Spotify or YouTube URL/URI to open on double clap.",
+    )
+    CLAP_FOCUS_EXISTING_CURSOR: bool = Field(
+        default=True,
+        description="Foreground existing Cursor window on double clap.",
+    )
+    CLAP_OPEN_NEW_CURSOR: bool = Field(
+        default=False,
+        description="Launch a new Cursor window (-n) on double clap.",
+    )
+    CLAP_CURSOR_FULLSCREEN: bool = Field(
+        default=True,
+        description="Send F11 to Cursor window to toggle fullscreen (Windows).",
+    )
+    CLAP_OPEN_CLAUDE_CHROME: bool = Field(
+        default=False,
+        description="Open Claude.ai in Google Chrome on double clap.",
+    )
+    CLAP_OPEN_BINANCE_CHROME: bool = Field(
+        default=False,
+        description="Open Binance BTC in Google Chrome on double clap.",
+    )
+    CLAP_CHROME_FULLSCREEN: bool = Field(
+        default=True,
+        description="Open Chrome windows in fullscreen.",
+    )
+    CLAP_CHROME_SEPARATE_PROFILES: bool = Field(
+        default=False,
+        description="Use separate profile temp directories for Chrome.",
+    )
+    CLAP_CLAUDE_MONITOR: int = Field(
+        default=1,
+        description="Display monitor index to open Claude Chrome (1-based).",
+    )
+    CLAP_BINANCE_MONITOR: int = Field(
+        default=3,
+        description="Display monitor index to open Binance Chrome (1-based).",
+    )
+    CLAP_WELCOME_ENABLED: bool = Field(
+        default=True,
+        description="Enable speech synthesis welcome sequence.",
+    )
+    CLAP_WELCOME_PHRASE: str = Field(
+        default="Welcome home sir. Congratulations on the new client for your SaaS app—make sure to follow up. If it helps: a short, specific note while the deal is still fresh usually anchors trust better than a polished deck sent cold a few days later.",
+        description="Phrase spoken on double clap.",
+    )
+    CLAP_WELCOME_DELAY_S: float = Field(
+        default=1.0,
+        description="Seconds to wait after opening song before starting TTS speech.",
+    )
+    CLAP_WELCOME_CACHE_ENABLED: bool = Field(
+        default=True,
+        description="Cache TTS generated welcome WAV locally.",
+    )
+    CLAP_WELCOME_CACHE_DIR: Optional[str] = Field(
+        default=None,
+        description="Directory for cached welcome audio files.",
+    )
+
+    # ── Cross-Device Sync Settings ───────────────────────────────────────
+    SYNC_ENABLED: bool = Field(
+        default=True,
+        description="Whether to enable cross-device synchronization.",
+    )
+    SYNC_KEY: str = Field(
+        default="U3VwZXJTZWNyZXRLZXlGb3JKQVJWSVMyc3luYw==",  # A valid 32-byte Fernet key base64
+        description="Symmetric encryption key for sync data.",
+    )
+    SYNC_PORT: int = Field(
+        default=18270,
+        description="Port for peer-to-peer connection discovery.",
+    )
+    FRIENDLY_DEVICE_NAME: str = Field(
+        default="JARVIS Windows",
+        description="Friendly name for identifying this device.",
     )
 
     # ── Wake Word Settings ───────────────────────────────────────────────

@@ -24,6 +24,7 @@ class ScreenService:
         self._tesseract_available = False
         self._ocr_engine = None
         self._openai_client = None
+        self.selected_monitor: Optional[int | str] = None
         settings = get_settings()
 
         # Try to set up pytesseract
@@ -62,6 +63,42 @@ class ScreenService:
         try:
             if region:
                 screenshot = ImageGrab.grab(bbox=region)
+            elif self.selected_monitor is not None:
+                monitors = self.get_monitors()
+                target = None
+                
+                if self.selected_monitor == "active":
+                    try:
+                        win_info = self.get_active_window_info()
+                        if win_info and "position" in win_info:
+                            pos = win_info["position"]
+                            cx = (pos["left"] + pos["right"]) // 2
+                            cy = (pos["top"] + pos["bottom"]) // 2
+                            for m in monitors:
+                                if m["left"] <= cx <= m["right"] and m["top"] <= cy <= m["bottom"]:
+                                    target = m
+                                    break
+                    except Exception as ex:
+                        logger.warning(f"Failed to detect active monitor: {ex}")
+                
+                if not target:
+                    # Match by integer index
+                    try:
+                        idx = int(self.selected_monitor)
+                        for m in monitors:
+                            if m.get("index") == idx:
+                                target = m
+                                break
+                    except (ValueError, TypeError):
+                        pass
+                
+                if target and "left" in target:
+                    bbox = (target["left"], target["top"], target["right"], target["bottom"])
+                    screenshot = ImageGrab.grab(bbox=bbox)
+                    logger.debug(f"Screenshot captured for monitor {self.selected_monitor}: {screenshot.size}")
+                else:
+                    logger.warning(f"Selected monitor {self.selected_monitor} not found, falling back to all screens")
+                    screenshot = ImageGrab.grab(all_screens=True)
             else:
                 screenshot = ImageGrab.grab(all_screens=True)
             logger.debug(f"Screenshot captured: {screenshot.size}")
@@ -262,7 +299,7 @@ class ScreenService:
                 handle, _, rect = monitor
                 info = {
                     "index": i,
-                    "handle": handle,
+                    "handle": int(handle),
                     "left": rect[0],
                     "top": rect[1],
                     "right": rect[2],

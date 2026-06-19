@@ -106,12 +106,63 @@ APP_PROCESS_NAMES: Dict[str, str] = {
     "task manager": "Taskmgr.exe",
     "terminal": "WindowsTerminal.exe",
     "windows terminal": "WindowsTerminal.exe",
+    "docker": "Docker Desktop.exe",
+    "docker desktop": "Docker Desktop.exe",
 }
 
 
 def _resolve_user_path(path: str) -> str:
     """Replace ``{user}`` placeholder with the current username."""
     return path.replace("{user}", os.getenv("USERNAME", os.getenv("USER", "user")))
+
+
+def _resolve_app_path(app_name: str) -> Optional[str]:
+    """
+    Search for an application executable or shortcut on Windows.
+    Returns the absolute path (to .exe or .lnk), or None if not found.
+    """
+    app_key = app_name.lower().strip()
+
+    # 1. Check hardcoded APP_PATHS
+    if app_key in APP_PATHS:
+        return _resolve_user_path(APP_PATHS[app_key])
+
+    # 2. Check Windows Registry App Paths
+    try:
+        import winreg
+        names = [app_name, f"{app_name}.exe"]
+        for name in names:
+            for root in [winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER]:
+                key_path = f"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\{name}"
+                try:
+                    with winreg.OpenKey(root, key_path) as key:
+                        val, _ = winreg.QueryValueEx(key, "")
+                        if val and os.path.exists(val):
+                            return val
+                except FileNotFoundError:
+                    continue
+    except Exception as e:
+        logger.debug(f"Registry lookup failed for '{app_name}': {e}")
+
+    # 3. Check Start Menu shortcuts
+    try:
+        user_profile = os.environ.get("USERPROFILE", "")
+        start_menu_paths = [
+            os.path.join(os.environ.get("ProgramData", "C:\\ProgramData"), "Microsoft\\Windows\\Start Menu\\Programs"),
+            os.path.join(user_profile, "AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs")
+        ]
+
+        for base_path in start_menu_paths:
+            if not os.path.exists(base_path):
+                continue
+            # Search recursively for .lnk files matching the query
+            for p in Path(base_path).rglob("*.lnk"):
+                if app_key in p.stem.lower():
+                    return str(p)
+    except Exception as e:
+        logger.debug(f"Start Menu lookup failed for '{app_name}': {e}")
+
+    return None
 
 
 class AutomationService:
@@ -142,7 +193,8 @@ class AutomationService:
         Open an application by its common name.
 
         Looks up the application in the known paths dictionary,
-        falling back to ``start`` command for unknown apps.
+        the Windows Registry, or the Start Menu shortcuts.
+        Falls back to Windows system search.
 
         Args:
             app_name: Common application name (case-insensitive).
@@ -150,13 +202,11 @@ class AutomationService:
         Returns:
             Status message describing the result.
         """
-        app_key = app_name.lower().strip()
         logger.info("Opening application: {}", app_name)
 
         try:
-            if app_key in APP_PATHS:
-                path = _resolve_user_path(APP_PATHS[app_key])
-
+            path = _resolve_app_path(app_name)
+            if path:
                 # Handle ms-settings: style URIs
                 if path.startswith("ms-settings:") or path.startswith("http"):
                     os.startfile(path)
@@ -172,12 +222,8 @@ class AutomationService:
                         stderr=subprocess.DEVNULL,
                     )
                 else:
-                    subprocess.Popen(
-                        [path],
-                        shell=False,
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                    )
+                    # Use os.startfile for Windows to properly handle shortcuts (.lnk) and admin elevations
+                    os.startfile(path)
                 return f"Opened {app_name} successfully."
 
             else:
@@ -615,3 +661,94 @@ class AutomationService:
         except Exception as e:
             logger.error("Error collecting system info: {}", e)
             return {"error": str(e)}
+
+    def adjust_volume(self, direction: str, amount: Optional[int] = None) -> str:
+        """
+        Adjust system speaker volume on Windows.
+
+        Args:
+            direction: "up", "down", "mute", "max", or "full".
+            amount: Number of steps (default 5).
+
+        Returns:
+            Status message describing the result.
+        """
+        logger.info("Adjusting volume: direction={}, amount={}", direction, amount)
+        try:
+            dir_clean = direction.lower().strip()
+            if dir_clean == "mute":
+                pyautogui.press("volumemute")
+                return "Muted/unmuted system volume successfully."
+
+            if dir_clean in ("max", "full", "100"):
+                for _ in range(50):
+                    pyautogui.press("volumeup")
+                return "System volume set to maximum (100%) successfully."
+
+            steps = amount if amount is not None else 5
+            key = "volumeup" if dir_clean == "up" else "volumedown"
+
+            for _ in range(steps):
+                pyautogui.press(key)
+                time.sleep(0.01)
+
+            return f"Adjusted system volume {direction} by {steps} steps successfully."
+        except Exception as e:
+            logger.error("Failed to adjust volume: {}", e)
+            return f"Failed to adjust volume: {e}"
+
+    def control_media(self, action: str) -> str:
+        """
+        Control media playback on Windows.
+
+        Args:
+            action: "playpause", "next", or "previous".
+
+        Returns:
+            Status message describing the result.
+        """
+        logger.info("Controlling media: action={}", action)
+        try:
+            key_map = {
+                "playpause": "playpause",
+                "next": "nexttrack",
+                "previous": "prevtrack",
+            }
+            key = key_map.get(action.lower().strip())
+            if not key:
+                return f"Unsupported media action: {action}"
+
+            pyautogui.press(key)
+            return f"Executed media control '{action}' successfully."
+        except Exception as e:
+            logger.error("Failed to execute media action '{}': {}", action, e)
+            return f"Failed to execute media action '{action}': {e}"
+
+    def focus_window(self, title: str) -> str:
+        """
+        Bring a window matching the title to the foreground.
+
+        Args:
+            title: Title (or substring) of the window to focus.
+
+        Returns:
+            Status message.
+        """
+        logger.info("Focusing window matching title: '{}'", title)
+        try:
+            windows = pyautogui.getWindowsWithTitle(title)
+            if not windows:
+                title_lower = title.lower().strip()
+                windows = [w for w in pyautogui.getAllWindows() if title_lower in w.title.lower()]
+
+            if windows:
+                win = windows[0]
+                if win.isMinimized:
+                    win.restore()
+                win.activate()
+                return f"Focused window '{win.title}' successfully."
+            
+            return f"No window found matching title: '{title}'"
+        except Exception as e:
+            logger.error("Error focusing window: {}", e)
+            return f"Error focusing window: {e}"

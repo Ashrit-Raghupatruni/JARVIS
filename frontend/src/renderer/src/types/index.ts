@@ -157,10 +157,13 @@ export interface Settings {
   ai: {
     model: string
     temperature: number
+    openrouterApiKey?: string
+    openaiApiKey?: string
   }
   display: {
     alwaysOnTop: boolean
     theme: 'dark' | 'light'
+    selectedMonitor?: string | number
   }
 }
 

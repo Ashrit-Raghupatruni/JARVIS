@@ -186,7 +186,7 @@ export default function App() {
         {/* Right: Chat Panel */}
         {showChat && (
           <div className="w-96 h-full p-4 animate-slide-in-right">
-            <ChatPanel />
+            <ChatPanel onSendMessage={(text) => sendMessage('text_command', { text })} />
           </div>
         )}
       </div>
