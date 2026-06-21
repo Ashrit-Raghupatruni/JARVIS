@@ -656,7 +656,7 @@ class LLMService:
         Routes to the configured primary provider and automatically falls back
         through the chain if it fails, runs out of credits, or takes more than 30 seconds.
         """
-        providers_order = ["groq", "gemini", "openrouter", "openai", "ollama"]
+        providers_order = ["groq", "ollama", "gemini", "openai", "openrouter"]
         if self.primary_provider in providers_order:
             providers_order.remove(self.primary_provider)
             providers_order.insert(0, self.primary_provider)
@@ -728,7 +728,7 @@ class LLMService:
         Non-streaming single-turn completion without tools. Handles failover.
         Tries: primary → fallback providers in sequence (groq, gemini, openrouter, openai, ollama).
         """
-        providers_order = ["groq", "gemini", "openrouter", "openai", "ollama"]
+        providers_order = ["groq", "ollama", "gemini", "openai", "openrouter"]
         if self.primary_provider in providers_order:
             providers_order.remove(self.primary_provider)
             providers_order.insert(0, self.primary_provider)

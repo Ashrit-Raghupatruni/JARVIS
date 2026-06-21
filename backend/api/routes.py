@@ -131,6 +131,13 @@ async def process_command(cmd: CommandRequest, request: Request):
             content={"error": "Voice agent not initialized"},
         )
 
+    if cmd.text == "ping":
+        return {
+            "status": "ok",
+            "response": "pong",
+            "messages": [{"type": "response", "data": {"text": "pong"}}]
+        }
+
     try:
         messages = []
         async for msg in app.state.voice_agent.handle_text_command(cmd.text):
@@ -223,12 +230,15 @@ async def update_settings(settings: SettingsUpdate, request: Request):
 
 
 @router.get("/voices")
-async def list_voices():
+async def list_voices(request: Request):
     """List available TTS voices."""
     try:
-        from backend.services.tts import TTSService
-
-        voices = await TTSService.get_available_voices()
+        app = request.app
+        if hasattr(app.state, "tts_service") and app.state.tts_service:
+            voices = await app.state.tts_service.get_available_voices()
+        else:
+            from backend.services.tts import TTSService
+            voices = await TTSService().get_available_voices()
         return {"status": "ok", "voices": voices}
     except Exception as e:
         logger.error(f"Failed to list voices: {e}")

@@ -83,6 +83,18 @@ class SkillRegistry:
         except Exception as e:
             logger.error("Failed to load AgentSkill: {}", e)
 
+        try:
+            # News & Monitor & Research Skill (Ported from Friday/OpenJarvis)
+            from backend.services.skills.news_skill import NewsSkill
+            news_skill = NewsSkill(
+                browser_service=self.context.get("browser_service"),
+                automation_service=self.context.get("automation_service"),
+                memory_service=self.context.get("memory_service")
+            )
+            self.register_skill(news_skill)
+        except Exception as e:
+            logger.error("Failed to load NewsSkill: {}", e)
+
         logger.info("✓ Skill registry initialization complete. Registered skills: {}", list(self.skills.keys()))
 
     def register_skill(self, skill: BaseSkill) -> None:

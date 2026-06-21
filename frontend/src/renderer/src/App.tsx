@@ -124,7 +124,7 @@ export default function App() {
           style={{
             background: isActive
               ? 'radial-gradient(circle, var(--jarvis-accent) 0%, transparent 70%)'
-              : 'radial-gradient(circle, rgba(0, 140, 180, 0.3) 0%, transparent 70%)',
+              : 'radial-gradient(circle, rgba(255, 59, 48, 0.3) 0%, transparent 70%)',
           }}
         />
       </div>
@@ -134,10 +134,10 @@ export default function App() {
 
       {/* Main Content */}
       <div className="flex-1 flex relative z-10">
-        {/* Left: Command History */}
-        {showHistory && (
-          <div className="absolute left-4 top-4 z-20 animate-slide-in-left">
-            <CommandHistory />
+        {/* Left: Chat Panel */}
+        {showChat && (
+          <div className="w-96 h-full p-4 animate-slide-in-left">
+            <ChatPanel onSendMessage={(text) => sendMessage('text_command', { text })} />
           </div>
         )}
 
@@ -183,16 +183,16 @@ export default function App() {
           </div>
         </div>
 
-        {/* Right: Chat Panel */}
-        {showChat && (
-          <div className="w-96 h-full p-4 animate-slide-in-right">
-            <ChatPanel onSendMessage={(text) => sendMessage('text_command', { text })} />
+        {/* Right: Command History (overlay) */}
+        {showHistory && (
+          <div className="absolute right-4 top-4 z-20 animate-slide-in-right">
+            <CommandHistory />
           </div>
         )}
       </div>
 
       {/* Bottom overlays */}
-      <div className="absolute bottom-16 left-4 z-20">
+      <div className="absolute bottom-16 z-20 transition-all duration-500" style={{ left: showChat ? '400px' : '16px' }}>
         {currentTask && <TaskProgress />}
       </div>
       <div className="absolute bottom-16 right-4 z-20">

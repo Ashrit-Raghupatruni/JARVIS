@@ -30,9 +30,9 @@ The architecture is split into a **React + Electron** desktop client (frontend) 
 * **LLM Engine:** Multi-provider client wrapper supporting:
   * **Local Primary:** Ollama (default: `qwen2.5-coder:3b` via local port 11434)
   * **Cloud Failover Providers:** Groq API (`llama-3.3-70b-versatile`), Google Gemini API (`gemini-2.0-flash` or `gemini-1.5-pro` for reasoning/vision), OpenAI API (`gpt-4o` / `gpt-4o-mini`), and OpenRouter API (`meta-llama/llama-3.3-70b-instruct:free`, `qwen-2.5-coder-32b`, etc.)
-  * **Smart Failover & Timeout Logic:** Automatically switches between providers (Groq → Gemini → OpenRouter → OpenAI → Ollama) if a model times out after **30 seconds** or throws an error (e.g. out of credits/authentication issues).
+  * **Smart Failover & Timeout Logic:** Automatically switches between providers (Ollama → Gemini → Groq → OpenAI → OpenRouter) if a model times out after **30 seconds** or throws an error (e.g. out of credits/authentication issues).
 * **Speech-to-Text (STT):** Local `faster-whisper` v1.1.1 (based on CTranslate2 base/small model) with automated API failover to Gemini Audio API or OpenAI Whisper API
-* **Text-to-Speech (TTS):** Microsoft `edge-tts` v7.2.8 (local/online hybrid with British English `en-GB-RyanNeural` and American `en-US-GuyNeural`) + ElevenLabs v1.50 (optional premium API)
+* **Text-to-Speech (TTS):** Microsoft `edge-tts` v7.2.8 (local/online hybrid, restricted to male-only voices: `en-GB-RyanNeural`, `en-US-GuyNeural`, `en-AU-WilliamNeural`, `en-IN-PrabhatNeural`) + ElevenLabs v1.50 (optional premium API)
 * **Wake Word:** `openwakeword` v0.6.0 (running ONNX runtime for local "Hey Jarvis" keyword trigger)
 
 ---
@@ -79,6 +79,7 @@ Implements an extensible plugin architecture where new skills inherit from `Base
 * **AppControlSkill:** Excel & Word COM automation (`win32com.client`), VS Code project launcher, and browser tab keystroke macros.
 * **ContextSkill:** Active window titles/executables scanner and pomodoro focus session limits.
 * **AgentSkill:** Autonomous sub-agent syndicate controller (creates headless async tasks to execute background goals).
+* **NewsSkill:** Real-time news & financial RSS aggregator (BBC, CNBC, Bloomberg, Reuters, NYTimes, AlJazeera, MarketWatch), World/Finance Monitor controllers (worldmonitor.app & finance.worldmonitor.app), morning briefings (calendar, weather, system status, news headlines), and deep multi-hop research scraper engine (ported from Friday/OpenJarvis).
 
 ### 4. Memory & Database Layer (`backend/services/memory.py` / `backend/models/database.py`)
 * **SQLite Database (`data/jarvis.db`):** Houses structured ORM tables:

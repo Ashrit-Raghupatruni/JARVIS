@@ -131,7 +131,8 @@ class TTSService:
 
         try:
             voices = await edge_tts.list_voices()
-            logger.info("Retrieved {} available TTS voices", len(voices))
+            male_voices = [v for v in voices if v.get("Gender", "").lower() == "male"]
+            logger.info("Retrieved {} available TTS voices (filtered to {} male voices)", len(voices), len(male_voices))
             return [
                 {
                     "name": v.get("Name", ""),
@@ -140,7 +141,7 @@ class TTSService:
                     "locale": v.get("Locale", ""),
                     "friendly_name": v.get("FriendlyName", ""),
                 }
-                for v in voices
+                for v in male_voices
             ]
         except Exception as e:
             logger.error("Failed to list TTS voices: {}", e)

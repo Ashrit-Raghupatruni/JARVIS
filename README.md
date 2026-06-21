@@ -19,14 +19,14 @@
 ### 🎤 Voice Control
 - **Wake Word Activation** — Say "Hey Jarvis" to activate
 - **Natural Speech Recognition** — Powered by faster-whisper
-- **Natural Speech Synthesis** — Responds with a refined voice via edge-tts
+- **Natural Speech Synthesis** — Responds with a refined male voice via edge-tts (configured to exclude female voices)
 - **Push-to-Talk** — Press `Ctrl+Space` as a fallback
 
 ### 🧠 AI Brain
 - **Ollama Local LLM (Primary)** — Runs `qwen2.5-coder:3b` locally via Ollama for fast, free, and private inference
 - **OpenRouter Integration** — Route completions and tool-calling through free-tier and premium OpenRouter models
 - **Groq Integration** — High-speed completions fallback via Groq API (using `llama-3.3-70b-versatile`)
-- **Smart Failover & Auto-switching** — Automatically switches between models (Groq → Gemini → OpenRouter → OpenAI → Ollama) if a provider runs out of credits, errors, or fails to respond within **30 seconds**
+- **Smart Failover & Auto-switching** — Automatically switches between models (Ollama → Gemini → Groq → OpenAI → OpenRouter) if a provider runs out of credits, errors, or fails to respond within **30 seconds**
 - **Double-Clap Welcome Flow** — Managed background listener (`ClapService`) that triggers a customized welcome actions sequence (Spotify song, side-by-side Chrome panels, ElevenLabs TTS welcome greeting, and Cursor activation) on double claps
 - **Drag-and-Drop File Upload** — Drag and drop text, source code, logs, and markdown files directly into the frontend chat panel to easily analyze them
 - **Multi-turn Context** — Remembers conversation history
@@ -53,6 +53,12 @@
 - Fill forms and click elements
 - Navigate tabs and pages
 - Extract web page content
+
+### 📰 News, Digest & Deep Research (Ported from Friday/OpenJarvis)
+- **World & Finance RSS Aggregator** — Fetches and formats real-time headlines from BBC, CNBC, Bloomberg, NYTimes, AlJazeera, Reuters, and MarketWatch in parallel.
+- **World Monitor Dashboards** — Launches live visual maps and market monitors (`worldmonitor.app` & `finance.worldmonitor.app`) in your browser.
+- **Daily Morning Digest** — Generates daily briefings compiling weather, upcoming calendar events, CPU/RAM metrics, and world headlines.
+- **Multi-Step Deep Research** — Executes deep web research queries, scraper engines, and compiles citation-heavy synthesized summaries.
 
 ### 💾 Memory System
 - Remembers your name, preferences, and habits
@@ -188,12 +194,12 @@ JARVIS uses a production-grade, highly resilient multi-provider AI system design
    - **No API key required** — everything runs locally on your machine.
 
 2. **Autonomous Cloud Failover Chain**
-   - If the active provider is offline, runs out of credits, errors out, or fails to respond within **30 seconds**, JARVIS automatically switches to the next provider in the chain:
-     * **Groq API** (`llama-3.3-70b-versatile`)
-     * **Google Gemini API** (`gemini-2.0-flash`)
-     * **OpenRouter API** (`meta-llama/llama-3.3-70b-instruct:free`)
-     * **OpenAI API** (`gpt-4o`)
-     * **Ollama API** (Local Fallback)
+    - If the active provider is offline, runs out of credits, errors out, or fails to respond within **30 seconds**, JARVIS automatically switches to the next provider in the chain:
+      * **Ollama API** (Local Primary)
+      * **Google Gemini API** (`gemini-2.0-flash`)
+      * **Groq API** (`llama-3.3-70b-versatile`)
+      * **OpenAI API** (`gpt-4o`)
+      * **OpenRouter API** (`meta-llama/llama-3.3-70b-instruct:free`)
    - Failovers are handled in real-time on a per-request basis to prevent user-facing downtime.
 
 3. **Multimodal Screen Vision**
@@ -284,6 +290,17 @@ npm run dev
 > VS Code's integrated terminal sets `ELECTRON_RUN_AS_NODE=1` which prevents
 > Electron from loading correctly. The npm scripts clear this automatically,
 > but if you encounter issues, run: `$env:ELECTRON_RUN_AS_NODE=""` first.
+
+### Running Automated Tests
+
+To verify that all REST endpoints are working correctly, run the automated route test suite:
+
+```bash
+cd frontend
+npm test
+```
+
+This spins up the FastAPI backend, tests all 7 REST routes (including health checks, system status, voices list, monitor detection, history, settings management, and commands), and automatically shuts down the server.
 
 ### Building for Production
 

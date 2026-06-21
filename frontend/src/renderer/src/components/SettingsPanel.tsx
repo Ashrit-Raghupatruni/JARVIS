@@ -5,10 +5,7 @@ import type { Settings } from '../types'
 
 const VOICE_OPTIONS = [
   { value: 'en-US-GuyNeural', label: 'Guy (US Male)' },
-  { value: 'en-US-AriaNeural', label: 'Aria (US Female)' },
-  { value: 'en-US-JennyNeural', label: 'Jenny (US Female)' },
   { value: 'en-GB-RyanNeural', label: 'Ryan (UK Male)' },
-  { value: 'en-GB-SoniaNeural', label: 'Sonia (UK Female)' },
   { value: 'en-AU-WilliamNeural', label: 'William (AU Male)' },
   { value: 'en-IN-PrabhatNeural', label: 'Prabhat (IN Male)' },
 ]

@@ -80,12 +80,12 @@ const VoiceWave: React.FC<VoiceWaveProps> = ({
       const gradient = ctx.createLinearGradient(x, y, x, y + barHeight)
 
       if (mode === 'input') {
-        gradient.addColorStop(0, `rgba(0, 212, 255, ${0.3 + level * 0.5})`)
-        gradient.addColorStop(0.5, `rgba(0, 212, 255, ${0.6 + level * 0.4})`)
-        gradient.addColorStop(1, `rgba(14, 165, 233, ${0.3 + level * 0.3})`)
+        gradient.addColorStop(0, `rgba(255, 59, 48, ${0.3 + level * 0.5})`)
+        gradient.addColorStop(0.5, `rgba(255, 59, 48, ${0.6 + level * 0.4})`)
+        gradient.addColorStop(1, `rgba(255, 149, 0, ${0.3 + level * 0.3})`)
       } else {
         gradient.addColorStop(0, `rgba(6, 182, 212, ${0.3 + level * 0.5})`)
-        gradient.addColorStop(0.5, `rgba(0, 212, 255, ${0.5 + level * 0.4})`)
+        gradient.addColorStop(0.5, `rgba(255, 59, 48, ${0.5 + level * 0.4})`)
         gradient.addColorStop(1, `rgba(139, 92, 246, ${0.3 + level * 0.3})`)
       }
 
@@ -96,9 +96,9 @@ const VoiceWave: React.FC<VoiceWaveProps> = ({
 
       // Glow effect for active bars
       if (barHeight > 10 && isActive) {
-        ctx.shadowColor = 'rgba(0, 212, 255, 0.4)'
+        ctx.shadowColor = 'rgba(255, 59, 48, 0.4)'
         ctx.shadowBlur = 6
-        ctx.fillStyle = `rgba(0, 212, 255, ${0.1 + level * 0.15})`
+        ctx.fillStyle = `rgba(255, 59, 48, ${0.1 + level * 0.15})`
         ctx.beginPath()
         ctx.roundRect(x, y, barWidth, barHeight, barWidth / 2)
         ctx.fill()

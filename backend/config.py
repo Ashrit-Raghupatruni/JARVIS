@@ -41,7 +41,7 @@ class Settings(BaseSettings):
 
     # ── LLM Settings ─────────────────────────────────────────────────────
     LLM_PROVIDER: str = Field(
-        default="gemini",
+        default="groq",
         description="Primary LLM provider to use: gemini, openai, or ollama.",
     )
     GEMINI_API_KEY: Optional[str] = Field(

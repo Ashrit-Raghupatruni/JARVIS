@@ -41,8 +41,8 @@ const TitleBar: React.FC = () => {
           <div
             className="w-4 h-4 rounded-sm rotate-45"
             style={{
-              background: 'linear-gradient(135deg, #00d4ff 0%, #0ea5e9 100%)',
-              boxShadow: '0 0 8px rgba(0, 212, 255, 0.4)'
+              background: 'linear-gradient(135deg, #ff3b30 0%, #ff9500 100%)',
+              boxShadow: '0 0 8px rgba(255, 59, 48, 0.4)'
             }}
           />
           <div className="absolute inset-0 flex items-center justify-center">

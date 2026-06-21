@@ -102,7 +102,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
       style={{
         width: 360,
         maxHeight: isMinimized ? 48 : 'calc(100vh - 120px)',
-        boxShadow: '0 0 30px rgba(0, 0, 0, 0.3), 0 0 15px rgba(0, 212, 255, 0.05)'
+        boxShadow: '0 0 30px rgba(0, 0, 0, 0.3), 0 0 15px rgba(255, 59, 48, 0.05)'
       }}
     >
       {isDragging && (
@@ -122,7 +122,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
         <div className="flex items-center gap-2">
           <div
             className="w-2 h-2 rounded-full bg-jarvis-accent"
-            style={{ boxShadow: '0 0 6px rgba(0, 212, 255, 0.6)' }}
+            style={{ boxShadow: '0 0 6px rgba(255, 59, 48, 0.6)' }}
           />
           <span className="text-sm font-semibold tracking-wider text-jarvis-text text-glow">
             JARVIS
@@ -292,7 +292,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, formatTime }) =>
           style={{
             boxShadow: isUser
               ? 'none'
-              : '0 0 8px rgba(0, 212, 255, 0.2)'
+              : '0 0 8px rgba(255, 59, 48, 0.2)'
           }}
         >
           {isUser ? (

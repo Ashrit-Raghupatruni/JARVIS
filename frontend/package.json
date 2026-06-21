@@ -7,6 +7,7 @@
     "dev": "node scripts/launch.js dev",
     "build": "node scripts/launch.js build",
     "preview": "node scripts/launch.js preview",
+    "test": "node scripts/run_tests.js",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {

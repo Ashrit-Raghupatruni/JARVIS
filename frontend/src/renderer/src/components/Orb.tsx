@@ -95,7 +95,7 @@ const Orb: React.FC = () => {
       <div
         className="absolute w-[340px] h-[340px] rounded-full pointer-events-none"
         style={{
-          background: `radial-gradient(circle, rgba(0, 212, 255, ${0.06 + audioLevel * 0.08}) 0%, rgba(14, 165, 233, 0.03) 40%, transparent 70%)`,
+          background: `radial-gradient(circle, rgba(255, 59, 48, ${0.06 + audioLevel * 0.08}) 0%, rgba(255, 149, 0, 0.03) 40%, transparent 70%)`,
           transform: `scale(${glowScale * 1.1})`,
           transition: 'transform 0.15s ease-out, background 0.15s ease-out'
         }}
@@ -110,8 +110,8 @@ const Orb: React.FC = () => {
             style={{
               width: p.size,
               height: p.size,
-              background: `rgba(0, 212, 255, ${p.opacity})`,
-              boxShadow: `0 0 ${p.size * 2}px rgba(0, 212, 255, ${p.opacity * 0.5})`,
+              background: `rgba(255, 59, 48, ${p.opacity})`,
+              boxShadow: `0 0 ${p.size * 2}px rgba(255, 59, 48, ${p.opacity * 0.5})`,
               top: '50%',
               left: '50%',
               marginTop: -p.size / 2,
@@ -149,12 +149,12 @@ const Orb: React.FC = () => {
         <div className="absolute w-[230px] h-[230px] rounded-full pointer-events-none animate-orb-spin">
           <div
             className="absolute w-3 h-3 rounded-full bg-jarvis-accent top-0 left-1/2 -ml-1.5"
-            style={{ boxShadow: '0 0 10px rgba(0, 212, 255, 0.8), 0 0 20px rgba(0, 212, 255, 0.4)' }}
+            style={{ boxShadow: '0 0 10px rgba(255, 59, 48, 0.8), 0 0 20px rgba(255, 59, 48, 0.4)' }}
           />
           <div
             className="absolute w-2 h-2 rounded-full bg-jarvis-accent-2 bottom-0 left-1/2 -ml-1"
             style={{
-              boxShadow: '0 0 8px rgba(14, 165, 233, 0.8)',
+              boxShadow: '0 0 8px rgba(255, 149, 0, 0.8)',
               opacity: 0.7
             }}
           />
@@ -166,7 +166,7 @@ const Orb: React.FC = () => {
         <div
           className="absolute w-[220px] h-[220px] rounded-full pointer-events-none"
           style={{
-            border: '2px solid rgba(0, 212, 255, 0.3)',
+            border: '2px solid rgba(255, 59, 48, 0.3)',
             animation: 'orb-spin 8s linear infinite'
           }}
         >
@@ -185,20 +185,20 @@ const Orb: React.FC = () => {
           transform: assistantState === 'speaking' ? `scale(${glowScale})` : undefined,
           transition: 'transform 0.1s ease-out',
           background: `
-            radial-gradient(circle at 40% 35%, rgba(0, 212, 255, 0.25) 0%, transparent 50%),
-            radial-gradient(circle at 60% 65%, rgba(14, 165, 233, 0.15) 0%, transparent 50%),
-            radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.2) 0%, rgba(0, 212, 255, 0.05) 40%, rgba(10, 14, 26, 0.8) 70%)
+            radial-gradient(circle at 40% 35%, rgba(255, 59, 48, 0.25) 0%, transparent 50%),
+            radial-gradient(circle at 60% 65%, rgba(255, 149, 0, 0.15) 0%, transparent 50%),
+            radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.2) 0%, rgba(255, 59, 48, 0.05) 40%, rgba(10, 14, 26, 0.8) 70%)
           `,
           boxShadow: assistantState === 'speaking'
-            ? `0 0 ${30 + audioLevel * 50}px rgba(0, 212, 255, ${0.3 + audioLevel * 0.4}), 0 0 ${60 + audioLevel * 80}px rgba(0, 212, 255, ${0.15 + audioLevel * 0.2}), inset 0 0 ${30 + audioLevel * 30}px rgba(0, 212, 255, ${0.1 + audioLevel * 0.15})`
-            : '0 0 30px rgba(0, 212, 255, 0.2), 0 0 60px rgba(0, 212, 255, 0.1), inset 0 0 30px rgba(0, 212, 255, 0.08)'
+            ? `0 0 ${30 + audioLevel * 50}px rgba(255, 59, 48, ${0.3 + audioLevel * 0.4}), 0 0 ${60 + audioLevel * 80}px rgba(255, 59, 48, ${0.15 + audioLevel * 0.2}), inset 0 0 ${30 + audioLevel * 30}px rgba(255, 59, 48, ${0.1 + audioLevel * 0.15})`
+            : '0 0 30px rgba(255, 59, 48, 0.2), 0 0 60px rgba(255, 59, 48, 0.1), inset 0 0 30px rgba(255, 59, 48, 0.08)'
         }}
       >
         {/* Inner bright core */}
         <div
           className="absolute inset-[30%] rounded-full pointer-events-none"
           style={{
-            background: `radial-gradient(circle, rgba(0, 212, 255, ${0.3 + audioLevel * 0.3}) 0%, rgba(14, 165, 233, 0.1) 50%, transparent 70%)`,
+            background: `radial-gradient(circle, rgba(255, 59, 48, ${0.3 + audioLevel * 0.3}) 0%, rgba(255, 149, 0, 0.1) 50%, transparent 70%)`,
             opacity: glowOpacity,
             transition: 'opacity 0.1s ease-out'
           }}
@@ -217,7 +217,7 @@ const Orb: React.FC = () => {
         <div
           className="absolute inset-0 rounded-full pointer-events-none"
           style={{
-            border: `1px solid rgba(0, 212, 255, ${0.15 + audioLevel * 0.2})`,
+            border: `1px solid rgba(255, 59, 48, ${0.15 + audioLevel * 0.2})`,
             transition: 'border-color 0.1s ease-out'
           }}
         />
@@ -230,7 +230,7 @@ const Orb: React.FC = () => {
           style={{
             textShadow:
               assistantState !== 'idle'
-                ? '0 0 10px rgba(0, 212, 255, 0.3)'
+                ? '0 0 10px rgba(255, 59, 48, 0.3)'
                 : 'none'
           }}
         >
