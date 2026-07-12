@@ -76,6 +76,14 @@ class Settings(BaseSettings):
         default="llama-3.3-70b-versatile",
         description="Groq model identifier.",
     )
+    NVIDIA_API_KEY: Optional[str] = Field(
+        default=None,
+        description="NVIDIA NIM API key.",
+    )
+    NIM_MODEL: str = Field(
+        default="meta/llama-3.1-8b-instruct",
+        description="NVIDIA NIM model identifier.",
+    )
 
 
     # ── Ollama Settings ──────────────────────────────────────────────────
@@ -316,6 +324,56 @@ class Settings(BaseSettings):
         path = Path(v)
         path.mkdir(parents=True, exist_ok=True)
         return str(path.resolve())
+
+    @field_validator(
+        "GEMINI_API_KEY",
+        "OPENAI_API_KEY",
+        "OPENROUTER_API_KEY",
+        "GROQ_API_KEY",
+        "NVIDIA_API_KEY",
+        mode="before"
+    )
+    @classmethod
+    def validate_api_keys(cls, v: Optional[str]) -> Optional[str]:
+        if not v:
+            return None
+        v_str = str(v).strip()
+        placeholders = [
+            "your-gemini-api-key",
+            "your-openai-api-key",
+            "your-openrouter-api-key",
+            "your-groq-api-key",
+            "your-nvidia-api-key",
+            "placeholder",
+            "sk-your",
+            "AIzaSy-your",
+            "your_key",
+        ]
+        for p in placeholders:
+            if p.lower() in v_str.lower():
+                print(f"[Config Warning] Placeholder API key detected and deactivated: {v_str[:15]}...")
+                return None
+        return v_str
+
+    @field_validator("SYNC_KEY", mode="before")
+    @classmethod
+    def validate_sync_key(cls, v: Optional[str]) -> str:
+        default_key = "U3VwZXJTZWNyZXRLZXlGb3JKQVJWSVMyc3luYw=="
+        if not v:
+            return default_key
+        v_str = str(v).strip()
+        try:
+            from cryptography.fernet import Fernet
+            Fernet(v_str.encode("utf-8"))
+            return v_str
+        except Exception:
+            try:
+                from cryptography.fernet import Fernet
+                fallback_key = Fernet.generate_key().decode("utf-8")
+                print(f"[Config Warning] Invalid SYNC_KEY provided. Auto-generated secure fallback key: {fallback_key[:10]}...")
+                return fallback_key
+            except Exception:
+                return default_key
 
     @property
     def data_path(self) -> Path:

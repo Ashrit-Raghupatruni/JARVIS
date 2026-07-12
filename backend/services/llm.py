@@ -44,6 +44,128 @@ def try_parse_json_tool_call(text: str) -> Optional[dict]:
     return None
 
 
+def try_parse_xml_tool_call(text: str) -> Optional[dict]:
+    """Check if the text contains an XML-style function call like <function=name>args</function>."""
+    import re
+    import json
+    # Match <function=name>arguments</function>
+    match = re.search(r'<function=(\w+)>(.*?)</function>', text, re.DOTALL)
+    if match:
+        name = match.group(1)
+        args_text = match.group(2).strip()
+        try:
+            args = json.loads(args_text)
+        except Exception:
+            args = {}
+        return {"name": name, "arguments": args, "raw": match.group(0)}
+    return None
+
+
+def clean_function_calls_from_text(text: str) -> str:
+    """Remove XML-style function tags, JSON blocks, and internal tool leakages from text to keep it clean for display."""
+    if not text:
+        return ""
+    import re
+    import json
+    
+    # 1. Remove XML tags: <function=name>...</function>
+    text = re.sub(r'<function=\w+>.*?</function>', '', text, flags=re.DOTALL)
+    
+    # 2. Remove <result>...</result> if present
+    text = re.sub(r'<result>.*?</result>', '', text, flags=re.DOTALL)
+    
+    # 3. Remove raw JSON markdown blocks that look like tool calls
+    code_blocks = re.findall(r'```(?:json)?\s*(\{.*?\})\s*```', text, flags=re.DOTALL)
+    for block in code_blocks:
+        try:
+            parsed = json.loads(block.strip())
+            tool_keys = {"name", "arguments", "function", "call", "query", "tool_call_id"}
+            if any(k in parsed for k in tool_keys):
+                # Replace variations with and without newlines
+                for prefix in ["```json", "```"]:
+                    text = text.replace(f"{prefix}\n{block}\n```", "")
+                    text = text.replace(f"{prefix}{block}```", "")
+        except Exception:
+            pass
+            
+    # 4. Remove inline JSON blocks that look like tool calls or results
+    inline_blocks = re.findall(r'(\{.*?\})', text, flags=re.DOTALL)
+    for block in inline_blocks:
+        try:
+            parsed = json.loads(block.strip())
+            tool_keys = {"name", "arguments", "function", "call", "query", "tool_call_id"}
+            if any(k in parsed for k in tool_keys):
+                text = text.replace(block, "")
+        except Exception:
+            pass
+
+    # Remove leftover brackets/curlies artifacts
+    text = re.sub(r'\{\s*\}', '', text)
+
+    # 5. Remove JSON blocks if the entire response is a JSON block
+    text_stripped = text.strip()
+    if text_stripped.startswith("{") and text_stripped.endswith("}"):
+        try:
+            json.loads(text_stripped)
+            return ""
+        except Exception:
+            pass
+            
+    return text.strip()
+
+
+class StreamTextFilter:
+    def __init__(self):
+        self.buffer = ""
+        self.in_xml = False
+        self.xml_buffer = ""
+
+    def feed(self, delta: str) -> list[str]:
+        # Handle XML function tag filtering
+        if self.in_xml:
+            self.xml_buffer += delta
+            # Look for closing tag
+            end_idx = self.xml_buffer.find("</function>")
+            if end_idx != -1:
+                self.in_xml = False
+                trailing = self.xml_buffer[end_idx + len("</function>"):]
+                self.xml_buffer = ""
+                return self.feed(trailing)
+            return []
+        
+        text = self.buffer + delta
+        self.buffer = ""
+        
+        start_idx = text.find("<function=")
+        if start_idx != -1:
+            pre_text = text[:start_idx]
+            self.in_xml = True
+            self.xml_buffer = text[start_idx:]
+            return [pre_text] if pre_text else []
+        
+        # Check for partial prefix
+        for length in range(1, 10):
+            suffix = text[-length:]
+            if "<function=".startswith(suffix):
+                self.buffer = suffix
+                main_text = text[:-length]
+                return [main_text] if main_text else []
+                
+        return [text] if text else []
+
+    def flush(self) -> list[str]:
+        results = []
+        if self.buffer:
+            results.append(self.buffer)
+            self.buffer = ""
+            
+        if self.xml_buffer:
+            results.append(self.xml_buffer)
+            self.xml_buffer = ""
+            
+        return results
+
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  System Prompt
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -532,6 +654,8 @@ class LLMService:
         self.openrouter_model_name = settings.OPENROUTER_MODEL or "meta-llama/llama-3.3-70b-instruct:free"
         self.groq_key = settings.GROQ_API_KEY
         self.groq_model_name = settings.GROQ_MODEL or "llama-3.3-70b-versatile"
+        self.nvidia_key = settings.NVIDIA_API_KEY
+        self.nvidia_model_name = model or settings.NIM_MODEL or "meta/llama-3.1-8b-instruct"
 
         # Ollama configs
         self.ollama_base_url = settings.OLLAMA_BASE_URL or "http://localhost:11434"
@@ -591,29 +715,46 @@ class LLMService:
             except Exception as e:
                 logger.error("Failed to initialize Groq client: {}", e)
 
-        # Initialize Gemini Client (google-generativeai config)
+        # Initialize NVIDIA Client
+        self.nvidia_client = None
+        if self.nvidia_key:
+            try:
+                self.nvidia_client = AsyncOpenAI(
+                    base_url="https://integrate.api.nvidia.com/v1",
+                    api_key=self.nvidia_key,
+                )
+                logger.info("✓ NVIDIA NIM client initialized (model={})", self.nvidia_model_name)
+            except Exception as e:
+                logger.error("Failed to initialize NVIDIA NIM client: {}", e)
+
+        # Initialize Gemini Client (google-genai config)
+        self.gemini_client = None
         self.gemini_available = False
         if self.gemini_key:
             try:
-                import google.generativeai as genai
-                genai.configure(api_key=self.gemini_key)
+                from google import genai
+                self.gemini_client = genai.Client(api_key=self.gemini_key)
                 self.gemini_available = True
-                logger.info("✓ Google Gemini client initialized successfully")
+                logger.info("✓ Google Gemini client initialized successfully (using new google.genai SDK)")
             except ImportError:
-                logger.warning("google-generativeai package not installed. Gemini is disabled.")
+                logger.warning("google-genai package not installed. Gemini is disabled.")
             except Exception as e:
-                logger.error("Failed to configure Google Gemini: {}", e)
+                logger.error("Failed to configure Google Gemini client: {}", e)
 
         logger.info(
-            "LLMService initialized. Provider={}. Ollama Online={}, Gemini Online={}, OpenAI Fallback Online={}, OpenRouter Online={}, Groq Online={}",
+            "LLMService initialized. Provider={}. Ollama Online={}, Gemini Online={}, OpenAI Fallback Online={}, OpenRouter Online={}, Groq Online={}, NVIDIA NIM Online={}",
             self.primary_provider,
             self.ollama_client is not None,
             self.gemini_available,
             self.openai_client is not None,
             self.openrouter_client is not None,
-            self.groq_client is not None
+            self.groq_client is not None,
+            self.nvidia_client is not None
         )
         self.skills_registry = None
+        # Initialize dynamic router
+        from backend.services.llm_router import LLMRoutingEngine
+        self.router = LLMRoutingEngine()
 
     def get_system_prompt(self) -> str:
         provider = self.primary_provider
@@ -623,6 +764,10 @@ class LLMService:
             active_model = self.gemini_model_name
         elif provider == "openrouter":
             active_model = self.openrouter_model_name
+        elif provider == "groq":
+            active_model = self.groq_model_name
+        elif provider == "nvidia":
+            active_model = self.nvidia_model_name
         else:
             active_model = self.openai_model_name
             
@@ -653,37 +798,28 @@ class LLMService:
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Process a user message with streaming and tool-call support.
-        Routes to the configured primary provider and automatically falls back
-        through the chain if it fails, runs out of credits, or takes more than 30 seconds.
+        Routes dynamically using the LLM Router.
         """
-        providers_order = ["groq", "ollama", "gemini", "openai", "openrouter"]
-        if self.primary_provider in providers_order:
-            providers_order.remove(self.primary_provider)
-            providers_order.insert(0, self.primary_provider)
-
-        available_providers = []
-        for p in providers_order:
-            if p == "ollama" and self.ollama_client is not None:
-                available_providers.append(p)
-            elif p == "gemini" and self.gemini_available:
-                available_providers.append(p)
-            elif p == "groq" and self.groq_client is not None:
-                available_providers.append(p)
-            elif p == "openrouter" and self.openrouter_client is not None:
-                available_providers.append(p)
-            elif p == "openai" and self.openai_client is not None:
-                available_providers.append(p)
-
+        available_providers = await self.router.get_ranked_providers()
+        
         last_error = None
+        fallback_count = 0
+        
         for i, provider in enumerate(available_providers):
+            start_time = time.time()
+            prompt_tokens_start = self.total_prompt_tokens
+            completion_tokens_start = self.total_completion_tokens
+            success = False
+            error_msg = None
+            
             try:
                 logger.info(f"Attempting model execution with provider: {provider}")
                 if i > 0:
-                    yield {
-                        "type": "text_delta",
-                        "content": f"\n\n*[System Warning: LLM provider '{available_providers[i-1]}' failed or timed out. Switching to fallback: '{provider}'...]*\n\n"
-                    }
-
+                    fallback_count += 1
+                    # Note: We do NOT send visible switching messages to the user as requested:
+                    # "This process must be seamless, with no interruption or visible errors to the user."
+                    # We just run silently!
+                
                 if provider == "ollama":
                     gen = self._process_message_ollama(user_message, conversation_history, tool_executor)
                 elif provider == "gemini":
@@ -694,28 +830,75 @@ class LLMService:
                     gen = self._process_message_openrouter(user_message, conversation_history, tool_executor)
                 elif provider == "openai":
                     gen = self._process_message_openai(user_message, conversation_history, tool_executor)
+                elif provider == "nvidia":
+                    gen = self._process_message_nvidia(user_message, conversation_history, tool_executor)
                 else:
                     continue
 
                 iterator = gen.__aiter__()
+                first_chunk = True
+                
                 while True:
                     try:
-                        # Enforce 30-second timeout to receive next chunk/response
-                        event = await asyncio.wait_for(iterator.__anext__(), timeout=30.0)
+                        # Enforce a 8-second timeout for first chunk (13s for ollama for slow models), 30s for subsequent
+                        timeout = (13.0 if provider == "ollama" else 8.0) if first_chunk else 30.0
+                        event = await asyncio.wait_for(iterator.__anext__(), timeout=timeout)
+                        first_chunk = False
                         yield event
                     except StopAsyncIteration:
                         break
                     except asyncio.TimeoutError:
-                        logger.warning(f"LLM provider {provider} timed out after 30 seconds.")
+                        logger.warning(f"LLM provider {provider} timed out.")
                         raise TimeoutError(f"Provider {provider} timed out")
 
-                # Succeeded, exit failover loop
+                # Succeeded! Log success metrics and decisions
+                success = True
+                latency = time.time() - start_time
+                prompt_diff = self.total_prompt_tokens - prompt_tokens_start
+                comp_diff = self.total_completion_tokens - completion_tokens_start
+                cost = (comp_diff / 1000000) * self.router.costs.get(provider, 0.0)
+                
+                # Update live success metric
+                await self.router.record_metric(
+                    provider=provider,
+                    model=self.router._get_model_name(provider),
+                    latency=latency,
+                    throughput=comp_diff / max(0.01, latency),
+                    cost=cost,
+                    success=True
+                )
+
+                await self.router.record_decision(
+                    selected_provider=provider,
+                    selected_model=self.router._get_model_name(provider),
+                    latency=latency,
+                    success=True,
+                    fallback_count=fallback_count,
+                    prompt_tokens=prompt_diff,
+                    completion_tokens=comp_diff,
+                    cost=cost
+                )
                 return
+                
             except Exception as e:
                 logger.error(f"LLM provider {provider} failed: {e}")
                 last_error = e
-
-        yield {"type": "error", "error": f"All LLM providers failed. Last error: {last_error}"}
+                error_msg = str(e)
+                latency = time.time() - start_time
+                
+                # Record metric failure
+                await self.router.record_metric(
+                    provider=provider,
+                    model=self.router._get_model_name(provider),
+                    latency=latency,
+                    throughput=0.0,
+                    cost=0.0,
+                    success=False,
+                    error_msg=error_msg
+                )
+                
+        # If all failed:
+        yield {"type": "error", "error": "I apologize, sir, but I am currently having trouble reaching all my primary and fallback AI services. Please check your internet connection or verify your API configuration."}
 
     async def simple_completion(
         self,
@@ -725,31 +908,26 @@ class LLMService:
         temperature: float = 0.7,
     ) -> str:
         """
-        Non-streaming single-turn completion without tools. Handles failover.
-        Tries: primary → fallback providers in sequence (groq, gemini, openrouter, openai, ollama).
+        Non-streaming single-turn completion without tools. Handles dynamic failover.
         """
-        providers_order = ["groq", "ollama", "gemini", "openai", "openrouter"]
-        if self.primary_provider in providers_order:
-            providers_order.remove(self.primary_provider)
-            providers_order.insert(0, self.primary_provider)
-
-        available_providers = []
-        for p in providers_order:
-            if p == "ollama" and self.ollama_client is not None:
-                available_providers.append(p)
-            elif p == "gemini" and self.gemini_available:
-                available_providers.append(p)
-            elif p == "groq" and self.groq_client is not None:
-                available_providers.append(p)
-            elif p == "openrouter" and self.openrouter_client is not None:
-                available_providers.append(p)
-            elif p == "openai" and self.openai_client is not None:
-                available_providers.append(p)
-
+        available_providers = await self.router.get_ranked_providers()
+        
         last_error = None
-        for provider in available_providers:
+        fallback_count = 0
+        
+        for i, provider in enumerate(available_providers):
+            start_time = time.time()
+            prompt_tokens_start = self.total_prompt_tokens
+            completion_tokens_start = self.total_completion_tokens
+            success = False
+            error_msg = None
+            model_name = self.router._get_model_name(provider)
+            
             try:
                 logger.info(f"Attempting simple completion with: {provider}")
+                if i > 0:
+                    fallback_count += 1
+                    
                 messages = [
                     {"role": "system", "content": system_prompt or self.get_system_prompt()},
                     {"role": "user", "content": prompt},
@@ -764,32 +942,30 @@ class LLMService:
                             max_tokens=max_tokens,
                             temperature=temperature,
                         ),
-                        timeout=30.0
+                        timeout=17.0
                     )
                     self.total_requests += 1
                     if resp.usage:
                         self.total_prompt_tokens += resp.usage.prompt_tokens
                         self.total_completion_tokens += resp.usage.completion_tokens
-                    return resp.choices[0].message.content or ""
+                    content = resp.choices[0].message.content or ""
 
                 elif provider == "gemini":
-                    import google.generativeai as genai
-                    model = genai.GenerativeModel(
-                        model_name=self.gemini_model_name,
-                        system_instruction=system_prompt or self.get_system_prompt()
-                    )
+                    from google.genai import types
                     resp = await asyncio.wait_for(
-                        model.generate_content_async(
+                        self.gemini_client.aio.models.generate_content(
+                            model=self.gemini_model_name,
                             contents=prompt,
-                            generation_config={
-                                "temperature": temperature,
-                                "max_output_tokens": max_tokens
-                            }
+                            config=types.GenerateContentConfig(
+                                temperature=temperature,
+                                max_output_tokens=max_tokens,
+                                system_instruction=system_prompt or self.get_system_prompt()
+                            )
                         ),
-                        timeout=30.0
+                        timeout=12.0
                     )
                     self.total_requests += 1
-                    return resp.text
+                    content = resp.text or ""
 
                 elif provider == "groq":
                     resp = await asyncio.wait_for(
@@ -799,13 +975,13 @@ class LLMService:
                             max_tokens=max_tokens,
                             temperature=temperature,
                         ),
-                        timeout=30.0
+                        timeout=12.0
                     )
                     self.total_requests += 1
                     if resp.usage:
                         self.total_prompt_tokens += resp.usage.prompt_tokens
                         self.total_completion_tokens += resp.usage.completion_tokens
-                    return resp.choices[0].message.content or ""
+                    content = resp.choices[0].message.content or ""
 
                 elif provider == "openrouter":
                     resp = await asyncio.wait_for(
@@ -815,13 +991,13 @@ class LLMService:
                             max_tokens=max_tokens,
                             temperature=temperature,
                         ),
-                        timeout=30.0
+                        timeout=12.0
                     )
                     self.total_requests += 1
                     if resp.usage:
                         self.total_prompt_tokens += resp.usage.prompt_tokens
                         self.total_completion_tokens += resp.usage.completion_tokens
-                    return resp.choices[0].message.content or ""
+                    content = resp.choices[0].message.content or ""
 
                 elif provider == "openai":
                     resp = await asyncio.wait_for(
@@ -831,19 +1007,76 @@ class LLMService:
                             max_tokens=max_tokens,
                             temperature=temperature,
                         ),
-                        timeout=30.0
+                        timeout=12.0
                     )
                     self.total_requests += 1
                     if resp.usage:
                         self.total_prompt_tokens += resp.usage.prompt_tokens
                         self.total_completion_tokens += resp.usage.completion_tokens
-                    return resp.choices[0].message.content or ""
+                    content = resp.choices[0].message.content or ""
+                    
+                elif provider == "nvidia":
+                    resp = await asyncio.wait_for(
+                        self.nvidia_client.chat.completions.create(
+                            model=self.nvidia_model_name,
+                            messages=messages,
+                            max_tokens=max_tokens,
+                            temperature=temperature,
+                        ),
+                        timeout=12.0
+                    )
+                    self.total_requests += 1
+                    if resp.usage:
+                        self.total_prompt_tokens += resp.usage.prompt_tokens
+                        self.total_completion_tokens += resp.usage.completion_tokens
+                    content = resp.choices[0].message.content or ""
+                else:
+                    continue
+
+                # Succeeded! Record decision and return
+                latency = time.time() - start_time
+                prompt_diff = self.total_prompt_tokens - prompt_tokens_start
+                comp_diff = self.total_completion_tokens - completion_tokens_start
+                cost = (comp_diff / 1000000) * self.router.costs.get(provider, 0.0)
+
+                await self.router.record_metric(
+                    provider=provider,
+                    model=model_name,
+                    latency=latency,
+                    throughput=comp_diff / max(0.01, latency),
+                    cost=cost,
+                    success=True
+                )
+
+                await self.router.record_decision(
+                    selected_provider=provider,
+                    selected_model=model_name,
+                    latency=latency,
+                    success=True,
+                    fallback_count=fallback_count,
+                    prompt_tokens=prompt_diff,
+                    completion_tokens=comp_diff,
+                    cost=cost
+                )
+                return content
 
             except Exception as e:
                 logger.error(f"Simple completion failed with {provider}: {e}")
                 last_error = e
+                error_msg = str(e)
+                latency = time.time() - start_time
+                
+                await self.router.record_metric(
+                    provider=provider,
+                    model=model_name,
+                    latency=latency,
+                    throughput=0.0,
+                    cost=0.0,
+                    success=False,
+                    error_msg=error_msg
+                )
 
-        return f"I apologise, sir, but all LLM completion providers failed. Last error: {last_error}"
+        return "I apologize, sir, but I am currently having trouble reaching all my primary and fallback AI services. Please check your internet connection or verify your API configuration."
 
     async def vision_analysis(
         self,
@@ -862,23 +1095,25 @@ class LLMService:
         if use_gemini:
             try:
                 import base64
-                import google.generativeai as genai
+                from google.genai import types
                 image_bytes = base64.b64decode(image_base64)
 
-                model = genai.GenerativeModel(
-                    model_name=self.gemini_model_name,
-                    system_instruction="You are JARVIS, analysing the user's screen. Describe what you see concisely and answer the user's question."
-                )
-
-                response = await model.generate_content_async(
+                response = await self.gemini_client.aio.models.generate_content(
+                    model=self.gemini_model_name,
                     contents=[
                         question,
-                        {"mime_type": "image/png", "data": image_bytes}
+                        types.Part.from_bytes(
+                            data=image_bytes,
+                            mime_type="image/png"
+                        )
                     ],
-                    generation_config={"max_output_tokens": max_tokens}
+                    config=types.GenerateContentConfig(
+                        max_output_tokens=max_tokens,
+                        system_instruction="You are JARVIS, analysing the user's screen. Describe what you see concisely and answer the user's question."
+                    )
                 )
                 self.total_requests += 1
-                return response.text
+                return response.text or ""
             except Exception as e:
                 logger.error("Gemini vision analysis failed: {}. Falling back to OpenAI...", e)
 
@@ -921,6 +1156,74 @@ class LLMService:
         except Exception as e:
             logger.error("OpenAI vision fallback failed: {}", e)
             return f"I'm unable to analyse the screen at the moment, sir: {e}"
+
+    async def _check_and_execute_text_tool_call(
+        self,
+        full_text: str,
+        tool_executor: Any,
+        messages: List[Dict[str, Any]],
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Check if the full response text contains an XML or JSON plain-text tool call.
+        If found, executes the tool, appends the result to messages, and returns the result info.
+        """
+        parsed_call = try_parse_xml_tool_call(full_text) or try_parse_json_tool_call(full_text)
+        if parsed_call:
+            tool_name = parsed_call.get("name")
+            tool_args = parsed_call.get("arguments", {})
+            
+            if isinstance(tool_args, str):
+                try:
+                    import json
+                    tool_args = json.loads(tool_args)
+                except Exception:
+                    tool_args = {}
+                    
+            valid_tool_names = {t["function"]["name"] for t in self.get_tools()}
+            if tool_name in valid_tool_names:
+                logger.info("Interception: Detected plain-text tool call for '{}'", tool_name)
+                import time
+                tool_call_id = f"call_text_{int(time.time())}"
+                
+                # Append assistant message with the raw tool call (containing XML/JSON) so LLM maintains state
+                messages.append({
+                    "role": "assistant",
+                    "content": full_text
+                })
+                
+                # Run the tool
+                if tool_executor:
+                    try:
+                        result = await tool_executor(tool_name, tool_args)
+                    except Exception as e:
+                        result = f"Error executing {tool_name}: {e}"
+                        logger.error("Tool execution error: {}", e)
+                else:
+                    result = f"Tool '{tool_name}' executed successfully (no executor connected)."
+                
+                # Append tool result to history
+                # If the tool call was XML, format the result in XML as well
+                is_xml = "<function=" in full_text
+                if is_xml:
+                    messages.append({
+                        "role": "user",
+                        "content": f"<result>{result}</result>"
+                    })
+                else:
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call_id,
+                        "name": tool_name,
+                        "content": str(result)
+                    })
+                
+                return {
+                    "tool_name": tool_name,
+                    "tool_args": tool_args,
+                    "result": str(result),
+                    "tool_call_id": tool_call_id
+                }
+        return None
 
     # ── LLM Engine Implementations ────────────────────────────────────────
 
@@ -969,8 +1272,7 @@ class LLMService:
                         max_tokens=4096,
                     )
 
-                is_json_or_code_block = None
-                buffered_deltas = []
+                text_filter = StreamTextFilter()
 
                 async for chunk in stream:
                     delta = chunk.choices[0].delta if chunk.choices else None
@@ -980,24 +1282,8 @@ class LLMService:
                     # Handle text content
                     if delta.content:
                         full_text += delta.content
-                        if is_json_or_code_block is None:
-                            stripped = full_text.strip()
-                            if stripped:
-                                if stripped.startswith("{") or stripped.startswith("`"):
-                                    is_json_or_code_block = True
-                                    buffered_deltas.append(delta.content)
-                                else:
-                                    is_json_or_code_block = False
-                                    for b_content in buffered_deltas:
-                                        yield {"type": "text_delta", "content": b_content}
-                                    buffered_deltas.clear()
-                                    yield {"type": "text_delta", "content": delta.content}
-                            else:
-                                buffered_deltas.append(delta.content)
-                        elif is_json_or_code_block is False:
-                            yield {"type": "text_delta", "content": delta.content}
-                        else:
-                            buffered_deltas.append(delta.content)
+                        for text_to_yield in text_filter.feed(delta.content):
+                            yield {"type": "text_delta", "content": text_to_yield}
 
                     # Handle tool calls
                     if delta.tool_calls:
@@ -1022,6 +1308,9 @@ class LLMService:
                         self.total_completion_tokens += chunk.usage.completion_tokens
 
                 self.total_requests += 1
+
+                for text_to_yield in text_filter.flush():
+                    yield {"type": "text_delta", "content": text_to_yield}
 
                 if current_tool_calls:
                     tool_call_messages = []
@@ -1083,70 +1372,29 @@ class LLMService:
                     full_text = ""
                     continue
 
-                # Check for plain-text JSON tool call
-                parsed_call = try_parse_json_tool_call(full_text)
-                if parsed_call:
-                    tool_name = parsed_call.get("name")
-                    tool_args = parsed_call.get("arguments", {})
-                    
-                    if isinstance(tool_args, str):
-                        try:
-                            tool_args = json.loads(tool_args)
-                        except Exception:
-                            tool_args = {}
-                            
-                    valid_tool_names = {t["function"]["name"] for t in self.get_tools()}
-                    if tool_name in valid_tool_names:
-                        logger.info("Interception: Detected plain-text JSON tool call for '{}'", tool_name)
-                        tool_call_id = f"call_text_{int(time.time())}"
-                        
-                        yield {
-                            "type": "tool_call",
-                            "name": tool_name,
-                            "arguments": tool_args,
-                            "tool_call_id": tool_call_id,
-                        }
-                        
-                        if tool_executor:
-                            try:
-                                result = await tool_executor(tool_name, tool_args)
-                            except Exception as e:
-                                result = f"Error executing {tool_name}: {e}"
-                                logger.error("Tool execution error: {}", e)
-                        else:
-                            result = f"Tool '{tool_name}' executed successfully (no executor connected)."
-                            
-                        yield {
-                            "type": "tool_result",
-                            "name": tool_name,
-                            "result": str(result),
-                            "tool_call_id": tool_call_id,
-                        }
-                        
-                        messages.append({
-                            "role": "assistant",
-                            "content": None,
-                            "tool_calls": [{
-                                "id": tool_call_id,
-                                "type": "function",
-                                "function": {
-                                    "name": tool_name,
-                                    "arguments": json.dumps(tool_args),
-                                }
-                            }]
-                        })
-                        
-                        messages.append({
-                            "role": "tool",
-                            "tool_call_id": tool_call_id,
-                            "name": tool_name,
-                            "content": str(result),
-                        })
-                        
-                        full_text = ""
-                        continue
-                    else:
-                        # Extract conversational message from fake tool call
+                # Check for plain-text tool call interception
+                intercepted = await self._check_and_execute_text_tool_call(full_text, tool_executor, messages)
+                if intercepted:
+                    yield {
+                        "type": "tool_call",
+                        "name": intercepted["tool_name"],
+                        "arguments": intercepted["tool_args"],
+                        "tool_call_id": intercepted["tool_call_id"],
+                    }
+                    yield {
+                        "type": "tool_result",
+                        "name": intercepted["tool_name"],
+                        "result": intercepted["result"],
+                        "tool_call_id": intercepted["tool_call_id"],
+                    }
+                    full_text = ""
+                    continue
+                else:
+                    # Extract conversational message from fake tool call if necessary
+                    parsed_fake = try_parse_json_tool_call(full_text)
+                    if parsed_fake:
+                        tool_name = parsed_fake.get("name")
+                        tool_args = parsed_fake.get("arguments", {})
                         extracted_msg = None
                         if isinstance(tool_args, dict):
                             for key in ["message", "text", "content", "response"]:
@@ -1158,7 +1406,7 @@ class LLMService:
                             full_text = extracted_msg
 
                 if full_text and yield_final:
-                    yield {"type": "text_done", "content": full_text}
+                    yield {"type": "text_done", "content": clean_function_calls_from_text(full_text)}
 
                 yield {
                     "type": "usage",
@@ -1179,53 +1427,74 @@ class LLMService:
         tool_executor: Any = None,
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """Gemini-specific message streaming and tool iteration loop."""
-        import google.generativeai as genai
 
         # Maintain standard OpenAI format history internally for simple conversion
         messages = self._build_messages(user_message, conversation_history)
         yield_final = True
 
+        from google.genai import types
+
+        use_gemini_tools = True
         while True:
             # Map history and tools to Google's schema on each turn
             gemini_contents = self._convert_history_to_gemini(messages)
-            gemini_tools = self._convert_tools_to_gemini(self.get_tools())
+            gemini_tools = self._convert_tools_to_gemini(self.get_tools()) if use_gemini_tools else []
 
-            model = genai.GenerativeModel(
-                model_name=self.gemini_model_name,
-                tools=gemini_tools if gemini_tools else None,
-                system_instruction=self.get_system_prompt()
+            config = types.GenerateContentConfig(
+                system_instruction=self.get_system_prompt(),
+                tools=[{"function_declarations": gemini_tools}] if gemini_tools else None
             )
 
-            # Request streaming generator from Google API
-            response = await model.generate_content_async(
-                contents=gemini_contents,
-                stream=True
-            )
+            try:
+                # Request streaming generator from Google API
+                response = await self.gemini_client.aio.models.generate_content_stream(
+                    model=self.gemini_model_name,
+                    contents=gemini_contents,
+                    config=config
+                )
+            except Exception as e:
+                if use_gemini_tools:
+                    logger.warning(f"Gemini streaming failed with tools: {e}. Retrying without tools...")
+                    use_gemini_tools = False
+                    config = types.GenerateContentConfig(
+                        system_instruction=self.get_system_prompt(),
+                        tools=None
+                    )
+                    response = await self.gemini_client.aio.models.generate_content_stream(
+                        model=self.gemini_model_name,
+                        contents=gemini_contents,
+                        config=config
+                    )
+                else:
+                    raise e
 
             full_text = ""
             current_tool_calls = {}
+            text_filter = StreamTextFilter()
 
             async for chunk in response:
                 # 1. Extract text content delta safely
                 try:
                     if chunk.text:
                         full_text += chunk.text
-                        yield {"type": "text_delta", "content": chunk.text}
-                except ValueError:
-                    # Occurs on empty/pure metadata or pure function_call chunks
+                        for text_to_yield in text_filter.feed(chunk.text):
+                            yield {"type": "text_delta", "content": text_to_yield}
+                except Exception:
                     pass
 
                 # 2. Extract tool call elements safely
-                if chunk.candidates and chunk.candidates[0].content and chunk.candidates[0].content.parts:
-                    for part in chunk.candidates[0].content.parts:
-                        fn_call = getattr(part, "function_call", None)
-                        if fn_call and fn_call.name:
-                            tc_id = f"tc-{int(time.time())}-{len(current_tool_calls)}"
-                            current_tool_calls[tc_id] = {
-                                "id": tc_id,
-                                "name": fn_call.name,
-                                "arguments": json.dumps(dict(fn_call.args))
-                            }
+                fn_calls = getattr(chunk, "function_calls", None)
+                if fn_calls:
+                    for fn_call in fn_calls:
+                        tc_id = f"tc-{int(time.time())}-{len(current_tool_calls)}"
+                        current_tool_calls[tc_id] = {
+                            "id": tc_id,
+                            "name": fn_call.name,
+                            "arguments": json.dumps(dict(fn_call.args))
+                        }
+
+            for text_to_yield in text_filter.flush():
+                yield {"type": "text_delta", "content": text_to_yield}
 
             self.total_requests += 1
             # Estimation for stats
@@ -1296,9 +1565,27 @@ class LLMService:
                 full_text = ""
                 continue
 
+            # Check for plain-text tool call interception
+            intercepted = await self._check_and_execute_text_tool_call(full_text, tool_executor, messages)
+            if intercepted:
+                yield {
+                    "type": "tool_call",
+                    "name": intercepted["tool_name"],
+                    "arguments": intercepted["tool_args"],
+                    "tool_call_id": intercepted["tool_call_id"],
+                }
+                yield {
+                    "type": "tool_result",
+                    "name": intercepted["tool_name"],
+                    "result": intercepted["result"],
+                    "tool_call_id": intercepted["tool_call_id"],
+                }
+                full_text = ""
+                continue
+
             # Finish conversation turn
             if full_text and yield_final:
-                yield {"type": "text_done", "content": full_text}
+                yield {"type": "text_done", "content": clean_function_calls_from_text(full_text)}
 
             yield {
                 "type": "usage",
@@ -1322,20 +1609,36 @@ class LLMService:
         messages = self._build_messages(user_message, conversation_history)
         yield_final = True
 
+        use_tools = True
         try:
             while True:
                 full_text = ""
                 current_tool_calls: Dict[int, Dict[str, Any]] = {}
 
-                stream = await self.openai_client.chat.completions.create(
-                    model=self.openai_model_name,
-                    messages=messages,
-                    tools=self.get_tools(),
-                    tool_choice="auto",
-                    stream=True,
-                    temperature=0.7,
-                    max_tokens=4096,
-                )
+                kwargs = {
+                    "model": self.openai_model_name,
+                    "messages": messages,
+                    "stream": True,
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                }
+                if use_tools:
+                    kwargs["tools"] = self.get_tools()
+                    kwargs["tool_choice"] = "auto"
+
+                try:
+                    stream = await self.openai_client.chat.completions.create(**kwargs)
+                except Exception as e:
+                    if use_tools:
+                        logger.warning(f"OpenAI completions failed with tools: {e}. Retrying without tools...")
+                        use_tools = False
+                        kwargs.pop("tools", None)
+                        kwargs.pop("tool_choice", None)
+                        stream = await self.openai_client.chat.completions.create(**kwargs)
+                    else:
+                        raise e
+
+                text_filter = StreamTextFilter()
 
                 async for chunk in stream:
                     delta = chunk.choices[0].delta if chunk.choices else None
@@ -1345,7 +1648,8 @@ class LLMService:
                     # Handle text content
                     if delta.content:
                         full_text += delta.content
-                        yield {"type": "text_delta", "content": delta.content}
+                        for text_to_yield in text_filter.feed(delta.content):
+                            yield {"type": "text_delta", "content": text_to_yield}
 
                     # Handle tool calls
                     if delta.tool_calls:
@@ -1370,6 +1674,9 @@ class LLMService:
                         self.total_completion_tokens += chunk.usage.completion_tokens
 
                 self.total_requests += 1
+
+                for text_to_yield in text_filter.flush():
+                    yield {"type": "text_delta", "content": text_to_yield}
 
                 if current_tool_calls:
                     tool_call_messages = []
@@ -1431,8 +1738,26 @@ class LLMService:
                     full_text = ""
                     continue
 
+                # Check for plain-text tool call interception
+                intercepted = await self._check_and_execute_text_tool_call(full_text, tool_executor, messages)
+                if intercepted:
+                    yield {
+                        "type": "tool_call",
+                        "name": intercepted["tool_name"],
+                        "arguments": intercepted["tool_args"],
+                        "tool_call_id": intercepted["tool_call_id"],
+                    }
+                    yield {
+                        "type": "tool_result",
+                        "name": intercepted["tool_name"],
+                        "result": intercepted["result"],
+                        "tool_call_id": intercepted["tool_call_id"],
+                    }
+                    full_text = ""
+                    continue
+
                 if full_text and yield_final:
-                    yield {"type": "text_done", "content": full_text}
+                    yield {"type": "text_done", "content": clean_function_calls_from_text(full_text)}
 
                 yield {
                     "type": "usage",
@@ -1460,23 +1785,36 @@ class LLMService:
         messages = self._build_messages(user_message, conversation_history)
         yield_final = True
 
+        use_tools = True
         try:
             while True:
                 full_text = ""
                 current_tool_calls: Dict[int, Dict[str, Any]] = {}
 
-                stream = await self.openrouter_client.chat.completions.create(
-                    model=self.openrouter_model_name,
-                    messages=messages,
-                    tools=self.get_tools(),
-                    tool_choice="auto",
-                    stream=True,
-                    temperature=0.7,
-                    max_tokens=4096,
-                )
+                kwargs = {
+                    "model": self.openrouter_model_name,
+                    "messages": messages,
+                    "stream": True,
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                }
+                if use_tools:
+                    kwargs["tools"] = self.get_tools()
+                    kwargs["tool_choice"] = "auto"
 
-                is_json_or_code_block = None
-                buffered_deltas = []
+                try:
+                    stream = await self.openrouter_client.chat.completions.create(**kwargs)
+                except Exception as e:
+                    if use_tools:
+                        logger.warning(f"OpenRouter completions failed with tools: {e}. Retrying without tools...")
+                        use_tools = False
+                        kwargs.pop("tools", None)
+                        kwargs.pop("tool_choice", None)
+                        stream = await self.openrouter_client.chat.completions.create(**kwargs)
+                    else:
+                        raise e
+
+                text_filter = StreamTextFilter()
 
                 async for chunk in stream:
                     delta = chunk.choices[0].delta if chunk.choices else None
@@ -1486,24 +1824,8 @@ class LLMService:
                     # Handle text content
                     if delta.content:
                         full_text += delta.content
-                        if is_json_or_code_block is None:
-                            stripped = full_text.strip()
-                            if stripped:
-                                if stripped.startswith("{") or stripped.startswith("`"):
-                                    is_json_or_code_block = True
-                                    buffered_deltas.append(delta.content)
-                                else:
-                                    is_json_or_code_block = False
-                                    for b_content in buffered_deltas:
-                                        yield {"type": "text_delta", "content": b_content}
-                                    buffered_deltas.clear()
-                                    yield {"type": "text_delta", "content": delta.content}
-                            else:
-                                buffered_deltas.append(delta.content)
-                        elif is_json_or_code_block is False:
-                            yield {"type": "text_delta", "content": delta.content}
-                        else:
-                            buffered_deltas.append(delta.content)
+                        for text_to_yield in text_filter.feed(delta.content):
+                            yield {"type": "text_delta", "content": text_to_yield}
 
                     # Handle tool calls
                     if delta.tool_calls:
@@ -1528,6 +1850,9 @@ class LLMService:
                         self.total_completion_tokens += chunk.usage.completion_tokens
 
                 self.total_requests += 1
+
+                for text_to_yield in text_filter.flush():
+                    yield {"type": "text_delta", "content": text_to_yield}
 
                 if current_tool_calls:
                     tool_call_messages = []
@@ -1589,70 +1914,29 @@ class LLMService:
                     full_text = ""
                     continue
 
-                # Check for plain-text JSON tool call
-                parsed_call = try_parse_json_tool_call(full_text)
-                if parsed_call:
-                    tool_name = parsed_call.get("name")
-                    tool_args = parsed_call.get("arguments", {})
-                    
-                    if isinstance(tool_args, str):
-                        try:
-                            tool_args = json.loads(tool_args)
-                        except Exception:
-                            tool_args = {}
-                            
-                    valid_tool_names = {t["function"]["name"] for t in self.get_tools()}
-                    if tool_name in valid_tool_names:
-                        logger.info("Interception: Detected plain-text JSON tool call for '{}'", tool_name)
-                        tool_call_id = f"call_text_{int(time.time())}"
-                        
-                        yield {
-                            "type": "tool_call",
-                            "name": tool_name,
-                            "arguments": tool_args,
-                            "tool_call_id": tool_call_id,
-                        }
-                        
-                        if tool_executor:
-                            try:
-                                result = await tool_executor(tool_name, tool_args)
-                            except Exception as e:
-                                result = f"Error executing {tool_name}: {e}"
-                                logger.error("Tool execution error: {}", e)
-                        else:
-                            result = f"Tool '{tool_name}' executed successfully (no executor connected)."
-                            
-                        yield {
-                            "type": "tool_result",
-                            "name": tool_name,
-                            "result": str(result),
-                            "tool_call_id": tool_call_id,
-                        }
-                        
-                        messages.append({
-                            "role": "assistant",
-                            "content": None,
-                            "tool_calls": [{
-                                "id": tool_call_id,
-                                "type": "function",
-                                "function": {
-                                    "name": tool_name,
-                                    "arguments": json.dumps(tool_args),
-                                }
-                            }]
-                        })
-                        
-                        messages.append({
-                            "role": "tool",
-                            "tool_call_id": tool_call_id,
-                            "name": tool_name,
-                            "content": str(result),
-                        })
-                        
-                        full_text = ""
-                        continue
-                    else:
-                        # Extract conversational message from fake tool call
+                # Check for plain-text tool call interception
+                intercepted = await self._check_and_execute_text_tool_call(full_text, tool_executor, messages)
+                if intercepted:
+                    yield {
+                        "type": "tool_call",
+                        "name": intercepted["tool_name"],
+                        "arguments": intercepted["tool_args"],
+                        "tool_call_id": intercepted["tool_call_id"],
+                    }
+                    yield {
+                        "type": "tool_result",
+                        "name": intercepted["tool_name"],
+                        "result": intercepted["result"],
+                        "tool_call_id": intercepted["tool_call_id"],
+                    }
+                    full_text = ""
+                    continue
+                else:
+                    # Extract conversational message from fake tool call if necessary
+                    parsed_fake = try_parse_json_tool_call(full_text)
+                    if parsed_fake:
+                        tool_name = parsed_fake.get("name")
+                        tool_args = parsed_fake.get("arguments", {})
                         extracted_msg = None
                         if isinstance(tool_args, dict):
                             for key in ["message", "text", "content", "response"]:
@@ -1707,8 +1991,9 @@ class LLMService:
                 })
         return gemini_tools
 
-    def _convert_history_to_gemini(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _convert_history_to_gemini(self, messages: List[Dict[str, Any]]) -> List[Any]:
         """Maps conversation history list to Gemini's native Content schema format."""
+        from google.genai import types
         gemini_contents = []
 
         for msg in messages:
@@ -1721,7 +2006,7 @@ class LLMService:
 
             # 1. Text content
             if "content" in msg and msg["content"]:
-                parts.append(msg["content"])
+                parts.append(types.Part(text=msg["content"]))
 
             # 2. Assistant function calling requests
             if "tool_calls" in msg and msg["tool_calls"]:
@@ -1736,22 +2021,26 @@ class LLMService:
                         )
                     except Exception:
                         func_args = {}
-                    parts.append({
-                        "function_call": {
-                            "name": func_name,
-                            "args": func_args
-                        }
-                    })
+                    parts.append(
+                        types.Part(
+                            function_call=types.FunctionCall(
+                                name=func_name,
+                                args=func_args
+                            )
+                        )
+                    )
 
             # 3. Tool call execution response
             elif role == "tool":
                 tool_name = msg.get("name") or "tool"
-                parts.append({
-                    "function_response": {
-                        "name": tool_name,
-                        "response": {"result": msg.get("content", "")}
-                    }
-                })
+                parts.append(
+                    types.Part(
+                        function_response=types.FunctionResponse(
+                            name=tool_name,
+                            response={"result": msg.get("content", "")}
+                        )
+                    )
+                )
 
             # Role mapping
             gemini_role = "user"
@@ -1760,17 +2049,21 @@ class LLMService:
             elif role == "tool":
                 gemini_role = "user"
             else:
-                gemini_contents.append({
-                    "role": "user",
-                    "parts": [{"text": str(msg.get("content") or "")}]
-                })
+                gemini_contents.append(
+                    types.Content(
+                        role="user",
+                        parts=[types.Part(text=str(msg.get("content") or ""))]
+                    )
+                )
                 continue
 
             if parts:
-                gemini_contents.append({
-                    "role": gemini_role,
-                    "parts": parts
-                })
+                gemini_contents.append(
+                    types.Content(
+                        role=gemini_role,
+                        parts=parts
+                    )
+                )
 
         return gemini_contents
 
@@ -1787,20 +2080,36 @@ class LLMService:
 
         messages = self._build_messages(user_message, conversation_history)
 
+        use_tools = True
         try:
             while True:
                 full_text = ""
                 current_tool_calls: Dict[int, Dict[str, Any]] = {}
 
-                stream = await self.groq_client.chat.completions.create(
-                    model=self.groq_model_name,
-                    messages=messages,
-                    tools=self.get_tools(),
-                    tool_choice="auto",
-                    stream=True,
-                    temperature=0.7,
-                    max_tokens=4096,
-                )
+                kwargs = {
+                    "model": self.groq_model_name,
+                    "messages": messages,
+                    "stream": True,
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                }
+                if use_tools:
+                    kwargs["tools"] = self.get_tools()
+                    kwargs["tool_choice"] = "auto"
+
+                try:
+                    stream = await self.groq_client.chat.completions.create(**kwargs)
+                except Exception as e:
+                    if use_tools:
+                        logger.warning(f"Groq completions failed with tools: {e}. Retrying without tools...")
+                        use_tools = False
+                        kwargs.pop("tools", None)
+                        kwargs.pop("tool_choice", None)
+                        stream = await self.groq_client.chat.completions.create(**kwargs)
+                    else:
+                        raise e
+
+                text_filter = StreamTextFilter()
 
                 async for chunk in stream:
                     delta = chunk.choices[0].delta if chunk.choices else None
@@ -1810,7 +2119,8 @@ class LLMService:
                     # Handle text content
                     if delta.content:
                         full_text += delta.content
-                        yield {"type": "text_delta", "content": delta.content}
+                        for text_to_yield in text_filter.feed(delta.content):
+                            yield {"type": "text_delta", "content": text_to_yield}
 
                     # Handle tool calls
                     if delta.tool_calls:
@@ -1835,6 +2145,9 @@ class LLMService:
                         self.total_completion_tokens += chunk.usage.completion_tokens
 
                 self.total_requests += 1
+
+                for text_to_yield in text_filter.flush():
+                    yield {"type": "text_delta", "content": text_to_yield}
 
                 if current_tool_calls:
                     tool_call_messages = []
@@ -1891,16 +2204,201 @@ class LLMService:
                             "tool_call_id": tc_msg["id"],
                             "content": str(result),
                         })
+                    
+                    full_text = ""
+                    continue
                 else:
-                    # No tool calls, we are done
-                    yield {"type": "text_done", "content": full_text}
-                    break
+                    # Check for plain-text tool call interception
+                    intercepted = await self._check_and_execute_text_tool_call(full_text, tool_executor, messages)
+                    if intercepted:
+                        yield {
+                            "type": "tool_call",
+                            "name": intercepted["tool_name"],
+                            "arguments": intercepted["tool_args"],
+                            "tool_call_id": intercepted["tool_call_id"],
+                        }
+                        yield {
+                            "type": "tool_result",
+                            "name": intercepted["tool_name"],
+                            "result": intercepted["result"],
+                            "tool_call_id": intercepted["tool_call_id"],
+                        }
+                        full_text = ""
+                        continue
+                    else:
+                        yield {"type": "text_done", "content": clean_function_calls_from_text(full_text)}
+                        break
 
         except Exception as e:
             logger.error("Groq completions error: {}", e)
             raise
 
+    async def _process_message_nvidia(
+        self,
+        user_message: Any,
+        conversation_history: Optional[List[Dict[str, Any]]] = None,
+        tool_executor: Any = None,
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """NVIDIA NIM streaming and tool dispatch engine."""
+        if not self.nvidia_client:
+            yield {"type": "error", "error": "NVIDIA NIM client is not initialized."}
+            return
 
+        messages = self._build_messages(user_message, conversation_history)
+
+        use_tools = True
+        try:
+            while True:
+                full_text = ""
+                current_tool_calls: Dict[int, Dict[str, Any]] = {}
+
+                kwargs = {
+                    "model": self.nvidia_model_name,
+                    "messages": messages,
+                    "stream": True,
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                }
+                if use_tools:
+                    kwargs["tools"] = self.get_tools()
+                    kwargs["tool_choice"] = "auto"
+
+                try:
+                    stream = await self.nvidia_client.chat.completions.create(**kwargs)
+                except Exception as e:
+                    if use_tools:
+                        logger.warning(f"NVIDIA completions failed with tools: {e}. Retrying without tools...")
+                        use_tools = False
+                        kwargs.pop("tools", None)
+                        kwargs.pop("tool_choice", None)
+                        stream = await self.nvidia_client.chat.completions.create(**kwargs)
+                    else:
+                        raise e
+
+                text_filter = StreamTextFilter()
+
+                async for chunk in stream:
+                    delta = chunk.choices[0].delta if chunk.choices else None
+                    if delta is None:
+                        continue
+
+                    # Handle text content
+                    if delta.content:
+                        full_text += delta.content
+                        for text_to_yield in text_filter.feed(delta.content):
+                            yield {"type": "text_delta", "content": text_to_yield}
+
+                    # Handle tool calls
+                    if delta.tool_calls:
+                        for tc in delta.tool_calls:
+                            idx = tc.index
+                            if idx not in current_tool_calls:
+                                current_tool_calls[idx] = {
+                                    "id": tc.id or "",
+                                    "name": "",
+                                    "arguments": "",
+                                }
+                            if tc.id:
+                                current_tool_calls[idx]["id"] = tc.id
+                            if tc.function and tc.function.name:
+                                current_tool_calls[idx]["name"] = tc.function.name
+                            if tc.function and tc.function.arguments:
+                                current_tool_calls[idx]["arguments"] += tc.function.arguments
+
+                    # Track usage
+                    if chunk.usage:
+                        self.total_prompt_tokens += chunk.usage.prompt_tokens
+                        self.total_completion_tokens += chunk.usage.completion_tokens
+
+                self.total_requests += 1
+
+                for text_to_yield in text_filter.flush():
+                    yield {"type": "text_delta", "content": text_to_yield}
+
+                if current_tool_calls:
+                    tool_call_messages = []
+                    for idx in sorted(current_tool_calls.keys()):
+                        tc = current_tool_calls[idx]
+                        tool_call_messages.append({
+                            "id": tc["id"],
+                            "type": "function",
+                            "function": {
+                                "name": tc["name"],
+                                "arguments": tc["arguments"],
+                            },
+                        })
+
+                    assistant_msg: Dict[str, Any] = {
+                        "role": "assistant",
+                        "content": full_text or None,
+                        "tool_calls": tool_call_messages,
+                    }
+                    messages.append(assistant_msg)
+
+                    for tc_msg in tool_call_messages:
+                        tool_name = tc_msg["function"]["name"]
+                        try:
+                            tool_args = json.loads(tc_msg["function"]["arguments"])
+                        except json.JSONDecodeError:
+                            tool_args = {}
+
+                        yield {
+                            "type": "tool_call",
+                            "name": tool_name,
+                            "arguments": tool_args,
+                            "tool_call_id": tc_msg["id"],
+                        }
+
+                        if tool_executor:
+                            try:
+                                result = await tool_executor(tool_name, tool_args)
+                            except Exception as e:
+                                result = f"Error executing {tool_name}: {e}"
+                                logger.error("Tool execution error: {}", e)
+                        else:
+                            result = f"Tool '{tool_name}' executed successfully (no executor connected)."
+
+                        yield {
+                            "type": "tool_result",
+                            "name": tool_name,
+                            "result": str(result),
+                            "tool_call_id": tc_msg["id"],
+                        }
+
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tc_msg["id"],
+                            "name": tool_name,
+                            "content": str(result),
+                        })
+                    
+                    full_text = ""
+                    continue
+                else:
+                    # Check for plain-text tool call interception
+                    intercepted = await self._check_and_execute_text_tool_call(full_text, tool_executor, messages)
+                    if intercepted:
+                        yield {
+                            "type": "tool_call",
+                            "name": intercepted["tool_name"],
+                            "arguments": intercepted["tool_args"],
+                            "tool_call_id": intercepted["tool_call_id"],
+                        }
+                        yield {
+                            "type": "tool_result",
+                            "name": intercepted["tool_name"],
+                            "result": intercepted["result"],
+                            "tool_call_id": intercepted["tool_call_id"],
+                        }
+                        full_text = ""
+                        continue
+                    else:
+                        yield {"type": "text_done", "content": clean_function_calls_from_text(full_text)}
+                        break
+
+        except Exception as e:
+            logger.error("NVIDIA NIM completions error: {}", e)
+            raise
 
     def _build_messages(
         self,

@@ -47,7 +47,7 @@ const TranscriptView: React.FC = () => {
         <p
           className="text-2xl font-normal text-jarvis-text leading-relaxed"
           style={{
-            textShadow: '0 0 20px rgba(255, 59, 48, 0.15)'
+            textShadow: '0 0 20px rgba(0, 229, 255, 0.15)'
           }}
         >
           {displayText}

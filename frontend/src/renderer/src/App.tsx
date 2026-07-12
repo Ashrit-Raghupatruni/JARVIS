@@ -12,6 +12,7 @@ import StatusBar from './components/StatusBar'
 import TaskProgress from './components/TaskProgress'
 import ScreenPreview from './components/ScreenPreview'
 import SettingsPanel from './components/SettingsPanel'
+import SiriWidget from './components/SiriWidget'
 
 export default function App() {
   const {
@@ -20,10 +21,14 @@ export default function App() {
     currentTask,
     showSettings,
     audioLevel,
+    settings,
   } = useAppStore()
 
+  // Detect if this is the Siri widget overlay window
+  const isSiriWidget = window.location.hash === '#siri'
+
   const sendAudioRef = useRef<(data: ArrayBuffer) => void>(() => {})
-  const { playAudioChunk, startMicCapture, stopMicCapture, isCapturing } = useAudio((data) => sendAudioRef.current(data))
+  const { playAudioChunk, startMicCapture, stopMicCapture, stopPlayback, isCapturing } = useAudio((data) => sendAudioRef.current(data))
   const { sendMessage, sendAudio } = useWebSocket(playAudioChunk)
 
   useEffect(() => {
@@ -33,12 +38,31 @@ export default function App() {
   const [showChat, setShowChat] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
 
+  // Sync state with Electron main process (so SiriWidget gets updates)
+  useEffect(() => {
+    if (isSiriWidget) return // Don't loop state updates back
+
+    const api = (window as any).electronAPI
+    if (api?.sendStateUpdate) {
+      api.sendStateUpdate(assistantState, audioLevel)
+    }
+  }, [assistantState, audioLevel, isSiriWidget])
+
+  // Stop TTS playback when assistant transitions away from speaking state
+  useEffect(() => {
+    if (assistantState !== 'speaking') {
+      stopPlayback()
+    }
+  }, [assistantState, stopPlayback])
+
   // Handle push-to-talk from Electron
   useEffect(() => {
     const api = (window as any).electronAPI
     if (api?.onPushToTalk) {
-      api.onPushToTalk(async (pressing: boolean) => {
-        if (pressing) {
+      const unsubscribe = api.onPushToTalk(async () => {
+        // Toggle listening state on Ctrl+Space shortcut
+        const store = useAppStore.getState()
+        if (store.assistantState === 'idle') {
           try {
             await startMicCapture()
             sendMessage('push_to_talk_start', {})
@@ -50,21 +74,26 @@ export default function App() {
           sendMessage('push_to_talk_stop', {})
         }
       })
+      return unsubscribe
     }
+    return undefined
   }, [sendMessage, startMicCapture, stopMicCapture])
 
-  // Start mic capture when listening
+  // Start mic capture when listening or if wake word detection is enabled
   useEffect(() => {
-    if (assistantState === 'listening' || assistantState === 'wake_word_detected') {
+    const wakeWordEnabled = settings?.voice?.wakeWordEnabled ?? true
+    if (assistantState === 'listening' || assistantState === 'wake_word_detected' || wakeWordEnabled) {
       if (!isCapturing) {
         startMicCapture().catch((err) => {
-          console.error('[App] Failed to start mic for listening:', err)
+          console.error('[App] Failed to start mic for listening/wake word:', err)
         })
       }
+    } else {
+      if (isCapturing) {
+        stopMicCapture()
+      }
     }
-    // Note: We do NOT auto-start mic on idle — getUserMedia requires a user gesture.
-    // The mic is started when the user clicks the orb or uses push-to-talk.
-  }, [assistantState, isCapturing, startMicCapture])
+  }, [assistantState, isCapturing, startMicCapture, stopMicCapture, settings?.voice?.wakeWordEnabled])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -106,6 +135,15 @@ export default function App() {
     assistantState === 'processing' ||
     assistantState === 'speaking'
 
+  // If this window is the Siri widget overlay, render ONLY the Siri visualizer
+  if (isSiriWidget) {
+    return (
+      <div className="h-screen w-screen bg-transparent overflow-hidden">
+        <SiriWidget />
+      </div>
+    )
+  }
+
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden select-none relative" style={{ backgroundColor: 'var(--jarvis-bg)' }}>
       {/* Animated background grid */}
@@ -120,11 +158,11 @@ export default function App() {
         />
         {/* Ambient glow */}
         <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-20 blur-[120px] transition-all duration-1000"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-25 blur-[120px] transition-all duration-1000"
           style={{
             background: isActive
               ? 'radial-gradient(circle, var(--jarvis-accent) 0%, transparent 70%)'
-              : 'radial-gradient(circle, rgba(255, 59, 48, 0.3) 0%, transparent 70%)',
+              : 'radial-gradient(circle, var(--jarvis-accent-dim) 0%, transparent 70%)',
           }}
         />
       </div>
@@ -133,10 +171,10 @@ export default function App() {
       <TitleBar />
 
       {/* Main Content */}
-      <div className="flex-1 flex relative z-10">
+      <div className="flex-1 flex relative z-10 overflow-hidden">
         {/* Left: Chat Panel */}
         {showChat && (
-          <div className="w-96 h-full p-4 animate-slide-in-left">
+          <div className="w-full max-w-[360px] md:max-w-[400px] h-full p-4 shrink-0 animate-slide-in-left">
             <ChatPanel onSendMessage={(text) => sendMessage('text_command', { text })} />
           </div>
         )}
@@ -151,30 +189,6 @@ export default function App() {
           {/* Orb */}
           <div className="cursor-pointer" onClick={handleOrbClick}>
             <Orb />
-          </div>
-
-          {/* State Label */}
-          <div className="mt-4 text-center">
-            <span
-              className="text-xs font-medium uppercase tracking-[0.2em] transition-all duration-500"
-              style={{
-                color:
-                  assistantState === 'idle'
-                    ? 'var(--jarvis-text-dim)'
-                    : 'var(--jarvis-accent)',
-                textShadow:
-                  assistantState !== 'idle'
-                    ? '0 0 10px var(--jarvis-accent)'
-                    : 'none',
-              }}
-            >
-              {assistantState === 'idle' && 'Ready'}
-              {assistantState === 'wake_word_detected' && 'Activated'}
-              {assistantState === 'listening' && 'Listening...'}
-              {assistantState === 'processing' && 'Processing...'}
-              {assistantState === 'speaking' && 'Speaking...'}
-              {assistantState === 'executing' && 'Executing...'}
-            </span>
           </div>
 
           {/* Voice Wave (below orb) */}

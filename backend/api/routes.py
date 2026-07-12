@@ -6,6 +6,7 @@ conversation history, settings management, and TTS voice listing.
 """
 
 import time
+import asyncio
 from typing import Optional
 
 from fastapi import APIRouter, Request
@@ -261,3 +262,148 @@ async def list_monitors(request: Request):
             logger.error(f"Failed to list monitors: {e}")
             return {"status": "ok", "monitors": [], "error": str(e)}
     return {"status": "ok", "monitors": []}
+
+
+@router.get("/router/rankings")
+async def get_router_rankings(request: Request):
+    """Get the current ranked list of providers and their performance."""
+    app = request.app
+    if not hasattr(app.state, "llm_router") or not app.state.llm_router:
+        return {"status": "error", "message": "Router not initialized"}
+
+    router_service = app.state.llm_router
+    ranked = await router_service.get_ranked_providers()
+
+    providers_data = []
+    for p in ranked:
+        providers_data.append({
+            "provider": p,
+            "model": router_service._get_model_name(p),
+            "circuit": router_service.circuit_state[p],
+            "latency": round(router_service.metrics[p]["latency"] * 1000, 2),  # ms
+            "throughput": round(router_service.metrics[p]["throughput"], 2),  # t/s
+            "success_rate": round(router_service.metrics[p]["success_rate"] * 100, 1),
+            "cost_per_1m": router_service.costs.get(p, 0.0),
+            "failures": router_service.consecutive_failures[p]
+        })
+
+    return {"status": "ok", "rankings": providers_data}
+
+
+@router.get("/router/metrics")
+async def get_router_metrics(request: Request):
+    """Get recent routing decisions and fallback execution logs."""
+    app = request.app
+    if not hasattr(app.state, "llm_router") or not app.state.llm_router:
+        return {"status": "error", "message": "Router not initialized"}
+
+    router_service = app.state.llm_router
+    if not router_service.session_factory:
+        return {"status": "ok", "metrics": []}
+
+    try:
+        from sqlalchemy import select
+        from backend.models.database import RoutingDecision
+
+        async with router_service.session_factory() as session:
+            result = await session.execute(
+                select(RoutingDecision)
+                .order_by(RoutingDecision.timestamp.desc())
+                .limit(20)
+            )
+            decisions = result.scalars().all()
+            data = []
+            for d in decisions:
+                data.append({
+                    "id": d.id,
+                    "selected_provider": d.selected_provider,
+                    "selected_model": d.selected_model,
+                    "latency": round(d.latency * 1000, 2),
+                    "success": d.success,
+                    "fallback_count": d.fallback_count,
+                    "cost": round(d.cost * 1000, 4),
+                    "timestamp": d.timestamp.isoformat() if d.timestamp else None
+                })
+            return {"status": "ok", "metrics": data}
+    except Exception as e:
+        logger.error(f"Failed to fetch router metrics from DB: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@router.get("/brain/memories")
+async def get_brain_memories(request: Request):
+    """Get summaries of all stored semantic knowledge, preferences, corrections, and workflows."""
+    app = request.app
+    if not hasattr(app.state, "memory_service") or not app.state.memory_service:
+        return {"status": "error", "message": "Memory service not initialized"}
+
+    mem_service = app.state.memory_service
+    if not mem_service._session_factory:
+        return {"status": "ok", "memories": [], "lessons": [], "workflows": []}
+
+    try:
+        from sqlalchemy import select
+        from backend.models.database import MemoryLog, LessonLearned, SuccessfulWorkflow
+
+        async with mem_service._session_factory() as session:
+            # 1. Fetch memories
+            res_mem = await session.execute(
+                select(MemoryLog).order_by(MemoryLog.created_at.desc()).limit(30)
+            )
+            memories = res_mem.scalars().all()
+            mem_list = [{
+                "id": m.id,
+                "content": m.content,
+                "importance": m.importance,
+                "is_consolidated": m.is_consolidated,
+                "created_at": m.created_at.isoformat() if m.created_at else None
+            } for m in memories]
+
+            # 2. Fetch lessons learned
+            res_les = await session.execute(
+                select(LessonLearned).order_by(LessonLearned.created_at.desc()).limit(15)
+            )
+            lessons = res_les.scalars().all()
+            les_list = [{
+                "id": l.id,
+                "trigger_keywords": l.trigger_keywords,
+                "error_description": l.error_description,
+                "correction": l.correction,
+                "created_at": l.created_at.isoformat() if l.created_at else None
+            } for l in lessons]
+
+            # 3. Fetch workflows
+            res_wf = await session.execute(
+                select(SuccessfulWorkflow).order_by(SuccessfulWorkflow.created_at.desc()).limit(15)
+            )
+            workflows = res_wf.scalars().all()
+            wf_list = [{
+                "id": w.id,
+                "task_description": w.task_description,
+                "optimized_prompt": w.optimized_prompt,
+                "created_at": w.created_at.isoformat() if w.created_at else None
+            } for w in workflows]
+
+            return {
+                "status": "ok",
+                "memories": mem_list,
+                "lessons": les_list,
+                "workflows": wf_list
+            }
+    except Exception as e:
+        logger.error(f"Failed to fetch brain memories: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/brain/consolidate")
+async def consolidate_brain_memories(request: Request):
+    """Trigger the memory consolidation task manually."""
+    app = request.app
+    if not hasattr(app.state, "memory_service") or not app.state.memory_service:
+        return {"status": "error", "message": "Memory service not initialized"}
+
+    try:
+        asyncio.create_task(app.state.memory_service.consolidate_memories())
+        return {"status": "ok", "message": "Consolidation task kicked off in the background."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

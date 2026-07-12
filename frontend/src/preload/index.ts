@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 
 export interface ElectronAPI {
   minimize: () => Promise<void>
-  maximize: () => Promise<void>
+  maximize: () => Promise<boolean>
   close: () => Promise<void>
   isMaximized: () => Promise<boolean>
   getSystemInfo: () => Promise<{
@@ -15,9 +15,12 @@ export interface ElectronAPI {
     backendPort?: number
   }>
   showNotification: (title: string, body: string) => Promise<void>
+  websocketConnected: () => void
   onPushToTalk: (callback: () => void) => () => void
   onWindowStateChanged: (callback: (state: { isMaximized: boolean }) => void) => () => void
   onOpenSettings: (callback: () => void) => () => void
+  sendStateUpdate: (state: string, audioLevel: number) => void
+  onStatusUpdate: (callback: (data: { state: string; audioLevel: number }) => void) => () => void
   platform: string
 }
 
@@ -26,6 +29,7 @@ const api: ElectronAPI = {
   maximize: () => ipcRenderer.invoke('window-maximize'),
   close: () => ipcRenderer.invoke('window-close'),
   isMaximized: () => ipcRenderer.invoke('window-is-maximized'),
+  websocketConnected: () => ipcRenderer.send('websocket-connected'),
   getSystemInfo: () => ipcRenderer.invoke('get-system-info'),
   showNotification: (title: string, body: string) =>
     ipcRenderer.invoke('show-notification', title, body),
@@ -52,6 +56,18 @@ const api: ElectronAPI = {
     ipcRenderer.on('open-settings', handler)
     return () => {
       ipcRenderer.removeListener('open-settings', handler)
+    }
+  },
+
+  sendStateUpdate: (state: string, audioLevel: number) => {
+    ipcRenderer.send('renderer-state-update', { state, audioLevel })
+  },
+
+  onStatusUpdate: (callback: (data: { state: string; audioLevel: number }) => void) => {
+    const handler = (_event: any, data: { state: string; audioLevel: number }): void => callback(data)
+    ipcRenderer.on('status-update', handler)
+    return () => {
+      ipcRenderer.removeListener('status-update', handler)
     }
   },
 

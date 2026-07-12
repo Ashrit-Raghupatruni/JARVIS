@@ -13,8 +13,36 @@ import time
 from typing import Optional
 
 import numpy as np
+from loguru import logger
 
-from backend.utils.logger import logger
+import re
+
+def clean_whisper_hallucinations(text: str) -> str:
+    """Removes common Whisper static hallucinations and repeated-word loops."""
+    if not text:
+        return ""
+    
+    text = text.strip()
+    
+    # 1. Hallucinated repeated single words (e.g. "hi, hi, hi", "you, you, you")
+    words = text.split()
+    if len(words) >= 3:
+        unique_words = set(w.lower().strip(".,!?") for w in words)
+        if len(unique_words) == 1:
+            logger.warning("Detected word repetition hallucination: '{}'", text)
+            return list(unique_words)[0].capitalize()
+            
+    # 2. Hallucinated repeated phrases (e.g. "thank you thank you thank you")
+    phrases = re.findall(r'\b(\w+\s+\w+)\b', text.lower())
+    if phrases:
+        from collections import Counter
+        counts = Counter(phrases)
+        most_common, count = counts.most_common(1)[0]
+        if count >= 3 and (count * 2) >= len(words) * 0.6:
+            logger.warning("Detected phrase repetition hallucination: '{}'", text)
+            return most_common.capitalize()
+            
+    return text
 
 
 class STTService:
@@ -132,7 +160,8 @@ class STTService:
         # 1. Try Google Gemini API if key is present (highly accurate and fast)
         if settings.GEMINI_API_KEY and not settings.GEMINI_API_KEY.startswith("AIzaSy-your"):
             try:
-                import google.generativeai as genai
+                from google import genai
+                from google.genai import types
                 import io
                 import wave
 
@@ -145,16 +174,19 @@ class STTService:
 
                 wav_data = wav_buffer.getvalue()
 
-                genai.configure(api_key=settings.GEMINI_API_KEY)
+                client = genai.Client(api_key=settings.GEMINI_API_KEY)
                 model_name = settings.GEMINI_MODEL or "gemini-2.0-flash"
-                model = genai.GenerativeModel(model_name)
 
                 logger.info(f"Transcribing speech via Google Gemini API ({model_name})...")
                 start_time = time.perf_counter()
 
-                response = await model.generate_content_async(
+                response = await client.aio.models.generate_content(
+                    model=model_name,
                     contents=[
-                        {"mime_type": "audio/wav", "data": wav_data},
+                        types.Part.from_bytes(
+                            data=wav_data,
+                            mime_type="audio/wav"
+                        ),
                         "Transcribe the audio exactly as spoken. Do not include any translation, markdown formatting, explanations, or introductory remarks. Only output the transcribed text."
                     ]
                 )
@@ -167,7 +199,7 @@ class STTService:
                         "Gemini transcription completed in {:.2f}s — text='{}'",
                         elapsed, text[:80]
                     )
-                    return text
+                    return clean_whisper_hallucinations(text)
             except Exception as e:
                 logger.error(f"Gemini API speech-to-text failed: {e}. Falling back...")
 
@@ -200,7 +232,7 @@ class STTService:
                 text = response.text.strip()
                 elapsed = time.perf_counter() - start_time
                 logger.info(f"OpenAI transcription completed in {elapsed:.2f}s — text='{text}'")
-                return text
+                return clean_whisper_hallucinations(text)
             except Exception as e:
                 logger.error(f"OpenAI Whisper API speech-to-text failed: {e}. Falling back...")
 
@@ -276,7 +308,7 @@ class STTService:
             else:
                 logger.debug("Transcription returned empty result in {:.2f}s", elapsed)
 
-            return full_text
+            return clean_whisper_hallucinations(full_text)
 
         except Exception as e:
             logger.error("Transcription error: {}", e)

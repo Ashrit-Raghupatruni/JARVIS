@@ -30,6 +30,10 @@ export function useAudio(
   const isPlayingRef = useRef(false)
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null)
 
+  // Analyser and frame request for playback levels
+  const playbackAnalyserRef = useRef<AnalyserNode | null>(null)
+  const playbackAnimFrameRef = useRef<number | null>(null)
+
   const setAudioLevel = useAppStore.getState().setAudioLevel
 
   const getOrCreateAudioContext = useCallback((): AudioContext => {
@@ -46,7 +50,7 @@ export function useAudio(
     return playbackContextRef.current
   }, [])
 
-  // Monitor audio level continuously
+  // Monitor microphone audio level continuously
   const monitorLevel = useCallback(() => {
     if (!analyserRef.current) return
 
@@ -62,6 +66,26 @@ export function useAudio(
     setAudioLevel(average)
 
     animFrameRef.current = requestAnimationFrame(monitorLevel)
+  }, [setAudioLevel])
+
+  // Monitor speaker playback audio level continuously
+  const monitorPlaybackLevel = useCallback(() => {
+    if (!playbackAnalyserRef.current || !isPlayingRef.current) {
+      setAudioLevel(0)
+      return
+    }
+
+    const dataArray = new Uint8Array(playbackAnalyserRef.current.frequencyBinCount)
+    playbackAnalyserRef.current.getByteFrequencyData(dataArray)
+
+    let sum = 0
+    for (let i = 0; i < dataArray.length; i++) {
+      sum += dataArray[i]
+    }
+    const average = sum / dataArray.length / 255
+    setAudioLevel(average)
+
+    playbackAnimFrameRef.current = requestAnimationFrame(monitorPlaybackLevel)
   }, [setAudioLevel])
 
   const startMicCapture = useCallback(async () => {
@@ -173,6 +197,11 @@ export function useAudio(
   const playNextChunk = useCallback(async () => {
     if (playbackQueueRef.current.length === 0) {
       isPlayingRef.current = false
+      if (playbackAnimFrameRef.current) {
+        cancelAnimationFrame(playbackAnimFrameRef.current)
+        playbackAnimFrameRef.current = null
+      }
+      setAudioLevel(0)
       useAppStore.getState().setSpeaking(false)
       return
     }
@@ -189,12 +218,27 @@ export function useAudio(
       const audioBuffer = await ctx.decodeAudioData(chunk.slice(0))
       const source = ctx.createBufferSource()
       source.buffer = audioBuffer
-      source.connect(ctx.destination)
+
+      // Setup analyser for speaker visualization
+      let analyser = playbackAnalyserRef.current
+      if (!analyser) {
+        analyser = ctx.createAnalyser()
+        analyser.fftSize = 256
+        analyser.smoothingTimeConstant = 0.8
+        playbackAnalyserRef.current = analyser
+      }
+
+      source.connect(analyser)
+      analyser.connect(ctx.destination)
       currentSourceRef.current = source
 
       source.onended = () => {
         currentSourceRef.current = null
         playNextChunk()
+      }
+
+      if (!playbackAnimFrameRef.current) {
+        monitorPlaybackLevel()
       }
 
       source.start()
@@ -203,7 +247,7 @@ export function useAudio(
       currentSourceRef.current = null
       playNextChunk()
     }
-  }, [getOrCreatePlaybackContext])
+  }, [getOrCreatePlaybackContext, monitorPlaybackLevel, setAudioLevel])
 
   const playAudioChunk = useCallback(
     async (data: ArrayBuffer) => {
@@ -220,6 +264,11 @@ export function useAudio(
   const stopPlayback = useCallback(() => {
     playbackQueueRef.current = []
 
+    if (playbackAnimFrameRef.current) {
+      cancelAnimationFrame(playbackAnimFrameRef.current)
+      playbackAnimFrameRef.current = null
+    }
+
     if (currentSourceRef.current) {
       try {
         currentSourceRef.current.stop()
@@ -230,8 +279,9 @@ export function useAudio(
     }
 
     isPlayingRef.current = false
+    setAudioLevel(0)
     useAppStore.getState().setSpeaking(false)
-  }, [])
+  }, [setAudioLevel])
 
   const getAudioLevel = useCallback((): number => {
     return audioLevelRef.current

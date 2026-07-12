@@ -43,6 +43,10 @@ def clean_text_for_tts(text: str) -> str:
     """Clean markdown, code blocks, and formatting from text for TTS."""
     if not text:
         return ""
+    
+    from backend.services.llm import clean_function_calls_from_text
+    text = clean_function_calls_from_text(text)
+    
     # 1. Remove code blocks (``` ... ```)
     text = re.sub(r'```[\s\S]*?```', '', text)
     
@@ -64,6 +68,52 @@ def clean_text_for_tts(text: str) -> str:
     return text
 
 
+def expects_follow_up(text: str) -> bool:
+    """Check if the text expects a follow-up answer (ends with question mark or typical prompt)."""
+    if not text:
+        return False
+    text = text.strip()
+    # Ends with a question mark
+    if text.endswith("?"):
+        return True
+    
+    # Or ends with a question-like punctuation or sentence
+    lower_text = text.lower()
+    
+    # Check for question words at the start of sentences near the end
+    sentences = re.split(r'[.!?]+', text)
+    last_sentence = ""
+    for s in reversed(sentences):
+        if s.strip():
+            last_sentence = s.strip().lower()
+            break
+            
+    if last_sentence:
+        question_starts = ["what", "how", "why", "who", "where", "when", "which", "whose", "whom", "would you", "could you", "can you", "do you", "are you", "is there", "should we"]
+        for start in question_starts:
+            if last_sentence.startswith(start):
+                return True
+                
+    # Common conversational follow-up triggers
+    follow_up_patterns = [
+        r"what do you think",
+        r"would you like",
+        r"do you want",
+        r"let me know",
+        r"anything else",
+        r"how about you",
+        r"tell me",
+        r"feel free to ask",
+        r"any questions",
+        r"need help with anything",
+    ]
+    for pattern in follow_up_patterns:
+        if re.search(pattern, lower_text):
+            return True
+            
+    return False
+
+
 class VoiceAgent:
     """Manages the voice interaction pipeline and state machine."""
 
@@ -82,7 +132,7 @@ class VoiceAgent:
         self._state = AssistantState.IDLE
         self._audio_buffer: list[bytes] = []
         self._listening_start_time: float = 0
-        self._silence_timeout = 10.0  # seconds
+        self._silence_timeout = 10.0  # seconds (follow-up listening window)
         self._min_audio_length = 0.5  # minimum seconds of audio to process
         self._is_speaking = False
         self._cancel_speech = False
@@ -94,6 +144,11 @@ class VoiceAgent:
         self._silence_frames = 0
         self._silence_threshold = 30  # frames of silence before processing
         self._has_speech = False
+        self._played_ack = False
+        self._last_speech_time = 0.0
+        self._speech_silence_timeout = 2.0  # 2.0s silence window for VAD completion
+        self._rolling_audio_history: list[bytes] = []  # rolling history buffer to prevent race conditions
+        self._session_id = 0
 
     @property
     def state(self) -> AssistantState:
@@ -111,108 +166,110 @@ class VoiceAgent:
 
         Yields WSMessage objects for state changes, transcripts, responses, and TTS audio.
         """
-        if self._state == AssistantState.IDLE:
-            # Check for wake word
-            if self.wake_word:
-                try:
-                    detected = self.wake_word.process_audio(chunk)
-                    if detected:
-                        logger.info("Wake word detected!")
-                        self.state = AssistantState.WAKE_WORD_DETECTED
-                        yield WSMessage(
-                            type="status",
-                            data=StatusMessage(state=AssistantState.WAKE_WORD_DETECTED).model_dump(),
-                        )
-                        yield WSMessage(
-                            type="wake_word",
-                            data={"detected": True},
-                        )
+        # Maintain rolling audio history when not actively capturing user speech to prevent syllable truncation
+        if self._state != AssistantState.LISTENING:
+            self._rolling_audio_history.append(chunk)
+            total_bytes = sum(len(c) for c in self._rolling_audio_history)
+            while total_bytes > 48000 and self._rolling_audio_history:
+                removed = self._rolling_audio_history.pop(0)
+                total_bytes -= len(removed)
 
-                        # Send acknowledgment
-                        ack = random.choice(ACKNOWLEDGMENTS)
-                        yield WSMessage(
-                            type="response",
-                            data=ResponseMessage(text=ack).model_dump(),
-                        )
+        # 1. Wake word detection in IDLE, SPEAKING, and PROCESSING states
+        if self.wake_word and self._state in [AssistantState.IDLE, AssistantState.SPEAKING, AssistantState.PROCESSING]:
+            try:
+                detected = self.wake_word.process_audio(chunk)
+                if detected:
+                    logger.info(f"Wake word detected in state: {self._state.value}!")
+                    
+                    # Stop current speech if speaking
+                    if self._state == AssistantState.SPEAKING:
+                        self._cancel_speech = True
+                        
+                    self._session_id += 1
+                    logger.info(f"Session ID incremented to {self._session_id} on wake word detection.")
+                    self.state = AssistantState.LISTENING
+                    # Pre-populate buffer with the last 1.5s of rolling audio history
+                    self._audio_buffer = list(self._rolling_audio_history)
+                    self._rolling_audio_history.clear()
+                    self._listening_start_time = time.time()
+                    self._last_speech_time = time.time()
+                    self._has_speech = False
+                    self._played_ack = False
+                    
+                    yield WSMessage(
+                        type="status",
+                        data=StatusMessage(state=AssistantState.LISTENING).model_dump(),
+                    )
+                    yield WSMessage(
+                        type="wake_word",
+                        data={"detected": True},
+                    )
+                    return
+            except Exception as e:
+                logger.error(f"Wake word processing error: {e}")
 
-                        # Generate TTS for acknowledgment
-                        async for tts_msg in self._speak(ack):
-                            yield tts_msg
-
-                        # Transition to listening
-                        self.state = AssistantState.LISTENING
-                        self._audio_buffer.clear()
-                        self._listening_start_time = time.time()
-                        self._silence_frames = 0
-                        self._has_speech = False
-                        yield WSMessage(
-                            type="status",
-                            data=StatusMessage(state=AssistantState.LISTENING).model_dump(),
-                        )
-                except Exception as e:
-                    logger.error(f"Wake word processing error: {e}")
-
-        elif self._state == AssistantState.LISTENING:
-            # Accumulate audio for transcription
+        # 2. Listening state processing
+        if self._state == AssistantState.LISTENING:
             self._audio_buffer.append(chunk)
 
-            # Check for voice activity (simple energy-based)
+            # Check for voice activity (simple energy-based VAD)
             try:
                 audio_array = np.frombuffer(chunk, dtype=np.int16).astype(np.float32)
                 energy = np.sqrt(np.mean(audio_array ** 2))
 
                 if energy > 500:  # Speech threshold
+                    if not self._has_speech:
+                        logger.info("Speech detected, listening...")
                     self._has_speech = True
-                    self._silence_frames = 0
-                elif self._has_speech:
-                    self._silence_frames += 1
-            except Exception:
-                self._silence_frames += 1
-
-            # Check for silence timeout (end of speech)
-            elapsed = time.time() - self._listening_start_time
-
-            if self._has_speech and self._silence_frames > self._silence_threshold:
-                # User finished speaking — process the audio
-                async for msg in self._process_speech():
-                    yield msg
-
-            elif elapsed > self._silence_timeout:
-                # Timeout — no speech detected
-                logger.info("Listening timeout — returning to idle")
-                self.state = AssistantState.IDLE
-                self._audio_buffer.clear()
-                yield WSMessage(
-                    type="status",
-                    data=StatusMessage(state=AssistantState.IDLE).model_dump(),
-                )
-
-        elif self._state == AssistantState.SPEAKING:
-            # Check if user is interrupting
-            try:
-                audio_array = np.frombuffer(chunk, dtype=np.int16).astype(np.float32)
-                energy = np.sqrt(np.mean(audio_array ** 2))
-
-                if energy > 1000:  # Higher threshold for interruption
-                    logger.info("User interruption detected — stopping speech")
-                    self._cancel_speech = True
-                    self.state = AssistantState.LISTENING
-                    self._audio_buffer.clear()
-                    self._audio_buffer.append(chunk)
-                    self._listening_start_time = time.time()
-                    self._silence_frames = 0
-                    self._has_speech = True
-                    yield WSMessage(
-                        type="status",
-                        data=StatusMessage(state=AssistantState.LISTENING).model_dump(),
-                    )
+                    self._last_speech_time = time.time()
             except Exception:
                 pass
+
+            elapsed = time.time() - self._listening_start_time
+
+            if self._has_speech:
+                silence_duration = time.time() - self._last_speech_time
+                if silence_duration > self._speech_silence_timeout:  # 2.0s VAD silence window
+                    logger.info("Silence detected after speech — processing speech...")
+                    async for msg in self._process_speech():
+                        yield msg
+                elif elapsed > 30.0:  # Max speech duration limit
+                    logger.info("Max speech duration reached — processing speech...")
+                    async for msg in self._process_speech():
+                        yield msg
+            else:
+                # If they said the wake word and remained silent for 1.5 seconds, play verbal acknowledgment
+                if elapsed > 1.5 and not self._played_ack and not self._push_to_talk_active:
+                    self._played_ack = True
+                    ack = random.choice(ACKNOWLEDGMENTS)
+                    yield WSMessage(
+                        type="response",
+                        data=ResponseMessage(text=ack).model_dump(),
+                    )
+                    # Play TTS for acknowledgment
+                    async for tts_msg in self._speak(ack):
+                        yield tts_msg
+                        
+                    # Transition back to listening and reset times
+                    self.state = AssistantState.LISTENING
+                    self._listening_start_time = time.time()
+                    self._last_speech_time = time.time()
+                elif elapsed > self._silence_timeout:
+                    # Timeout — no speech detected at all
+                    logger.info("Listening timeout (no speech detected) — returning to idle")
+                    self.state = AssistantState.IDLE
+                    self._audio_buffer.clear()
+                    yield WSMessage(
+                        type="status",
+                        data=StatusMessage(state=AssistantState.IDLE).model_dump(),
+                    )
 
     async def handle_push_to_talk_start(self) -> AsyncGenerator[WSMessage, None]:
         """Handle push-to-talk activation."""
         self._push_to_talk_active = True
         self._cancel_speech = True  # Stop any current speech
+        self._session_id += 1
+        logger.info(f"Session ID incremented to {self._session_id} on PTT start.")
         self.state = AssistantState.LISTENING
         self._audio_buffer.clear()
         self._listening_start_time = time.time()
@@ -251,7 +308,11 @@ class VoiceAgent:
 
     async def _process_speech(self) -> AsyncGenerator[WSMessage, None]:
         """Process accumulated audio: STT → Planner → TTS."""
+        session_id = self._session_id
+
         if not self._audio_buffer:
+            if self._session_id != session_id:
+                return
             self.state = AssistantState.IDLE
             yield WSMessage(
                 type="status",
@@ -267,6 +328,8 @@ class VoiceAgent:
         audio_duration = len(combined_audio) / (self._sample_rate * self._bytes_per_sample)
         if audio_duration < self._min_audio_length:
             logger.debug(f"Audio too short ({audio_duration:.1f}s), ignoring")
+            if self._session_id != session_id:
+                return
             self.state = AssistantState.IDLE
             yield WSMessage(
                 type="status",
@@ -275,6 +338,8 @@ class VoiceAgent:
             return
 
         # Signal processing state
+        if self._session_id != session_id:
+            return
         self.state = AssistantState.PROCESSING
         yield WSMessage(
             type="status",
@@ -286,8 +351,22 @@ class VoiceAgent:
             transcript = await self.stt.transcribe(combined_audio)
             transcript = transcript.strip()
 
+            if self._session_id != session_id:
+                return
+
             if not transcript or transcript.lower() in ["", "you", "thank you", "thanks"]:
                 logger.debug(f"Empty or noise transcript: '{transcript}'")
+                self.state = AssistantState.IDLE
+                yield WSMessage(
+                    type="status",
+                    data=StatusMessage(state=AssistantState.IDLE).model_dump(),
+                )
+                return
+
+            # Explicit cancellation command check
+            clean_tr = transcript.lower().strip(".,!? ")
+            if clean_tr in ["stop listening", "cancel", "goodbye", "bye", "stop"]:
+                logger.info("User explicitly ended the conversation.")
                 self.state = AssistantState.IDLE
                 yield WSMessage(
                     type="status",
@@ -302,6 +381,8 @@ class VoiceAgent:
             )
         except Exception as e:
             logger.error(f"STT failed: {e}")
+            if self._session_id != session_id:
+                return
             self.state = AssistantState.IDLE
             yield WSMessage(type="error", data={"message": f"Speech recognition failed: {e}"})
             yield WSMessage(
@@ -314,11 +395,15 @@ class VoiceAgent:
         response_text = ""
         try:
             async for planner_msg in self.planner.plan_and_execute(transcript):
+                if self._session_id != session_id:
+                    return
                 yield planner_msg
                 if planner_msg.type == "response":
                     response_text = planner_msg.data.get("text", "")
         except Exception as e:
             logger.error(f"Planner failed: {e}")
+            if self._session_id != session_id:
+                return
             response_text = "I'm sorry sir, I encountered an error processing that request."
             yield WSMessage(
                 type="response",
@@ -327,18 +412,38 @@ class VoiceAgent:
 
         # Text-to-speech
         if response_text:
-            async for tts_msg in self._speak(response_text):
+            if self._session_id != session_id:
+                return
+            async for tts_msg in self._speak(response_text, session_id):
                 yield tts_msg
 
-        # Return to idle
-        self.state = AssistantState.IDLE
-        yield WSMessage(
-            type="status",
-            data=StatusMessage(state=AssistantState.IDLE).model_dump(),
-        )
+        if self._session_id != session_id:
+            return
 
-    async def _speak(self, text: str) -> AsyncGenerator[WSMessage, None]:
+        # Return to idle or silently enter listening mode if follow-up is expected
+        if response_text and expects_follow_up(response_text) and not self._cancel_speech:
+            logger.info("Response expects follow-up — entering listening mode silently...")
+            self.state = AssistantState.LISTENING
+            self._audio_buffer.clear()
+            self._listening_start_time = time.time()
+            self._last_speech_time = time.time()
+            self._has_speech = False
+            self._played_ack = True  # Suppress initial "Yes sir?" acknowledgment prompt
+            yield WSMessage(
+                type="status",
+                data=StatusMessage(state=AssistantState.LISTENING).model_dump(),
+            )
+        else:
+            self.state = AssistantState.IDLE
+            yield WSMessage(
+                type="status",
+                data=StatusMessage(state=AssistantState.IDLE).model_dump(),
+            )
+
+    async def _speak(self, text: str, session_id: Optional[int] = None) -> AsyncGenerator[WSMessage, None]:
         """Generate and play TTS audio for the given text."""
+        if session_id is not None and self._session_id != session_id:
+            return
         cleaned_text = clean_text_for_tts(text)
         if not cleaned_text or not cleaned_text.strip():
             logger.debug("TTS received empty text after cleaning, skipping speech")
@@ -346,6 +451,10 @@ class VoiceAgent:
 
         self._is_speaking = True
         self._cancel_speech = False
+
+        if session_id is not None and self._session_id != session_id:
+            self._is_speaking = False
+            return
         self.state = AssistantState.SPEAKING
 
         yield WSMessage(
@@ -357,6 +466,10 @@ class VoiceAgent:
             logger.info(f"Synthesizing full TTS: '{cleaned_text[:60]}...'")
             audio_bytes = await self.tts.synthesize(cleaned_text)
             
+            if session_id is not None and self._session_id != session_id:
+                self._is_speaking = False
+                return
+
             if audio_bytes and not self._cancel_speech:
                 import base64
                 audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
@@ -367,11 +480,16 @@ class VoiceAgent:
         except Exception as e:
             logger.error(f"TTS failed: {e}")
 
+        if session_id is not None and self._session_id != session_id:
+            return
         self._is_speaking = False
         self._cancel_speech = False
 
     async def handle_text_command(self, text: str) -> AsyncGenerator[WSMessage, None]:
         """Handle a text command (typed, not spoken)."""
+        self._session_id += 1
+        session_id = self._session_id
+
         # Skip wake word and STT — go directly to planner
         yield WSMessage(
             type="status",
@@ -380,15 +498,21 @@ class VoiceAgent:
 
         response_text = ""
         async for msg in self.planner.plan_and_execute(text):
+            if self._session_id != session_id:
+                return
             yield msg
             if msg.type == "response":
                 response_text = msg.data.get("text", "")
 
         # TTS for the response
         if response_text:
-            async for tts_msg in self._speak(response_text):
+            if self._session_id != session_id:
+                return
+            async for tts_msg in self._speak(response_text, session_id):
                 yield tts_msg
 
+        if self._session_id != session_id:
+            return
         self.state = AssistantState.IDLE
         yield WSMessage(
             type="status",

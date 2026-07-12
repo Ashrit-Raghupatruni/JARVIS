@@ -4,6 +4,7 @@ JARVIS AI Desktop Assistant — FastAPI Backend Entry Point.
 Initializes all services, configures the API, and starts the server.
 """
 
+import os
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -50,9 +51,23 @@ async def lifespan(app: FastAPI):
             active_model = settings.OLLAMA_MODEL
         elif provider == "gemini":
             active_model = settings.GEMINI_MODEL
+        elif provider == "groq":
+            active_model = settings.GROQ_MODEL
+        elif provider == "openrouter":
+            active_model = settings.OPENROUTER_MODEL
+        elif provider == "nvidia":
+            active_model = settings.NIM_MODEL
         else:
             active_model = settings.OPENAI_MODEL
         logger.info(f"✓ LLM service initialized (provider: {provider}, model: {active_model})")
+        # Initialize Router
+        if llm_service and hasattr(llm_service, "router") and llm_service.router:
+            try:
+                await llm_service.router.init()
+                app.state.llm_router = llm_service.router
+                logger.info("✓ Dynamic LLM Router initialized and registered in App state")
+            except Exception as e:
+                logger.error(f"✗ LLM Router failed to start: {e}")
     except Exception as e:
         logger.error(f"✗ LLM service failed: {e}")
         app.state.llm_service = None
@@ -257,6 +272,37 @@ async def lifespan(app: FastAPI):
     logger.info(f"  WebSocket: ws://{settings.SERVER_HOST}:{settings.SERVER_PORT}/ws")
     logger.info("=" * 60)
 
+    # Launch Electron frontend if not already spawned by Electron
+    if os.environ.get("SPAWNED_BY_ELECTRON") != "true":
+        async def launch_frontend():
+            await asyncio.sleep(1.5)  # Let uvicorn start listening on the port
+            try:
+                import subprocess
+                import os
+                
+                frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
+                logger.info(f"Auto-launching Electron frontend from {frontend_dir}...")
+                
+                # Clean environment variable that causes VS Code / IDE issues
+                env = os.environ.copy()
+                if "ELECTRON_RUN_AS_NODE" in env:
+                    del env["ELECTRON_RUN_AS_NODE"]
+                
+                # Launch Electron in the background
+                subprocess.Popen(
+                    ["npm", "run", "dev"],
+                    cwd=frontend_dir,
+                    shell=True,
+                    env=env,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+                logger.info("✓ Electron frontend launch process spawned")
+            except Exception as ex:
+                logger.error(f"Failed to auto-launch Electron frontend: {ex}")
+
+        asyncio.create_task(launch_frontend())
+
     # ── Yield to application ──────────────────────────────────
     yield
 
@@ -295,6 +341,13 @@ async def lifespan(app: FastAPI):
             await browser_service.stop()
         except Exception as e:
             logger.error(f"Browser cleanup error: {e}")
+
+    if hasattr(app.state, "llm_router") and app.state.llm_router:
+        try:
+            await app.state.llm_router.shutdown()
+            logger.info("✓ LLM Router shut down cleanly")
+        except Exception as e:
+            logger.error(f"Router cleanup error: {e}")
 
     if memory_service:
         try:

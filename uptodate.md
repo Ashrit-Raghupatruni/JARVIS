@@ -27,10 +27,10 @@ The architecture is split into a **React + Electron** desktop client (frontend) 
 * **Utilities:** `loguru` v0.7.3 (structured logging), `python-dotenv` v1.1.0 (config management)
 
 ### AI Models & Integrations
-* **LLM Engine:** Multi-provider client wrapper supporting:
-  * **Local Primary:** Ollama (default: `qwen2.5-coder:3b` via local port 11434)
-  * **Cloud Failover Providers:** Groq API (`llama-3.3-70b-versatile`), Google Gemini API (`gemini-2.0-flash` or `gemini-1.5-pro` for reasoning/vision), OpenAI API (`gpt-4o` / `gpt-4o-mini`), and OpenRouter API (`meta-llama/llama-3.3-70b-instruct:free`, `qwen-2.5-coder-32b`, etc.)
-  * **Smart Failover & Timeout Logic:** Automatically switches between providers (Ollama → Gemini → Groq → OpenAI → OpenRouter) if a model times out after **30 seconds** or throws an error (e.g. out of credits/authentication issues).
+* **LLM Engine & Intelligent Router:** Multi-provider orchestration client supporting Ollama, Google Gemini, Groq, OpenAI, and OpenRouter:
+  * **Dynamic Ranking Router:** Auto-measures response times, first-token latency, completion speed, success rate, cost, and quality to rank available models in real time. Runs a background poller thread with a circuit-breaker (trips after 3 consecutive failures).
+  * **Resilient Tool Fallbacks:** Parameter-validation try-catch blocks automatically and silently retry requests without tools if a model-specific error occurs (e.g. Groq's formatting failure) or if tool calling is unsupported.
+  * **Gemini Pydantic Integration:** Maps conversation history using native `types.Content` and `types.Part` SDK objects to satisfy strict Pydantic 2.x validation.
 * **Speech-to-Text (STT):** Local `faster-whisper` v1.1.1 (based on CTranslate2 base/small model) with automated API failover to Gemini Audio API or OpenAI Whisper API
 * **Text-to-Speech (TTS):** Microsoft `edge-tts` v7.2.8 (local/online hybrid, restricted to male-only voices: `en-GB-RyanNeural`, `en-US-GuyNeural`, `en-AU-WilliamNeural`, `en-IN-PrabhatNeural`) + ElevenLabs v1.50 (optional premium API)
 * **Wake Word:** `openwakeword` v0.6.0 (running ONNX runtime for local "Hey Jarvis" keyword trigger)
@@ -210,6 +210,10 @@ These variables are defined in the project's `.env` configuration file:
 2. **Phase P6 (Cross-Device Sync):** Added symmetric AES packet encryption (`SyncService`), UDP heartbeats, and WebSocket synchronization routes.
 3. **Phase P7 (Autonomous Sub-Agents):** Created `SubAgentInstance` background task runner, implemented `AgentSkill` tool definitions (`spawn_subagent`, `get_active_agents`, and `abort_subagent`), and added WebSocket commands to retrieve sub-agent status or cancel tasks dynamically.
 4. **Local History Safety:** Refactored conversation history handling inside `PlannerAgent` to utilize concurrent-safe local variables to prevent background agents from corrupting user chat.
+5. **Intelligent Router & Self-Improving Brain (Phase P8):** Built a background evaluation loop, active poller, and ChromaDB/SQLite memory manager to rank providers dynamically. Added preference correction extraction to learn from user edits.
+6. **Production-Grade Concurrency & Concurrency Verification:** Refactored React custom hooks using a reference-counted WebSocket client singleton to prevent race conditions. Integrated an asynchronous background queue (`voice_queue`) in `websocket.py` to process audio chunks/toggles sequentially and allow instant `interrupt` message parsing.
+7. **Session ID Isolation:** Implemented session-level ID tracking in `voice.py` to discard overlapping responses/TTS from stale voice queries when a new voice activation occurs.
+8. **Resilient Tool Fallbacks & Parameter Validation:** Wrapped OpenAI, Gemini, Groq, OpenRouter, and NVIDIA NIM completions in catch-all fallbacks to automatically retry without tools on parameter/schema/formatting errors. Corrected `PlannerAgent` to directly await async automation coroutines instead of wrapping them in `asyncio.to_thread`.
 
 ---
 

@@ -206,11 +206,25 @@ class PlannerAgent:
                 except Exception:
                     pass
 
+            # Trigger background self-improving brain learning
+            if self.memory:
+                try:
+                    asyncio.create_task(
+                        self.memory.analyze_and_learn(
+                            conversation_id="session",
+                            messages=history
+                        )
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to trigger conversation analysis: {e}")
+
             # Yield final response
+            from backend.services.llm import clean_function_calls_from_text
+            cleaned_text = clean_function_calls_from_text(response_text)
             yield WSMessage(
                 type="response",
                 data=ResponseMessage(
-                    text=response_text,
+                    text=cleaned_text,
                     conversation_id=None,
                 ).model_dump(),
             )
@@ -245,67 +259,47 @@ class PlannerAgent:
 
             # Automation tools
             if func_name == "open_application":
-                return await asyncio.to_thread(
-                    self.automation.open_application, func_args.get("app_name", "")
-                )
+                return await self.automation.open_application(func_args.get("app_name", ""))
             elif func_name == "close_application":
-                return await asyncio.to_thread(
-                    self.automation.close_application, func_args.get("app_name", "")
-                )
+                return await self.automation.close_application(func_args.get("app_name", ""))
             elif func_name == "type_text":
-                return await asyncio.to_thread(
-                    self.automation.type_text, func_args.get("text", "")
-                )
+                return await self.automation.type_text(func_args.get("text", ""))
             elif func_name == "press_hotkey":
-                keys = func_args.get("keys", [])
-                if isinstance(keys, str):
-                    keys = [keys]
-                return await asyncio.to_thread(self.automation.press_hotkey, *keys)
+                keys = func_args.get("keys", "")
+                return await self.automation.press_hotkey(keys)
             elif func_name == "move_mouse":
-                return await asyncio.to_thread(
-                    self.automation.move_mouse, func_args.get("x", 0), func_args.get("y", 0)
-                )
+                return await self.automation.move_mouse(func_args.get("x", 0), func_args.get("y", 0))
             elif func_name == "click_mouse":
-                return await asyncio.to_thread(
-                    self.automation.click_mouse,
+                return await self.automation.click_mouse(
                     func_args.get("button", "left"),
                     func_args.get("x"),
                     func_args.get("y"),
                 )
             elif func_name == "scroll":
-                return await asyncio.to_thread(
-                    self.automation.scroll,
+                return await self.automation.scroll(
                     func_args.get("direction", "down"),
                     func_args.get("amount", 3),
                 )
             elif func_name == "create_file":
-                return await asyncio.to_thread(
-                    self.automation.create_file,
+                return await self.automation.create_file(
                     func_args.get("path", ""),
                     func_args.get("content", ""),
                 )
             elif func_name == "create_folder":
-                return await asyncio.to_thread(
-                    self.automation.create_folder, func_args.get("path", "")
-                )
+                return await self.automation.create_folder(func_args.get("path", ""))
             elif func_name == "rename_file":
-                return await asyncio.to_thread(
-                    self.automation.rename_file,
+                return await self.automation.rename_file(
                     func_args.get("old_path", ""),
                     func_args.get("new_path", ""),
                 )
             elif func_name == "delete_file":
-                return await asyncio.to_thread(
-                    self.automation.delete_file, func_args.get("path", "")
-                )
+                return await self.automation.delete_file(func_args.get("path", ""))
             elif func_name == "run_terminal_command":
-                return await asyncio.to_thread(
-                    self.automation.run_terminal_command, func_args.get("command", "")
-                )
+                return await self.automation.run_terminal_command(func_args.get("command", ""))
             elif func_name == "minimize_all_windows":
-                return await asyncio.to_thread(self.automation.minimize_all_windows)
+                return await self.automation.minimize_all_windows()
             elif func_name == "get_system_info":
-                return json.dumps(await asyncio.to_thread(self.automation.get_system_info))
+                return json.dumps(await self.automation.get_system_info())
             elif func_name == "adjust_volume":
                 direction = func_args.get("direction", "up")
                 amount = func_args.get("amount")

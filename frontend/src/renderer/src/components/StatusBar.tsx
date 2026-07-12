@@ -82,13 +82,13 @@ export default function StatusBar({ onToggleChat, onToggleHistory }: StatusBarPr
                 width: `${audioLevel * 100}%`,
                 background:
                   audioLevel > 0.7
-                    ? 'linear-gradient(90deg, #ff3b30, #ef4444)'
+                    ? 'linear-gradient(90deg, var(--jarvis-accent), var(--jarvis-danger))'
                     : audioLevel > 0.3
-                    ? 'linear-gradient(90deg, #ff3b30, #ff9500)'
-                    : '#ff3b30',
+                    ? 'linear-gradient(90deg, var(--jarvis-accent), var(--jarvis-accent-3))'
+                    : 'var(--jarvis-accent)',
                 boxShadow:
                   audioLevel > 0.1
-                    ? `0 0 ${4 + audioLevel * 8}px rgba(255, 59, 48, ${audioLevel * 0.5})`
+                    ? `0 0 ${4 + audioLevel * 8}px rgba(0, 229, 255, ${audioLevel * 0.5})`
                     : 'none',
               }}
             />

@@ -30,7 +30,7 @@ const CommandHistory: React.FC<CommandHistoryProps> = ({ onRerun }) => {
       style={{
         width: 300,
         maxHeight: isMinimized ? 48 : 'calc(100vh - 120px)',
-        boxShadow: '0 0 30px rgba(0, 0, 0, 0.3), 0 0 15px rgba(255, 59, 48, 0.05)'
+        boxShadow: '0 0 30px rgba(0, 0, 0, 0.3), 0 0 15px rgba(0, 229, 255, 0.05)'
       }}
     >
       {/* Header */}

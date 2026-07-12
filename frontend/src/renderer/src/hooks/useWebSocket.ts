@@ -29,13 +29,16 @@ interface UseWebSocketReturn {
   disconnect: () => void
 }
 
-export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSocketReturn {
-  const wsRef = useRef<WebSocket | null>(null)
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const reconnectDelayRef = useRef(INITIAL_RECONNECT_DELAY)
-  const isIntentionalClose = useRef(false)
+// Shared global WebSocket connection state
+let globalWs: WebSocket | null = null
+let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
+let heartbeatInterval: ReturnType<typeof setInterval> | null = null
+let reconnectDelay = INITIAL_RECONNECT_DELAY
+let isIntentionalClose = false
+let activeHookCount = 0
+let globalOnTtsAudio: ((data: ArrayBuffer) => void) | null = null
 
+export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSocketReturn {
   const {
     setConnected,
     setAssistantState,
@@ -49,18 +52,30 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
     setThinkingText
   } = useAppStore.getState()
 
+  // Track the most recent ttsAudio listener callback
+  useEffect(() => {
+    if (onTtsAudio) {
+      globalOnTtsAudio = onTtsAudio
+    }
+    return () => {
+      if (onTtsAudio && globalOnTtsAudio === onTtsAudio) {
+        globalOnTtsAudio = null
+      }
+    }
+  }, [onTtsAudio])
+
   const clearHeartbeat = useCallback(() => {
-    if (heartbeatIntervalRef.current) {
-      clearInterval(heartbeatIntervalRef.current)
-      heartbeatIntervalRef.current = null
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval)
+      heartbeatInterval = null
     }
   }, [])
 
   const startHeartbeat = useCallback(() => {
     clearHeartbeat()
-    heartbeatIntervalRef.current = setInterval(() => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(
+    heartbeatInterval = setInterval(() => {
+      if (globalWs?.readyState === WebSocket.OPEN) {
+        globalWs.send(
           JSON.stringify({
             type: 'heartbeat',
             data: {},
@@ -162,6 +177,12 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
         case 'wake_word': {
           const _wakeWord = message as WakeWordMessage
           useAppStore.getState().setAssistantState('wake_word_detected')
+          setTimeout(() => {
+            const store = useAppStore.getState()
+            if (store.assistantState === 'wake_word_detected') {
+              store.setAssistantState('listening')
+            }
+          }, 1200)
           break
         }
 
@@ -211,7 +232,7 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
 
         case 'tts_audio': {
           const ttsMsg = message as any
-          if (onTtsAudio && ttsMsg.data?.audio) {
+          if (globalOnTtsAudio && ttsMsg.data?.audio) {
             try {
               const binaryString = window.atob(ttsMsg.data.audio)
               const len = binaryString.length
@@ -219,7 +240,7 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
               for (let i = 0; i < len; i++) {
                 bytes[i] = binaryString.charCodeAt(i)
               }
-              onTtsAudio(bytes.buffer)
+              globalOnTtsAudio(bytes.buffer)
             } catch (err) {
               console.error('[WS] Failed to decode base64 tts_audio:', err)
             }
@@ -238,10 +259,12 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
     } catch (err) {
       console.error('[WS] Failed to parse message:', err)
     }
-  }, [onTtsAudio])
+  }, [])
 
   const connect = useCallback(async () => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return
+    if (globalWs && (globalWs.readyState === WebSocket.OPEN || globalWs.readyState === WebSocket.CONNECTING)) {
+      return
+    }
 
     try {
       let port = 8000
@@ -259,13 +282,18 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
       const wsUrl = `ws://127.0.0.1:${port}/ws`
       console.log(`[WS] Connecting to ${wsUrl}`)
       const ws = new WebSocket(wsUrl)
-      wsRef.current = ws
+      globalWs = ws
 
       ws.onopen = () => {
         console.log('[WS] Connected')
         useAppStore.getState().setConnected(true)
-        reconnectDelayRef.current = INITIAL_RECONNECT_DELAY
+        reconnectDelay = INITIAL_RECONNECT_DELAY
         startHeartbeat()
+
+        const api = (window as any).electronAPI
+        if (api?.websocketConnected) {
+          api.websocketConnected()
+        }
       }
 
       ws.onmessage = handleMessage
@@ -275,12 +303,12 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
         useAppStore.getState().setConnected(false)
         clearHeartbeat()
 
-        if (!isIntentionalClose.current) {
-          const delay = reconnectDelayRef.current
+        if (!isIntentionalClose) {
+          const delay = reconnectDelay
           console.log(`[WS] Reconnecting in ${delay}ms...`)
-          reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectDelayRef.current = Math.min(
-              reconnectDelayRef.current * 2,
+          reconnectTimeout = setTimeout(() => {
+            reconnectDelay = Math.min(
+              reconnectDelay * 2,
               MAX_RECONNECT_DELAY
             )
             connect()
@@ -297,28 +325,28 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
   }, [handleMessage, startHeartbeat, clearHeartbeat])
 
   const disconnect = useCallback(() => {
-    isIntentionalClose.current = true
+    isIntentionalClose = true
     clearHeartbeat()
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-      reconnectTimeoutRef.current = null
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout)
+      reconnectTimeout = null
     }
-    if (wsRef.current) {
-      wsRef.current.close()
-      wsRef.current = null
+    if (globalWs) {
+      globalWs.close()
+      globalWs = null
     }
   }, [clearHeartbeat])
 
   const reconnect = useCallback(() => {
     disconnect()
-    isIntentionalClose.current = false
-    reconnectDelayRef.current = INITIAL_RECONNECT_DELAY
+    isIntentionalClose = false
+    reconnectDelay = INITIAL_RECONNECT_DELAY
     connect()
   }, [connect, disconnect])
 
   const sendMessage = useCallback((type: string, data: Record<string, unknown>) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
+    if (globalWs?.readyState === WebSocket.OPEN) {
+      globalWs.send(
         JSON.stringify({
           type,
           data,
@@ -329,18 +357,24 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
   }, [])
 
   const sendAudio = useCallback((audioData: ArrayBuffer) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(audioData)
+    if (globalWs?.readyState === WebSocket.OPEN) {
+      globalWs.send(audioData)
     }
   }, [])
 
-  // Connect on mount, disconnect on unmount
+  // Connect on mount, disconnect on unmount (via reference counting)
   useEffect(() => {
-    isIntentionalClose.current = false
-    connect()
+    activeHookCount++
+    if (activeHookCount === 1) {
+      isIntentionalClose = false
+      connect()
+    }
 
     return () => {
-      disconnect()
+      activeHookCount--
+      if (activeHookCount === 0) {
+        disconnect()
+      }
     }
   }, [connect, disconnect])
 

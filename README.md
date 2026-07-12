@@ -22,17 +22,18 @@
 - **Natural Speech Synthesis** — Responds with a refined male voice via edge-tts (configured to exclude female voices)
 - **Push-to-Talk** — Press `Ctrl+Space` as a fallback
 
-### 🧠 AI Brain
-- **Ollama Local LLM (Primary)** — Runs `qwen2.5-coder:3b` locally via Ollama for fast, free, and private inference
-- **OpenRouter Integration** — Route completions and tool-calling through free-tier and premium OpenRouter models
-- **Groq Integration** — High-speed completions fallback via Groq API (using `llama-3.3-70b-versatile`)
-- **Smart Failover & Auto-switching** — Automatically switches between models (Ollama → Gemini → Groq → OpenAI → OpenRouter) if a provider runs out of credits, errors, or fails to respond within **30 seconds**
+### 🧠 AI Brain & Orchestration
+- **Intelligent LLM Router** — Auto-measures response times, first-token latency, completion speed, success rate, cost, and quality to rank and select providers (Ollama, Gemini, Groq, OpenAI, OpenRouter) dynamically
+- **Self-Improving Brain** — Extracts corrections and preferences dynamically from chat logs to adapt to the user's workflow
+- **Resilient Tool calling & Fallbacks** — Try-catch wrappers fallback to tool-less completions on schema errors or formatting issues, with direct async awaiting for automation tools
+- **Gemini Pydantic Integration** — Conversational history utilizes native `google-genai` Content SDK classes for clean type validation
 - **Double-Clap Welcome Flow** — Managed background listener (`ClapService`) that triggers a customized welcome actions sequence (Spotify song, side-by-side Chrome panels, ElevenLabs TTS welcome greeting, and Cursor activation) on double claps
 - **Drag-and-Drop File Upload** — Drag and drop text, source code, logs, and markdown files directly into the frontend chat panel to easily analyze them
 - **Multi-turn Context** — Remembers conversation history
 - **Tool Calling** — Executes real actions on your computer
 - **Agent Architecture** — Planner → Automation/Browser/Screen/Memory agents
 - **Multimodal Vision** — Screen analysis via Gemini/OpenAI Vision (cloud)
+- **High-Performance Voice Concurrency** — WebSocket background task queue (`voice_queue`) sequentially processes audio chunks/PTT toggles, allowing instant interrupt processing and session isolation to discard stale TTS outputs
 
 ### 🖥️ Computer Control
 - Open & close applications

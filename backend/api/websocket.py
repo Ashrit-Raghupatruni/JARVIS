@@ -102,6 +102,42 @@ async def websocket_endpoint(websocket: WebSocket):
         WSMessage(type="status", data={"state": "idle", "message": "JARVIS online"}),
     )
 
+    # Decoupled voice action queue and worker task to prevent WebSocket blocking
+    voice_queue: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
+
+    async def voice_worker():
+        while True:
+            try:
+                action_type, payload = await voice_queue.get()
+                if not voice_agent:
+                    voice_queue.task_done()
+                    continue
+
+                if action_type == "audio":
+                    async for response_msg in voice_agent.handle_audio_chunk(payload):
+                        await manager.send_message(websocket, response_msg)
+                elif action_type == "ptt_start":
+                    async for response_msg in voice_agent.handle_push_to_talk_start():
+                        await manager.send_message(websocket, response_msg)
+                elif action_type == "ptt_stop":
+                    async for response_msg in voice_agent.handle_push_to_talk_stop():
+                        await manager.send_message(websocket, response_msg)
+                elif action_type == "text_command":
+                    async for response_msg in voice_agent.handle_text_command(payload):
+                        await manager.send_message(websocket, response_msg)
+
+                voice_queue.task_done()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error in WebSocket voice worker: {e}")
+                try:
+                    voice_queue.task_done()
+                except ValueError:
+                    pass
+
+    worker_task = asyncio.create_task(voice_worker())
+
     try:
         while True:
             try:
@@ -135,24 +171,34 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     elif msg_type in ("command", "text_command"):
                         text = msg_data.get("text", "")
-                        if text and voice_agent:
-                            async for response_msg in voice_agent.handle_text_command(text):
-                                await manager.send_message(websocket, response_msg)
+                        if text:
+                            await voice_queue.put(("text_command", text))
 
                     elif msg_type == "push_to_talk_start":
-                        if voice_agent:
-                            async for msg in voice_agent.handle_push_to_talk_start():
-                                await manager.send_message(websocket, msg)
+                        # Drain the queue to immediately prepare for new PTT
+                        while not voice_queue.empty():
+                            try:
+                                voice_queue.get_nowait()
+                                voice_queue.task_done()
+                            except (asyncio.QueueEmpty, ValueError):
+                                break
+                        await voice_queue.put(("ptt_start", None))
 
                     elif msg_type == "push_to_talk_stop":
-                        if voice_agent:
-                            async for msg in voice_agent.handle_push_to_talk_stop():
-                                await manager.send_message(websocket, msg)
+                        await voice_queue.put(("ptt_stop", None))
 
                     elif msg_type == "interrupt":
+                        # Process interrupt IMMEDIATELY to stop speaking instantly
                         if voice_agent:
                             async for msg in voice_agent.handle_interrupt():
                                 await manager.send_message(websocket, msg)
+                        # Drain the queue
+                        while not voice_queue.empty():
+                            try:
+                                voice_queue.get_nowait()
+                                voice_queue.task_done()
+                            except (asyncio.QueueEmpty, ValueError):
+                                break
 
                     elif msg_type == "permission_response":
                         req_id = msg_data.get("request_id")
@@ -164,7 +210,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             logger.info(f"Received permission response for {req_id}: {allowed}")
 
                     elif msg_type == "settings":
-                        # Handle settings update
+                        # Handle settings update immediately
                         logger.info(f"Settings update received: {msg_data}")
                         if hasattr(app.state, "llm_service") and app.state.llm_service:
                             llm = app.state.llm_service
@@ -274,12 +320,9 @@ async def websocket_endpoint(websocket: WebSocket):
                         # Audio sent as base64 in JSON (fallback mode)
                         import base64
                         audio_b64 = msg_data.get("audio", "")
-                        if audio_b64 and voice_agent:
+                        if audio_b64:
                             audio_bytes = base64.b64decode(audio_b64)
-                            async for response_msg in voice_agent.handle_audio_chunk(
-                                audio_bytes
-                            ):
-                                await manager.send_message(websocket, response_msg)
+                            await voice_queue.put(("audio", audio_bytes))
 
                     else:
                         logger.warning(f"Unknown message type: {msg_type}")
@@ -294,15 +337,19 @@ async def websocket_endpoint(websocket: WebSocket):
             elif "bytes" in message:
                 # Binary audio data
                 audio_bytes = message["bytes"]
-                if voice_agent and audio_bytes:
-                    async for response_msg in voice_agent.handle_audio_chunk(audio_bytes):
-                        await manager.send_message(websocket, response_msg)
+                if audio_bytes:
+                    await voice_queue.put(("audio", audio_bytes))
 
     except WebSocketDisconnect:
         logger.info("WebSocket client disconnected normally")
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
     finally:
+        worker_task.cancel()
+        try:
+            await worker_task
+        except asyncio.CancelledError:
+            pass
         manager.disconnect(websocket)
 
 

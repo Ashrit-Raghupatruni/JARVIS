@@ -44,6 +44,8 @@ function killPortOwner(port: number): void {
 }
 
 let mainWindow: BrowserWindow | null = null
+let siriWindow: BrowserWindow | null = null
+let siriHideTimeout: NodeJS.Timeout | null = null
 let tray: Tray | null = null
 let backendProcess: ChildProcess | null = null
 let isQuitting = false
@@ -88,7 +90,8 @@ function startBackendProcess(): void {
     backendProcess = spawn(venvPython, ['-m', 'uvicorn', 'main:app', '--host', '127.0.0.1', '--port', String(port)], {
       cwd: backendPath,
       stdio: 'pipe',
-      shell: true
+      shell: true,
+      env: { ...process.env, SPAWNED_BY_ELECTRON: 'true' }
     })
 
     backendProcess.stdout?.on('data', (data: Buffer) => {
@@ -141,7 +144,7 @@ function createWindow(): void {
     show: false,
     frame: false,
     transparent: false,
-    backgroundColor: '#0a0e1a',
+    backgroundColor: '#070b13',
     titleBarStyle: 'hidden',
     titleBarOverlay: false,
     icon: createTrayIcon(),
@@ -155,7 +158,9 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow?.show()
+    // Launch in background/tray to avoid interrupting the current task.
+    // Instead, we show the Siri-like animation widget.
+    showSiriWindowTemporarily(5000)
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -185,6 +190,99 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+}
+
+function createSiriWindow(): void {
+  siriWindow = new BrowserWindow({
+    width: 320,
+    height: 120,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    show: false,
+    focusable: false, // Prevent focus stealing
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false,
+      contextIsolation: true,
+      nodeIntegration: false,
+      webSecurity: true
+    }
+  })
+
+  // Position at top center of primary monitor (directly below webcam)
+  const { screen } = require('electron')
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { width: screenWidth } = primaryDisplay.workAreaSize
+  siriWindow.setBounds({
+    x: Math.round((screenWidth - 320) / 2),
+    y: 10,
+    width: 320,
+    height: 120
+  })
+
+  // Let mouse events click through
+  siriWindow.setIgnoreMouseEvents(true, { forward: true })
+
+  if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
+    siriWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}#siri`)
+  } else {
+    siriWindow.loadURL(`file://${join(__dirname, '../renderer/index.html')}#siri`)
+  }
+
+  siriWindow.on('closed', () => {
+    siriWindow = null
+  })
+}
+
+function handleSiriWindowVisibility(state: string): void {
+  if (!siriWindow || siriWindow.isDestroyed()) return
+
+  if (state !== 'idle') {
+    if (siriHideTimeout) {
+      clearTimeout(siriHideTimeout)
+      siriHideTimeout = null
+    }
+    if (!siriWindow.isVisible()) {
+      siriWindow.showInactive()
+    }
+  } else {
+    // If state is idle, wait 4 seconds before hiding so user sees it finish speaking/listening
+    if (!siriHideTimeout) {
+      siriHideTimeout = setTimeout(() => {
+        if (siriWindow && !siriWindow.isDestroyed()) {
+          siriWindow.hide()
+        }
+        siriHideTimeout = null
+      }, 4000)
+    }
+  }
+}
+
+function showSiriWindowTemporarily(durationMs: number): void {
+  if (!siriWindow || siriWindow.isDestroyed()) return
+
+  if (siriHideTimeout) {
+    clearTimeout(siriHideTimeout)
+  }
+
+  siriWindow.showInactive()
+  siriWindow.webContents.send('status-update', { state: 'wake_word_detected', audioLevel: 0 })
+
+  // Transition to idle after 2s, which will trigger hiding after another 3s
+  setTimeout(() => {
+    if (siriWindow && !siriWindow.isDestroyed()) {
+      siriWindow.webContents.send('status-update', { state: 'idle', audioLevel: 0 })
+      siriHideTimeout = setTimeout(() => {
+        if (siriWindow && !siriWindow.isDestroyed()) {
+          siriWindow.hide()
+        }
+        siriHideTimeout = null
+      }, 3000)
+    }
+  }, 2000)
 }
 
 function createTray(): void {
@@ -240,11 +338,15 @@ function setupIPC(): void {
   })
 
   ipcMain.handle('window-maximize', () => {
-    if (mainWindow?.isMaximized()) {
-      mainWindow.unmaximize()
-    } else {
-      mainWindow?.maximize()
+    if (mainWindow) {
+      if (mainWindow.isMaximized()) {
+        mainWindow.unmaximize()
+      } else {
+        mainWindow.maximize()
+      }
+      return mainWindow.isMaximized()
     }
+    return false
   })
 
   ipcMain.handle('window-close', () => {
@@ -272,6 +374,22 @@ function setupIPC(): void {
       new Notification({ title, body, icon: createTrayIcon() }).show()
     }
   })
+
+  // Sync state between renderer and Siri overlay window
+  ipcMain.on('renderer-state-update', (_event, data: { state: string; audioLevel: number }) => {
+    if (siriWindow && !siriWindow.isDestroyed()) {
+      siriWindow.webContents.send('status-update', data)
+    }
+    handleSiriWindowVisibility(data.state)
+  })
+
+  // Show and fullscreen main window when websocket is connected
+  ipcMain.on('websocket-connected', () => {
+    if (mainWindow) {
+      mainWindow.show()
+      mainWindow.setFullScreen(true)
+    }
+  })
 }
 
 // Single instance lock
@@ -297,6 +415,7 @@ if (!gotTheLock) {
 
     setupIPC()
     createWindow()
+    createSiriWindow()
     createTray()
     registerGlobalShortcuts()
     startBackendProcess()
