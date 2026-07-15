@@ -48,6 +48,10 @@ class Settings(BaseSettings):
         default=None,
         description="Google Gemini API key for Flash/Pro model access.",
     )
+    GEMINI_API_KEY_ALT: Optional[str] = Field(
+        default=None,
+        description="Alternative Google Gemini API key for fallback rotation.",
+    )
     GEMINI_MODEL: str = Field(
         default="gemini-2.0-flash",
         description="Gemini model identifier (e.g. gemini-2.0-flash).",
@@ -94,6 +98,10 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str = Field(
         default="qwen2.5-coder:3b",
         description="Ollama model identifier for local chat completions.",
+    )
+    OLLAMA_MODEL_ALT: Optional[str] = Field(
+        default="qwen3:8b",
+        description="Alternative local Ollama model for fallback rotation.",
     )
 
 
@@ -261,7 +269,7 @@ class Settings(BaseSettings):
         description="Whether to enable cross-device synchronization.",
     )
     SYNC_KEY: str = Field(
-        default="U3VwZXJTZWNyZXRLZXlGb3JKQVJWSVMyc3luYw==",  # A valid 32-byte Fernet key base64
+        default="iy2yR4WcpNOzgIn3FHXSw_ygqgkpi7KghI7Yvx1o6J4=",  # A valid 32-byte Fernet key base64
         description="Symmetric encryption key for sync data.",
     )
     SYNC_PORT: int = Field(
@@ -327,6 +335,7 @@ class Settings(BaseSettings):
 
     @field_validator(
         "GEMINI_API_KEY",
+        "GEMINI_API_KEY_ALT",
         "OPENAI_API_KEY",
         "OPENROUTER_API_KEY",
         "GROQ_API_KEY",
@@ -358,7 +367,7 @@ class Settings(BaseSettings):
     @field_validator("SYNC_KEY", mode="before")
     @classmethod
     def validate_sync_key(cls, v: Optional[str]) -> str:
-        default_key = "U3VwZXJTZWNyZXRLZXlGb3JKQVJWSVMyc3luYw=="
+        default_key = "iy2yR4WcpNOzgIn3FHXSw_ygqgkpi7KghI7Yvx1o6J4="
         if not v:
             return default_key
         v_str = str(v).strip()

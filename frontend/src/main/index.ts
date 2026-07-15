@@ -145,8 +145,6 @@ function createWindow(): void {
     frame: false,
     transparent: false,
     backgroundColor: '#070b13',
-    titleBarStyle: 'hidden',
-    titleBarOverlay: false,
     icon: createTrayIcon(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -173,6 +171,13 @@ function createWindow(): void {
     if (!isQuitting) {
       event.preventDefault()
       mainWindow?.hide()
+    }
+  })
+
+  // When main window is focused, hide the Siri widget popup
+  mainWindow.on('focus', () => {
+    if (siriWindow && !siriWindow.isDestroyed() && siriWindow.isVisible()) {
+      siriWindow.hide()
     }
   })
 
@@ -240,6 +245,14 @@ function createSiriWindow(): void {
 function handleSiriWindowVisibility(state: string): void {
   if (!siriWindow || siriWindow.isDestroyed()) return
 
+  // If the main window is visible and currently focused, keep Siri hidden!
+  if (mainWindow && mainWindow.isVisible() && mainWindow.isFocused()) {
+    if (siriWindow.isVisible()) {
+      siriWindow.hide()
+    }
+    return
+  }
+
   if (state !== 'idle') {
     if (siriHideTimeout) {
       clearTimeout(siriHideTimeout)
@@ -263,6 +276,11 @@ function handleSiriWindowVisibility(state: string): void {
 
 function showSiriWindowTemporarily(durationMs: number): void {
   if (!siriWindow || siriWindow.isDestroyed()) return
+
+  // If the main window is visible and currently focused, keep Siri hidden!
+  if (mainWindow && mainWindow.isVisible() && mainWindow.isFocused()) {
+    return
+  }
 
   if (siriHideTimeout) {
     clearTimeout(siriHideTimeout)

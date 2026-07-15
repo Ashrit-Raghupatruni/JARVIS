@@ -568,3 +568,35 @@ button:focus-visible {
   background: rgba(0, 229, 255, 0.3);
   color: white;
 }
+
+/* ===== 3D Orb and Camera Overlay HUD Styles ===== */
+.overlay-grain {
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 150px;
+}
+
+.overlay-scanlines {
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.15) 2px,
+    rgba(0, 0, 0, 0.15) 4px
+  );
+}
+
+.overlay-vignette {
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 45%,
+    rgba(7, 11, 19, 0.75) 100%
+  );
+}
+
+.camera-panel {
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.15);
+}

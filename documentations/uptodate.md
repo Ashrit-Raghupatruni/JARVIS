@@ -16,6 +16,8 @@ The architecture is split into a **React + Electron** desktop client (frontend) 
 * **Build System:** `electron-vite` v3.1.0 + `electron-builder` v25.1.0
 * **Styling:** Tailwind CSS v4.1.0 + `@tailwindcss/vite`
 * **State Management:** Zustand v5.0.0
+* **3D Visuals:** Three.js v0.185.1 (WebGL rendering of a procedural 3D Arc Reactor model including gear-notched outermost ring, ticking LED points, segmented step ring, radial copper coils, and central glow bulb cores, with stardust fields, orbiting satellites, sweeping scan rings, and chromatic aberration shader passes)
+* **Gesture Tracking:** MediaPipe Tasks-Vision v0.10.35 (local hand landmark calculations to trigger viewport camera rotations and zoom levels)
 * **Communication:** Native WebSockets for real-time bidirectional status, audio stream, and command events
 
 ### Backend (Python Service)
@@ -34,6 +36,7 @@ The architecture is split into a **React + Electron** desktop client (frontend) 
 * **Speech-to-Text (STT):** Local `faster-whisper` v1.1.1 (based on CTranslate2 base/small model) with automated API failover to Gemini Audio API or OpenAI Whisper API
 * **Text-to-Speech (TTS):** Microsoft `edge-tts` v7.2.8 (local/online hybrid, restricted to male-only voices: `en-GB-RyanNeural`, `en-US-GuyNeural`, `en-AU-WilliamNeural`, `en-IN-PrabhatNeural`) + ElevenLabs v1.50 (optional premium API)
 * **Wake Word:** `openwakeword` v0.6.0 (running ONNX runtime for local "Hey Jarvis" keyword trigger)
+* **Hand Gesture Tracker:** Local `MediaPipe Hand Landmarker` model executing in browser sandbox to evaluate raw webcam feeds, mapping single pinch coordinates to Orbit camera rotations and double pinch spread intervals to zoom factors.
 
 ---
 
@@ -155,6 +158,7 @@ These variables are defined in the project's `.env` configuration file:
 |---|---|---|
 | **`LLM_PROVIDER`** | `gemini` | Primary AI engine (`gemini`, `openai`, `ollama`). |
 | **`GEMINI_API_KEY`** | *None* | Google Gemini API key. |
+| **`GEMINI_API_KEY_ALT`** | *None* | Alternative Google Gemini API key for fallback rotation. |
 | **`GEMINI_MODEL`** | `gemini-2.0-flash` | Gemini model name. |
 | **`OPENAI_API_KEY`** | *None* | OpenAI API key. |
 | **`OPENAI_MODEL`** | `gpt-4o` | OpenAI model identifier. |
@@ -214,6 +218,12 @@ These variables are defined in the project's `.env` configuration file:
 6. **Production-Grade Concurrency & Concurrency Verification:** Refactored React custom hooks using a reference-counted WebSocket client singleton to prevent race conditions. Integrated an asynchronous background queue (`voice_queue`) in `websocket.py` to process audio chunks/toggles sequentially and allow instant `interrupt` message parsing.
 7. **Session ID Isolation:** Implemented session-level ID tracking in `voice.py` to discard overlapping responses/TTS from stale voice queries when a new voice activation occurs.
 8. **Resilient Tool Fallbacks & Parameter Validation:** Wrapped OpenAI, Gemini, Groq, OpenRouter, and NVIDIA NIM completions in catch-all fallbacks to automatically retry without tools on parameter/schema/formatting errors. Corrected `PlannerAgent` to directly await async automation coroutines instead of wrapping them in `asyncio.to_thread`.
+9. **3D Visuals & Webcam Gesture Controls (Phase P9):** Replaced flat 2D SVG animations with an interactive, rotating 3D wireframe model of the Arc Reactor (concentric rings, gear teeth, ticking LEDs, and copper coils) fully transparent and floating directly on the app's background. Integrated local MediaPipe hand landmark tracking to control camera rotations/zooms via hand gestures. Added film grain, scanlines, vignette, and a central "J.A.R.V.I.S." overlay in the center of the reactor, while removing the external buttons and borders. Designed a drag-vs-click threshold handler to prevent drags from triggering voice prompts.
+10. **Holographic HUD, Window Controls & Siri Widget Optimization:**
+    * **Non-Blocking Application Launching:** Refactored path resolution in `automation.py` to check for executable existence before launching, enabling fallbacks to Registry and Start Menu searches. Wrapped blocking `os.startfile` operations in `asyncio.to_thread` to prevent thread locks and client timeout errors.
+    * **Frameless Resizing Fix:** Removed conflicting `titleBarStyle: 'hidden'` and `titleBarOverlay` properties from the main Electron window creation in `index.ts`, restoring fully functioning custom maximize/restore buttons.
+    * **Context-Aware Siri Overlay Popup:** Added window focus checks to inhibit showing the Siri widget when the user is already interacting with the main JARVIS application, hiding it automatically on focus event updates.
+    * **Clutter-Free Visuals:** Deleted floating text shortcuts inside the WebGL canvas viewport, making the transparent Arc Reactor floating display clean and focused.
 
 ---
 
@@ -237,9 +247,11 @@ Phase P4 (Security Shield) ─────────────────�
 Phase P5 (Contextual Awareness) ──────────────────────── 100%
 Phase P6 (Cross-Device Sync) ────────────────────────── 100%
 Phase P7 (Autonomous Agent Syndicate) ────────────────── 100%
+Phase P8 (Intelligent Router & Memory) ───────────────── 100%
+Phase P9 (3D Visuals & Hand Gestures) ────────────────── 100%
 ```
 
-**Overall Project Progress: 95%**
+**Overall Project Progress: 98%**
 
 ### Next Recommended Milestones
 1. **Cross-Platform Compatibility:** Abstract Win32 COM and window manager libraries (using alternative libraries like `pygetwindow` or `pyautogui` equivalents) to enable startup on macOS.

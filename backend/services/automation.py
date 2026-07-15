@@ -125,7 +125,11 @@ def _resolve_app_path(app_name: str) -> Optional[str]:
 
     # 1. Check hardcoded APP_PATHS
     if app_key in APP_PATHS:
-        return _resolve_user_path(APP_PATHS[app_key])
+        resolved = _resolve_user_path(APP_PATHS[app_key])
+        if resolved.startswith("ms-settings:") or " --" in resolved or " /" in resolved:
+            return resolved
+        if os.path.exists(resolved):
+            return resolved
 
     # 2. Check Windows Registry App Paths
     try:
@@ -209,7 +213,7 @@ class AutomationService:
             if path:
                 # Handle ms-settings: style URIs
                 if path.startswith("ms-settings:") or path.startswith("http"):
-                    os.startfile(path)
+                    await asyncio.to_thread(os.startfile, path)
                     return f"Opened {app_name} successfully."
 
                 # Handle paths with arguments
@@ -223,7 +227,7 @@ class AutomationService:
                     )
                 else:
                     # Use os.startfile for Windows to properly handle shortcuts (.lnk) and admin elevations
-                    os.startfile(path)
+                    await asyncio.to_thread(os.startfile, path)
                 return f"Opened {app_name} successfully."
 
             else:

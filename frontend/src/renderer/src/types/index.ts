@@ -170,7 +170,7 @@ export interface Settings {
 /* ===== Electron API (preload bridge) ===== */
 export interface ElectronAPI {
   minimize: () => Promise<void>
-  maximize: () => Promise<void>
+  maximize: () => Promise<boolean>
   close: () => Promise<void>
   isMaximized: () => Promise<boolean>
   getSystemInfo: () => Promise<{

@@ -180,16 +180,37 @@ class STTService:
                 logger.info(f"Transcribing speech via Google Gemini API ({model_name})...")
                 start_time = time.perf_counter()
 
-                response = await client.aio.models.generate_content(
-                    model=model_name,
-                    contents=[
-                        types.Part.from_bytes(
-                            data=wav_data,
-                            mime_type="audio/wav"
-                        ),
-                        "Transcribe the audio exactly as spoken. Do not include any translation, markdown formatting, explanations, or introductory remarks. Only output the transcribed text."
-                    ]
-                )
+                try:
+                    response = await client.aio.models.generate_content(
+                        model=model_name,
+                        contents=[
+                            types.Part.from_bytes(
+                                data=wav_data,
+                                mime_type="audio/wav"
+                            ),
+                            "Transcribe the audio exactly as spoken. Do not include any translation, markdown formatting, explanations, or introductory remarks. Only output the transcribed text."
+                        ]
+                    )
+                except Exception as e:
+                    if settings.GEMINI_API_KEY_ALT:
+                        logger.info("Switching to alternative Gemini API key for STT...")
+                        old_key = settings.GEMINI_API_KEY
+                        settings.GEMINI_API_KEY = settings.GEMINI_API_KEY_ALT
+                        settings.GEMINI_API_KEY_ALT = old_key
+
+                        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+                        response = await client.aio.models.generate_content(
+                            model=model_name,
+                            contents=[
+                                types.Part.from_bytes(
+                                    data=wav_data,
+                                    mime_type="audio/wav"
+                                ),
+                                "Transcribe the audio exactly as spoken. Do not include any translation, markdown formatting, explanations, or introductory remarks. Only output the transcribed text."
+                            ]
+                        )
+                    else:
+                        raise e
 
                 text = response.text.strip()
                 elapsed = time.perf_counter() - start_time

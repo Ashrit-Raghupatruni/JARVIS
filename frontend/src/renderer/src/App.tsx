@@ -187,9 +187,7 @@ export default function App() {
           </div>
 
           {/* Orb */}
-          <div className="cursor-pointer" onClick={handleOrbClick}>
-            <Orb />
-          </div>
+          <Orb onOrbClick={handleOrbClick} />
 
           {/* Voice Wave (below orb) */}
           <div className="mt-6">

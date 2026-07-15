@@ -46,10 +46,14 @@ class MemoryService:
         # Initialize ChromaDB
         try:
             import chromadb
+            from chromadb.config import Settings
             from chromadb.utils import embedding_functions
 
             chroma_path = str(data_dir / "chroma_data")
-            self._chroma_client = chromadb.PersistentClient(path=chroma_path)
+            self._chroma_client = chromadb.PersistentClient(
+                path=chroma_path,
+                settings=Settings(anonymized_telemetry=False)
+            )
 
             # Use sentence-transformers for embeddings
             try:
@@ -147,7 +151,7 @@ class MemoryService:
         self, query: str, n_results: int = 5, memory_type: Optional[str] = None
     ) -> list[dict]:
         """Search memories using semantic similarity in ChromaDB."""
-        if not self._knowledge_collection:
+        if not self._knowledge_collection or self._knowledge_collection.count() == 0:
             return []
 
         try:
@@ -439,7 +443,7 @@ Transcript:
         context_parts = []
 
         # 1. Lessons Learned / Corrections
-        if self._lessons_learned_collection:
+        if self._lessons_learned_collection and self._lessons_learned_collection.count() > 0:
             try:
                 results = self._lessons_learned_collection.query(
                     query_texts=[query], n_results=2
@@ -452,7 +456,7 @@ Transcript:
                 logger.error(f"Error querying lessons learned: {e}")
 
         # 2. Successful Workflows
-        if self._workflows_collection:
+        if self._workflows_collection and self._workflows_collection.count() > 0:
             try:
                 results = self._workflows_collection.query(
                     query_texts=[query], n_results=1

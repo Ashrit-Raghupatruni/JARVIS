@@ -210,13 +210,40 @@ class ScreenService:
                 )
 
                 logger.info("Analyzing screen using Google Gemini Vision...")
-                response = await model.generate_content_async(
-                    contents=[
-                        question,
-                        {"mime_type": "image/png", "data": img_bytes}
-                    ],
-                    generation_config={"max_output_tokens": 1024}
-                )
+                try:
+                    response = await model.generate_content_async(
+                        contents=[
+                            question,
+                            {"mime_type": "image/png", "data": img_bytes}
+                        ],
+                        generation_config={"max_output_tokens": 1024}
+                    )
+                except Exception as e:
+                    if settings.GEMINI_API_KEY_ALT:
+                        logger.info("Switching to alternative Gemini API key for Gemini Vision...")
+                        old_key = settings.GEMINI_API_KEY
+                        settings.GEMINI_API_KEY = settings.GEMINI_API_KEY_ALT
+                        settings.GEMINI_API_KEY_ALT = old_key
+
+                        genai.configure(api_key=settings.GEMINI_API_KEY)
+                        model = genai.GenerativeModel(
+                            model_name=settings.GEMINI_MODEL or "gemini-1.5-flash",
+                            system_instruction=(
+                                "You are JARVIS, an AI desktop assistant analyzing a screenshot. "
+                                "Describe what you see accurately and concisely. If there are errors, "
+                                "warnings, or notable UI elements, highlight them. Be helpful and direct."
+                            )
+                        )
+                        response = await model.generate_content_async(
+                            contents=[
+                                question,
+                                {"mime_type": "image/png", "data": img_bytes}
+                            ],
+                            generation_config={"max_output_tokens": 1024}
+                        )
+                    else:
+                        raise e
+
                 result = response.text
                 logger.info(f"Gemini Vision analysis completed: {len(result)} chars")
                 return result

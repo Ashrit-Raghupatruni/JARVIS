@@ -647,6 +647,7 @@ class LLMService:
         # Configs loading
         self.primary_provider = (settings.LLM_PROVIDER or "gemini").lower()
         self.gemini_key = settings.GEMINI_API_KEY
+        self.gemini_key_alt = settings.GEMINI_API_KEY_ALT
         self.gemini_model_name = model or settings.GEMINI_MODEL or "gemini-1.5-flash"
         self.openai_key = api_key or settings.OPENAI_API_KEY
         self.openai_model_name = settings.OPENAI_MODEL or "gpt-4o"
@@ -660,6 +661,7 @@ class LLMService:
         # Ollama configs
         self.ollama_base_url = settings.OLLAMA_BASE_URL or "http://localhost:11434"
         self.ollama_model_name = settings.OLLAMA_MODEL or "qwen2.5-coder:3b"
+        self.ollama_model_name_alt = settings.OLLAMA_MODEL_ALT
 
         # Token & usage statistics
         self.total_prompt_tokens: int = 0
@@ -752,9 +754,65 @@ class LLMService:
             self.nvidia_client is not None
         )
         self.skills_registry = None
-        # Initialize dynamic router
-        from backend.services.llm_router import LLMRoutingEngine
+        # Initialize the intelligent router
+        from services.llm_router import LLMRoutingEngine
         self.router = LLMRoutingEngine()
+
+    def _rotate_gemini_key(self) -> bool:
+        """
+        Swaps primary and alternative Gemini API keys, re-initializing the client.
+        """
+        if not self.gemini_key_alt:
+            return False
+
+        old_key = self.gemini_key
+        self.gemini_key = self.gemini_key_alt
+        self.gemini_key_alt = old_key
+
+        try:
+            from google import genai
+            self.gemini_client = genai.Client(api_key=self.gemini_key)
+            self.gemini_available = True
+            logger.info("🔄 Swapped Gemini API key to alternative: {}...", self.gemini_key[:15])
+
+            # Update settings and router config
+            try:
+                settings = get_settings()
+                settings.GEMINI_API_KEY = self.gemini_key
+                settings.GEMINI_API_KEY_ALT = self.gemini_key_alt
+            except Exception:
+                pass
+
+            if hasattr(self, 'router') and self.router:
+                self.router.gemini_key = self.gemini_key
+
+            return True
+        except Exception as e:
+            logger.error("Failed to reinitialize Gemini client after key swap: {}", e)
+            return False
+
+    def _rotate_ollama_model(self) -> bool:
+        """
+        Swaps primary and alternative Ollama models.
+        """
+        if not self.ollama_model_name_alt:
+            return False
+
+        old_model = self.ollama_model_name
+        self.ollama_model_name = self.ollama_model_name_alt
+        self.ollama_model_name_alt = old_model
+
+        logger.info("🔄 Swapped Ollama model to alternative: {}", self.ollama_model_name)
+
+        # Update settings
+        try:
+            settings = get_settings()
+            settings.OLLAMA_MODEL = self.ollama_model_name
+            settings.OLLAMA_MODEL_ALT = self.ollama_model_name_alt
+        except Exception:
+            pass
+
+        return True
 
     def get_system_prompt(self) -> str:
         provider = self.primary_provider
@@ -840,8 +898,8 @@ class LLMService:
                 
                 while True:
                     try:
-                        # Enforce a 8-second timeout for first chunk (13s for ollama for slow models), 30s for subsequent
-                        timeout = (13.0 if provider == "ollama" else 8.0) if first_chunk else 30.0
+                        # Enforce a 8-second timeout for first chunk (25s for ollama for slow models), 30s for subsequent
+                        timeout = (25.0 if provider == "ollama" else 8.0) if first_chunk else 30.0
                         event = await asyncio.wait_for(iterator.__anext__(), timeout=timeout)
                         first_chunk = False
                         yield event
@@ -935,15 +993,29 @@ class LLMService:
 
                 # Wrap the API call in a 30s timeout
                 if provider == "ollama":
-                    resp = await asyncio.wait_for(
-                        self.ollama_client.chat.completions.create(
-                            model=self.ollama_model_name,
-                            messages=messages,
-                            max_tokens=max_tokens,
-                            temperature=temperature,
-                        ),
-                        timeout=17.0
-                    )
+                    try:
+                        resp = await asyncio.wait_for(
+                            self.ollama_client.chat.completions.create(
+                                model=self.ollama_model_name,
+                                messages=messages,
+                                max_tokens=max_tokens,
+                                temperature=temperature,
+                            ),
+                            timeout=28.0
+                        )
+                    except Exception as e:
+                        if self._rotate_ollama_model():
+                            resp = await asyncio.wait_for(
+                                self.ollama_client.chat.completions.create(
+                                    model=self.ollama_model_name,
+                                    messages=messages,
+                                    max_tokens=max_tokens,
+                                    temperature=temperature,
+                                ),
+                                timeout=28.0
+                            )
+                        else:
+                            raise e
                     self.total_requests += 1
                     if resp.usage:
                         self.total_prompt_tokens += resp.usage.prompt_tokens
@@ -952,18 +1024,35 @@ class LLMService:
 
                 elif provider == "gemini":
                     from google.genai import types
-                    resp = await asyncio.wait_for(
-                        self.gemini_client.aio.models.generate_content(
-                            model=self.gemini_model_name,
-                            contents=prompt,
-                            config=types.GenerateContentConfig(
-                                temperature=temperature,
-                                max_output_tokens=max_tokens,
-                                system_instruction=system_prompt or self.get_system_prompt()
+                    try:
+                        resp = await asyncio.wait_for(
+                            self.gemini_client.aio.models.generate_content(
+                                model=self.gemini_model_name,
+                                contents=prompt,
+                                config=types.GenerateContentConfig(
+                                    temperature=temperature,
+                                    max_output_tokens=max_tokens,
+                                    system_instruction=system_prompt or self.get_system_prompt()
+                                )
+                            ),
+                            timeout=12.0
+                        )
+                    except Exception as e:
+                        if self._rotate_gemini_key():
+                            resp = await asyncio.wait_for(
+                                self.gemini_client.aio.models.generate_content(
+                                    model=self.gemini_model_name,
+                                    contents=prompt,
+                                    config=types.GenerateContentConfig(
+                                        temperature=temperature,
+                                        max_output_tokens=max_tokens,
+                                        system_instruction=system_prompt or self.get_system_prompt()
+                                    )
+                                ),
+                                timeout=12.0
                             )
-                        ),
-                        timeout=12.0
-                    )
+                        else:
+                            raise e
                     self.total_requests += 1
                     content = resp.text or ""
 
@@ -1098,20 +1187,39 @@ class LLMService:
                 from google.genai import types
                 image_bytes = base64.b64decode(image_base64)
 
-                response = await self.gemini_client.aio.models.generate_content(
-                    model=self.gemini_model_name,
-                    contents=[
-                        question,
-                        types.Part.from_bytes(
-                            data=image_bytes,
-                            mime_type="image/png"
+                try:
+                    response = await self.gemini_client.aio.models.generate_content(
+                        model=self.gemini_model_name,
+                        contents=[
+                            question,
+                            types.Part.from_bytes(
+                                data=image_bytes,
+                                mime_type="image/png"
+                            )
+                        ],
+                        config=types.GenerateContentConfig(
+                            max_output_tokens=max_tokens,
+                            system_instruction="You are JARVIS, analysing the user's screen. Describe what you see concisely and answer the user's question."
                         )
-                    ],
-                    config=types.GenerateContentConfig(
-                        max_output_tokens=max_tokens,
-                        system_instruction="You are JARVIS, analysing the user's screen. Describe what you see concisely and answer the user's question."
                     )
-                )
+                except Exception as e:
+                    if self._rotate_gemini_key():
+                        response = await self.gemini_client.aio.models.generate_content(
+                            model=self.gemini_model_name,
+                            contents=[
+                                question,
+                                types.Part.from_bytes(
+                                    data=image_bytes,
+                                    mime_type="image/png"
+                                )
+                            ],
+                            config=types.GenerateContentConfig(
+                                max_output_tokens=max_tokens,
+                                system_instruction="You are JARVIS, analysing the user's screen. Describe what you see concisely and answer the user's question."
+                            )
+                        )
+                    else:
+                        raise e
                 self.total_requests += 1
                 return response.text or ""
             except Exception as e:
@@ -1252,25 +1360,48 @@ class LLMService:
 
                 # Attempt to use tools — some Ollama models support function calling
                 try:
-                    stream = await self.ollama_client.chat.completions.create(
-                        model=self.ollama_model_name,
-                        messages=messages,
-                        tools=self.get_tools(),
-                        tool_choice="auto",
-                        stream=True,
-                        temperature=0.7,
-                        max_tokens=4096,
-                    )
-                except Exception:
-                    # If tools aren't supported, retry without tools
-                    logger.warning("Ollama model may not support tools. Retrying without tool definitions...")
-                    stream = await self.ollama_client.chat.completions.create(
-                        model=self.ollama_model_name,
-                        messages=messages,
-                        stream=True,
-                        temperature=0.7,
-                        max_tokens=4096,
-                    )
+                    try:
+                        stream = await self.ollama_client.chat.completions.create(
+                            model=self.ollama_model_name,
+                            messages=messages,
+                            tools=self.get_tools(),
+                            tool_choice="auto",
+                            stream=True,
+                            temperature=0.7,
+                            max_tokens=4096,
+                        )
+                    except Exception as e:
+                        if self._rotate_ollama_model():
+                            stream = await self.ollama_client.chat.completions.create(
+                                model=self.ollama_model_name,
+                                messages=messages,
+                                tools=self.get_tools(),
+                                tool_choice="auto",
+                                stream=True,
+                                temperature=0.7,
+                                max_tokens=4096,
+                            )
+                        else:
+                            # If tools aren't supported, retry without tools
+                            logger.warning("Ollama model may not support tools. Retrying without tool definitions...")
+                            stream = await self.ollama_client.chat.completions.create(
+                                model=self.ollama_model_name,
+                                messages=messages,
+                                stream=True,
+                                temperature=0.7,
+                                max_tokens=4096,
+                            )
+                except Exception as e:
+                    if self._rotate_ollama_model():
+                        stream = await self.ollama_client.chat.completions.create(
+                            model=self.ollama_model_name,
+                            messages=messages,
+                            stream=True,
+                            temperature=0.7,
+                            max_tokens=4096,
+                        )
+                    else:
+                        raise e
 
                 text_filter = StreamTextFilter()
 
@@ -1453,7 +1584,30 @@ class LLMService:
                     config=config
                 )
             except Exception as e:
-                if use_gemini_tools:
+                # Rotate key and retry
+                if self._rotate_gemini_key():
+                    try:
+                        response = await self.gemini_client.aio.models.generate_content_stream(
+                            model=self.gemini_model_name,
+                            contents=gemini_contents,
+                            config=config
+                        )
+                    except Exception as e2:
+                        if use_gemini_tools:
+                            logger.warning(f"Gemini streaming failed with tools: {e2}. Retrying without tools...")
+                            use_gemini_tools = False
+                            config = types.GenerateContentConfig(
+                                system_instruction=self.get_system_prompt(),
+                                tools=None
+                            )
+                            response = await self.gemini_client.aio.models.generate_content_stream(
+                                model=self.gemini_model_name,
+                                contents=gemini_contents,
+                                config=config
+                            )
+                        else:
+                            raise e2
+                elif use_gemini_tools:
                     logger.warning(f"Gemini streaming failed with tools: {e}. Retrying without tools...")
                     use_gemini_tools = False
                     config = types.GenerateContentConfig(

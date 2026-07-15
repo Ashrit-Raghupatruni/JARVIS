@@ -22,6 +22,12 @@
 - **Natural Speech Synthesis** — Responds with a refined male voice via edge-tts (configured to exclude female voices)
 - **Push-to-Talk** — Press `Ctrl+Space` as a fallback
 
+### 🎨 Visual HUD Interface
+- **3D WebGL Arc Reactor** — Procedural, fully transparent 3D wireframe Arc Reactor (notched concentric rings, gear ticks, ticking LEDs, and radial copper coils) rotating in opposite directions and pulsing in real-time matching the voice volume amplitude.
+- **Holographic HUD Overlay** — Clean, integrated central "J.A.R.V.I.S." title and active state indicator ("SYSTEM READY", "LISTENING", "THINKING") directly inside the core of the Arc Reactor.
+- **Context-Aware Siri Widget** — A floating Siri-like voice wave widget that automatically appears at the top center of your screen when calling JARVIS from background applications (using `Ctrl+Space`, claps, or voice wake words) and automatically hides when you focus on the main app.
+- **Webcam Hand Gestures** — Control the 3D viewport rotation and zoom levels in real-time using local MediaPipe hand landmark skeleton tracking over your webcam feed.
+
 ### 🧠 AI Brain & Orchestration
 - **Intelligent LLM Router** — Auto-measures response times, first-token latency, completion speed, success rate, cost, and quality to rank and select providers (Ollama, Gemini, Groq, OpenAI, OpenRouter) dynamically
 - **Self-Improving Brain** — Extracts corrections and preferences dynamically from chat logs to adapt to the user's workflow
