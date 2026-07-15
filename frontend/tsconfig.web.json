@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "composite": true,
+    "ignoreDeprecations": "5.0",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "target": "ESNext",
