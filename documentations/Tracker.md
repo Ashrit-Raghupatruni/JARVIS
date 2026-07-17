@@ -72,3 +72,42 @@ gantt
 - [ ] **Calendar & Email Integration**: Direct calendar hooks and email drafts creation via voice.
 - [ ] **Companion Mobile App**: Remote microphone relay to trigger desktop shortcuts and control JARVIS from a local Wi-Fi network.
 
+---
+
+## 5. Next-Generation AI OS Roadmap (Priority Implementation To-Dos) 🚀
+
+This list reflects the realigned prioritization based on safety, tooling foundation, and architectural stability:
+
+- [ ] **1. Security Sandbox & Vault**:
+  - Secure credential storage (Windows Credential Locker).
+  - Isolated Docker environment for Coding and Browser script execution.
+- [ ] **2. MCP Client & Server Integration**:
+  - Refactor standard skills to standard FastMCP servers.
+  - Implement dynamic tool discovery client in the backend.
+- [ ] **3. Personal Knowledge Hub (RAG)**:
+  - Local document indexing and semantic parsing (PDF, Markdown, Obsidian).
+- [ ] **4. Performance Optimization**:
+  - Redis caching, lazy model loading, and async queue tuning.
+- [ ] **5. Developer / Coding Agent**:
+  - Auto-bug localization, file refactoring, and test script generation.
+- [ ] **6. Hybrid Memory Architecture**:
+  - Split context storage (Working, Short-Term, Episodic, and Procedural).
+- [ ] **7. Knowledge Graph (Neo4j)**:
+  - Relationship tracking and preference extraction.
+- [ ] **8. Multi-Agent Collaboration**:
+  - CEO-to-Planner-to-Worker event loop coordination.
+- [ ] **9. Context Awareness Engine**:
+  - Real-time window and desktop activity tracking.
+- [ ] **10. Vision-Based Computer Use**:
+  - Accessibility Tree parser + fallback visual coordinates (UI-TARS/OmniParser).
+- [ ] **11. Workflow Learning Engine**:
+  - Record/replay user macros and auto-generate system automations.
+- [ ] **12. Autonomous Background Agents**:
+  - Asynchronous execution of long-running objectives.
+- [ ] **13. Research Agent**:
+  - Deep multi-source citation and web scraping report compiler.
+- [ ] **14. Plugin Marketplace**:
+  - Sandboxed community plugin installer and permission dashboard.
+- [ ] **15. Cross-Platform Ecosystem**:
+  - macOS and Linux porting, and companion mobile relay applications.
+

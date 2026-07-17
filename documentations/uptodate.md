@@ -259,7 +259,8 @@ Phase P9 (3D Visuals & Hand Gestures) ──────────────
 
 **Overall Project Progress: 98%**
 
-### Next Recommended Milestones
-1. **Cross-Platform Compatibility:** Abstract Win32 COM and window manager libraries (using alternative libraries like `pygetwindow` or `pyautogui` equivalents) to enable startup on macOS.
-2. **Frontend UI Sub-Agent Widgets:** Implement React dashboard displays in the Electron client to list active background sub-agents, view real-time log lists, and display progress bars.
-3. **Delta DB Merging:** Extend `SyncService` to synchronize database calendar event entries (`events` table) across devices, resolving merge conflicts using timestamps.
+### Next Recommended Milestones (Next-Generation AI OS)
+1. **Security Sandbox & Vault (Phase 1)**: Implement local credential locking and isolate script execution inside Docker/Windows Sandbox environments.
+2. **MCP Client & Server Transition (Phase 1)**: Standardize all desktop skills under the Model Context Protocol (FastMCP) and remove the hardcoded tool definition schemas.
+3. **Personal Knowledge Hub (RAG - Phase 2)**: Index local documents (PDF, DOCX, Obsidian vault) with semantic RAG search to serve as the unified agent knowledge repository.
+4. **Developer/Coding Agent (Phase 2)**: Design a sandbox coding assistant to automate bug localization and unit test generation.
