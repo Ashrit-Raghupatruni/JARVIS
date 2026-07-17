@@ -1,8 +1,6 @@
 # JARVIS — Comprehensive Status, Tech Stack, & Features Overview
 
-This document serves as the single source of truth for JARVIS's current capabilities, system architecture, tech stack, and development status.
-
-**Last Updated:** June 19, 2026
+This document serves as the single source of truth for JARVIS's current capabilities, system architecture, tech stack, and development status.**Last Updated:** July 17, 2026
 
 ---
 
@@ -29,6 +27,9 @@ The architecture is split into a **React + Electron** desktop client (frontend) 
 * **Utilities:** `loguru` v0.7.3 (structured logging), `python-dotenv` v1.1.0 (config management)
 
 ### AI Models & Integrations
+* **Prash Local AI Engine:** A custom, decoder-only 0.70M-parameter Transformer model trained on a GPU (T4 in Google Colab) using a synthetic conversational command dataset.
+  * **Direct BPE Token Formatting:** Resolves startup formatting mismatches by compiling prompt logs into direct token ID sequences (`<BOS> query <SEP>`) matching the exact BPE tokenizer rules.
+  * **Intelligent Routing Node:** Classifies user query confidence based on token prediction entropy. Conversational intents are spoken directly; system-control actions trigger the tool planner node; low-confidence queries route directly to the cloud fallback cascade.
 * **LLM Engine & Intelligent Router:** Multi-provider orchestration client supporting Ollama, Google Gemini, Groq, OpenAI, and OpenRouter:
   * **Dynamic Ranking Router:** Auto-measures response times, first-token latency, completion speed, success rate, cost, and quality to rank available models in real time. Runs a background poller thread with a circuit-breaker (trips after 3 consecutive failures).
   * **Resilient Tool Fallbacks:** Parameter-validation try-catch blocks automatically and silently retry requests without tools if a model-specific error occurs (e.g. Groq's formatting failure) or if tool calling is unsupported.
@@ -71,6 +72,7 @@ Coordinates microphone recording, wake word detection, STT transcription, LLM co
 ### 2. Planner Agent (`backend/agents/planner.py`)
 Central orchestrator that coordinates natural language parsing, tool selection, and execution steps.
 * Runs LLM completions with dynamic tool definitions.
+* Integrates the `PrashLangGraphAgent` state machine workflow for tool calling.
 * Spawns multi-step plans and streams progress updates (`type="agent_progress"`).
 * Integrates thread-safe local history lists to isolate background sub-agents and prevent concurrent runs from corrupting user history.
 
@@ -218,12 +220,16 @@ These variables are defined in the project's `.env` configuration file:
 6. **Production-Grade Concurrency & Concurrency Verification:** Refactored React custom hooks using a reference-counted WebSocket client singleton to prevent race conditions. Integrated an asynchronous background queue (`voice_queue`) in `websocket.py` to process audio chunks/toggles sequentially and allow instant `interrupt` message parsing.
 7. **Session ID Isolation:** Implemented session-level ID tracking in `voice.py` to discard overlapping responses/TTS from stale voice queries when a new voice activation occurs.
 8. **Resilient Tool Fallbacks & Parameter Validation:** Wrapped OpenAI, Gemini, Groq, OpenRouter, and NVIDIA NIM completions in catch-all fallbacks to automatically retry without tools on parameter/schema/formatting errors. Corrected `PlannerAgent` to directly await async automation coroutines instead of wrapping them in `asyncio.to_thread`.
-9. **3D Visuals & Webcam Gesture Controls (Phase P9):** Replaced flat 2D SVG animations with an interactive, rotating 3D wireframe model of the Arc Reactor (concentric rings, gear teeth, ticking LEDs, and copper coils) fully transparent and floating directly on the app's background. Integrated local MediaPipe hand landmark tracking to control camera rotations/zooms via hand gestures. Added film grain, scanlines, vignette, and a central "J.A.R.V.I.S." overlay in the center of the reactor, while removing the external buttons and borders. Designed a drag-vs-click threshold handler to prevent drags from triggering voice prompts.
+9. **3D Visuals & Webcam Gesture Controls (Phase P9):** Replaced flat 2D SVG animations with an interactive, rotating 3D wireframe model of the Arc Reactor (concentric rings, gear teeth, ticking LEDs, and copper coils) fully transparent and floating directly on the app's background. Integrated local MediaPipe hand landmark tracking to control camera rotations/zooms via hand gestures. Added film grain, scanlines, vignette, and a central "J.A.R.V.I.S." overlay in the center of the reactor, while removing the external borders. Designed a drag-vs-click threshold handler to prevent drags from triggering voice prompts.
 10. **Holographic HUD, Window Controls & Siri Widget Optimization:**
     * **Non-Blocking Application Launching:** Refactored path resolution in `automation.py` to check for executable existence before launching, enabling fallbacks to Registry and Start Menu searches. Wrapped blocking `os.startfile` operations in `asyncio.to_thread` to prevent thread locks and client timeout errors.
     * **Frameless Resizing Fix:** Removed conflicting `titleBarStyle: 'hidden'` and `titleBarOverlay` properties from the main Electron window creation in `index.ts`, restoring fully functioning custom maximize/restore buttons.
     * **Context-Aware Siri Overlay Popup:** Added window focus checks to inhibit showing the Siri widget when the user is already interacting with the main JARVIS application, hiding it automatically on focus event updates.
     * **Clutter-Free Visuals:** Deleted floating text shortcuts inside the WebGL canvas viewport, making the transparent Arc Reactor floating display clean and focused.
+11. **Prash Local AI Engine & LangGraph Agent Integration (Phase P10):**
+    * **Prash Local Model**: Deployed a custom 0.70M-parameter Transformer model trained on a T4 GPU (Google Colab) with lowercase BPE token sequence matching.
+    * **LangGraph Agent Workflow**: Constructed state machine loops (state.py, tools.py, and nodes.py) around the local Prash model.
+    * **Advanced Controls**: Implemented absolute volume setting (0-100%) and individual application window minimization (`minimize_window` tool) in `automation.py`.
 
 ---
 

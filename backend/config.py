@@ -105,6 +105,34 @@ class Settings(BaseSettings):
     )
 
 
+    # ── Prash (Custom Local AI Engine) ──────────────────────────────────
+    PRASH_ENABLED: bool = Field(
+        default=True,
+        description="Enable Prash as the primary local AI engine. When enabled, all prompts route to Prash first.",
+    )
+    PRASH_MODEL_DIR: str = Field(
+        default=str(DEFAULT_DATA_DIR / "prash"),
+        description="Directory for Prash model weights, tokenizer, and checkpoints.",
+    )
+    PRASH_CONFIDENCE_THRESHOLD: float = Field(
+        default=3.0,
+        ge=0.1,
+        le=10.0,
+        description="Maximum entropy threshold for Prash responses. Below this = confident (no fallback needed).",
+    )
+    PRASH_MAX_TOKENS: int = Field(
+        default=512,
+        ge=32,
+        le=4096,
+        description="Maximum number of tokens Prash can generate per response.",
+    )
+    PRASH_TEMPERATURE: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=2.0,
+        description="Sampling temperature for Prash inference.",
+    )
+
     # ── Whisper / STT Settings ───────────────────────────────────────────
     WHISPER_MODEL: str = Field(
         default="base",

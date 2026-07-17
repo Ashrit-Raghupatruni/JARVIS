@@ -10,6 +10,11 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+# Force huggingface hub and transformers to run offline to prevent connection pool hangs
+os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+
 from fastapi import FastAPI
 from loguru import logger
 

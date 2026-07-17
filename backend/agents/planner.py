@@ -24,6 +24,13 @@ from backend.models.schemas import (
 )
 from backend.services.safety import SafetyService, ActionCategory
 
+# Import LangGraph agent
+try:
+    from backend.agents.langgraph_agent.agent import PrashLangGraphAgent
+except ImportError:
+    logger.warning("Could not import PrashLangGraphAgent. Falling back to default planner.")
+    PrashLangGraphAgent = None
+
 
 class PlannerAgent:
     """Central orchestrator agent that plans and executes user commands."""
@@ -57,6 +64,20 @@ class PlannerAgent:
         )
         if self.llm:
             self.llm.skills_registry = self.skills_registry
+
+        # Initialize Prash LangGraph agent
+        self.prash_agent = None
+        self._active_graph_state = None
+        if PrashLangGraphAgent and self.llm and hasattr(self.llm, "prash_engine") and self.llm.prash_engine:
+            try:
+                self.prash_agent = PrashLangGraphAgent(
+                    llm_service=self.llm,
+                    browser_service=self.browser,
+                    prash_engine=self.llm.prash_engine
+                )
+                logger.info("✓ PrashLangGraphAgent successfully integrated into PlannerAgent")
+            except Exception as e:
+                logger.error(f"Failed to initialize PrashLangGraphAgent: {e}")
 
     async def plan_and_execute(
         self, user_message: str, conversation_history: Optional[list[dict]] = None
@@ -102,88 +123,214 @@ class PlannerAgent:
                 },
             )
 
+        # Check if Prash is enabled and we have the agent
+        use_prash_agent = False
+        if hasattr(self.llm, "prash_enabled") and self.llm.prash_enabled and self.prash_agent:
+            use_prash_agent = True
+
         try:
-            # Get LLM response with potential tool calls
             response_text = ""
             tool_calls_made = []
-
             steps_list = []
-            async for event in self.llm.process_message(messages_for_llm, tool_executor=self._execute_tool):
-                if event["type"] == "text_delta":
-                    response_text += event["content"]
 
-                elif event["type"] == "text_done":
-                    response_text = event["content"]
+            if use_prash_agent:
+                # ── Prash LangGraph Agent Flow ──────────────────────
+                logger.info("Executing Prash LangGraph Agent flow...")
+                
+                # Check if we are resuming from a paused state
+                checkpoint = getattr(self, "_active_graph_state", None)
+                user_resp = None
+                if checkpoint and checkpoint.get("status") == "waiting_for_user":
+                    logger.info("Resuming suspended LangGraph execution with user response...")
+                    user_resp = user_message
+                    self._active_graph_state = None  # Clear
+                    
+                # Run the stream generator
+                # If resuming, pass checkpoint. Otherwise query is user_message
+                graph_stream = self.prash_agent.run_stream(
+                    query=user_message if not checkpoint else checkpoint.get("query", user_message),
+                    history=messages_for_llm,
+                    user_response=user_resp,
+                    state_checkpoint=checkpoint
+                )
+                
+                async for state in graph_stream:
+                    # Update logs
+                    if state.get("logs"):
+                        for log in state["logs"]:
+                            logger.info(f"[LangGraph Log] {log}")
+                            
+                    # Construct steps list for progress updates
+                    plan = state.get("plan", [])
+                    current_idx = state.get("current_step_index", 0)
+                    tool_results = state.get("tool_results", [])
+                    
+                    steps_list = []
+                    for idx, step_desc in enumerate(plan):
+                        if idx < current_idx:
+                            res_text = ""
+                            if idx < len(tool_results):
+                                res_text = str(tool_results[idx].get("result", ""))
+                            steps_list.append(AgentStep(
+                                id=f"step_{idx}",
+                                description=step_desc,
+                                tool_name=tool_results[idx].get("tool", "unknown") if idx < len(tool_results) else "unknown",
+                                status=AgentStepStatus.COMPLETED,
+                                result=res_text
+                            ))
+                        elif idx == current_idx:
+                            tool_name = "unknown"
+                            if state.get("tool_calls"):
+                                tool_name = state["tool_calls"][0].get("name", "unknown")
+                            steps_list.append(AgentStep(
+                                id=f"step_{idx}",
+                                description=step_desc,
+                                tool_name=tool_name,
+                                status=AgentStepStatus.RUNNING
+                            ))
+                        else:
+                            steps_list.append(AgentStep(
+                                id=f"step_{idx}",
+                                description=step_desc,
+                                tool_name="unknown",
+                                status=AgentStepStatus.PENDING
+                            ))
+                            
+                    # Yield progress update if there is a plan
+                    if plan:
+                        progress = current_idx / len(plan)
+                        yield WSMessage(
+                            type="agent_progress",
+                            data={
+                                "task": user_message[:100],
+                                "steps": [s.model_dump() for s in steps_list],
+                                "progress": progress,
+                            },
+                        )
+                        
+                    # Handle interrupts
+                    if state.get("status") == "waiting_for_user":
+                        # Save state checkpoint so we can resume later
+                        self._active_graph_state = state
+                        pending_prompt = state.get("pending_confirmation") or "User confirmation required."
+                        
+                        # Strip standard prompt prefix markers if present
+                        display_prompt = pending_prompt
+                        for prefix in ["__CONFIRMATION_REQUIRED__:", "__USER_INPUT_REQUIRED__:"]:
+                            if display_prompt.startswith(prefix):
+                                display_prompt = display_prompt.split(prefix, 1)[1].strip()
+                                
+                        logger.info(f"LangGraph execution paused. Prompting user: {display_prompt}")
+                        yield WSMessage(
+                            type="response",
+                            data=ResponseMessage(
+                                text=display_prompt,
+                                conversation_id=None,
+                            ).model_dump(),
+                        )
+                        return # Stop generator and wait for resume command
+                        
+                    # Handle Fallback case
+                    if state.get("status") == "fallback":
+                        logger.info("Prash LangGraph Agent requested fallback. Exiting graph and running cloud cascade...")
+                        use_prash_agent = False
+                        break # exit from stream loop, will fall through to cloud LLM cascade!
+                        
+                    # Final completion
+                    if state.get("status") == "completed":
+                        response_text = state.get("final_output", "")
+                        
+                        # Track tool calls made for memory logging
+                        if state.get("tool_results"):
+                            for tr in state["tool_results"]:
+                                tool_calls_made.append({
+                                    "function": tr.get("tool"),
+                                    "args": tr.get("arguments"),
+                                    "result": str(tr.get("result"))[:200]
+                                })
+                        break
 
-                elif event["type"] == "tool_call":
-                    # Tool call initiated
-                    tool_name = event["name"]
-                    tool_args = event["arguments"]
-                    tool_call_id = event["tool_call_id"]
-                    
-                    # Add to steps list
-                    step_desc = f"{tool_name}({self._summarize_args(json.dumps(tool_args))})"
-                    new_step = AgentStep(
-                        id=tool_call_id,
-                        description=step_desc,
-                        tool_name=tool_name,
-                        tool_args=tool_args,
-                        status=AgentStepStatus.RUNNING,
-                    )
-                    steps_list.append(new_step)
-                    
-                    # Yield progress update
-                    completed_count = sum(1 for s in steps_list if s.status in (AgentStepStatus.COMPLETED, AgentStepStatus.FAILED))
-                    progress = completed_count / len(steps_list) if steps_list else 0
-                    yield WSMessage(
-                        type="agent_progress",
-                        data={
-                            "task": user_message[:100],
-                            "steps": [s.model_dump() for s in steps_list],
-                            "progress": progress,
-                        },
-                    )
-
-                elif event["type"] == "tool_result":
-                    # Tool call completed
-                    tool_name = event["name"]
-                    result = event["result"]
-                    tool_call_id = event["tool_call_id"]
-                    
-                    # Update status in steps list
-                    for s in steps_list:
-                        if s.id == tool_call_id:
-                            s.status = AgentStepStatus.COMPLETED
-                            s.result = str(result)
-                            break
-                    else:
-                        steps_list.append(AgentStep(
+            # Fallback run (if use_prash_agent was false from the start or became false after fallback request)
+            if not use_prash_agent:
+                # Reset any active graph state since we are falling back
+                self._active_graph_state = None
+                
+                async for event in self.llm.process_message(messages_for_llm, tool_executor=self._execute_tool):
+                    if event["type"] == "text_delta":
+                        response_text += event["content"]
+    
+                    elif event["type"] == "text_done":
+                        response_text = event["content"]
+    
+                    elif event["type"] == "tool_call":
+                        # Tool call initiated
+                        tool_name = event["name"]
+                        tool_args = event["arguments"]
+                        tool_call_id = event["tool_call_id"]
+                        
+                        # Add to steps list
+                        step_desc = f"{tool_name}({self._summarize_args(json.dumps(tool_args))})"
+                        new_step = AgentStep(
                             id=tool_call_id,
-                            description=f"{tool_name} completed",
+                            description=step_desc,
                             tool_name=tool_name,
-                            status=AgentStepStatus.COMPLETED,
-                            result=str(result),
-                        ))
-                    
-                    tool_calls_made.append(
-                        {"function": tool_name, "args": {}, "result": str(result)[:200]}
-                    )
-                    
-                    # Yield progress update
-                    completed_count = sum(1 for s in steps_list if s.status in (AgentStepStatus.COMPLETED, AgentStepStatus.FAILED))
-                    progress = completed_count / len(steps_list) if steps_list else 0
-                    yield WSMessage(
-                        type="agent_progress",
-                        data={
-                            "task": user_message[:100],
-                            "steps": [s.model_dump() for s in steps_list],
-                            "progress": progress,
-                        },
-                    )
-
-                elif event["type"] == "error":
-                    error_detail = event.get("error") or event.get("content") or "Unknown error"
-                    response_text = f"I encountered an error processing your request: {error_detail}"
+                            tool_args=tool_args,
+                            status=AgentStepStatus.RUNNING,
+                        )
+                        steps_list.append(new_step)
+                        
+                        # Yield progress update
+                        completed_count = sum(1 for s in steps_list if s.status in (AgentStepStatus.COMPLETED, AgentStepStatus.FAILED))
+                        progress = completed_count / len(steps_list) if steps_list else 0
+                        yield WSMessage(
+                            type="agent_progress",
+                            data={
+                                "task": user_message[:100],
+                                "steps": [s.model_dump() for s in steps_list],
+                                "progress": progress,
+                            },
+                        )
+    
+                    elif event["type"] == "tool_result":
+                        # Tool call completed
+                        tool_name = event["name"]
+                        result = event["result"]
+                        tool_call_id = event["tool_call_id"]
+                        
+                        # Update status in steps list
+                        for s in steps_list:
+                            if s.id == tool_call_id:
+                                s.status = AgentStepStatus.COMPLETED
+                                s.result = str(result)
+                                break
+                        else:
+                            steps_list.append(AgentStep(
+                                id=tool_call_id,
+                                description=f"{tool_name} completed",
+                                tool_name=tool_name,
+                                status=AgentStepStatus.COMPLETED,
+                                result=str(result),
+                            ))
+                        
+                        tool_calls_made.append(
+                            {"function": tool_name, "args": {}, "result": str(result)[:200]}
+                        )
+                        
+                        # Yield progress update
+                        completed_count = sum(1 for s in steps_list if s.status in (AgentStepStatus.COMPLETED, AgentStepStatus.FAILED))
+                        progress = completed_count / len(steps_list) if steps_list else 0
+                        yield WSMessage(
+                            type="agent_progress",
+                            data={
+                                "task": user_message[:100],
+                                "steps": [s.model_dump() for s in steps_list],
+                                "progress": progress,
+                            },
+                        )
+    
+                    elif event["type"] == "error":
+                        error_detail = event.get("error") or event.get("content") or "Unknown error"
+                        response_text = f"I encountered an error processing your request: {error_detail}"
 
             # Add assistant response to history
             if response_text:
@@ -322,6 +469,9 @@ class PlannerAgent:
             elif func_name == "focus_window":
                 title = func_args.get("title", "")
                 return await asyncio.to_thread(self.automation.focus_window, title)
+            elif func_name == "minimize_window":
+                title = func_args.get("title", "")
+                return await asyncio.to_thread(self.automation.minimize_window, title)
 
             # Screen tools
             elif func_name == "take_screenshot":

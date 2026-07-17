@@ -14,6 +14,11 @@ websockets==15.0.1
 openai==1.82.0
 google-genai==2.11.0
 
+# Prash Custom AI Engine
+torch>=2.0.0
+langchain-core>=0.1.0
+langgraph>=0.1.0
+
 
 # Speech-to-Text
 faster-whisper==1.1.1

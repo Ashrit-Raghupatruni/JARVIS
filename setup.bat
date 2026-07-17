@@ -77,6 +77,12 @@ echo [4/5] Installing Playwright browsers...
 playwright install chromium 2>nul
 echo [OK] Playwright browsers installed
 
+:: Initialize Prash
+echo.
+echo [4.5/5] Initializing Prash local AI engine...
+python prash\bootstrap_prash.py --skip-training
+echo [OK] Prash engine configuration and files initialized
+
 cd ..
 
 :: Setup Frontend

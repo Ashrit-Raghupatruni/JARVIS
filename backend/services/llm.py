@@ -24,6 +24,14 @@ from openai.types.chat import ChatCompletionMessageParam
 from backend.config import get_settings
 from backend.utils.logger import logger
 
+# Prash custom AI engine (lazy import to handle missing torch gracefully)
+try:
+    from backend.prash.engine import PrashEngine
+    PRASH_AVAILABLE = True
+except ImportError:
+    PRASH_AVAILABLE = False
+    PrashEngine = None
+
 def try_parse_json_tool_call(text: str) -> Optional[dict]:
     """Check if the text is a JSON tool call and parse it."""
     text_stripped = text.strip()
@@ -561,12 +569,12 @@ TOOL_DEFINITIONS: List[Dict[str, Any]] = [
                 "properties": {
                     "direction": {
                         "type": "string",
-                        "enum": ["up", "down", "mute", "max", "full"],
-                        "description": "Direction to change volume. 'mute' toggles mute state. 'max' or 'full' sets volume to 100%."
+                        "enum": ["up", "down", "mute", "max", "full", "set"],
+                        "description": "Direction to change volume. 'mute' toggles mute state. 'max' or 'full' sets volume to 100%. 'set' sets volume to a specific percentage (specified in amount, e.g. 50)."
                     },
                     "amount": {
                         "type": "integer",
-                        "description": "Number of volume steps to change (default is 5, ranges from 1 to 20)."
+                        "description": "Number of volume steps or absolute volume level percentage to change (default is 5, ranges from 1 to 100)."
                     }
                 },
                 "required": ["direction"]
@@ -619,6 +627,23 @@ TOOL_DEFINITIONS: List[Dict[str, Any]] = [
                     "title": {
                         "type": "string",
                         "description": "Name or title substring of the window to switch to (e.g. 'edge')."
+                    }
+                },
+                "required": ["title"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "minimize_window",
+            "description": "Minimize a specific open application window by its title or name (e.g., 'Chrome', 'Notepad').",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "Name or title substring of the window to minimize."
                     }
                 },
                 "required": ["title"]
@@ -758,6 +783,28 @@ class LLMService:
         from services.llm_router import LLMRoutingEngine
         self.router = LLMRoutingEngine()
 
+        # Initialize Prash (custom local AI engine)
+        self.prash_engine = None
+        self.prash_enabled = False
+        settings_fresh = get_settings()
+        if PRASH_AVAILABLE and settings_fresh.PRASH_ENABLED:
+            try:
+                self.prash_engine = PrashEngine(model_dir=settings_fresh.PRASH_MODEL_DIR)
+                self.prash_enabled = True
+                self.prash_confidence_threshold = settings_fresh.PRASH_CONFIDENCE_THRESHOLD
+                self.prash_max_tokens = settings_fresh.PRASH_MAX_TOKENS
+                self.prash_temperature = settings_fresh.PRASH_TEMPERATURE
+                logger.info("✓ Prash engine created (will initialize on first use)")
+            except Exception as e:
+                logger.warning(f"Prash engine creation failed: {e}. Cloud providers will be used.")
+        elif not PRASH_AVAILABLE:
+            logger.info("Prash module not available (torch not installed). Using cloud providers only.")
+        else:
+            logger.info("Prash disabled via PRASH_ENABLED=False config.")
+
+        # Prash init tracking
+        self._prash_initialized = False
+
     def _rotate_gemini_key(self) -> bool:
         """
         Swaps primary and alternative Gemini API keys, re-initializing the client.
@@ -816,7 +863,9 @@ class LLMService:
 
     def get_system_prompt(self) -> str:
         provider = self.primary_provider
-        if provider == "ollama":
+        if provider == "prash":
+            active_model = "prash-local-v0.1"
+        elif provider == "ollama":
             active_model = self.ollama_model_name
         elif provider == "gemini":
             active_model = self.gemini_model_name
@@ -832,19 +881,86 @@ class LLMService:
         dynamic_info = f"\n\n[Active Model Information]\nYou are currently running the model '{active_model}' served by the '{provider}' provider. If the user asks which model or provider you are using, retrieve this information and answer them directly."
         return JARVIS_SYSTEM_PROMPT + dynamic_info
 
-    def get_tools(self) -> List[Dict[str, Any]]:
-        """Retrieve dynamic tool definitions from the registered skills and hardcoded tools."""
+    def get_tools(self, query: str = "") -> List[Dict[str, Any]]:
+        """Retrieve dynamic tool definitions from the registered skills and hardcoded tools, filtered by query context."""
+        raw_tools = []
         if hasattr(self, "skills_registry") and self.skills_registry:
-            registry_tools = self.skills_registry.get_all_tool_definitions()
-            seen = set()
-            merged = []
-            for t in registry_tools + TOOL_DEFINITIONS:
-                name = t["function"]["name"]
-                if name not in seen:
-                    seen.add(name)
-                    merged.append(t)
+            raw_tools = self.skills_registry.get_all_tool_definitions() + TOOL_DEFINITIONS
+        else:
+            raw_tools = TOOL_DEFINITIONS
+
+        seen = set()
+        merged = []
+        for t in raw_tools:
+            name = t["function"]["name"]
+            if name not in seen:
+                seen.add(name)
+                merged.append(t)
+
+        # If no query is provided, return all tools
+        if not query:
             return merged
-        return TOOL_DEFINITIONS
+
+        query_lower = query.lower()
+        filtered_tools = []
+
+        # Define semantic mapping of tool names to query keywords
+        tool_keywords = {
+            # Volume & System sound
+            "adjust_volume": ["volume", "sound", "mute", "unmute", "speaker", "audio"],
+            # Media control
+            "control_media": ["media", "play", "pause", "resume", "skip", "next", "previous", "track", "song", "music"],
+            # Play music
+            "play_music": ["spotify", "youtube", "music", "play", "song", "genre", "artist"],
+            # Notepad & writing
+            "type_text": ["notepad", "write", "type", "text", "keyboard"],
+            "press_hotkey": ["press", "key", "enter", "hotkey", "shortcut", "ctrl", "alt", "win", "copy", "paste"],
+            # Apps & Windows
+            "open_application": ["open", "run", "launch", "chrome", "notepad", "spotify", "browser", "app", "application", "calculator", "explorer", "start"],
+            "close_application": ["close", "exit", "kill", "terminate", "app", "application"],
+            "minimize_all_windows": ["minimize", "desktop", "show desktop", "windows"],
+            "minimize_window": ["minimize", "close window", "hide window", "app window", "hide app", "minimize app", "minimize application"],
+            "focus_window": ["focus", "switch to", "bring to foreground", "foreground", "window"],
+            # Web Search & Browser
+            "search_web": ["search", "query", "google", "find", "web", "weather", "news", "what is", "who is", "how to"],
+            "open_url": ["url", "link", "website", "open http", "chrome", "edge", "browser"],
+            "browser_navigate": ["back", "forward", "refresh", "reload", "navigate"],
+            # System Info
+            "get_system_info": ["system", "cpu", "memory", "ram", "disk", "battery", "info", "specs", "metrics", "usage"],
+            # Screenshot & screen
+            "take_screenshot": ["screenshot", "screen", "capture", "display", "image"],
+            "read_screen_text": ["read screen", "ocr", "extract text", "visible text", "screen text"],
+            "analyze_screen": ["analyze screen", "analyse screen", "screen content", "look at screen", "what is on the screen"],
+            "select_monitor": ["monitor", "display", "screen index", "target monitor"],
+            # Mouse control
+            "move_mouse": ["mouse", "move cursor", "coordinates"],
+            "click_mouse": ["click", "mouse click", "double click", "right click"],
+            "scroll": ["scroll", "wheel", "page up", "page down"],
+            # File system
+            "create_file": ["file", "directory", "create file", "write file", "make file"],
+            "create_folder": ["folder", "directory", "create folder", "make folder"],
+            "rename_file": ["file", "folder", "rename", "move"],
+            "delete_file": ["file", "folder", "delete", "remove", "destroy"],
+            "run_terminal_command": ["cmd", "command", "run command", "terminal", "install", "shell", "pip", "npm"],
+            # Memory
+            "remember": ["remember", "store", "save", "keep"],
+            "recall": ["recall", "retrieve", "memory", "know", "name", "what is my"],
+        }
+
+        # Always include some general fallback tools just in case
+        essential_tools = ["open_application", "search_web", "recall"]
+
+        for t in merged:
+            name = t["function"]["name"]
+            keywords = tool_keywords.get(name, [])
+            if any(kw in query_lower for kw in keywords) or name in essential_tools:
+                filtered_tools.append(t)
+
+        # If we filtered down to only essential tools, return all tools to be safe
+        if len(filtered_tools) <= len(essential_tools):
+            return merged
+
+        return filtered_tools
 
     # ── Public APIs ───────────────────────────────────────────────────────
 
@@ -862,6 +978,116 @@ class LLMService:
         
         last_error = None
         fallback_count = 0
+
+        # ── Prash First-Try ──────────────────────────────────────────
+        # Always attempt Prash before the cloud provider cascade.
+        if self.prash_enabled and self.prash_engine:
+            start_time = time.time()
+            try:
+                # Lazy-initialize Prash on first use
+                if not self._prash_initialized:
+                    init_ok = await self.prash_engine.init()
+                    self._prash_initialized = init_ok
+                    if not init_ok:
+                        logger.warning("Prash initialization failed. Falling back to cloud providers.")
+
+                if self._prash_initialized and self.prash_engine.is_available():
+                    logger.info("Attempting Prash inference (primary local AI engine)...")
+                    prash_response_text = ""
+                    prash_entropy = 999.0
+                    prash_confident = False
+
+                    # Extract plain text prompt from user_message
+                    if isinstance(user_message, list):
+                        prompt_text = ""
+                        for msg in reversed(user_message):
+                            if msg.get("role") == "user":
+                                prompt_text = msg.get("content", "")
+                                break
+                    else:
+                        prompt_text = str(user_message)
+
+                    # Build conversation history for Prash
+                    prash_history = []
+                    if conversation_history:
+                        for msg in conversation_history[-10:]:
+                            role = msg.get("role", "user")
+                            content = msg.get("content", "")
+                            if role in ("user", "assistant") and content:
+                                prash_history.append({"role": role, "content": content})
+
+                    # Generate response
+                    response_text, is_confident, metadata = await self.prash_engine.generate(
+                        prompt=prompt_text,
+                        conversation_history=prash_history,
+                        max_tokens=self.prash_max_tokens,
+                        temperature=self.prash_temperature,
+                    )
+
+                    prash_entropy = metadata.get("entropy", 999.0)
+                    prash_confident = is_confident and len(response_text.strip()) > 5
+
+                    latency = time.time() - start_time
+
+                    if prash_confident:
+                        logger.info(f"✓ Prash responded confidently (entropy={prash_entropy:.2f}, latency={latency:.2f}s)")
+                        yield {"type": "text_delta", "content": response_text}
+                        yield {"type": "text_done", "content": response_text}
+                        yield {
+                            "type": "usage",
+                            "prompt_tokens": metadata.get("prompt_tokens", 0),
+                            "completion_tokens": metadata.get("tokens_generated", 0),
+                            "total_requests": self.total_requests + 1,
+                        }
+                        self.total_requests += 1
+
+                        # Record success in router
+                        await self.router.record_metric(
+                            provider="prash",
+                            model="prash-local-v0.1",
+                            latency=latency,
+                            throughput=metadata.get("tokens_generated", 0) / max(0.01, latency),
+                            cost=0.0,
+                            success=True
+                        )
+                        await self.router.record_decision(
+                            selected_provider="prash",
+                            selected_model="prash-local-v0.1",
+                            latency=latency,
+                            success=True,
+                            fallback_count=0,
+                            prompt_tokens=metadata.get("prompt_tokens", 0),
+                            completion_tokens=metadata.get("tokens_generated", 0),
+                            cost=0.0
+                        )
+                        return
+                    else:
+                        logger.info(f"Prash response not confident enough (entropy={prash_entropy:.2f}). Falling back to cloud providers.")
+                        fallback_count += 1
+                        await self.router.record_metric(
+                            provider="prash",
+                            model="prash-local-v0.1",
+                            latency=latency,
+                            throughput=0.0,
+                            cost=0.0,
+                            success=False,
+                            error_msg=f"Low confidence (entropy={prash_entropy:.2f})"
+                        )
+            except Exception as e:
+                logger.warning(f"Prash inference error: {e}. Falling back to cloud providers.")
+                latency = time.time() - start_time
+                await self.router.record_metric(
+                    provider="prash",
+                    model="prash-local-v0.1",
+                    latency=latency,
+                    throughput=0.0,
+                    cost=0.0,
+                    success=False,
+                    error_msg=str(e)
+                )
+                fallback_count += 1
+
+        # ── Cloud Provider Cascade (existing logic) ─────────────────
         
         for i, provider in enumerate(available_providers):
             start_time = time.time()
@@ -972,6 +1198,67 @@ class LLMService:
         
         last_error = None
         fallback_count = 0
+
+        # ── Prash First-Try (simple completion) ──────────────────────
+        # Only run Prash on user chat queries, not on internal agent planning/selection prompts
+        is_agent_prompt = False
+        prompt_and_system = (prompt or "") + " " + (system_prompt or "")
+        prompt_lower = prompt_and_system.lower()
+        
+        agent_keywords = [
+            "planner", "selector", "validator", "agent", 
+            "compiler", "json", "transcript", "workflow", 
+            "execution", "tool", "database", "system prompt"
+        ]
+        if any(kw in prompt_lower for kw in agent_keywords):
+            is_agent_prompt = True
+
+        if self.prash_enabled and self.prash_engine and not is_agent_prompt:
+            start_time = time.time()
+            try:
+                if not self._prash_initialized:
+                    init_ok = await self.prash_engine.init()
+                    self._prash_initialized = init_ok
+
+                if self._prash_initialized and self.prash_engine.is_available():
+                    logger.info("Attempting Prash simple completion...")
+                    response_text, is_confident, metadata = await self.prash_engine.generate(
+                        prompt=prompt,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                    )
+                    prash_entropy = metadata.get("entropy", 999.0)
+                    prash_confident = is_confident and len(response_text.strip()) > 5
+
+                    latency = time.time() - start_time
+
+                    if prash_confident:
+                        logger.info(f"✓ Prash simple completion confident (entropy={prash_entropy:.2f})")
+                        self.total_requests += 1
+                        await self.router.record_metric(
+                            provider="prash", model="prash-local-v0.1",
+                            latency=latency, throughput=metadata.get("tokens_generated", 0) / max(0.01, latency),
+                            cost=0.0, success=True
+                        )
+                        await self.router.record_decision(
+                            selected_provider="prash", selected_model="prash-local-v0.1",
+                            latency=latency, success=True, fallback_count=0,
+                            prompt_tokens=0, completion_tokens=metadata.get("tokens_generated", 0), cost=0.0
+                        )
+                        return response_text
+                    else:
+                        logger.info(f"Prash simple completion low confidence (entropy={prash_entropy:.2f}). Falling back.")
+                        fallback_count += 1
+                        await self.router.record_metric(
+                            provider="prash", model="prash-local-v0.1",
+                            latency=latency, throughput=0.0, cost=0.0, success=False,
+                            error_msg=f"Low confidence (entropy={prash_entropy:.2f})"
+                        )
+            except Exception as e:
+                logger.warning(f"Prash simple completion error: {e}. Falling back.")
+                fallback_count += 1
+
+        # ── Cloud Provider Cascade ───────────────────────────────────
         
         for i, provider in enumerate(available_providers):
             start_time = time.time()
@@ -1351,6 +1638,7 @@ class LLMService:
             return
 
         messages = self._build_messages(user_message, conversation_history)
+        query_str = user_message if isinstance(user_message, str) else (user_message.get("content", "") if isinstance(user_message, dict) else "")
         yield_final = True
 
         try:
@@ -1364,7 +1652,7 @@ class LLMService:
                         stream = await self.ollama_client.chat.completions.create(
                             model=self.ollama_model_name,
                             messages=messages,
-                            tools=self.get_tools(),
+                            tools=self.get_tools(query_str),
                             tool_choice="auto",
                             stream=True,
                             temperature=0.7,
@@ -1375,7 +1663,7 @@ class LLMService:
                             stream = await self.ollama_client.chat.completions.create(
                                 model=self.ollama_model_name,
                                 messages=messages,
-                                tools=self.get_tools(),
+                                tools=self.get_tools(query_str),
                                 tool_choice="auto",
                                 stream=True,
                                 temperature=0.7,
@@ -1561,6 +1849,7 @@ class LLMService:
 
         # Maintain standard OpenAI format history internally for simple conversion
         messages = self._build_messages(user_message, conversation_history)
+        query_str = user_message if isinstance(user_message, str) else (user_message.get("content", "") if isinstance(user_message, dict) else "")
         yield_final = True
 
         from google.genai import types
@@ -1569,7 +1858,7 @@ class LLMService:
         while True:
             # Map history and tools to Google's schema on each turn
             gemini_contents = self._convert_history_to_gemini(messages)
-            gemini_tools = self._convert_tools_to_gemini(self.get_tools()) if use_gemini_tools else []
+            gemini_tools = self._convert_tools_to_gemini(self.get_tools(query_str)) if use_gemini_tools else []
 
             config = types.GenerateContentConfig(
                 system_instruction=self.get_system_prompt(),
@@ -1761,6 +2050,7 @@ class LLMService:
             return
 
         messages = self._build_messages(user_message, conversation_history)
+        query_str = user_message if isinstance(user_message, str) else (user_message.get("content", "") if isinstance(user_message, dict) else "")
         yield_final = True
 
         use_tools = True
@@ -1777,7 +2067,7 @@ class LLMService:
                     "max_tokens": 4096,
                 }
                 if use_tools:
-                    kwargs["tools"] = self.get_tools()
+                    kwargs["tools"] = self.get_tools(query_str)
                     kwargs["tool_choice"] = "auto"
 
                 try:
@@ -1937,6 +2227,7 @@ class LLMService:
             return
 
         messages = self._build_messages(user_message, conversation_history)
+        query_str = user_message if isinstance(user_message, str) else (user_message.get("content", "") if isinstance(user_message, dict) else "")
         yield_final = True
 
         use_tools = True
@@ -1953,7 +2244,7 @@ class LLMService:
                     "max_tokens": 4096,
                 }
                 if use_tools:
-                    kwargs["tools"] = self.get_tools()
+                    kwargs["tools"] = self.get_tools(query_str)
                     kwargs["tool_choice"] = "auto"
 
                 try:
@@ -2233,6 +2524,7 @@ class LLMService:
             return
 
         messages = self._build_messages(user_message, conversation_history)
+        query_str = user_message if isinstance(user_message, str) else (user_message.get("content", "") if isinstance(user_message, dict) else "")
 
         use_tools = True
         try:
@@ -2248,7 +2540,7 @@ class LLMService:
                     "max_tokens": 4096,
                 }
                 if use_tools:
-                    kwargs["tools"] = self.get_tools()
+                    kwargs["tools"] = self.get_tools(query_str)
                     kwargs["tool_choice"] = "auto"
 
                 try:
@@ -2399,6 +2691,7 @@ class LLMService:
             return
 
         messages = self._build_messages(user_message, conversation_history)
+        query_str = user_message if isinstance(user_message, str) else (user_message.get("content", "") if isinstance(user_message, dict) else "")
 
         use_tools = True
         try:
@@ -2414,7 +2707,7 @@ class LLMService:
                     "max_tokens": 4096,
                 }
                 if use_tools:
-                    kwargs["tools"] = self.get_tools()
+                    kwargs["tools"] = self.get_tools(query_str)
                     kwargs["tool_choice"] = "auto"
 
                 try:

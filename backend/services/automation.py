@@ -689,6 +689,18 @@ class AutomationService:
                     pyautogui.press("volumeup")
                 return "System volume set to maximum (100%) successfully."
 
+            # Absolute volume set (either direction="set" or amount > 20)
+            if dir_clean == "set" or (amount is not None and amount > 20):
+                target_pct = min(max(amount if amount is not None else 50, 0), 100)
+                # First bring volume down to 0% (50 presses covers 100% of volume steps)
+                for _ in range(50):
+                    pyautogui.press("volumedown")
+                # Bring volume up to target (each press increases volume by 2%)
+                up_presses = target_pct // 2
+                for _ in range(up_presses):
+                    pyautogui.press("volumeup")
+                return f"Set system volume to exactly {target_pct}% successfully."
+
             steps = amount if amount is not None else 5
             key = "volumeup" if dir_clean == "up" else "volumedown"
 
@@ -756,3 +768,30 @@ class AutomationService:
         except Exception as e:
             logger.error("Error focusing window: {}", e)
             return f"Error focusing window: {e}"
+
+    def minimize_window(self, title: str) -> str:
+        """
+        Minimize an open window matching the title.
+
+        Args:
+            title: Title (or substring) of the window to minimize.
+
+        Returns:
+            Status message.
+        """
+        logger.info("Minimizing window matching title: '{}'", title)
+        try:
+            windows = pyautogui.getWindowsWithTitle(title)
+            if not windows:
+                title_lower = title.lower().strip()
+                windows = [w for w in pyautogui.getAllWindows() if title_lower in w.title.lower()]
+
+            if windows:
+                win = windows[0]
+                win.minimize()
+                return f"Minimized window '{win.title}' successfully."
+            
+            return f"No window found matching title: '{title}'"
+        except Exception as e:
+            logger.error("Error minimizing window: {}", e)
+            return f"Error minimizing window: {e}"

@@ -42,6 +42,7 @@ class LLMRoutingEngine:
 
         # Model cost profiles (Cost per 1M tokens)
         self.costs = {
+            "prash": 0.0,
             "ollama": 0.0,
             "openrouter": 0.0,
             "groq": 0.69,
@@ -52,6 +53,7 @@ class LLMRoutingEngine:
 
         # Circuit breakers & Metrics state
         self.circuit_state = {
+            "prash": "CLOSED",
             "ollama": "CLOSED",
             "gemini": "CLOSED",
             "openai": "CLOSED",
@@ -190,6 +192,10 @@ class LLMRoutingEngine:
             if p == self.primary_provider:
                 score += 15.0
 
+            # Prash (local AI engine) always gets massive priority
+            if p == "prash":
+                score += 100.0
+
             scores[p] = score
 
         # Sort descending
@@ -271,6 +277,10 @@ class LLMRoutingEngine:
             for p, client in self.clients.items():
                 if not client:
                     continue
+
+                # Skip health checks for local Prash engine (not an API)
+                if p == "prash":
+                    continue
                 
                 # Run health check
                 try:
@@ -325,6 +335,7 @@ class LLMRoutingEngine:
     def _get_model_name(self, provider: str) -> str:
         """Resolve model name string based on provider."""
         names = {
+            "prash": "prash-local-v0.1",
             "ollama": self.ollama_model_name,
             "gemini": self.gemini_model_name,
             "openai": self.openai_model_name,

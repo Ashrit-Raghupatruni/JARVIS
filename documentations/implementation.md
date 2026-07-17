@@ -13,7 +13,8 @@ JARVIS/
 │   │   ├── routes/          # REST endpoints (health, status, history, settings, etc.)
 │   │   └── websockets.py    # Main WebSocket duplex router (/api/voice)
 │   ├── agents/
-│   │   ├── planner.py       # Reasoning agent that generates multi-step plans
+│   │   ├── langgraph_agent/ # New LangGraph agent module (state, tools, nodes, state machine)
+│   │   ├── planner.py       # Central agent that runs LangGraph agent or fallback router
 │   │   ├── subagent.py      # Base class for specialized worker agents
 │   │   └── voice.py         # Handles voice stream loop processing
 │   ├── models/
@@ -123,7 +124,9 @@ When the `PlannerAgent` (`backend/agents/planner.py`) determines that a query re
 
 ### 4.1. Automation Service (`backend/services/automation.py`)
 * **Libraries**: `pywinauto` (controls native Windows application windows) and `PyAutoGUI` (handles pixel-based mouse coordinates, drag-and-drops, and keystrokes).
-* **Usage**: Focuses specific window titles (e.g. Chrome, Spotify), types text templates, and inputs system-level hotkeys (e.g. `Ctrl+Alt+Tab`).
+* **Usage**: Focuses specific window titles (e.g. Chrome, Spotify), types text templates, inputs system-level hotkeys (e.g. `Ctrl+Alt+Tab`), and performs desktop actions:
+  * **Minimize Window**: Searches for active window handles matching a title or app name and minimizes them using `win.minimize()`.
+  * **Absolute Volume Set**: Sets system speaker volume to an exact percentage (0-100%) by zeroing out the master volume first (50 presses of `volumedown`) and then pressing `volumeup` in 2% steps up to the target level.
 
 ### 4.2. Browser Service (`backend/services/browser.py`)
 * **Library**: `Playwright` (Chromium engine).
@@ -132,3 +135,12 @@ When the `PlannerAgent` (`backend/agents/planner.py`) determines that a query re
 ### 4.3. Screen Service (`backend/services/screen.py`)
 * **Libraries**: `pyautogui.screenshot()` for capturing displays. `pytesseract` for local OCR translation.
 * **Usage**: Captures screen images, encodes them to base64, and dispatches them to multimodal models (`Gemini-2.0-Flash` / `GPT-4o`) to answer queries about active developer workflows or errors.
+
+### 4.4. LangGraph Tool Calling Agent (`backend/agents/langgraph_agent/`)
+* **Libraries**: `langgraph`, `langchain-core`
+* **Structure**:
+  - `state.py`: TypedDict state definition representing the agent conversation steps and execution tracking.
+  - `tools.py`: Custom registered LangChain tools (CMD execution with confirmation flags, Python interpreter running, File System operations, User Input prompts, SQLite key-value Memory, and Playwright Web Search).
+  - `nodes.py`: Node functions executing graph logic (Prash routing, Planning steps, Tool Selection/Execution, and summary generation).
+  - `agent.py`: Compiles the workflow StateGraph and exposes a generator that streams log states.
+* **Routing**: Prash acts as the primary local AI decider. If Prash's output entropy exceeds the confidence threshold, the agent transitions state to `fallback` and delegates the prompt directly to the Ollama → GPT → Gemini fallback cascade.

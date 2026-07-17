@@ -20,9 +20,11 @@ gantt
     section Phase 3: Visual & UX
     Electron Shell & React 19 UI :completed, 2026-07-08, 6d
     3D Three.js Orb & Hand Gestures :completed, 2026-07-10, 5d
-    section Phase 4: Future Steps
-    Offline Wake Word upgrade :active, 2026-07-12, 10d
-    Dynamic Tool Learning Loop :active, 2026-07-15, 14d
+    section Phase 4: Local AI & Tool Orchestration
+    Prash Local AI Engine & Tokenizer :completed, 2026-07-12, 8d
+    LangGraph Tool Orchestration Loop :completed, 2026-07-15, 6d
+    section Phase 5: Future Steps
+    Offline Wake Word upgrade :active, 2026-07-17, 10d
 ```
 
 ---
@@ -40,12 +42,14 @@ gantt
 - [x] **Dynamic Benchmarking**: Tracking of latency, throughput, token speed, and success metrics.
 - [x] **Memory System**: Semantic knowledge search using ChromaDB and facts logging in SQLite.
 - [x] **Lessons Learned Loop**: Corrective prompt injection mechanism using past errors.
+- [x] **Local AI Engine (Prash)**: Headless custom transformer model trained on GPU (T4 on Google Colab) to process system intents locally.
 
 ### 2.3. Desktop & Web Controls
-- [x] **GUI Control**: Window focus, keyboard typing, cursor moving, and shortcuts using `pywinauto` and `pyautogui`.
+- [x] **GUI Control**: Window focus, application minimization, keyboard typing, cursor moving, and shortcuts using `pywinauto` and `pyautogui`.
 - [x] **Web Browser Automation**: Playwright script execution to browse, fill out forms, search, and parse pages.
 - [x] **Vision Reasoning**: Full display screenshot logging integrated with Gemini & GPT-4o Vision API.
 - [x] **Local OCR fallback**: Text extraction from screenshots using `pytesseract`.
+- [x] **LangGraph Orchestrator**: Multi-step execution loops dynamically resolving user tasks (via shell, python interpreter, and memory access).
 
 ### 2.4. HUD Interface (UI)
 - [x] **3D Three.js WebGL Arc Reactor**: Procedural 3D wireframe model of the Arc Reactor (concentric rings, gear teeth, ticking LEDs, and copper coils) fully transparent and floating, with counter-rotations, central J.A.R.V.I.S. text overlay, and voice-amplitude reactor pulsing.
@@ -57,7 +61,6 @@ gantt
 
 ## 3. In Progress 🏗️
 
-- [ ] **Dynamic Tool Learning Loop**: Enabling JARVIS to construct, save, and reuse custom python script commands for novel workflows.
 - [ ] **Offline Wake Word Upgrade**: Custom wake phrase model generation to improve detection accuracy.
 - [ ] **Active Context Preservation**: Saving open browser tab states and active window history across reboots.
 
@@ -67,5 +70,5 @@ gantt
 
 - [ ] **Multi-Monitor Vision**: Visual support for displaying and capturing screenshots across individual displays dynamically.
 - [ ] **Calendar & Email Integration**: Direct calendar hooks and email drafts creation via voice.
-- [ ] **Fully Local Offline Fallback LLM**: Fine-tuned 7B model support in Ollama with native tool-calling capabilities.
 - [ ] **Companion Mobile App**: Remote microphone relay to trigger desktop shortcuts and control JARVIS from a local Wi-Fi network.
+

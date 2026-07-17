@@ -29,16 +29,17 @@
 - **Webcam Hand Gestures** — Control the 3D viewport rotation and zoom levels in real-time using local MediaPipe hand landmark skeleton tracking over your webcam feed.
 
 ### 🧠 AI Brain & Orchestration
-- **Intelligent LLM Router** — Auto-measures response times, first-token latency, completion speed, success rate, cost, and quality to rank and select providers (Ollama, Gemini, Groq, OpenAI, OpenRouter) dynamically
-- **Self-Improving Brain** — Extracts corrections and preferences dynamically from chat logs to adapt to the user's workflow
-- **Resilient Tool calling & Fallbacks** — Try-catch wrappers fallback to tool-less completions on schema errors or formatting issues, with direct async awaiting for automation tools
-- **Gemini Pydantic Integration** — Conversational history utilizes native `google-genai` Content SDK classes for clean type validation
-- **Double-Clap Welcome Flow** — Managed background listener (`ClapService`) that triggers a customized welcome actions sequence (Spotify song, side-by-side Chrome panels, ElevenLabs TTS welcome greeting, and Cursor activation) on double claps
-- **Drag-and-Drop File Upload** — Drag and drop text, source code, logs, and markdown files directly into the frontend chat panel to easily analyze them
-- **Multi-turn Context** — Remembers conversation history
-- **Tool Calling** — Executes real actions on your computer
-- **Agent Architecture** — Planner → Automation/Browser/Screen/Memory agents
-- **Multimodal Vision** — Screen analysis via Gemini/OpenAI Vision (cloud)
+- **Prash Local AI Engine** — Zero-dependency, custom local transformer model built from scratch in PyTorch. Acting as the primary decider, Prash analyzes user requests first.
+- **LangGraph Tool Calling Agent** — Orchestrates tool execution flows using a LangGraph state machine (Prash routing, Planning, Tool Selection, Tool Execution, Result Validation, and Prash summary generation).
+- **Intelligent LLM Router** — Auto-measures response times, first-token latency, completion speed, success rate, cost, and quality to rank and select fallback providers dynamically.
+- **Self-Improving Brain** — Extracts corrections and preferences dynamically from chat logs to adapt to the user's workflow.
+- **Resilient Tool Calling & Fallbacks** — Gated by average entropy confidence scoring: if Prash is not confident, JARVIS seamlessly falls back to the cloud cascade (Ollama → GPT → Gemini).
+- **Gemini Pydantic Integration** — Conversational history utilizes native `google-genai` Content SDK classes for clean type validation.
+- **Double-Clap Welcome Flow** — Managed background listener (`ClapService`) that triggers a customized welcome actions sequence on double claps.
+- **Drag-and-Drop File Upload** — Drag and drop text, source code, logs, and markdown files directly into the frontend chat panel to easily analyze them.
+- **Multi-turn Context** — Remembers conversation history.
+- **Tool Calling** — Executes real actions (CMD execution, Python script running, File System management, Memory storage, and Web searches).
+- **Multimodal Vision** — Screen analysis via Gemini/OpenAI Vision (cloud).
 - **High-Performance Voice Concurrency** — WebSocket background task queue (`voice_queue`) sequentially processes audio chunks/PTT toggles, allowing instant interrupt processing and session isolation to discard stale TTS outputs
 
 ### 🖥️ Computer Control
@@ -190,19 +191,18 @@ TTS_VOICE=en-US-GuyNeural     # Text-to-speech voice
 WAKE_WORD_THRESHOLD=0.5       # Wake word sensitivity
 ```
 
-### 🧠 Ollama + Multi-Cloud Failover Setup
+### 🧠 Prash + Ollama + Multi-Cloud Failover Setup
 
 JARVIS uses a production-grade, highly resilient multi-provider AI system designed to ensure 100% availability:
 
-1. **Primary AI Brain (Ollama — Local)**
-   - **Performance**: Fast local inference with zero API costs and complete privacy.
-   - **Model**: `qwen2.5-coder:3b` — a capable coding/assistant model that runs on standard hardware.
-   - **Setup**: Install [Ollama](https://ollama.com/), then run `ollama pull qwen2.5-coder:3b`.
-   - **No API key required** — everything runs locally on your machine.
+1. **Primary AI Decider (Prash — Local)**
+   - Custom transformer language model running locally on PyTorch CPU/GPU.
+   - First-entry analysis: Decides whether a tool is required or if it can answer directly.
+   - If Prash is not confident (low confidence scored via generated entropy), JARVIS automatically switches to the fallback cloud chain.
 
-2. **Autonomous Cloud Failover Chain**
-    - If the active provider is offline, runs out of credits, errors out, or fails to respond within **30 seconds**, JARVIS automatically switches to the next provider in the chain:
-      * **Ollama API** (Local Primary)
+2. **Ollama & Cloud Fallback Chain**
+    - If Prash falls back, or the active cloud provider is offline, JARVIS automatically switches to the next provider in the chain:
+      * **Ollama API** (Local Primary Fallback, running `qwen2.5-coder:3b`)
       * **Google Gemini API** (`gemini-2.0-flash`)
       * **Groq API** (`llama-3.3-70b-versatile`)
       * **OpenAI API** (`gpt-4o`)
