@@ -103,4 +103,40 @@ def setup_logger(
 # ── Auto-configure on import ─────────────────────────────────────────────────
 setup_logger()
 
-__all__ = ["logger", "setup_logger"]
+
+def register_event_bus_sink(event_bus) -> None:
+    """Register the event bus as a Loguru sink to stream all system logs."""
+    import asyncio
+    
+    def event_bus_sink(message):
+        try:
+            record = message.record
+            # Ignore event_bus logs to prevent infinite loops
+            if record["module"] in ("event_bus", "logger"):
+                return
+                
+            log_data = {
+                "time": record["time"].strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+                "level": record["level"].name,
+                "message": record["message"],
+                "module": record["module"],
+                "function": record["function"],
+                "line": record["line"]
+            }
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(event_bus.publish("log.new", log_data))
+            except RuntimeError:
+                pass
+        except Exception:
+            pass
+
+    logger.add(
+        event_bus_sink,
+        level="DEBUG",
+        format="{message}",
+        serialize=False,
+    )
+
+
+__all__ = ["logger", "setup_logger", "register_event_bus_sink"]

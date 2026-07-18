@@ -126,9 +126,9 @@ Stores history of multi-step agent plans.
 * **`id`** (`Integer`, PK, Autoincrement): Unique identifier.
 * **`task_description`** (`Text`): User instruction prompt.
 * **`steps_json`** (`Text`, Nullable): Serialized JSON array of planned `AgentStep` dicts.
-* **`status`** (`String(20)`, default `"pending"`): Overall task status (`pending` | `running` | `completed` | `failed`).
+* **`status`** (`String(20)`): Overall task execution status.
 * **`created_at`** (`DateTime(timezone=True)`): Time task was initiated.
-* **`completed_at`** (`DateTime(timezone=True)`, Nullable): Time task execution ended.
+* **`ended_at`** (`DateTime(timezone=True)`, Nullable): Time task execution ended.
 
 ### 1.6. `provider_metrics` Table
 Benchmarks response times of active LLMs.
@@ -250,7 +250,7 @@ Pushes a newly built execution plan block.
   * **`description`** (`str`): e.g. `"Browse Google for Python News"`.
   * **`tool_name`** (`str`, Nullable): Target tool.
   * **`tool_args`** (`Dict[str, Any]`, Nullable): Tool inputs.
-  * **`status`** (`str`): `pending` | `running` | `completed` | `failed`.
+  * **`status`** (`str`): Step execution status.
   * **`result`** (`str`, Nullable): Executed result data.
   * **`error`** (`str`, Nullable): Error string.
 

@@ -7,6 +7,7 @@ Initializes all services, configures the API, and starts the server.
 import os
 import sys
 import time
+import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -43,6 +44,8 @@ async def lifespan(app: FastAPI):
 
     # ── Initialize Event Bus, Context, Task Queue, Config Manager ───────
     event_bus = EventBus()
+    from backend.utils.logger import register_event_bus_sink
+    register_event_bus_sink(event_bus)
     context_manager = SharedContextManager(event_bus)
     task_queue = AsyncTaskQueue(event_bus)
     task_queue.start()
@@ -53,6 +56,57 @@ async def lifespan(app: FastAPI):
     app.state.task_queue = task_queue
     app.state.config_manager = config_manager
     app.state.service_manager = ServiceManager
+
+    # ── Initialize Security Components ────────────────────────────────────
+    from backend.services.security.vault import CredentialVault
+    from backend.services.security.sandbox import SecuritySandbox
+    from backend.services.security.rbac import SecurityOrchestrator
+    
+    credential_vault = CredentialVault()
+    security_sandbox = SecuritySandbox()
+    security_orchestrator = SecurityOrchestrator(event_bus)
+    
+    app.state.credential_vault = credential_vault
+    app.state.security_sandbox = security_sandbox
+    app.state.security_orchestrator = security_orchestrator
+    
+    ServiceManager.register_instance("credential_vault", credential_vault)
+    ServiceManager.register_instance("security_sandbox", security_sandbox)
+    ServiceManager.register_instance("security_orchestrator", security_orchestrator)
+
+    # ── Initialize MCP Client Manager ──────────────────────────────────────
+    from backend.mcp.client import MCPClientManager
+    mcp_client_manager = MCPClientManager()
+    
+    # Register the local stdin/stdout File MCP Server
+    import sys
+    python_bin = sys.executable or "python"
+    file_server_path = str(Path(__file__).parent / "mcp" / "servers" / "file_server.py")
+    
+    async def start_mcp_servers():
+        await asyncio.sleep(0.5) # Let system settle
+        await mcp_client_manager.register_and_start_server(
+            "file_server", 
+            [python_bin, file_server_path]
+        )
+    asyncio.create_task(start_mcp_servers())
+    
+    app.state.mcp_client_manager = mcp_client_manager
+    ServiceManager.register_instance("mcp_client_manager", mcp_client_manager)
+
+    # ── Initialize Multi-Agent Orchestrator ─────────────────────────────────
+    from backend.agents.multi_agent.orchestrator import HierarchicalOrchestrator
+    orchestrator = HierarchicalOrchestrator(event_bus, ServiceManager)
+    
+    app.state.orchestrator = orchestrator
+    ServiceManager.register_instance("orchestrator", orchestrator)
+
+    # ── Initialize Hybrid Memory System ─────────────────────────────────────
+    from backend.services.hybrid_memory_system import HybridMemorySystem
+    hybrid_memory = HybridMemorySystem()
+    
+    app.state.hybrid_memory = hybrid_memory
+    ServiceManager.register_instance("hybrid_memory", hybrid_memory)
 
     # ── Initialize Services ──────────────────────────────────
 
@@ -127,7 +181,6 @@ async def lifespan(app: FastAPI):
     try:
         from backend.services.wake_word import WakeWordService
         wake_word_service = WakeWordService()
-        import asyncio
         asyncio.create_task(wake_word_service.load_model())
         app.state.wake_word_service = wake_word_service
         ServiceManager.register_instance("wake_word_service", wake_word_service)
@@ -198,6 +251,19 @@ async def lifespan(app: FastAPI):
         logger.error(f"✗ Memory service failed: {e}")
         app.state.memory_service = None
 
+    # RAG Service
+    rag_service = None
+    try:
+        from backend.services.rag_service import RAGService
+        chroma_client = getattr(memory_service, "_chroma_client", None) if memory_service else None
+        rag_service = RAGService(chroma_client=chroma_client)
+        app.state.rag_service = rag_service
+        ServiceManager.register_instance("rag_service", rag_service)
+        logger.info("✓ RAG service initialized")
+    except Exception as e:
+        logger.error(f"✗ RAG service failed: {e}")
+        app.state.rag_service = None
+
     # ── Initialize Agents ────────────────────────────────────
 
     # Planner Agent
@@ -258,7 +324,6 @@ async def lifespan(app: FastAPI):
                     logger.error("Error in proactive check loop: {}", ex)
                 await asyncio.sleep(10)  # Check every 10 seconds
                 
-        import asyncio
         proactive_task = asyncio.create_task(proactive_worker())
         app.state.proactive_task = proactive_task
         logger.info("✓ Proactive background checks initialized")
@@ -281,7 +346,6 @@ async def lifespan(app: FastAPI):
                             logger.error("Error in context scanner loop: {}", ex)
                         await asyncio.sleep(5)  # Check every 5 seconds
                 
-                import asyncio
                 context_task = asyncio.create_task(context_worker())
                 app.state.context_task = context_task
                 logger.info("✓ Context background scanner initialized")
@@ -347,6 +411,12 @@ async def lifespan(app: FastAPI):
             await app.state.task_queue.stop()
         except Exception as e:
             logger.error(f"Task queue shutdown error: {e}")
+
+    if hasattr(app.state, "mcp_client_manager") and app.state.mcp_client_manager:
+        try:
+            await app.state.mcp_client_manager.shutdown()
+        except Exception as e:
+            logger.error(f"MCP client shutdown error: {e}")
 
     if hasattr(app.state, "proactive_task") and app.state.proactive_task:
         try:

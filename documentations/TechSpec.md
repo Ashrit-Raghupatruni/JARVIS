@@ -98,10 +98,80 @@ graph TD
 * **Camera Access Privacy**:
   * The webcam feed used for hand tracking is processed strictly inside the local renderer process (browser sandbox).
   * Video streams, images, and landmark coordinates are handled entirely in transient memory and immediately discarded. No video data is ever saved to the local file system or uploaded to external cloud endpoints.
+* **Vault Encryption**:
+  * API Keys and secrets are stored in a dedicated `CredentialVault` using Windows Credential Locker.
+  * Local fallback stores keys in `data/security/vault.bin` utilizing AES-256 Fernet ciphers.
+* **Execution Sandbox**:
+  * Standard python and terminal scripts are run inside a resource-constrained, timeout-locked (15s) subprocess.
+  * Filters and strips environment variables to prevent API token leakage.
+  * Destructive commands are blocked by regex filters and prompt for manual approval.
 
 ---
 
-## 4. Database Setup & Configurations
+## 4. Next-Generation Architecture & Services
+
+The application core has been refactored into a decoupled, event-driven service layout:
+
+```mermaid
+graph TD
+    EB[Event Bus] <--> CM[Context Manager]
+    EB <--> TQ[Task Queue]
+    EB <--> LOG[Logger Sink]
+    
+    subgraph Services
+        SM[Service Manager]
+        SV[Credential Vault]
+        SB[Security Sandbox]
+        MCP[MCP Client]
+        RAG[RAG Service]
+    end
+    
+    SM --> SV
+    SM --> SB
+    SM --> MCP
+    SM --> RAG
+```
+
+### 4.1. Event Bus (`event_bus.py`)
+* **Topic-Based Routing**: Asynchronous, thread-safe message broker supporting wildcard pattern subscriptions (`*`).
+* **Core Topics**:
+  * `system.status_changed`: Fired during voice and agent state changes.
+  * `context.updated.*`: Context variables update triggers.
+  * `task.*`: Task queue job state updates.
+  * `log.new`: Loguru streams broadcast to listeners.
+  * `agent.message`: Multi-agent messaging transactions.
+
+### 4.2. Secure Sandbox & Vault (`vault.py`, `sandbox.py`, `rbac.py`)
+* **Subprocess Constraint**: Runs Python code asynchronously using python executable subprocesses, filtering critical system context and checking execution outputs.
+* **RBAC & Confirmations**: Defines Admin/User/Guest roles, blocks unauthorized files/systems actions, and writes persistent JSON entry lines to `data/security/audit.log`.
+
+### 4.3. Model Context Protocol (`client.py`, `file_server.py`)
+* **Stdin/Stdout Channels**: Spawns local python subprocess servers, exchanging JSON-RPC 2.0 requests over standard pipes.
+* **MCPClientManager**: Discover tools via `tools/list` on launch and route actions through `tools/call`.
+
+### 4.4. Hierarchical Agents (`orchestrator.py`)
+* **CEO-Planner-Worker Loop**:
+  * CEO receives user objectives, coordinates event cycles, and responds.
+  * Planner generates sequential execution tasks.
+  * Worker agents (Desktop, Browser, Coding, Research, File) run individual task steps.
+
+### 4.5. Hybrid Memory System (`hybrid_memory_system.py`)
+* **Six Memory Dimensions**:
+  * **Working**: Active session states.
+  * **Conversational**: Chat transcript lists.
+  * **Semantic**: Keyword lookups.
+  * **Procedural**: Pre-mapped workflow plans.
+  * **Episodic**: Serialized history traces in SQLite/JSON files.
+  * **Knowledge Graph**: Relationship networks modeled using `NetworkX` and persisted to `data/memory/knowledge_graph.json`.
+
+### 4.6. Incremental RAG Service (`rag_service.py`)
+* **Native docx/pptx Parser**: ZIP-opens OpenXML packages and parses XML paragraphs/slides natively.
+* **Index Manifest**: Checks file modification timestamps (`os.path.getmtime`) inside `index_manifest.json` to skip re-indexing unchanged documents.
+* **ChromaDB / TF-IDF Search**: Performs embedding vector search queries, falling back to local cosine TF-IDF dictionary queries.
+
+---
+
+## 5. Database Setup & Configurations
 
 The SQLite database (`data/jarvis.db`) is managed asynchronously:
 * **Engine**: Async SQLAlchemy engine: `sqlite+aiosqlite:///data/jarvis.db`.
@@ -111,7 +181,7 @@ The SQLite database (`data/jarvis.db`) is managed asynchronously:
 
 ---
 
-## 5. API Endpoints
+## 6. API Endpoints
 
 ### 5.1. WebSocket Endpoints
 * **`WS /api/voice`**: Main communication channel.

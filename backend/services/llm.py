@@ -1124,8 +1124,8 @@ class LLMService:
                 
                 while True:
                     try:
-                        # Enforce a 8-second timeout for first chunk (25s for ollama for slow models), 30s for subsequent
-                        timeout = (25.0 if provider == "ollama" else 8.0) if first_chunk else 30.0
+                        # Enforce a 35-second timeout for first chunk, and 45-second for subsequent chunks to handle model latency gracefully
+                        timeout = 35.0 if first_chunk else 45.0
                         event = await asyncio.wait_for(iterator.__anext__(), timeout=timeout)
                         first_chunk = False
                         yield event

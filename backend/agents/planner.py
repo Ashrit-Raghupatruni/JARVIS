@@ -8,8 +8,10 @@ execution, and manages safety checks.
 
 import asyncio
 import json
+import re
 import traceback
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import AsyncGenerator, Optional
 
 from loguru import logger
@@ -92,6 +94,159 @@ class PlannerAgent:
 
         # Add user message to history
         history.append({"role": "user", "content": user_message})
+
+        # Check for local RAG / indexing intents to guarantee robust local-first offline execution
+        lower_msg = user_message.lower().strip()
+        is_rag_search = False
+        search_query = None
+
+        # 1. RAG Search Intent
+        rag_search_patterns = [
+            r'(?:search|find|query)\s+(?:my\s+)?(?:local\s+)?(?:knowledge\s+)?(?:database|base|hub|rag)\s+(?:for\s+)?(.+)',
+            r'search\s+(?:for\s+)?(.+)\s+in\s+(?:my\s+)?(?:local\s+)?(?:knowledge|database|hub|rag)',
+        ]
+
+        for pat in rag_search_patterns:
+            m = re.search(pat, lower_msg)
+            if m:
+                is_rag_search = True
+                search_query = m.group(1).strip()
+                break
+
+        if not is_rag_search and "search" in lower_msg and ("local knowledge" in lower_msg or "local database" in lower_msg or "knowledge database" in lower_msg or "knowledge base" in lower_msg or "rag search" in lower_msg):
+            is_rag_search = True
+            search_query = user_message
+            for kw in ["hey jarvis", "jarvis", "search my local knowledge database for", "search local database for", "search knowledge database for", "search knowledge base for", "search for", "local knowledge", "local database", "knowledge database", "knowledge base", "rag search", "in local knowledge"]:
+                search_query = re.sub(rf'(?i)\b{re.escape(kw)}\b', '', search_query)
+            search_query = search_query.strip()
+
+        # 2. Folder Indexing Intent
+        index_match = re.search(r'(?:index\s+(?:folder|directory|repo|repository)?\s*)([a-zA-Z]:[\\/][^"]+|[^\s"]+)', lower_msg)
+        is_indexing = "index" in lower_msg and index_match
+
+        if is_indexing:
+            folder_to_index = index_match.group(1).strip().strip('"\'')
+            yield WSMessage(
+                type="status",
+                data=StatusMessage(state=AssistantState.PROCESSING).model_dump(),
+            )
+            yield WSMessage(
+                type="agent_progress",
+                data={
+                    "task": f"Index folder: {folder_to_index}",
+                    "steps": [
+                        AgentStep(
+                            id="step_index",
+                            description=f"Scanning and indexing '{folder_to_index}' recursively...",
+                            tool_name="index_folder",
+                            status=AgentStepStatus.RUNNING
+                        ).model_dump()
+                    ],
+                    "progress": 0.5,
+                },
+            )
+            try:
+                from backend.services.rag_service import RAGService
+                rag = RAGService()
+                count = rag.index_folder(Path(folder_to_index))
+                response_text = f"Successfully indexed {count} document files inside `{folder_to_index}`."
+                yield WSMessage(
+                    type="agent_progress",
+                    data={
+                        "task": f"Index folder: {folder_to_index}",
+                        "steps": [
+                            AgentStep(
+                                id="step_index",
+                                description=f"Scanning and indexing '{folder_to_index}' recursively...",
+                                tool_name="index_folder",
+                                status=AgentStepStatus.COMPLETED,
+                                result=response_text
+                            ).model_dump()
+                        ],
+                        "progress": 1.0,
+                    },
+                )
+                history.append({"role": "assistant", "content": response_text})
+                if conversation_history is None:
+                    self._conversation_history = history
+                yield WSMessage(
+                    type="response",
+                    data=ResponseMessage(
+                        text=response_text,
+                        conversation_id=None,
+                    ).model_dump(),
+                )
+                return
+            except Exception as e:
+                logger.error(f"Local RAG Indexing interception error: {e}")
+
+        elif is_rag_search and search_query:
+            yield WSMessage(
+                type="status",
+                data=StatusMessage(state=AssistantState.PROCESSING).model_dump(),
+            )
+            yield WSMessage(
+                type="agent_progress",
+                data={
+                    "task": f"RAG Search: {search_query}",
+                    "steps": [
+                        AgentStep(
+                            id="step_search",
+                            description=f"Querying local knowledge base for '{search_query}'...",
+                            tool_name="rag_search",
+                            status=AgentStepStatus.RUNNING
+                        ).model_dump()
+                    ],
+                    "progress": 0.5,
+                },
+            )
+            try:
+                from backend.services.rag_service import RAGService
+                rag = RAGService()
+                results = rag.search(search_query, limit=3)
+                if results:
+                    response_text = f"Here is what I found in the local knowledge base for **\"{search_query}\"**:\n\n"
+                    for idx, res in enumerate(results):
+                        path_name = Path(res["path"]).name if res.get("path") else "Unknown source"
+                        link_path = res["path"].replace('\\', '/')
+                        response_text += f"{idx+1}. **{res['text']}**\n   *(Source: [{path_name}](file:///{link_path}) - Score: {res['score']})*\n\n"
+                else:
+                    response_text = (
+                        f"I searched the local knowledge database for **\"{search_query}\"**, but unfortunately, no matching "
+                        "documents or indexed notes were found. This could mean the relevant files haven't been indexed yet.\n\n"
+                        "**Suggested Actions:**\n"
+                        f"1. You can index the directory containing the information using the command: `index folder <path_to_directory>`.\n"
+                        f"2. You can ask me to perform a live web search on the topic by saying: \"Search the web for {search_query}\"."
+                    )
+                yield WSMessage(
+                    type="agent_progress",
+                    data={
+                        "task": f"RAG Search: {search_query}",
+                        "steps": [
+                            AgentStep(
+                                id="step_search",
+                                description=f"Querying local knowledge base for '{search_query}'...",
+                                tool_name="rag_search",
+                                status=AgentStepStatus.COMPLETED,
+                                result=response_text
+                            ).model_dump()
+                        ],
+                        "progress": 1.0,
+                    },
+                )
+                history.append({"role": "assistant", "content": response_text})
+                if conversation_history is None:
+                    self._conversation_history = history
+                yield WSMessage(
+                    type="response",
+                    data=ResponseMessage(
+                        text=response_text,
+                        conversation_id=None,
+                    ).model_dump(),
+                )
+                return
+            except Exception as e:
+                logger.error(f"Local RAG Search interception error: {e}")
         
         # Trim local history
         if len(history) > self._max_history:
@@ -254,6 +409,23 @@ class PlannerAgent:
             if not use_prash_agent:
                 # Reset any active graph state since we are falling back
                 self._active_graph_state = None
+                
+                # Yield progress loading state to indicate model latency gracefully
+                yield WSMessage(
+                    type="agent_progress",
+                    data={
+                        "task": user_message[:100],
+                        "steps": [
+                            AgentStep(
+                                id="llm_generation",
+                                description="Contacting LLM service (waiting for response - small models take 5-10s, larger models 15-20s)...",
+                                tool_name="llm_router",
+                                status=AgentStepStatus.RUNNING,
+                            ).model_dump()
+                        ],
+                        "progress": 0.1,
+                    },
+                )
                 
                 async for event in self.llm.process_message(messages_for_llm, tool_executor=self._execute_tool):
                     if event["type"] == "text_delta":

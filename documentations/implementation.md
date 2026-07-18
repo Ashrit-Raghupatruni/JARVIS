@@ -14,18 +14,34 @@ JARVIS/
 │   │   └── websockets.py    # Main WebSocket duplex router (/api/voice)
 │   ├── agents/
 │   │   ├── langgraph_agent/ # New LangGraph agent module (state, tools, nodes, state machine)
+│   │   ├── multi_agent/     # CEO-Planner-Worker orchestrators [NEW]
+│   │   ├── context_manager.py # Shared Agent Context manager [NEW]
 │   │   ├── planner.py       # Central agent that runs LangGraph agent or fallback router
 │   │   ├── subagent.py      # Base class for specialized worker agents
 │   │   └── voice.py         # Handles voice stream loop processing
 │   ├── models/
 │   │   ├── database.py      # Async SQLAlchemy SQLite model classes
 │   │   └── schemas.py       # Pydantic validation models
+│   ├── mcp/                 # Model Context Protocol layer [NEW]
+│   │   ├── servers/         # Local MCP servers (e.g. file_server.py)
+│   │   ├── client.py        # MCPServerConnection and MCPClientManager
+│   │   └── protocol.py      # Compliant JSON-RPC 2.0 helper
 │   ├── services/
+│   │   ├── security/        # Sandboxes & Encrypted vault [NEW]
+│   │   │   ├── vault.py     # Local AES encrypted file + Windows Credential Vault
+│   │   │   ├── sandbox.py   # Subprocess limits & resource-bounded executors
+│   │   │   └── rbac.py      # Security approvals and audit logging
+│   │   ├── plugins/         # Plugins loader framework [NEW]
 │   │   ├── automation.py    # pywinauto and PyAutoGUI GUI automation
 │   │   ├── browser.py       # Playwright browser manager
 │   │   ├── clap.py          # Background microphone clap listener
+│   │   ├── config_manager.py # Config hot-reloader [NEW]
+│   │   ├── hybrid_memory_system.py # 6-Scope memory graph builder [NEW]
+│   │   ├── rag_service.py   # PDF/DOCX/PPTX RAG matching pipelines [NEW]
 │   │   ├── llm.py           # Model bindings wrapper for APIs & local Ollama
 │   │   ├── llm_router.py    # Metric analyzer & fallback router
+│   │   ├── manager.py       # ServiceManager lifecycle registry [NEW]
+│   │   ├── base.py          # BaseService modular interface [NEW]
 │   │   ├── memory.py        # SQLite + ChromaDB semantic cache
 │   │   ├── safety.py        # Banned keyword & command safety checks
 │   │   ├── screen.py        # Screenshot capturing & vision API
@@ -33,7 +49,9 @@ JARVIS/
 │   │   ├── tts.py           # edge-tts voice synthesis engine
 │   │   └── wake_word.py     # Local openwakeword wake word pipeline
 │   ├── utils/
-│   │   └── logger.py        # Loguru console and file logging setup
+│   │   ├── logger.py        # Loguru console/file logging & EventBus hooks
+│   │   ├── event_bus.py     # Wildcard async topic EventBus [NEW]
+│   │   └── task_queue.py    # Sequential asyncio Task Queue [NEW]
 │   ├── config.py            # Centralized settings loader (Pydantic Settings)
 │   └── main.py              # Application server entry point (FastAPI)
 │
@@ -74,13 +92,15 @@ When a user double-clicks `start.bat` (or runs `npm run dev` in the frontend dir
            │
            └──► 3. Wait for backend health check endpoint (/api/health) to return status 200
                    │
-                   ├───► [FastAPI Backend Startup]
-                   │        ├──► Initialize DB schemas (SQLite / aiosqlite)
-                   │        ├──► Initialize ChromaDB vector workspace
-                   │        ├──► Spin up ClapService background thread
-                   │        └──► Expose REST & WebSockets server on port 8000
-                   │
-                   └───► 4. Close loading screen, launch main visual window
+                    ├───► [FastAPI Backend Startup]
+                    │        ├──► 1. Initialize Event Bus, Context Manager & sequential AsyncTaskQueue
+                    │        ├──► 2. Initialize Security Vault, constrained Sandbox & RBAC orchestrators
+                    │        ├──► 3. Initialize dynamic MCP Client Manager & local FastMCP subprocesses
+                    │        ├──► 4. Initialize Hybrid Memory Graph (NetworkX) & RAG semantic directories
+                    │        ├──► 5. Initialize DB schemas (SQLite / aiosqlite) & ChromaDB vector workspace
+                    │        ├──► 6. Spin up ClapService background thread and register uvicorn server on port 8000
+                    │
+                    └───► 4. Close loading screen, launch main visual window
 ```
 
 ---

@@ -89,7 +89,7 @@ sequenceDiagram
         Agent->>Tool: Execute browser search
         Tool-->>Agent: Return crawled web text
         BE->>WS: Send Progress Update (type: "agent_progress")
-        WS->>UI: Mark Step 1 [Completed]
+        WS->>UI: Update Step 1 Status
     end
     
     Agent->>Router: Formulate final response with data
@@ -169,7 +169,7 @@ sequenceDiagram
     Cam->>HT: Stream video frames (transient memory)
     Note over HT: For each frame: run HandLandmarker.<br/>Detect wrist, thumb tip, index tip, middle MCP landmarks.
     HT->>HT: Calculate distance ratio between thumb & index tips
-    alt Single Hand Pinch (Pinch Ratio < 0.32)
+    alt Single Hand Pinch (Pinch Ratio less than 0.32)
         HT->>OS: Trigger rotateBy(dx, dy)
         OS->>OS: Rotate OrbitControls camera view
         HT->>UI: Emit state "hands: 1, mode: spin"
@@ -177,6 +177,6 @@ sequenceDiagram
         HT->>OS: Trigger zoomBy(factor)
         OS->>OS: Change camera distance (zoom)
         HT->>UI: Emit state "hands: 2, mode: zoom"
-    }
+    end
     HT->>UI: Render landmark connecting lines in mirrored overlay canvas
 ```

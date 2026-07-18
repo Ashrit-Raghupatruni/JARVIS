@@ -210,26 +210,47 @@ These variables are defined in the project's `.env` configuration file:
 
 ---
 
-## 🛠️ Recently Completed Work
+## ⚙️ Implemented System Architectures & Controls
 
-1. **Phase P5 (Contextual Awareness):** Created `ContextSkill` to track active window titles and infer work projects. Integrated background polling checks inside `main.py` every 5 seconds.
-2. **Phase P6 (Cross-Device Sync):** Added symmetric AES packet encryption (`SyncService`), UDP heartbeats, and WebSocket synchronization routes.
-3. **Phase P7 (Autonomous Sub-Agents):** Created `SubAgentInstance` background task runner, implemented `AgentSkill` tool definitions (`spawn_subagent`, `get_active_agents`, and `abort_subagent`), and added WebSocket commands to retrieve sub-agent status or cancel tasks dynamically.
+1. **Contextual Awareness:** Created `ContextSkill` to track active window titles and infer work projects. Integrated background polling checks inside `main.py` every 5 seconds.
+2. **Cross-Device Sync:** Added symmetric AES packet encryption (`SyncService`), UDP heartbeats, and WebSocket synchronization routes.
+3. **Autonomous Sub-Agents:** Created `SubAgentInstance` background task runner, implemented `AgentSkill` tool definitions (`spawn_subagent`, `get_active_agents`, and `abort_subagent`), and added WebSocket commands to retrieve sub-agent status or cancel tasks dynamically.
 4. **Local History Safety:** Refactored conversation history handling inside `PlannerAgent` to utilize concurrent-safe local variables to prevent background agents from corrupting user chat.
-5. **Intelligent Router & Self-Improving Brain (Phase P8):** Built a background evaluation loop, active poller, and ChromaDB/SQLite memory manager to rank providers dynamically. Added preference correction extraction to learn from user edits.
+5. **Intelligent Router & Self-Improving Brain:** Built a background evaluation loop, active poller, and ChromaDB/SQLite memory manager to rank providers dynamically. Added preference correction extraction to learn from user edits.
 6. **Production-Grade Concurrency & Concurrency Verification:** Refactored React custom hooks using a reference-counted WebSocket client singleton to prevent race conditions. Integrated an asynchronous background queue (`voice_queue`) in `websocket.py` to process audio chunks/toggles sequentially and allow instant `interrupt` message parsing.
 7. **Session ID Isolation:** Implemented session-level ID tracking in `voice.py` to discard overlapping responses/TTS from stale voice queries when a new voice activation occurs.
 8. **Resilient Tool Fallbacks & Parameter Validation:** Wrapped OpenAI, Gemini, Groq, OpenRouter, and NVIDIA NIM completions in catch-all fallbacks to automatically retry without tools on parameter/schema/formatting errors. Corrected `PlannerAgent` to directly await async automation coroutines instead of wrapping them in `asyncio.to_thread`.
-9. **3D Visuals & Webcam Gesture Controls (Phase P9):** Replaced flat 2D SVG animations with an interactive, rotating 3D wireframe model of the Arc Reactor (concentric rings, gear teeth, ticking LEDs, and copper coils) fully transparent and floating directly on the app's background. Integrated local MediaPipe hand landmark tracking to control camera rotations/zooms via hand gestures. Added film grain, scanlines, vignette, and a central "J.A.R.V.I.S." overlay in the center of the reactor, while removing the external borders. Designed a drag-vs-click threshold handler to prevent drags from triggering voice prompts.
+9. **3D Visuals & Webcam Gesture Controls:** Replaced flat 2D SVG animations with an interactive, rotating 3D wireframe model of the Arc Reactor (concentric rings, gear teeth, ticking LEDs, and copper coils) fully transparent and floating directly on the app's background. Integrated local MediaPipe hand landmark tracking to control camera rotations/zooms via hand gestures. Added film grain, scanlines, vignette, and a central "J.A.R.V.I.S." overlay in the center of the reactor, while removing the external borders. Designed a drag-vs-click threshold handler to prevent drags from triggering voice prompts.
 10. **Holographic HUD, Window Controls & Siri Widget Optimization:**
     * **Non-Blocking Application Launching:** Refactored path resolution in `automation.py` to check for executable existence before launching, enabling fallbacks to Registry and Start Menu searches. Wrapped blocking `os.startfile` operations in `asyncio.to_thread` to prevent thread locks and client timeout errors.
     * **Frameless Resizing Fix:** Removed conflicting `titleBarStyle: 'hidden'` and `titleBarOverlay` properties from the main Electron window creation in `index.ts`, restoring fully functioning custom maximize/restore buttons.
     * **Context-Aware Siri Overlay Popup:** Added window focus checks to inhibit showing the Siri widget when the user is already interacting with the main JARVIS application, hiding it automatically on focus event updates.
     * **Clutter-Free Visuals:** Deleted floating text shortcuts inside the WebGL canvas viewport, making the transparent Arc Reactor floating display clean and focused.
-11. **Prash Local AI Engine & LangGraph Agent Integration (Phase P10):**
+11. **Prash Local AI Engine & LangGraph Agent Integration:**
     * **Prash Local Model**: Deployed a custom 0.70M-parameter Transformer model trained on a T4 GPU (Google Colab) with lowercase BPE token sequence matching.
     * **LangGraph Agent Workflow**: Constructed state machine loops (state.py, tools.py, and nodes.py) around the local Prash model.
     * **Advanced Controls**: Implemented absolute volume setting (0-100%) and individual application window minimization (`minimize_window` tool) in `automation.py`.
+
+---
+
+## ⚙️ Technical Stack Core Imports & Purposes
+
+The backend utilizes specific libraries to construct the Next-Generation AI OS capabilities:
+
+| Import / Package | Domain Location | Purpose & Capability |
+|---|---|---|
+| **`fastapi` / `uvicorn`** | `backend/main.py`, `backend/api/` | Hosts the server and handles REST routes, middleware, and duplex websocket streams. |
+| **`pydantic` / `pydantic_settings`** | `backend/config.py`, `backend/models/` | Centralized settings management (hot-reloads via `.env`) and strict JSON schemas. |
+| **`loguru`** | `backend/utils/logger.py` | Unified logger with rotating log files, log levels, and EventBus stream hookups. |
+| **`networkx`** | `backend/services/hybrid_memory_system.py` | Constructs and queries entity relationship nodes and edges for the Knowledge Graph. |
+| **`cryptography` / `keyring`** | `backend/services/security/vault.py` | Encrypted credential vault with fallback AES symmetric ciphers and Windows Locker. |
+| **`pypdf`** | `backend/services/rag_service.py` | Parses and extracts structured page texts from local PDF documents recursively. |
+| **`zipfile` / `xml.etree.ElementTree`** | `backend/services/rag_service.py` | Natively extracts paragraph and slide texts from DOCX / PPTX OpenXML archives. |
+| **`chromadb`** | `backend/services/memory.py`, `rag_service.py` | Local vector database indexing and SentenceTransformers semantic search matching. |
+| **`sqlalchemy` / `sqlite3`** | `backend/models/database.py` | Persistent SQLite structured storage for chat message histories, preferences, and logs. |
+| **`asyncio`** | `backend/utils/`, `backend/mcp/` | Asynchronous task queues, event buses, and non-blocking MCP server subprocesses. |
+| **`win32gui` / `win32process` / `pywinauto`** | `backend/services/skills/` | Low-level OS active window tracking, min/max controls, and volume mixer interactions. |
+| **`playwright`** | `backend/services/browser.py` | Automated headless/headed browser sessions and fast DuckDuckGo web searching. |
 
 ---
 
@@ -242,25 +263,11 @@ These variables are defined in the project's `.env` configuration file:
 
 ---
 
-## 🎯 Progress Summary & Recommended Roadmap
+## 🎯 Capability Roadmap
 
-```
-Phase P0 (Core Registry & File System) ───────────────── 100%
-Phase P1 (Communication Hub) ────────────────────────── 100%
-Phase P2 (Proactive Mode) ───────────────────────────── 100%
-Phase P3 (Deep App Integration) ──────────────────────── 100%
-Phase P4 (Security Shield) ───────────────────────────── 100%
-Phase P5 (Contextual Awareness) ──────────────────────── 100%
-Phase P6 (Cross-Device Sync) ────────────────────────── 100%
-Phase P7 (Autonomous Agent Syndicate) ────────────────── 100%
-Phase P8 (Intelligent Router & Memory) ───────────────── 100%
-Phase P9 (3D Visuals & Hand Gestures) ────────────────── 100%
-```
+The roadmap includes the following planned system capabilities and enhancements:
 
-**Overall Project Progress: 98%**
-
-### Next Recommended Milestones (Next-Generation AI OS)
-1. **Security Sandbox & Vault (Phase 1)**: Implement local credential locking and isolate script execution inside Docker/Windows Sandbox environments.
-2. **MCP Client & Server Transition (Phase 1)**: Standardize all desktop skills under the Model Context Protocol (FastMCP) and remove the hardcoded tool definition schemas.
-3. **Personal Knowledge Hub (RAG - Phase 2)**: Index local documents (PDF, DOCX, Obsidian vault) with semantic RAG search to serve as the unified agent knowledge repository.
-4. **Developer/Coding Agent (Phase 2)**: Design a sandbox coding assistant to automate bug localization and unit test generation.
+1. **Security Sandbox & Vault**: Implement local credential locking and isolate script execution inside Docker/Windows Sandbox environments.
+2. **MCP Client & Server Transition**: Standardize all desktop skills under the Model Context Protocol (FastMCP) and remove the hardcoded tool definition schemas.
+3. **Personal Knowledge Hub (RAG)**: Index local documents (PDF, DOCX, Obsidian vault) with semantic RAG search to serve as the unified agent knowledge repository.
+4. **Developer/Coding Agent**: Design a sandbox coding assistant to automate bug localization and unit test generation.

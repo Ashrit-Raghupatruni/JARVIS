@@ -52,7 +52,7 @@ JARVIS is a production-grade, voice-controlled AI desktop assistant for Windows,
 * **Subagent Delegation**:
   * Spawns specialized agents (Automation Agent, Browser Agent, Memory Agent) to run specific subtasks.
 * **UI Progress Tracking**:
-  * Reports the execution state (`pending`, `running`, `completed`, `failed`) of individual steps to the frontend in real-time.
+  * Reports the active execution state of individual steps to the frontend in real-time.
 
 ### 3.4. Computer Control & Screen Understanding
 * **GUI Automation**:
@@ -82,6 +82,26 @@ JARVIS is a production-grade, voice-controlled AI desktop assistant for Windows,
   * Pinch-and-spread gesture with both hands zooms the camera in/out.
   * Keyboard shortcut `G` and visual HUD buttons toggle hand tracking.
   * Mirrored camera preview overlay with custom sepia color grading and tracing skeletal connections on canvas.
+
+### 3.8. Next-Generation AI OS Foundations
+* **Modular Service Manager**: Centralized registry for loading services on demand, avoiding startup locks and boosting boot efficiency.
+* **Unified Event Bus**: Decentralized asynchronous messaging broker coordinating voice processing, agents, and logs.
+* **Security Sandbox & Encrypted Vault**:
+  * Isolated Python / terminal script execution containers restricting resource limits and command injection threats.
+  * Local AES-encrypted credentials locker coupled with Windows Credential Locker.
+  * Mandatory user confirmations and persistent audit logs for system modifying tools.
+* **Model Context Protocol (MCP)**:
+  * Unified stdin/stdout dynamic client interface mapping tools from FastMCP servers.
+  * Standalone local MCP subprocesses separating tool execution from core server runtime.
+* **Hierarchical Multi-Agent Engine**:
+  * CEO Agent orchestrating planning delegation.
+  * Worker Agent pools running collaborative parallel execution.
+* **Hybrid Memory & Graph**:
+  * 6-Scope Memory System (Working, Conversational, Semantic, Procedural, Episodic, and Knowledge Graph).
+  * Relationship and habit tracking utilizing local NetworkX serialization.
+* **Personal RAG Hub**:
+  * Incremental indexing of PDFs, Markdowns, DOCX, and PPTX slide XMLs based on timestamps.
+  * Cite-supported semantic searching and context injection.
 
 ---
 
