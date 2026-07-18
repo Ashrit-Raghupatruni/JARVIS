@@ -23,6 +23,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from backend.config import get_settings
 from backend.utils.logger import setup_logger
+from backend.utils.event_bus import EventBus
+from backend.agents.context_manager import SharedContextManager
+from backend.utils.task_queue import AsyncTaskQueue
+from backend.services.config_manager import ConfigurationManager
+from backend.services.manager import ServiceManager
 
 
 @asynccontextmanager
@@ -36,12 +41,26 @@ async def lifespan(app: FastAPI):
     logger.info("  JARVIS AI Desktop Assistant — Starting Up")
     logger.info("=" * 60)
 
+    # ── Initialize Event Bus, Context, Task Queue, Config Manager ───────
+    event_bus = EventBus()
+    context_manager = SharedContextManager(event_bus)
+    task_queue = AsyncTaskQueue(event_bus)
+    task_queue.start()
+    config_manager = ConfigurationManager(event_bus)
+    
+    app.state.event_bus = event_bus
+    app.state.context_manager = context_manager
+    app.state.task_queue = task_queue
+    app.state.config_manager = config_manager
+    app.state.service_manager = ServiceManager
+
     # ── Initialize Services ──────────────────────────────────
 
     # Safety Service (no external deps, always available)
     from backend.services.safety import SafetyService
     safety_service = SafetyService()
     app.state.safety_service = safety_service
+    ServiceManager.register_instance("safety_service", safety_service)
     logger.info("✓ Safety service initialized")
 
     # LLM Service
@@ -50,6 +69,7 @@ async def lifespan(app: FastAPI):
         from backend.services.llm import LLMService
         llm_service = LLMService()
         app.state.llm_service = llm_service
+        ServiceManager.register_instance("llm_service", llm_service)
         # Log active provider and model
         provider = settings.LLM_PROVIDER or "gemini"
         if provider == "ollama":
@@ -83,6 +103,7 @@ async def lifespan(app: FastAPI):
         from backend.services.stt import STTService
         stt_service = STTService()
         app.state.stt_service = stt_service
+        ServiceManager.register_instance("stt_service", stt_service)
         app.state.stt_model_name = settings.WHISPER_MODEL
         logger.info(f"✓ STT service initialized (model: {settings.WHISPER_MODEL})")
     except Exception as e:
@@ -95,6 +116,7 @@ async def lifespan(app: FastAPI):
         from backend.services.tts import TTSService
         tts_service = TTSService()
         app.state.tts_service = tts_service
+        ServiceManager.register_instance("tts_service", tts_service)
         logger.info(f"✓ TTS service initialized (voice: {settings.TTS_VOICE})")
     except Exception as e:
         logger.error(f"✗ TTS service failed: {e}")
@@ -108,6 +130,7 @@ async def lifespan(app: FastAPI):
         import asyncio
         asyncio.create_task(wake_word_service.load_model())
         app.state.wake_word_service = wake_word_service
+        ServiceManager.register_instance("wake_word_service", wake_word_service)
         logger.info("✓ Wake word service initialized (model loading in background)")
     except Exception as e:
         logger.warning(f"✗ Wake word service unavailable: {e}")
@@ -120,6 +143,7 @@ async def lifespan(app: FastAPI):
         clap_service = ClapService()
         clap_service.start()
         app.state.clap_service = clap_service
+        ServiceManager.register_instance("clap_service", clap_service)
         logger.info("✓ Clap service initialized and listening")
     except Exception as e:
         logger.error(f"✗ Clap service failed: {e}")
@@ -131,6 +155,7 @@ async def lifespan(app: FastAPI):
         from backend.services.automation import AutomationService
         automation_service = AutomationService()
         app.state.automation_service = automation_service
+        ServiceManager.register_instance("automation_service", automation_service)
         logger.info("✓ Automation service initialized")
     except Exception as e:
         logger.error(f"✗ Automation service failed: {e}")
@@ -142,6 +167,7 @@ async def lifespan(app: FastAPI):
         from backend.services.screen import ScreenService
         screen_service = ScreenService()
         app.state.screen_service = screen_service
+        ServiceManager.register_instance("screen_service", screen_service)
         logger.info("✓ Screen service initialized")
     except Exception as e:
         logger.error(f"✗ Screen service failed: {e}")
@@ -153,6 +179,7 @@ async def lifespan(app: FastAPI):
         from backend.services.browser import BrowserService
         browser_service = BrowserService()
         app.state.browser_service = browser_service
+        ServiceManager.register_instance("browser_service", browser_service)
         logger.info("✓ Browser service initialized (lazy start)")
     except Exception as e:
         logger.error(f"✗ Browser service failed: {e}")
@@ -165,6 +192,7 @@ async def lifespan(app: FastAPI):
         memory_service = MemoryService()
         await memory_service.init()
         app.state.memory_service = memory_service
+        ServiceManager.register_instance("memory_service", memory_service)
         logger.info("✓ Memory service initialized")
     except Exception as e:
         logger.error(f"✗ Memory service failed: {e}")
@@ -313,6 +341,12 @@ async def lifespan(app: FastAPI):
 
     # ── Shutdown ──────────────────────────────────────────────
     logger.info("JARVIS shutting down...")
+
+    if hasattr(app.state, "task_queue") and app.state.task_queue:
+        try:
+            await app.state.task_queue.stop()
+        except Exception as e:
+            logger.error(f"Task queue shutdown error: {e}")
 
     if hasattr(app.state, "proactive_task") and app.state.proactive_task:
         try:
