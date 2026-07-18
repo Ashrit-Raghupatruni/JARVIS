@@ -174,8 +174,8 @@ class VoiceAgent:
                 removed = self._rolling_audio_history.pop(0)
                 total_bytes -= len(removed)
 
-        # 1. Wake word detection in IDLE, SPEAKING, and PROCESSING states
-        if self.wake_word and self._state in [AssistantState.IDLE, AssistantState.SPEAKING, AssistantState.PROCESSING]:
+        # 1. Wake word detection in IDLE and PROCESSING states
+        if self.wake_word and self._state in [AssistantState.IDLE, AssistantState.PROCESSING]:
             try:
                 detected = self.wake_word.process_audio(chunk)
                 if detected:

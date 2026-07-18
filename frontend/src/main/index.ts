@@ -405,7 +405,7 @@ function setupIPC(): void {
   ipcMain.on('websocket-connected', () => {
     if (mainWindow) {
       mainWindow.show()
-      mainWindow.setFullScreen(true)
+      mainWindow.focus()
     }
   })
 }

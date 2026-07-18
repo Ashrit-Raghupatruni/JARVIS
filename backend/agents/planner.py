@@ -248,6 +248,233 @@ class PlannerAgent:
             except Exception as e:
                 logger.error(f"Local RAG Search interception error: {e}")
         
+        # 3. Direct Local Volume Control Intercept
+        is_vol_control = False
+        vol_action = None
+        vol_amount = None
+
+        if lower_msg in ("mute", "unmute", "mute system", "unmute system", "mute volume", "unmute volume", "mute audio", "unmute audio"):
+            is_vol_control = True
+            vol_action = "mute"
+        else:
+            vol_match = re.search(r'(?:set\s+)?(?:system\s+)?(?:speaker\s+)?volume\s+(?:to\s+)?(\d+)', lower_msg)
+            if vol_match:
+                is_vol_control = True
+                vol_action = "set"
+                vol_amount = int(vol_match.group(1))
+            else:
+                vol_up_down = re.search(r'(?:turn\s+|increase\s+|decrease\s+)?volume\s+(up|down)', lower_msg)
+                if vol_up_down:
+                    is_vol_control = True
+                    vol_action = vol_up_down.group(1)
+                elif "volume up" in lower_msg or "increase volume" in lower_msg:
+                    is_vol_control = True
+                    vol_action = "up"
+                elif "volume down" in lower_msg or "decrease volume" in lower_msg:
+                    is_vol_control = True
+                    vol_action = "down"
+
+        if is_vol_control:
+            yield WSMessage(
+                type="status",
+                data=StatusMessage(state=AssistantState.PROCESSING).model_dump(),
+            )
+            step_desc = f"Setting system volume to {vol_amount}%..." if vol_action == "set" else f"Adjusting system volume {vol_action}..."
+            yield WSMessage(
+                type="agent_progress",
+                data={
+                    "task": "Volume Control",
+                    "steps": [
+                        AgentStep(
+                            id="step_volume",
+                            description=step_desc,
+                            tool_name="adjust_volume",
+                            status=AgentStepStatus.RUNNING
+                        ).model_dump()
+                    ],
+                    "progress": 0.5,
+                },
+            )
+            try:
+                response_text = await asyncio.to_thread(self.automation.adjust_volume, vol_action, vol_amount)
+                yield WSMessage(
+                    type="agent_progress",
+                    data={
+                        "task": "Volume Control",
+                        "steps": [
+                            AgentStep(
+                                id="step_volume",
+                                description=step_desc,
+                                tool_name="adjust_volume",
+                                status=AgentStepStatus.COMPLETED,
+                                result=response_text
+                            ).model_dump()
+                        ],
+                        "progress": 1.0,
+                    },
+                )
+                history.append({"role": "assistant", "content": response_text})
+                if conversation_history is None:
+                    self._conversation_history = history
+                yield WSMessage(
+                    type="response",
+                    data=ResponseMessage(
+                        text=response_text,
+                        conversation_id=None,
+                    ).model_dump(),
+                )
+                return
+            except Exception as e:
+                logger.error(f"Local volume intercept error: {e}")
+
+        # 4. Direct Local Window Control Intercept
+        is_win_control = False
+        win_action = None
+        win_title = None
+
+        win_match = re.search(r'(minimize|restore|maximize|focus)\s+(?:window\s+|app\s+|application\s+)?(?:named\s+|called\s+|matching\s+|title\s+)?(.*)', lower_msg)
+        if win_match:
+            is_win_control = True
+            win_action = win_match.group(1)
+            win_title = win_match.group(2).strip()
+            if not win_title:
+                win_title = "current"
+        elif lower_msg in ("minimize", "minimize window", "minimize current window", "minimize active window", "minimize this window"):
+            is_win_control = True
+            win_action = "minimize"
+            win_title = "current"
+
+        if is_win_control and win_action and win_title:
+            yield WSMessage(
+                type="status",
+                data=StatusMessage(state=AssistantState.PROCESSING).model_dump(),
+            )
+            step_desc = f"Executing window {win_action} on '{win_title}'..."
+            yield WSMessage(
+                type="agent_progress",
+                data={
+                    "task": "Window Control",
+                    "steps": [
+                        AgentStep(
+                            id="step_window",
+                            description=step_desc,
+                            tool_name=f"{win_action}_window",
+                            status=AgentStepStatus.RUNNING
+                        ).model_dump()
+                    ],
+                    "progress": 0.5,
+                },
+            )
+            try:
+                if win_action == "minimize":
+                    response_text = await asyncio.to_thread(self.automation.minimize_window, win_title)
+                else:
+                    response_text = await asyncio.to_thread(self.automation.focus_window, win_title)
+                
+                yield WSMessage(
+                    type="agent_progress",
+                    data={
+                        "task": "Window Control",
+                        "steps": [
+                            AgentStep(
+                                id="step_window",
+                                description=step_desc,
+                                tool_name=f"{win_action}_window",
+                                status=AgentStepStatus.COMPLETED,
+                                result=response_text
+                            ).model_dump()
+                        ],
+                        "progress": 1.0,
+                    },
+                )
+                history.append({"role": "assistant", "content": response_text})
+                if conversation_history is None:
+                    self._conversation_history = history
+                yield WSMessage(
+                    type="response",
+                    data=ResponseMessage(
+                        text=response_text,
+                        conversation_id=None,
+                    ).model_dump(),
+                )
+                return
+            except Exception as e:
+                logger.error(f"Local window control intercept error: {e}")
+
+        # 5. Direct Local Launch Control Intercept
+        is_launch_control = False
+        launch_app_name = None
+        app_launch_match = re.search(r'(?:open|start|launch)\s+(calculator|notepad|chrome|spotify|mspaint|paint|cmd|powershell|explorer|edge)', lower_msg)
+        if app_launch_match:
+            is_launch_control = True
+            launch_app_name = app_launch_match.group(1).strip()
+
+        if is_launch_control and launch_app_name:
+            yield WSMessage(
+                type="status",
+                data=StatusMessage(state=AssistantState.PROCESSING).model_dump(),
+            )
+            step_desc = f"Launching application: {launch_app_name}..."
+            yield WSMessage(
+                type="agent_progress",
+                data={
+                    "task": "Launch Application",
+                    "steps": [
+                        AgentStep(
+                            id="step_launch",
+                            description=step_desc,
+                            tool_name="open_application",
+                            status=AgentStepStatus.RUNNING
+                        ).model_dump()
+                    ],
+                    "progress": 0.5,
+                },
+            )
+            try:
+                exe_map = {
+                    "calculator": "calc",
+                    "paint": "mspaint",
+                    "mspaint": "mspaint",
+                    "notepad": "notepad",
+                    "cmd": "cmd.exe",
+                    "powershell": "powershell.exe",
+                    "explorer": "explorer.exe",
+                    "chrome": "chrome",
+                    "edge": "msedge",
+                    "spotify": "spotify"
+                }
+                cmd_exe = exe_map.get(launch_app_name, launch_app_name)
+                response_text = await self.automation.open_application(cmd_exe)
+                yield WSMessage(
+                    type="agent_progress",
+                    data={
+                        "task": "Launch Application",
+                        "steps": [
+                            AgentStep(
+                                id="step_launch",
+                                description=step_desc,
+                                tool_name="open_application",
+                                status=AgentStepStatus.COMPLETED,
+                                result=response_text
+                            ).model_dump()
+                        ],
+                        "progress": 1.0,
+                    },
+                )
+                history.append({"role": "assistant", "content": response_text})
+                if conversation_history is None:
+                    self._conversation_history = history
+                yield WSMessage(
+                    type="response",
+                    data=ResponseMessage(
+                        text=response_text,
+                        conversation_id=None,
+                    ).model_dump(),
+                )
+                return
+            except Exception as e:
+                logger.error(f"Local launch intercept error: {e}")
+        
         # Trim local history
         if len(history) > self._max_history:
             history = history[-self._max_history:]

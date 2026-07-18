@@ -742,7 +742,7 @@ class AutomationService:
 
     def focus_window(self, title: str) -> str:
         """
-        Bring a window matching the title to the foreground.
+        Bring an open window matching the title to the foreground.
 
         Args:
             title: Title (or substring) of the window to focus.
@@ -751,10 +751,43 @@ class AutomationService:
             Status message.
         """
         logger.info("Focusing window matching title: '{}'", title)
+        title_lower = title.lower().strip()
+        if title_lower in ["current", "active", "current window", "active window", "this window", "this"]:
+            return "The window is already focused."
+
         try:
+            # 1. Try win32gui enumeration (highly reliable on Windows)
+            import win32gui
+            import win32con
+            matching_hwnds = []
+            
+            def enum_windows_callback(hwnd, extra):
+                if win32gui.IsWindowVisible(hwnd):
+                    txt = win32gui.GetWindowText(hwnd)
+                    if txt and title_lower in txt.lower():
+                        matching_hwnds.append((hwnd, txt))
+            
+            win32gui.EnumWindows(enum_windows_callback, None)
+            
+            if matching_hwnds:
+                hwnd, window_text = matching_hwnds[0]
+                if win32gui.IsIconic(hwnd):
+                    win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                try:
+                    win32gui.SetForegroundWindow(hwnd)
+                except Exception:
+                    try:
+                        win32gui.BringWindowToTop(hwnd)
+                    except Exception:
+                        pass
+                return f"Focused window '{window_text}' successfully."
+        except Exception as e:
+            logger.debug("Win32 focus window fallback failed: {}", e)
+
+        try:
+            # 2. PyAutoGUI fallback
             windows = pyautogui.getWindowsWithTitle(title)
             if not windows:
-                title_lower = title.lower().strip()
                 windows = [w for w in pyautogui.getAllWindows() if title_lower in w.title.lower()]
 
             if windows:
@@ -780,10 +813,42 @@ class AutomationService:
             Status message.
         """
         logger.info("Minimizing window matching title: '{}'", title)
+        title_lower = title.lower().strip()
+        
         try:
+            import win32gui
+            import win32con
+            
+            # Active window minimize check
+            if title_lower in ["current", "active", "current window", "active window", "this window", "this"]:
+                hwnd = win32gui.GetForegroundWindow()
+                if hwnd:
+                    win32gui.ShowWindow(hwnd, win32con.SW_MINIMIZE)
+                    txt = win32gui.GetWindowText(hwnd) or "active window"
+                    return f"Minimized active window '{txt}' successfully."
+                return "Could not determine active window."
+
+            # Find matching window by title
+            matching_hwnds = []
+            def enum_windows_callback(hwnd, extra):
+                if win32gui.IsWindowVisible(hwnd):
+                    txt = win32gui.GetWindowText(hwnd)
+                    if txt and title_lower in txt.lower():
+                        matching_hwnds.append((hwnd, txt))
+            
+            win32gui.EnumWindows(enum_windows_callback, None)
+            
+            if matching_hwnds:
+                hwnd, window_text = matching_hwnds[0]
+                win32gui.ShowWindow(hwnd, win32con.SW_MINIMIZE)
+                return f"Minimized window '{window_text}' successfully."
+        except Exception as e:
+            logger.debug("Win32 minimize window fallback failed: {}", e)
+
+        try:
+            # PyAutoGUI fallback
             windows = pyautogui.getWindowsWithTitle(title)
             if not windows:
-                title_lower = title.lower().strip()
                 windows = [w for w in pyautogui.getAllWindows() if title_lower in w.title.lower()]
 
             if windows:
