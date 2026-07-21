@@ -267,9 +267,12 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
     }
 
     try {
-      let port = 8000
+      let wsUrl: string
       const api = (window as any).electronAPI
+
       if (api?.getSystemInfo) {
+        // Running inside Electron — connect directly to backend port
+        let port = 8000
         try {
           const info = await api.getSystemInfo()
           if (info && typeof info.backendPort === 'number') {
@@ -278,8 +281,13 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
         } catch (err) {
           console.error('[WS] Failed to get system info for backend port:', err)
         }
+        wsUrl = `ws://127.0.0.1:${port}/ws`
+      } else {
+        // Running in a browser — use same host (Vite dev server proxies /ws → backend)
+        const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+        wsUrl = `${proto}//${window.location.host}/ws`
       }
-      const wsUrl = `ws://127.0.0.1:${port}/ws`
+
       console.log(`[WS] Connecting to ${wsUrl}`)
       const ws = new WebSocket(wsUrl)
       globalWs = ws
