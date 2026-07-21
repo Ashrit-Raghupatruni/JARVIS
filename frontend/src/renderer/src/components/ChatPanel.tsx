@@ -118,12 +118,10 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
         onClick={() => setIsMinimized(!isMinimized)}
       >
         <div className="flex items-center gap-2">
-          <div
-            className="w-2 h-2 rounded-full bg-jarvis-accent"
-            style={{ boxShadow: '0 0 6px rgba(0, 229, 255, 0.6)' }}
-          />
-          <span className="text-sm font-semibold tracking-wider text-jarvis-text text-glow">
-            JARVIS
+          <div className="w-2 h-2 rounded-full bg-jarvis-accent animate-pulse" />
+          <h2 className="text-sm font-semibold text-jarvis-text tracking-wide">AI CHAT</h2>
+          <span className="text-[9px] font-mono text-[#00e5ff] bg-[#00e5ff]/10 border border-[#00e5ff]/30 px-1.5 py-0.5 rounded tracking-wider">
+            WAKE WORD: HEY JARVIS
           </span>
         </div>
 
@@ -228,13 +226,39 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Type a message..."
+                placeholder={assistantState === 'listening' ? "🎤 Listening to your voice..." : "Type a message or say 'Hey Jarvis'..."}
                 className="flex-1 bg-transparent text-sm text-jarvis-text placeholder-jarvis-text-muted outline-none"
               />
+
+              {/* Mic Toggle Button inside Chat Box */}
+              <button
+                type="button"
+                onClick={() => {
+                  const store = useAppStore.getState()
+                  if (store.assistantState === 'idle') {
+                    store.setAssistantState('listening')
+                  } else {
+                    store.setAssistantState('idle')
+                  }
+                }}
+                className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${
+                  assistantState === 'listening'
+                    ? 'bg-red-500/30 text-red-400 border border-red-500/50 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.4)]'
+                    : 'bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff]/30'
+                }`}
+                title={assistantState === 'listening' ? "Stop Mic (Click or Ctrl+Space)" : "Activate Mic (Click or Ctrl+Space)"}
+              >
+                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                  <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                </svg>
+              </button>
+
               <button
                 onClick={handleSend}
                 disabled={!inputText.trim() && !attachedFile}
                 className="w-7 h-7 flex items-center justify-center rounded-md bg-jarvis-accent/20 hover:bg-jarvis-accent/30 disabled:opacity-30 disabled:cursor-not-allowed transition-fast"
+                title="Send Message"
               >
                 <svg
                   className="w-3.5 h-3.5 text-jarvis-accent"
@@ -246,6 +270,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </button>
+
             </div>
           </div>
         </>

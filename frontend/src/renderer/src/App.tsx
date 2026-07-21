@@ -89,6 +89,11 @@ export default function App() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Space: Toggle mic / voice command trigger
+      if ((e.ctrlKey && e.code === 'Space') || (e.ctrlKey && e.key === ' ')) {
+        e.preventDefault()
+        handleOrbClick()
+      }
       // Ctrl+Shift+H: Toggle chat panel
       if (e.ctrlKey && e.shiftKey && e.key === 'H') {
         e.preventDefault()
@@ -103,7 +108,8 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [handleOrbClick])
+
 
   const handleOrbClick = useCallback(async () => {
     if (assistantState === 'idle') {
