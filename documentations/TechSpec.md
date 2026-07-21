@@ -196,3 +196,27 @@ The SQLite database (`data/jarvis.db`) is managed asynchronously:
 * **`GET /api/history`**: Retrieves past conversation logs grouped by `conversation_id`.
 * **`POST /api/settings`**: Updates and persists user preferences in the SQLite `user_preferences` table.
 * **`POST /api/command`**: Runs a direct terminal command (after safety checks and validation).
+* **`GET /api/ui/hud_status`**: Iron Man HUD theme state and 3D Orb visualizer metrics.
+* **`GET /api/ui/agent_dashboard`**: Multi-agent activity metrics (CEO, Planner, Vision, Coding).
+* **`GET /api/ui/memory_explorer`**: Vector DB & Knowledge Graph memory explorer statistics.
+* **`GET /api/ui/workflows`**: Recorded workflow macros and playback stats.
+* **`GET /api/ui/plugins`**: Installed plugins and marketplace catalog state.
+* **`GET /api/ui/performance`**: System RAM, CPU, VRAM, and LLM latency metrics.
+
+---
+
+## 7. Performance, Cross-Platform & Autonomous Services
+
+### 7.1. Performance & Observability (`redis_cache.py`, `gpu_scheduler.py`, `observability.py`)
+* **RedisCacheService**: Dual-layer in-memory dict + Redis hybrid cache engine with hit ratio tracking and TTL eviction.
+* **GPUSchedulerService**: CUDA VRAM allocation tracking, lazy model loading on demand, and idle LRU offloading.
+* **ObservabilityService**: Distributed trace correlation IDs (`trace_id`), crash report logger, and system health status.
+
+### 7.2. Cross-Platform Support & Device Sync (`cross_platform.py`)
+* **CrossPlatformService**: OS detection for Windows, Linux, and macOS GUI/audio backends. Android and iOS mobile companion app pairing and local state/clipboard sync.
+
+### 7.3. Testing, Benchmarks & Backups (`test_runner.py`)
+* **TestRunnerService**: Automated performance benchmark runner, compressed ZIP backup creation, and local system restoration manager (`data/backups/`).
+
+### 7.4. Autonomous Intelligence Engine (`autonomous_engine.py`)
+* **AutonomousEngineService**: Workflow habit pattern learning, time-of-day predictive task execution, long-term goal planner, and self-improving prompt optimizer.

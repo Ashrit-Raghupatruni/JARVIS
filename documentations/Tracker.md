@@ -32,49 +32,26 @@ This document outlines the capabilities, planned system features, and architectu
 * **Siri Waveform**: Dynamic audio waveform mapping.
 * **Task Progress tracker**: Step-by-step checklist visualization for active agent plans.
 
----
-
-## 2. Planned Features & Architectural Enhancements
-
-* **Offline Wake Word Upgrade**: Custom wake phrase model generation to improve detection accuracy.
-* **Active Context Preservation**: Saving open browser tab states and active window history across reboots.
-* **Multi-Monitor Vision**: Visual support for displaying and capturing screenshots across individual displays dynamically.
-* **Calendar & Email Integration**: Direct calendar hooks and email drafts creation via voice.
-* **Companion Mobile App**: Remote microphone relay to trigger desktop shortcuts and control JARVIS from a local Wi-Fi network.
+### 1.5. Extended AI OS Capabilities
+* **Performance & Observability**: In-memory & Redis hybrid cache layer, CUDA VRAM scheduler with lazy model loading, and telemetry trace correlation IDs (`trace_id`).
+* **Cross-Platform & Mobile Sync**: OS abstraction layer (Windows, Linux, macOS) and mobile companion app pairing engine for Android & iOS with encrypted state sync.
+* **System Benchmarks & Local Backups**: Performance benchmarks runner and ZIP backup & restoration engine.
+* **Autonomous Intelligence Engine**: User habit learning, predictive task execution, long-term goal planner, and self-improving prompt optimizer.
 
 ---
 
-## 3. System Architecture & Foundation Roadmap
+## 2. System Architecture Capabilities Directory
 
-* **Security Sandbox & Vault**:
-  * Secure credential storage (Windows Credential Locker).
-  * Isolated Docker environment for Coding and Browser script execution.
-* **MCP Client & Server Integration**:
-  * Refactor standard skills to standard FastMCP servers.
-  * Implement dynamic tool discovery client in the backend.
-* **Personal Knowledge Hub (RAG)**:
-  * Local document indexing and semantic parsing (PDF, Markdown, Obsidian).
-* **Performance Optimization**:
-  * Redis caching, lazy model loading, and async queue tuning.
-* **Developer / Coding Agent**:
-  * Auto-bug localization, file refactoring, and test script generation.
-* **Hybrid Memory Architecture**:
-  * Split context storage (Working, Short-Term, Episodic, and Procedural).
-* **Knowledge Graph**:
-  * Relationship tracking and preference extraction.
-* **Multi-Agent Collaboration**:
-  * CEO-to-Planner-to-Worker event loop coordination.
-* **Context Awareness Engine**:
-  * Real-time window and desktop activity tracking.
-* **Vision-Based Computer Use**:
-  * Accessibility Tree parser + fallback visual coordinates (UI-TARS/OmniParser).
-* **Workflow Learning Engine**:
-  * Record/replay user macros and auto-generate system automations.
-* **Autonomous Background Agents**:
-  * Asynchronous execution of long-running objectives.
-* **Research Agent**:
-  * Deep multi-source citation and web scraping report compiler.
-* **Plugin Marketplace**:
-  * Sandboxed community plugin installer and permission dashboard.
-* **Cross-Platform Ecosystem**:
-  * macOS and Linux porting, and companion mobile relay applications.
+* **Security Sandbox & Vault**: Secure credential storage (Windows Credential Locker) and isolated script execution.
+* **MCP Client & Server Integration**: Standardized FastMCP skill tools and dynamic tool discovery.
+* **Personal Knowledge Hub (RAG)**: Local document indexing and semantic parsing (PDF, DOCX, PPTX, Markdown).
+* **Performance & Observability**: Redis hybrid caching, CUDA VRAM scheduler, lazy model loading, and telemetry tracing.
+* **Developer / Coding Agent**: AST code analysis, bug localization, and automated test script generation.
+* **Hybrid Memory Architecture**: 6-Scope Memory System (Working, Conversational, Semantic, Procedural, Episodic, Knowledge Graph).
+* **Research Agent**: Persistent browser profile manager, deep web search, citation synthesis, and fact verification.
+* **Voice Intelligence**: Acoustic emotion classification, speaker profile manager, and wake word tuning.
+* **Productivity Suite**: Executive daily briefings, calendar events, meeting summarizer, and task queue manager.
+* **Plugin Marketplace & SDK**: Permission risk inspector, manifest loader, and dynamic plugin management.
+* **User Interface & Dashboards**: Iron Man HUD, multi-agent activity dashboard, memory explorer, and performance monitor APIs.
+* **Cross-Platform & Mobile Sync**: OS abstraction layer, Android/iOS companion pairing, and state sync broker.
+* **Autonomous Intelligence Engine**: Workflow habit learning, predictive task execution, long-term goal manager, and self-improving prompt optimizer.

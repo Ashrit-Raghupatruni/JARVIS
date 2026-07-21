@@ -22,25 +22,23 @@
 - **Natural Speech Synthesis** — Responds with a refined male voice via edge-tts (configured to exclude female voices)
 - **Push-to-Talk** — Press `Ctrl+Space` as a fallback
 
-### 🎨 Visual HUD Interface
-- **3D WebGL Arc Reactor** — Procedural, fully transparent 3D wireframe Arc Reactor (notched concentric rings, gear ticks, ticking LEDs, and radial copper coils) rotating in opposite directions and pulsing in real-time matching the voice volume amplitude.
-- **Holographic HUD Overlay** — Clean, integrated central "J.A.R.V.I.S." title and active state indicator ("SYSTEM READY", "LISTENING", "THINKING") directly inside the core of the Arc Reactor.
-- **Context-Aware Siri Widget** — A floating Siri-like voice wave widget that automatically appears at the top center of your screen when calling JARVIS from background applications (using `Ctrl+Space`, claps, or voice wake words) and automatically hides when you focus on the main app.
-- **Webcam Hand Gestures** — Control the 3D viewport rotation and zoom levels in real-time using local MediaPipe hand landmark skeleton tracking over your webcam feed.
+### 🎨 Visual HUD & Single-Page AI OS Dashboard
+- **Unified Command Dashboard** — All 11 core module cards (AI Chat, Computer Use, Browser Research, RAG Knowledge Hub, Multi-Agent Orchestrator, Workflow Manager, 6-Scope Memory, LLM Providers, System Status) housed on a single zero-page-scroll workspace.
+- **Resizable & Collapsible Cards** — Dynamic UI layout with visual priority, sleek glassmorphism panels, and instant view filter pills.
+- **3D WebGL Arc Reactor** — Procedural 3D wireframe centerpiece with 6 animated states (Idle, Listening, Thinking, Speaking, Executing, Error).
+- **Holographic HUD Overlay** — Clean, integrated central title and real-time active status indicator ("SYSTEM READY", "LISTENING", "THINKING").
+- **Command Palette (`Ctrl+K`)** — Instant keyboard shortcut palette for quick actions, system benchmarks, and screen inspection.
 
-### 🧠 AI Brain & Orchestration
-- **Prash Local AI Engine** — Zero-dependency, custom local transformer model built from scratch in PyTorch. Acting as the primary decider, Prash analyzes user requests first.
-- **LangGraph Tool Calling Agent** — Orchestrates tool execution flows using a LangGraph state machine (Prash routing, Planning, Tool Selection, Tool Execution, Result Validation, and Prash summary generation).
-- **Intelligent LLM Router** — Auto-measures response times, first-token latency, completion speed, success rate, cost, and quality to rank and select fallback providers dynamically.
-- **Self-Improving Brain** — Extracts corrections and preferences dynamically from chat logs to adapt to the user's workflow.
-- **Resilient Tool Calling & Fallbacks** — Gated by average entropy confidence scoring: if Prash is not confident, JARVIS seamlessly falls back to the cloud cascade (Ollama → GPT → Gemini).
-- **Gemini Pydantic Integration** — Conversational history utilizes native `google-genai` Content SDK classes for clean type validation.
-- **Double-Clap Welcome Flow** — Managed background listener (`ClapService`) that triggers a customized welcome actions sequence on double claps.
-- **Drag-and-Drop File Upload** — Drag and drop text, source code, logs, and markdown files directly into the frontend chat panel to easily analyze them.
-- **Multi-turn Context** — Remembers conversation history.
-- **Tool Calling** — Executes real actions (CMD execution, Python script running, File System management, Memory storage, and Web searches).
-- **Multimodal Vision** — Screen analysis via Gemini/OpenAI Vision (cloud).
-- **High-Performance Voice Concurrency** — WebSocket background task queue (`voice_queue`) sequentially processes audio chunks/PTT toggles, allowing instant interrupt processing and session isolation to discard stale TTS outputs
+### 🧠 AI Brain & Tool Orchestration (100% Verified)
+- **Primary Ollama & Secondary Groq Hierarchy** — Ranked Ollama Local (#1) for maximum privacy and zero latency, Groq Cloud (#2) for high-speed cloud fallback, and OpenAI Optional (#3).
+- **Instant Factual Fast-Paths** — Sub-0.01s Date/Time and Hardware Telemetry intercepts preventing memory/LLM latency on simple queries.
+- **Interactive Vision & Screen Inspector** — Real-time win32 foreground window HWND inspection and desktop screenshot capture.
+- **Playwright Browser Research** — Interactive URL navigation, web search, page summarization, and one-click RAG indexing.
+- **RAG Knowledge Hub** — Drag & drop file uploads, folder indexer, live vector search, and document chunk management.
+- **6-Scope Memory Explorer** — Working, Conversational, Vector (ChromaDB), and Knowledge Graph scopes with search, pin, delete, and clear controls.
+- **Multi-Agent Orchestrator** — Real-time agent status grid with Pause, Resume, and Task Dispatch controls.
+- **Workflow & Macro Manager** — Custom workflow recorder, macro playback, and deletion.
+
 
 ### 🖥️ Computer Control
 - Open & close applications

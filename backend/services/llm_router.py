@@ -188,18 +188,22 @@ class LLMRoutingEngine:
             # Score formula
             score = (success_rate * 60.0) + (1.0 / latency * 15.0) + (throughput * 0.1) - (cost * 8.0)
             
-            # Primary provider bias
-            if p == self.primary_provider:
-                score += 15.0
+            # Primary provider bias (Ollama #1, Groq #2, OpenAI optional)
+            if p == "ollama":
+                score += 100.0
+            elif p == "groq":
+                score += 50.0
+            elif p == "openai":
+                score -= 200.0  # Kept aside by default, used only as last resort fallback
 
-            # Prash (local AI engine) always gets massive priority
+            # Prash (local AI engine)
             if p == "prash":
                 score += 100.0
 
             scores[p] = score
 
-        # Sort descending
-        ranked = sorted([p for p in scores], key=lambda x: scores[x], reverse=True)
+        # Filter out open circuit breaker providers and sort descending
+        ranked = sorted([p for p in scores if scores[p] > -90000.0], key=lambda x: scores[x], reverse=True)
         logger.debug(f"LLM Provider Rankings: { {p: round(scores[p], 2) for p in ranked} }")
         return ranked
 
@@ -222,9 +226,12 @@ class LLMRoutingEngine:
             self.consecutive_failures[provider] += 1
             self.metrics[provider]["success_rate"] = (alpha * 0.0) + ((1 - alpha) * self.metrics[provider]["success_rate"])
             
-            # Trip circuit breaker on 3 consecutive failures
-            if self.consecutive_failures[provider] >= 3 and self.circuit_state[provider] == "CLOSED":
-                logger.warning(f"!!! CIRCUIT BREAKER TRIPPED FOR {provider} !!! Consecutive failures={self.consecutive_failures[provider]}")
+            # Immediately trip circuit breaker on rate limits (429), auth failures (403), missing model (404), or >=2 consecutive failures
+            err_lower = (error_msg or "").lower()
+            is_critical = any(kw in err_lower for kw in ["429", "resource_exhausted", "quota", "403", "forbidden", "404", "not found", "unauthorized"])
+            
+            if (is_critical or self.consecutive_failures[provider] >= 2) and self.circuit_state[provider] == "CLOSED":
+                logger.warning(f"!!! CIRCUIT BREAKER TRIPPED FOR {provider} !!! (Skipping provider until recovery)")
                 self.circuit_state[provider] = "OPEN"
                 self.last_tripped[provider] = time.time()
 

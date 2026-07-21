@@ -91,21 +91,28 @@ Animations are critical to represent JARVIS's cognitive load and listening state
 
 ---
 
-## 5. Main Screen Sections
+## 5. Unified Single-Page AI OS Command Center Dashboard
 
-The workspace layout is structured as a non-scrollable, responsive desktop overlay split into:
+The workspace layout is structured as a **single-page 3-column AI Command Center** with a top docked Control Header and a collapsible Settings Drawer:
 
-1. **TitleBar**:
-   - Frameless drag handle area.
-   - Display system logo, title, and standard Windows minimize/close widgets.
-2. **StatusBar**:
-   - Located at the bottom boundary.
-   - Renders performance stats (current provider latency in milliseconds, token speed, memory status, active connections, and database status).
-3. **Orb Panel (Central Siri Widget)**:
-   - Houses the interactive central Orb.
-   - Houses the `VoiceWave` component which draws a canvas/SVG sine wave that grows/flattens based on voice input audio stream volumes.
-4. **Sliding Chat Panel**:
-   - Sidebar panel containing the message log.
-   - Handles file drop overlays, message list scroll locks, and thinking blocks.
-5. **Task Progress Overlay**:
-   - Renders multi-step agent plans (`AgentStep`) with animated checkbox states and latency timers for each sub-action.
+1. **Top Docked Control Header**:
+   - TitleBar frameless drag region with live status badges (`ONLINE`, provider latency).
+   - View Filter Pills (`Unified View`, `Chat Focus`, `Telemetry`).
+   - Docked Quick Action Buttons: Command Palette (`Ctrl+K`), System Benchmarks, Local ZIP Backup, Clear Chat, and Settings Drawer toggle.
+2. **Left Wing (Interactive AI Operations)**:
+   - **AI Chat & Voice Workspace** ([ChatPanel.tsx](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/components/ChatPanel.tsx)): Multi-turn prompt execution with code blocks and tool call feedback.
+   - **Computer Use & Screen Inspector** ([ComputerUseCard.tsx](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/components/ComputerUseCard.tsx)): Displays physical display resolution, foreground focused window (`HWND`), and accessibility control tree count.
+   - **Browser Automation & Research** ([BrowserAutomationCard.tsx](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/components/BrowserAutomationCard.tsx)): Active Playwright browser profiles, tab navigator, and web search citation previews.
+   - **Workflow & Macro Manager** ([WorkflowManagerCard.tsx](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/components/WorkflowManagerCard.tsx)): Recorded macro workflows, instant playback buttons, and routine automation recorder.
+3. **Center Hero Engine (Arc Reactor Core)**:
+   - Houses the 3D WebGL Arc Reactor Orb ([Orb.tsx](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/components/Orb.tsx)), dynamic audio waveform visualizer ([VoiceWave.tsx](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/components/VoiceWave.tsx)), live STT speech transcript ([TranscriptView.tsx](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/components/TranscriptView.tsx)), and voice state pills.
+4. **Right Wing (Observability & Intelligence)**:
+   - **Multi-Agent Orchestrator** ([AgentOrchestratorCard.tsx](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/components/AgentOrchestratorCard.tsx)): Real-time status cards for CEO Agent, Planner Agent, Vision Agent, Coding Agent, and Research Agent.
+   - **Running Tasks & Execution Timeline** ([TaskProgress.tsx](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/components/TaskProgress.tsx)): Step-by-step progress bars and execution timelines.
+   - **Memory Overview & Knowledge Graph** ([MemoryGraphCard.tsx](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/components/MemoryGraphCard.tsx)): 6-scope memory metrics (Working, Conversational, Vector DB, Knowledge Graph nodes/edges).
+   - **Knowledge Hub (RAG Service)** ([KnowledgeHubCard.tsx](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/components/KnowledgeHubCard.tsx)): RAG document indexer (PDF, DOCX, PPTX), document uploader, and vector search preview.
+5. **Bottom Hardware & Telemetry Deck**:
+   - **System Telemetry Gauges** ([HardwareGauges.tsx](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/components/HardwareGauges.tsx)): Real-time CPU %, RAM GB, GPU VRAM GB, and Network latency gauges.
+   - **Connected LLM Providers** ([LLMProvidersCard.tsx](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/components/LLMProvidersCard.tsx)): Live status cards for Groq (Llama 3.3 70B), Ollama (`qwen2.5-coder:3b`), Gemini, OpenRouter, and OpenAI.
+   - **MCP Servers & Tool Registry** ([MCPServersCard.tsx](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/components/MCPServersCard.tsx)): FastMCP skill tools count, active MCP subprocess servers, and risk scores.
+   - **Command History Stream** ([CommandHistory.tsx](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/components/CommandHistory.tsx)): Past command history stream.

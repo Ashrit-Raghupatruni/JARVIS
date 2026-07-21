@@ -43,6 +43,12 @@ JARVIS/
 │   │   ├── manager.py       # ServiceManager lifecycle registry [NEW]
 │   │   ├── base.py          # BaseService modular interface [NEW]
 │   │   ├── memory.py        # SQLite + ChromaDB semantic cache
+│   │   ├── redis_cache.py   # Hybrid in-memory & Redis cache manager
+│   │   ├── gpu_scheduler.py # CUDA VRAM scheduler & lazy model loader
+│   │   ├── observability.py # Distributed trace IDs & system health telemetry
+│   │   ├── cross_platform.py # OS abstraction layer & companion mobile sync broker
+│   │   ├── test_runner.py   # Performance benchmarks & local ZIP backup manager
+│   │   ├── autonomous_engine.py # Habit learning, predictive tasks & goal planner
 │   │   ├── safety.py        # Banned keyword & command safety checks
 │   │   ├── screen.py        # Screenshot capturing & vision API
 │   │   ├── stt.py           # faster-whisper local STT engine
@@ -61,7 +67,7 @@ JARVIS/
 │   │   ├── preload/         # IPC bridge script
 │   │   └── renderer/        # React 19 visual application
 │   │       ├── src/
-│   │       │   ├── components/  # Orb, ChatPanel, VoiceWave, Settings, TitleBar
+│   │       │   ├── components/  # DashboardLayout, HardwareGauges, LLMProvidersCard, AgentOrchestratorCard, ComputerUseCard, BrowserAutomationCard, WorkflowManagerCard, MemoryGraphCard, KnowledgeHubCard, MCPServersCard, CommandPalette, Orb, ChatPanel, VoiceWave, Settings, TitleBar
 │   │       │   ├── hooks/       # WebSocket hooks, key listeners
 │   │       │   ├── lib/         # Three.js WebGL (orbScene) and MediaPipe (handTracker)
 │   │       │   ├── stores/      # Zustand state engines

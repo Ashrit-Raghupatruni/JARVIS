@@ -224,7 +224,75 @@ async def lifespan(app: FastAPI):
         logger.info("✓ Screen service initialized")
     except Exception as e:
         logger.error(f"✗ Screen service failed: {e}")
-        app.state.screen_service = None
+    # Vision Service (Phase 7)
+    vision_service = None
+    try:
+        from backend.services.vision_service import VisionService
+        vision_service = VisionService()
+        app.state.vision_service = vision_service
+        ServiceManager.register_instance("vision_service", vision_service)
+        logger.info("✓ Vision service initialized")
+    except Exception as e:
+        logger.error(f"✗ Vision service failed: {e}")
+        app.state.vision_service = None
+
+    # Desktop Automation Service (Phase 8)
+    desktop_automation_service = None
+    try:
+        from backend.services.desktop_automation import DesktopAutomationService
+        desktop_automation_service = DesktopAutomationService()
+        app.state.desktop_automation_service = desktop_automation_service
+        ServiceManager.register_instance("desktop_automation_service", desktop_automation_service)
+        logger.info("✓ Desktop automation service initialized")
+    except Exception as e:
+        logger.error(f"✗ Desktop automation service failed: {e}")
+        app.state.desktop_automation_service = None
+
+    # Developer Assistant Service (Phase 9)
+    developer_assistant_service = None
+    try:
+        from backend.services.developer_assistant import DeveloperAssistantService
+        developer_assistant_service = DeveloperAssistantService()
+        app.state.developer_assistant_service = developer_assistant_service
+        ServiceManager.register_instance("developer_assistant_service", developer_assistant_service)
+        logger.info("✓ Developer assistant service initialized")
+    except Exception as e:
+        logger.error(f"✗ Developer assistant service failed: {e}")
+    # Research Agent Service (Phase 10)
+    research_service = None
+    try:
+        from backend.services.research_agent import ResearchAgentService
+        research_service = ResearchAgentService()
+        app.state.research_service = research_service
+        ServiceManager.register_instance("research_service", research_service)
+        logger.info("✓ Research agent service initialized")
+    except Exception as e:
+        logger.error(f"✗ Research agent service failed: {e}")
+        app.state.research_service = None
+
+    # Voice Intelligence Service (Phase 11)
+    voice_intelligence_service = None
+    try:
+        from backend.services.voice_intelligence import VoiceIntelligenceService
+        voice_intelligence_service = VoiceIntelligenceService()
+        app.state.voice_intelligence_service = voice_intelligence_service
+        ServiceManager.register_instance("voice_intelligence_service", voice_intelligence_service)
+        logger.info("✓ Voice intelligence service initialized")
+    except Exception as e:
+        logger.error(f"✗ Voice intelligence service failed: {e}")
+        app.state.voice_intelligence_service = None
+
+    # Productivity Service (Phase 12)
+    productivity_service = None
+    try:
+        from backend.services.productivity_service import ProductivityService
+        productivity_service = ProductivityService()
+        app.state.productivity_service = productivity_service
+        ServiceManager.register_instance("productivity_service", productivity_service)
+        logger.info("✓ Productivity service initialized")
+    except Exception as e:
+        logger.error(f"✗ Productivity service failed: {e}")
+        app.state.productivity_service = None
 
     # Browser Service
     browser_service = None
@@ -278,6 +346,12 @@ async def lifespan(app: FastAPI):
                 browser_service=browser_service,
                 memory_service=memory_service,
                 safety_service=safety_service,
+                vision_service=vision_service,
+                desktop_automation_service=desktop_automation_service,
+                developer_assistant_service=developer_assistant_service,
+                research_service=research_service,
+                voice_intelligence_service=voice_intelligence_service,
+                productivity_service=productivity_service,
             )
             app.state.planner_agent = planner_agent
             app.state.active_subagents = {}
@@ -481,10 +555,12 @@ app = FastAPI(
 from backend.api.middleware import setup_middleware
 from backend.api.routes import router as api_router
 from backend.api.websocket import router as ws_router
+from backend.api.routes_ui import router as ui_router
 
 setup_middleware(app)
 app.include_router(api_router, tags=["API"])
 app.include_router(ws_router, tags=["WebSocket"])
+app.include_router(ui_router)
 
 
 # ── Run with uvicorn ────────────────────────────────────────

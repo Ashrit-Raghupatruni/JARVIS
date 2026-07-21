@@ -263,3 +263,49 @@ Real-time step updates.
 * **`step_status`** (`str`): Current state of execution.
 * **`result`** (`str`, Nullable): Output from the tool, if finished.
 * **`error`** (`str`, Nullable): Stack details on failure.
+
+---
+
+## 3. JSON State Storage Schemas
+
+### 3.1. `data/paired_devices.json`
+Stores paired companion desktop and mobile devices.
+```json
+[
+  {
+    "device_id": "dev_ios_01",
+    "name": "Ashrit iPhone 15 Pro",
+    "platform": "iOS",
+    "status": "connected",
+    "paired_at": 1784530000.0,
+    "last_synced": 1784530500.0
+  }
+]
+```
+
+### 3.2. `data/user_habits.json`
+Stores learned user routines and workflow pattern confidence.
+```json
+[
+  {
+    "habit": "Morning System Briefing",
+    "frequency": "daily",
+    "preferred_time": "09:00",
+    "confidence": 0.95
+  }
+]
+```
+
+### 3.3. `data/long_term_goals.json`
+Stores personal AI project manager milestones and long-term goal progress.
+```json
+[
+  {
+    "id": 1,
+    "title": "Complete JARVIS AI OS Implementation",
+    "progress_percent": 100.0,
+    "status": "completed",
+    "milestones": ["Vision", "Automation", "Developer", "Research", "Voice", "Productivity", "Plugins", "UI", "Observability", "Cross-Platform", "Testing", "Autonomous"]
+  }
+]
+```

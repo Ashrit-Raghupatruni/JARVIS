@@ -180,3 +180,27 @@ sequenceDiagram
     end
     HT->>UI: Render landmark connecting lines in mirrored overlay canvas
 ```
+
+---
+
+## 7. Performance, Mobile Companion Sync & Autonomous Execution Flow
+
+```mermaid
+sequenceDiagram
+    participant User as Mobile / Desktop User
+    participant Auto as AutonomousEngineService
+    participant Cache as RedisCacheService
+    participant GPU as GPUSchedulerService
+    participant Sync as CrossPlatformService
+    
+    User->>Auto: Send goal or trigger routine
+    Auto->>Cache: Query hybrid cache for prompt / RAG context
+    alt Cache Hit
+        Cache-->>Auto: Return cached prompt response instantly
+    else Cache Miss
+        Auto->>GPU: Request lazy model load (CUDA VRAM check)
+        GPU-->>Auto: Model loaded into VRAM
+    end
+    Auto->>Sync: Broadcast updated memory / clipboard state
+    Sync->>User: Sync state to Android/iOS companion device over local socket
+```

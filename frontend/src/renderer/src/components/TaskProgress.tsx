@@ -31,15 +31,33 @@ export default function TaskProgress({ className = '' }: TaskProgressProps) {
       } ${className}`}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-2 h-2 rounded-full bg-[var(--jarvis-accent)] animate-pulse" />
-        <h3
-          className="text-sm font-semibold truncate"
-          style={{ color: 'var(--jarvis-text)' }}
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2 truncate">
+          <div className="w-2 h-2 rounded-full bg-[var(--jarvis-accent)] animate-pulse" />
+          <h3
+            className="text-sm font-semibold truncate"
+            style={{ color: 'var(--jarvis-text)' }}
+          >
+            {currentTask.description || 'Executing Task'}
+          </h3>
+        </div>
+
+        <button
+          onClick={() => {
+            const store = useAppStore.getState()
+            store.setCurrentTask(null)
+            store.setAssistantState('idle' as any)
+          }}
+          className="p-1 rounded bg-red-950/80 hover:bg-red-900 text-red-400 border border-red-800/60 transition-all flex items-center gap-1 text-[10px] font-mono shrink-0"
+          title="Stop & Cancel Action"
         >
-          {currentTask.description || 'Executing Task'}
-        </h3>
+          <svg className="w-3 h-3 fill-current" viewBox="0 0 16 16">
+            <rect x="3" y="3" width="10" height="10" rx="1.5" />
+          </svg>
+          <span>Stop</span>
+        </button>
       </div>
+
 
       {/* Progress Bar */}
       <div className="w-full h-1.5 rounded-full bg-white/5 mb-3 overflow-hidden">

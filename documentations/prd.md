@@ -102,6 +102,25 @@ JARVIS is a production-grade, voice-controlled AI desktop assistant for Windows,
 * **Personal RAG Hub**:
   * Incremental indexing of PDFs, Markdowns, DOCX, and PPTX slide XMLs based on timestamps.
   * Cite-supported semantic searching and context injection.
+* **Plugin Marketplace & SDK**:
+  * Third-party plugin manifest model validating permissions (`file_read`, `terminal_exec`, `network`).
+  * Dynamic plugin manager enabling local installation, uninstallation, inspection, and security sandboxing.
+* **User Interface & Dashboard Suite**:
+  * Iron Man HUD status, 3D Orb visualizer metrics, multi-agent status dashboard, memory explorer, and performance monitor API endpoints.
+* **Performance & Observability Suite**:
+  * Hybrid in-memory and Redis cache layer for LLM prompts, embeddings, and tool responses.
+  * CUDA GPU VRAM scheduler with lazy model loading and LRU eviction offloading.
+  * Distributed trace correlation IDs (`trace_id`), hardware health monitoring, and crash reporting diagnostics.
+* **Cross-Platform & Mobile Companion Sync**:
+  * Platform abstraction layer supporting Windows, Linux, and macOS GUI/audio backends.
+  * Mobile companion app pairing engine for Android and iOS devices with encrypted local state & clipboard sync.
+* **System Benchmarks & Local Backups**:
+  * Automated performance benchmark runner measuring CPU compute, memory speed, and LLM latency.
+  * Compressed ZIP data backup creation and system restoration manager.
+* **Autonomous Intelligence & Goal Planner**:
+  * Workflow habit learning engine tracking daily user routines and suggesting macro automations.
+  * Time-of-day predictive task execution engine.
+  * Personal AI Project Manager for long-term goal tracking and self-improving prompt optimization.
 
 ---
 

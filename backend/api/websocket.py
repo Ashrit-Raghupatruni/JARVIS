@@ -27,7 +27,8 @@ class ConnectionManager:
 
     async def connect(self, websocket: WebSocket) -> None:
         await websocket.accept()
-        self.active_connections.append(websocket)
+        if websocket not in self.active_connections:
+            self.active_connections.append(websocket)
         logger.info(f"WebSocket connected. Active connections: {len(self.active_connections)}")
 
     def disconnect(self, websocket: WebSocket) -> None:
@@ -342,8 +343,12 @@ async def websocket_endpoint(websocket: WebSocket):
 
     except WebSocketDisconnect:
         logger.info("WebSocket client disconnected normally")
-    except Exception as e:
-        logger.error(f"WebSocket error: {e}")
+    except (RuntimeError, Exception) as e:
+        err_str = str(e).lower()
+        if "disconnect" in err_str or "receive" in err_str or "closed" in err_str:
+            logger.info(f"WebSocket connection closed cleanly: {e}")
+        else:
+            logger.error(f"WebSocket error: {e}")
     finally:
         worker_task.cancel()
         try:

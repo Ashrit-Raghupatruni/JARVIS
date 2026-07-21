@@ -17,7 +17,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_DIR = Path(__file__).resolve().parent
 DEFAULT_DATA_DIR = PROJECT_ROOT / "data"
-DEFAULT_LOG_DIR = BACKEND_DIR / "logs"
+_WARNED_PLACEHOLDERS = set()
 
 
 class Settings(BaseSettings):
@@ -41,8 +41,8 @@ class Settings(BaseSettings):
 
     # ── LLM Settings ─────────────────────────────────────────────────────
     LLM_PROVIDER: str = Field(
-        default="groq",
-        description="Primary LLM provider to use: gemini, openai, or ollama.",
+        default="ollama",
+        description="Primary LLM provider to use: ollama (primary), groq (secondary), openai (optional).",
     )
     GEMINI_API_KEY: Optional[str] = Field(
         default=None,
@@ -388,7 +388,9 @@ class Settings(BaseSettings):
         ]
         for p in placeholders:
             if p.lower() in v_str.lower():
-                print(f"[Config Warning] Placeholder API key detected and deactivated: {v_str[:15]}...")
+                if v_str[:15] not in _WARNED_PLACEHOLDERS:
+                    _WARNED_PLACEHOLDERS.add(v_str[:15])
+                    print(f"[Config Warning] Placeholder API key detected and deactivated: {v_str[:15]}...")
                 return None
         return v_str
 

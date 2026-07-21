@@ -230,6 +230,20 @@ These variables are defined in the project's `.env` configuration file:
     * **Prash Local Model**: Deployed a custom 0.70M-parameter Transformer model trained on a T4 GPU (Google Colab) with lowercase BPE token sequence matching.
     * **LangGraph Agent Workflow**: Constructed state machine loops (state.py, tools.py, and nodes.py) around the local Prash model.
     * **Advanced Controls**: Implemented absolute volume setting (0-100%) and individual application window minimization (`minimize_window` tool) in `automation.py`.
+12. **Performance & Hybrid Observability (`redis_cache.py`, `gpu_scheduler.py`, `observability.py`)**:
+    * **Dual-Layer Caching**: In-memory dict + Redis hybrid cache engine with hit ratio tracking and TTL eviction for LLM prompts and RAG queries.
+    * **GPU VRAM Scheduler**: CUDA VRAM allocation tracking, lazy model loading on demand, and idle LRU model offloading.
+    * **Telemetry Tracing**: Distributed trace correlation IDs (`trace_id`), crash reporting, and system hardware health monitoring.
+13. **Cross-Platform Compatibility & Mobile Sync (`cross_platform.py`)**:
+    * **OS Abstraction Layer**: Standardized platform detection and execution matrix supporting Windows, Linux, and macOS.
+    * **Mobile Companion Sync Broker**: Encrypted local socket pairing for Android and iOS companion apps with clipboard and memory state synchronization (`data/paired_devices.json`).
+14. **System Benchmarks & Local Backups (`test_runner.py`)**:
+    * **Performance Benchmarks Runner**: Automated benchmark execution measuring CPU compute speed, memory throughput, and LLM latency.
+    * **Local Backup & Restore Manager**: Compressed ZIP backup creation and data restoration manager (`data/backups/`).
+15. **Autonomous Intelligence Engine (`autonomous_engine.py`)**:
+    * **Workflow & Habit Learning**: User daily routine pattern recognition and macro automation suggestions (`data/user_habits.json`).
+    * **Predictive Execution**: Time-of-day predictive task scheduler.
+    * **Personal AI Project Manager**: Long-term goal milestone tracking (`data/long_term_goals.json`) and self-improving prompt optimizer.
 
 ---
 
