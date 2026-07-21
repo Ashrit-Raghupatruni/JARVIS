@@ -420,7 +420,7 @@ async def lifespan(app: FastAPI):
                             if changed:
                                 from backend.api.websocket import manager as ws_manager
                                 try:
-                                    from backend.api.models import WSMessage
+                                    from backend.models.schemas import WSMessage
                                     ctx = context_skill.active_context
                                     await ws_manager.broadcast(WSMessage(
                                         type="context_update",
