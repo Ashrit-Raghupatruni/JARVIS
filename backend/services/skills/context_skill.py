@@ -42,27 +42,31 @@ class ContextSkill(BaseSkill):
         self.focus_session_active = False
         self.focus_session_end: Optional[datetime] = None
 
-    def update_active_window(self) -> None:
-        """Polls the OS foreground window and updates active context details."""
+    def update_active_window(self) -> bool:
+        """Polls the OS foreground window and updates active context details.
+        
+        Returns:
+            True if the active window changed, False if unchanged or unavailable.
+        """
         if not win32_available:
-            return
+            return False
 
         try:
             hwnd = win32gui.GetForegroundWindow()
             if not hwnd:
-                return
+                return False
 
             title = win32gui.GetWindowText(hwnd)
             if not title:
-                return
+                return False
 
             _, pid = win32process.GetWindowThreadProcessId(hwnd)
             if pid == 0:
-                return
+                return False
 
-            # Check if active window changed
+            # Skip if nothing changed
             if title == self.active_context["window_title"] and pid == self.active_context["process_id"]:
-                return
+                return False
 
             try:
                 proc = psutil.Process(pid)
@@ -80,9 +84,13 @@ class ContextSkill(BaseSkill):
                 "start_time": datetime.now().isoformat(),
                 "inferred_project": inferred
             }
-            logger.debug("Active Context Updated: {} ({}) -> Project: {}", title[:40], p_name, inferred)
+            # Log only on actual change (INFO, not DEBUG spam)
+            logger.info("Context → {} [{}] :: {}", title[:45], p_name, inferred)
+            return True
         except Exception as e:
             logger.debug("Failed updating active window context: {}", e)
+            return False
+
 
     def _infer_project(self, title: str, proc_name: str) -> str:
         """Heuristic-based intent synthesis matching titles/processes to project domains."""

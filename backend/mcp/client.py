@@ -1,4 +1,5 @@
 import asyncio
+import os
 import sys
 from typing import Dict, Any, List, Optional
 from loguru import logger
@@ -18,32 +19,57 @@ class MCPServerConnection:
         
     async def start(self) -> bool:
         """Start the MCP server subprocess and start listening for stdout."""
-        try:
-            self.proc = await asyncio.create_subprocess_exec(
-                *self.command,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.DEVNULL
-            )
-            self._listener_task = asyncio.create_task(self._read_loop())
-            logger.info(f"✓ Started MCP server '{self.name}' subprocess")
-            
-            # Perform MCP Initialization Handshake
-            self.msg_id += 1
-            init_res = await self._send_request(
-                "initialize", 
-                {"clientInfo": {"name": "jarvis-mcp-client", "version": "1.0"}}
-            )
-            
-            # Fetch tools list
-            self.msg_id += 1
-            tools_res = await self._send_request("tools/list", {})
-            self.tools = tools_res.get("tools", [])
-            logger.info(f"✓ MCP Server '{self.name}' initialized. Discovered {len(self.tools)} tools.")
-            return True
-        except Exception as e:
-            logger.error(f"✗ Failed to start MCP Server '{self.name}': {e}")
-            return False
+        # Build a clean env: inherit current env but strip ELECTRON_RUN_AS_NODE
+        # (set by VS Code/Cursor) which breaks Python subprocess stdin/stdout behavior
+        clean_env = {k: v for k, v in os.environ.items() if k != "ELECTRON_RUN_AS_NODE"}
+
+        for attempt in range(1, 4):  # 3 attempts
+            try:
+                self.proc = await asyncio.create_subprocess_exec(
+                    *self.command,
+                    stdin=asyncio.subprocess.PIPE,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,   # capture stderr for debugging
+                    env=clean_env
+                )
+                self._listener_task = asyncio.create_task(self._read_loop())
+                logger.info(f"✓ Started MCP server '{self.name}' subprocess (attempt {attempt})")
+
+                # Give the subprocess a moment to initialize
+                await asyncio.sleep(0.2)
+
+                # Perform MCP Initialization Handshake (15s timeout)
+                self.msg_id += 1
+                await self._send_request(
+                    "initialize",
+                    {"clientInfo": {"name": "jarvis-mcp-client", "version": "1.0"}},
+                    timeout=15.0
+                )
+
+                # Fetch tools list
+                self.msg_id += 1
+                tools_res = await self._send_request("tools/list", {}, timeout=15.0)
+                self.tools = tools_res.get("tools", [])
+                logger.info(f"✓ MCP Server '{self.name}' initialized. Discovered {len(self.tools)} tools.")
+                return True
+            except Exception as e:
+                # Capture stderr from subprocess for better error diagnosis
+                stderr_out = ""
+                if self.proc and self.proc.stderr:
+                    try:
+                        raw = await asyncio.wait_for(self.proc.stderr.read(2048), timeout=1.0)
+                        stderr_out = raw.decode(errors="replace").strip()
+                    except Exception:
+                        pass
+                if stderr_out:
+                    logger.error(f"✗ MCP '{self.name}' stderr: {stderr_out}")
+                logger.error(f"✗ MCP Server '{self.name}' attempt {attempt}/3 failed: {e}")
+                await self.stop()
+                if attempt < 3:
+                    await asyncio.sleep(1.0 * attempt)  # back-off before retry
+
+        logger.error(f"✗ MCP Server '{self.name}' could not start after 3 attempts — skipping.")
+        return False
             
     async def stop(self) -> None:
         """Stop the subprocess and clean up."""
@@ -63,23 +89,23 @@ class MCPServerConnection:
         res = await self._send_request("tools/call", {"name": name, "arguments": arguments})
         return res
         
-    async def _send_request(self, method: str, params: Dict[str, Any]) -> Any:
+    async def _send_request(self, method: str, params: Dict[str, Any], timeout: float = 10.0) -> Any:
         if not self.proc or not self.proc.stdin:
             raise RuntimeError("Server not connected")
-            
+
         req_str = MCPProtocol.request(method, params, self.msg_id)
         future = asyncio.get_running_loop().create_future()
         self._pending_responses[self.msg_id] = future
-        
+
         self.proc.stdin.write(req_str.encode())
         await self.proc.stdin.drain()
-        
+
         # Wait for the response to resolve in read_loop
         try:
-            return await asyncio.wait_for(future, timeout=10.0)
+            return await asyncio.wait_for(future, timeout=timeout)
         except asyncio.TimeoutError:
             self._pending_responses.pop(self.msg_id, None)
-            raise TimeoutError(f"MCP request '{method}' (ID: {self.msg_id}) timed out")
+            raise TimeoutError(f"MCP request '{method}' (ID: {self.msg_id}) timed out after {timeout}s")
 
     async def _read_loop(self) -> None:
         if not self.proc or not self.proc.stdout:

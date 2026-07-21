@@ -415,11 +415,28 @@ async def lifespan(app: FastAPI):
                     while True:
                         try:
                             # Update active foreground window
-                            context_skill.update_active_window()
+                            changed = context_skill.update_active_window()
+                            # Broadcast context update to all WS clients when window changes
+                            if changed:
+                                from backend.api.websocket import manager as ws_manager
+                                try:
+                                    from backend.api.models import WSMessage
+                                    ctx = context_skill.active_context
+                                    await ws_manager.broadcast(WSMessage(
+                                        type="context_update",
+                                        data={
+                                            "window_title": ctx.get("window_title", ""),
+                                            "process_name": ctx.get("process_name", ""),
+                                            "inferred_project": ctx.get("inferred_project", ""),
+                                            "start_time": ctx.get("start_time", "")
+                                        }
+                                    ))
+                                except Exception as ws_err:
+                                    logger.debug("WS broadcast context_update failed: {}", ws_err)
                         except Exception as ex:
                             logger.error("Error in context scanner loop: {}", ex)
-                        await asyncio.sleep(5)  # Check every 5 seconds
-                
+                        await asyncio.sleep(30)  # Poll every 30s (was 5s)
+
                 context_task = asyncio.create_task(context_worker())
                 app.state.context_task = context_task
                 logger.info("✓ Context background scanner initialized")
