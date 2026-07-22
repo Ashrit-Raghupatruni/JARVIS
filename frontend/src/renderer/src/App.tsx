@@ -87,7 +87,7 @@ export default function App() {
   }, [assistantState, isCapturing, startMicCapture, stopMicCapture, settings?.voice?.wakeWordEnabled])
 
   const handleOrbClick = useCallback(async () => {
-    if (assistantState === 'idle') {
+    if (assistantState === 'idle' || assistantState === 'sleeping' || assistantState === 'error') {
       try {
         await startMicCapture()
         sendMessage('push_to_talk_start', {})

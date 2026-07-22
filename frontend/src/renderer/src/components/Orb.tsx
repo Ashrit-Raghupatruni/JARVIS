@@ -128,10 +128,22 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
 
   const mouseDownTimeRef = useRef(0)
   const mouseDownPosRef = useRef({ x: 0, y: 0 })
+  const isDraggingRef = useRef(false)
 
   const handleMouseDown = (e: React.MouseEvent) => {
     mouseDownTimeRef.current = Date.now()
     mouseDownPosRef.current = { x: e.clientX, y: e.clientY }
+    isDraggingRef.current = false
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (mouseDownTimeRef.current > 0) {
+      const dx = e.clientX - mouseDownPosRef.current.x
+      const dy = e.clientY - mouseDownPosRef.current.y
+      if (Math.hypot(dx, dy) > 5) {
+        isDraggingRef.current = true
+      }
+    }
   }
 
   const handleMouseUp = (e: React.MouseEvent) => {
@@ -140,7 +152,10 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
     const dy = e.clientY - mouseDownPosRef.current.y
     const dist = Math.hypot(dx, dy)
 
-    if (elapsed < 300 && dist < 5) {
+    mouseDownTimeRef.current = 0
+
+    // Single click & release without drag: Listen for voice command!
+    if (!isDraggingRef.current && elapsed < 350 && dist < 6) {
       onOrbClick?.()
     }
   }
@@ -152,6 +167,7 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
       {/* 3D Container box - holographic projection window (fully transparent, borderless) */}
       <div
         onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         className="relative w-[450px] h-[450px] overflow-hidden transition-all duration-500"
       >
