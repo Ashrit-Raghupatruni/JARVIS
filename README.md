@@ -22,16 +22,19 @@
 - **Natural Speech Synthesis** — Responds with a refined male voice via edge-tts (configured to exclude female voices)
 - **Push-to-Talk** — Press `Ctrl+Space` as a fallback
 
-### 🎨 Visual HUD & Single-Page AI OS Dashboard
-- **Unified Command Dashboard** — All 11 core module cards (AI Chat, Computer Use, Browser Research, RAG Knowledge Hub, Multi-Agent Orchestrator, Workflow Manager, 6-Scope Memory, LLM Providers, System Status) housed on a single zero-page-scroll workspace.
-- **Resizable & Collapsible Cards** — Dynamic UI layout with visual priority, sleek glassmorphism panels, and instant view filter pills.
-- **3D WebGL Arc Reactor** — Procedural 3D wireframe centerpiece with 6 animated states (Idle, Listening, Thinking, Speaking, Executing, Error).
-- **Holographic HUD Overlay** — Clean, integrated central title and real-time active status indicator ("SYSTEM READY", "LISTENING", "THINKING").
+### 🎨 Visual HUD & AI Command Center Studio
+- **Unified Command Center** — Modular workspace featuring 3D Orb focal core, AI Chat, Computer Use, Visual Workflow Studio, Task Queue Manager, Telemetry, and RAG Knowledge Hub.
+- **Visual Workflow Builder** — Node-based visual workflow editor (`VisualWorkflowBuilder.tsx`) with interactive Bezier SVG connectors, node library, parameter tuning, and reusable workflow templates.
+- **Task Queue & Command Scheduler** — Thread-safe task queue visualizer (`TaskQueueManager.tsx`) supporting priority reordering, pause, resume, cancellation, and task persistence.
+- **Live Execution Timeline Pipeline** — 9-stage visual execution pipeline component (`TaskProgress.tsx`) rendering live status indicators across `Intent Detection` → `Planner` → `Memory` → `Tool Selection` → `RAG` → `Web Research` → `LLM` → `Validation` → `Response`.
+- **3D WebGL Arc Reactor Focal Core** — Procedural 3D wireframe centerpiece with 6 animated state transitions (Idle, Listening, Thinking, Speaking, Executing, Error).
 - **Command Palette (`Ctrl+K`)** — Instant keyboard shortcut palette for quick actions, system benchmarks, and screen inspection.
 
-### 🧠 AI Brain & Tool Orchestration (100% Verified)
-- **Primary Ollama & Secondary Groq Hierarchy** — Ranked Ollama Local (#1) for maximum privacy and zero latency, Groq Cloud (#2) for high-speed cloud fallback, and OpenAI Optional (#3).
-- **Instant Factual Fast-Paths** — Sub-0.01s Date/Time and Hardware Telemetry intercepts preventing memory/LLM latency on simple queries.
+### 🧠 AI Brain, Prash Engine & Resilient Fallback Routing (100% Verified)
+- **Prash Local AI Engine** — Custom 0.70M-parameter Transformer model evaluating token prediction entropy for instant local responses; seamlessly handoffs to cloud cascade when entropy threshold is exceeded.
+- **Multi-Provider Fallback Cascade** — Dynamic routing across Ollama (#1 Local), Gemini, Groq, OpenRouter, and OpenAI with 5-minute circuit-breaker recovery.
+- **Response Quality Evaluator & Web Recovery** — Automatically triggers autonomous web research if LLM outputs fail or return incomplete answers.
+- **Instant Factual Fast-Paths** — Sub-0.01s Date/Time, System Control, Volume, and Hardware Telemetry intercepts preventing LLM latency.
 - **Interactive Vision & Screen Inspector** — Real-time win32 foreground window HWND inspection and desktop screenshot capture.
 - **Playwright Browser Research** — Interactive URL navigation, web search, page summarization, and one-click RAG indexing.
 - **RAG Knowledge Hub** — Drag & drop file uploads, folder indexer, live vector search, and document chunk management.
