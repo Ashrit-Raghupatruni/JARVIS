@@ -64,12 +64,21 @@ interface AppState {
 
 const defaultSettings: Settings = {
   voice: {
-    ttsVoice: 'alloy',
+    ttsVoice: 'en-GB-RyanNeural',
     speechRate: 1.0,
-    wakeWordEnabled: true
+    wakeWordEnabled: true,
+    wakeWord: 'hey_jarvis',
+    wakeWordSensitivity: 0.5,
+    clapEnabled: true,
+    clapMode: 'double',
+    clapSensitivity: 0.7,
+    micSensitivity: 0.8,
+    bargeInEnabled: true,
+    bargeInSensitivity: 0.7,
+    seriousMode: false,
   },
   ai: {
-    model: 'gpt-4o',
+    model: 'qwen2.5-coder:3b',
     temperature: 0.7,
     openrouterApiKey: '',
     openaiApiKey: ''

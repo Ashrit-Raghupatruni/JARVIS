@@ -204,8 +204,55 @@ class LLMRoutingEngine:
 
         # Filter out open circuit breaker providers and sort descending
         ranked = sorted([p for p in scores if scores[p] > -90000.0], key=lambda x: scores[x], reverse=True)
-        logger.debug(f"LLM Provider Rankings: { {p: round(scores[p], 2) for p in ranked} }")
+        
+        # OFFLINE IMMUNITY: Ensure local engines ('ollama' and 'prash') are ALWAYS included if initialized,
+        # so offline queries never return "trouble reaching AI services"!
+        for local_p in ("ollama", "prash"):
+            if self.clients.get(local_p) and local_p not in ranked:
+                ranked.append(local_p)
+
+        logger.debug(f"LLM Provider Rankings: { {p: round(scores.get(p, 0.0), 2) for p in ranked} }")
         return ranked
+
+    def evaluate_response_quality(self, response_text: str, user_prompt: str) -> bool:
+        """
+        Evaluates output quality to prevent returning incomplete, cut-off, or error responses to the user.
+        Returns True if quality is acceptable; False if retry is required.
+        """
+        if not response_text or not isinstance(response_text, str):
+            logger.warning("Quality evaluation failed: empty or non-string response")
+            return False
+
+        text = response_text.strip()
+        if len(text) < 3:
+            logger.warning("Quality evaluation failed: response text too short ({} chars)", len(text))
+            return False
+
+        lower_text = text.lower()
+        
+        # Check for unhandled API error payloads returned as plain text
+        error_keywords = [
+            "rate limit exceeded",
+            "resource_exhausted",
+            "quota_exceeded",
+            "invalid_api_key",
+            "unauthorized",
+            "model_not_found",
+            "500 internal server error",
+            "503 service unavailable",
+        ]
+        for err_kw in error_keywords:
+            if err_kw in lower_text:
+                logger.warning("Quality evaluation failed: error keyword '{}' found in response", err_kw)
+                return False
+
+        # Check for unclosed function calls or broken raw JSON objects
+        if lower_text.startswith("{") and not lower_text.endswith("}"):
+            if '"name"' in lower_text or '"arguments"' in lower_text:
+                logger.warning("Quality evaluation failed: incomplete JSON tool call structure")
+                return False
+
+        return True
 
     async def record_metric(
         self, provider: str, model: str, latency: float, throughput: Optional[float], cost: float, success: bool, error_msg: Optional[str] = None
@@ -305,7 +352,7 @@ class LLMRoutingEngine:
                                 model=self.gemini_model_name,
                                 contents="Hi"
                             ),
-                            timeout=6.0
+                            timeout=15.0
                         )
                         if response and response.text:
                             success = True
@@ -318,7 +365,7 @@ class LLMRoutingEngine:
                                 messages=[{"role": "user", "content": "Hi"}],
                                 max_tokens=1,
                             ),
-                            timeout=6.0
+                            timeout=15.0
                         )
                         if response and response.choices:
                             success = True

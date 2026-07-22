@@ -176,12 +176,15 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
               textShadow: assistantState !== 'idle' ? '0 0 8px var(--jarvis-accent)' : 'none'
             }}
           >
+            {assistantState === 'sleeping' && 'STANDBY (SLEEPING)'}
             {assistantState === 'idle' && 'SYSTEM READY'}
             {assistantState === 'wake_word_detected' && 'WAKE DETECTED'}
-            {assistantState === 'listening' && 'LISTENING'}
-            {assistantState === 'processing' && 'THINKING'}
-            {assistantState === 'speaking' && 'SPEAKING'}
-            {assistantState === 'executing' && 'EXECUTING'}
+            {assistantState === 'listening' && 'LISTENING...'}
+            {assistantState === 'processing' && 'THINKING...'}
+            {assistantState === 'speaking' && 'SPEAKING...'}
+            {assistantState === 'executing' && 'EXECUTING...'}
+            {assistantState === 'interrupted' && 'INTERRUPTED'}
+            {assistantState === 'error' && 'PIPELINE ERROR'}
           </span>
         </div>
 

@@ -80,6 +80,305 @@
 
 ---
 
+## 🧩 Registered Skills & Capabilities
+
+JARVIS uses a modular **Skill Registry** — each skill is a self-contained plugin providing one or more AI-callable tools. The planner agent automatically selects the right tool based on natural language intent.
+
+> **20 skills · 106 tools** registered at runtime
+
+| # | Skill | Tools | Purpose |
+|---|-------|-------|---------|
+| 1 | 📁 FileSkill | 9 | File system operations |
+| 2 | 📬 CommunicationSkill | 9 | Email, chat, calendar, Android |
+| 3 | 🖥️ SystemSkill | 10 | Processes, network, power, clipboard |
+| 4 | 🪟 AppControlSkill | 6 | Desktop application automation |
+| 5 | 🧠 ContextSkill | 3 | Active window & focus tracking |
+| 6 | 🤖 AgentSkill | 3 | Multi-agent task delegation |
+| 7 | 📰 NewsSkill | 6 | News, digest, deep research |
+| 8 | 👁️ VisionSkill | 4 | Screen analysis & UI grounding |
+| 9 | ⚙️ AutomationSkill | 7 | Macros, workflows, desktop automation |
+| 10 | 💻 DeveloperSkill | 5 | Code analysis, git, dev assistant |
+| 11 | 🔍 ResearchSkill | 5 | Web research, PDF analysis, fact checking |
+| 12 | 🎤 VoiceSkill | 4 | STT, TTS, wake-word, speaker identity |
+| 13 | 📋 ProductivitySkill | 6 | Tasks, reminders, meetings, email drafts |
+| 14 | 🔌 PluginSkill | 6 | Plugin marketplace management |
+| 15 | 🎨 UISkill | 4 | Dashboard HUD & agent monitoring |
+| 16 | 📊 ObservabilitySkill | 4 | Cache, VRAM, telemetry, health |
+| 17 | 🌐 CrossPlatformSkill | 4 | OS compatibility & device sync |
+| 18 | 🚀 DeploymentSkill | 4 | Benchmarks, backup, restore |
+| 19 | 🧬 AutonomousSkill | 4 | Habit learning, goal management |
+| 20 | 🔮 ProactiveSkill | 3 | Scheduled reminders & proactive alerts |
+
+---
+
+### 📁 FileSkill
+**Purpose:** Provides modular tools for natural language file operations and system management.
+
+| Tool | Description |
+|------|-------------|
+| `smart_file_search` | Fuzzy search for files by name, extension, modified date, and text content |
+| `copy_file` | Copy a file from source path to destination path |
+| `move_file` | Move a file from source path to destination path |
+| `rename_file` | Rename a file at a specific path |
+| `safe_delete` | Safely delete a file by moving it to the Recycle Bin |
+| `append_to_file` | Append text content to an existing text file |
+| `create_file_from_template` | Create a text/markdown file using a pre-defined skeleton template |
+| `auto_sort_downloads` | Scan Downloads folder and organize files into categorized subfolders |
+| `detect_duplicates` | Check a directory for duplicate files by MD5 hash comparison |
+
+---
+
+### 📬 CommunicationSkill
+**Purpose:** Enables JARVIS to interface with email, chat apps, calendars, and mobile devices.
+
+| Tool | Description |
+|------|-------------|
+| `send_email` | Compose and send an email via SMTP (requires credentials in `.env`) |
+| `read_latest_emails` | Fetch recent unread emails from an IMAP inbox |
+| `send_whatsapp_message` | Send a WhatsApp message to a phone number via pywhatkit |
+| `send_slack_message` | Post a message to a Slack channel via Incoming Webhook |
+| `send_discord_message` | Post a message to a Discord channel via Webhook URL |
+| `add_calendar_event` | Save a new calendar event/reminder to the local SQLite store |
+| `list_calendar_events` | List all upcoming local calendar events and reminders |
+| `adb_make_call` | Trigger a phone call on a connected Android device via ADB |
+| `adb_send_sms` | Send an SMS from a connected Android device using ADB |
+
+---
+
+### 🖥️ SystemSkill
+**Purpose:** Monitor resource utilization, manage Windows startup, control networks, power, and clipboard.
+
+| Tool | Description |
+|------|-------------|
+| `get_top_processes` | List top running processes sorted by CPU or memory usage |
+| `kill_process` | Terminate a running process by PID or name |
+| `list_startup_programs` | List all apps registered to run at Windows startup |
+| `set_startup_program` | Register or disable an application from Windows startup |
+| `get_wifi_status` | Get connected Wi-Fi details and visible nearby SSIDs |
+| `set_wifi_power` | Enable or disable the Wi-Fi network interface card |
+| `get_battery_status` | Get battery percentage and power source (AC/battery) |
+| `set_system_power_action` | Initiate sleep, hibernate, lock, or scheduled shutdown |
+| `clipboard_copy` | Write text to the OS clipboard |
+| `clipboard_paste` | Read the current text content from the OS clipboard |
+
+---
+
+### 🪟 AppControlSkill
+**Purpose:** Automate and control active Windows desktop applications (Office, browsers, VS Code).
+
+| Tool | Description |
+|------|-------------|
+| `excel_sum_column` | Sum all values in a specific column of the active Excel sheet |
+| `excel_write_cell` | Write a value or formula into a cell in the active Excel sheet |
+| `word_modify_text` | Append a paragraph to an active Word document (with optional bold) |
+| `vscode_open_project` | Launch VS Code and open a specific folder or project directory |
+| `vscode_trigger_debug` | Focus VS Code window and trigger the debugger (F5 key) |
+| `browser_control_tabs` | Send shortcuts to the browser to manage tabs (open, close, switch) |
+
+---
+
+### 🧠 ContextSkill
+**Purpose:** Track active application usage, user focus, and infer work context in real-time.
+
+| Tool | Description |
+|------|-------------|
+| `get_active_context` | Return the current foreground window, process name, and inferred project category |
+| `set_focus_session` | Enable or disable a Do-Not-Disturb deep-focus session |
+| `get_focus_status` | Check if a focus session is active and how much time remains |
+
+> **Live Feed:** Context changes are broadcast via WebSocket to the dashboard in real-time (every 30s or on window switch).
+
+---
+
+### 🤖 AgentSkill
+**Purpose:** Delegate long-running tasks to autonomous background sub-agents.
+
+| Tool | Description |
+|------|-------------|
+| `spawn_subagent` | Create and dispatch a background subagent for a multi-step task |
+| `get_active_agents` | List all running, completed, or cancelled background agents |
+| `abort_subagent` | Cancel the execution of a running agent by its ID |
+
+---
+
+### 📰 NewsSkill
+**Purpose:** Fetch real-time world & finance news, open dashboards, and run deep research.
+
+| Tool | Description |
+|------|-------------|
+| `get_world_news` | Fetch global headlines from BBC, CNBC, NYTimes, AlJazeera in parallel |
+| `get_world_finance_news` | Fetch finance headlines from CNBC, Bloomberg, Reuters, MarketWatch |
+| `open_world_monitor` | Open `worldmonitor.app` live news dashboard in the browser |
+| `open_finance_world_monitor` | Open `finance.worldmonitor.app` market monitor in the browser |
+| `morning_digest` | Generate a full morning briefing (weather, news, system stats, calendar) |
+| `deep_research` | Run multi-step web research and return a cited summary |
+
+---
+
+### 👁️ VisionSkill
+**Purpose:** Inspect and analyze screen UI elements and multi-monitor layouts.
+
+| Tool | Description |
+|------|-------------|
+| `inspect_accessibility_tree` | Inspect native UI control elements and accessibility tree for a window |
+| `get_window_hierarchy` | Enumerate visible top-level windows and child window hierarchies |
+| `locate_visual_element` | Ground a target UI element label to screen coordinates `[x, y]` |
+| `get_multi_monitor_layout` | Get connected displays, primary monitor, and work-area bounds |
+
+---
+
+### ⚙️ AutomationSkill
+**Purpose:** Record and play back keyboard/mouse macros and automate desktop workflows.
+
+| Tool | Description |
+|------|-------------|
+| `start_workflow_recording` | Start recording user workflow macro steps |
+| `stop_workflow_recording` | Stop recording and save the macro to JSON |
+| `playback_workflow` | Play back a saved workflow macro |
+| `list_workflows` | List all saved workflow macros |
+| `arrange_windows_layout` | Tile, split, or snap visible windows into grid layouts |
+| `get_clipboard_intelligence` | Read clipboard, auto-detect type (URL/JSON/Code/Path), and view history |
+| `check_folder_changes` | Monitor a folder for added, modified, or removed files |
+
+---
+
+### 💻 DeveloperSkill
+**Purpose:** Developer assistant for code analysis, git ops, and test generation.
+
+| Tool | Description |
+|------|-------------|
+| `analyze_repository_structure` | Analyze repo files, languages, framework manifests, LOC, and architecture |
+| `localize_bug_from_trace` | Parse error stack traces to pinpoint source files and line numbers |
+| `generate_unit_test_stub` | Analyze Python AST to extract functions and generate pytest stubs |
+| `generate_pr_description` | Inspect git changes and format a Pull Request title + markdown summary |
+| `audit_dependencies` | Audit `requirements.txt` / `package.json` for installed packages |
+
+---
+
+### 🔍 ResearchSkill
+**Purpose:** Web research, PDF analysis, fact verification, and browser session management.
+
+| Tool | Description |
+|------|-------------|
+| `generate_research_report` | Synthesize findings into a structured markdown report with citations |
+| `analyze_pdf_document` | Extract text, headings, and structure from a local PDF |
+| `verify_fact_claim` | Evaluate a factual claim against reference sources |
+| `manage_browser_profile` | Inspect Playwright persistent browser context and saved session states |
+| `multi_tab_browser_action` | Simulate multi-tab browser controls (create, list, switch, close tab) |
+
+---
+
+### 🎤 VoiceSkill
+**Purpose:** Control speech recognition, TTS, wake-word sensitivity, and speaker identity.
+
+| Tool | Description |
+|------|-------------|
+| `detect_speaker_emotion` | Classify speaker emotion from audio RMS energy and pitch estimates |
+| `manage_speaker_profile` | Retrieve, update, or list speaker profiles and speech preferences |
+| `tune_wake_word_threshold` | Tune openwakeword sensitivity (0.1 = sensitive, 0.9 = strict) |
+| `get_voice_intelligence_status` | Get full status of STT, TTS, wake-word, and audio stream |
+
+---
+
+### 📋 ProductivitySkill
+**Purpose:** Task management, reminders, meeting notes, email drafts, and calendar events.
+
+| Tool | Description |
+|------|-------------|
+| `get_daily_briefing` | Synthesize an executive morning briefing (date, tasks, reminders, status) |
+| `manage_productivity_tasks` | Add, list, complete, or delete TODO tasks |
+| `set_reminder` | Set a reminder notification with delay minutes and a message |
+| `summarize_meeting_transcript` | Extract summary, key decisions, and action items from a transcript |
+| `format_email_draft` | Generate a formatted email subject and body for Gmail or Outlook |
+| `manage_calendar_event` | Add or list local calendar events |
+
+---
+
+### 🔌 PluginSkill
+**Purpose:** Manage the JARVIS plugin marketplace — install, enable, disable, and run plugins.
+
+| Tool | Description |
+|------|-------------|
+| `install_plugin` | Install a new plugin into the JARVIS plugin ecosystem |
+| `uninstall_plugin` | Uninstall a plugin by name |
+| `list_installed_plugins` | List all installed plugins and their status |
+| `enable_plugin` | Enable a previously disabled plugin |
+| `disable_plugin` | Disable an active plugin without removing it |
+| `inspect_plugin_permissions` | Inspect security permissions requested by a plugin |
+
+---
+
+### 🎨 UISkill
+**Purpose:** Monitor and control the JARVIS dashboard HUD, orb visualizer, and agent grid.
+
+| Tool | Description |
+|------|-------------|
+| `get_hud_status` | Get Iron Man HUD theme state and 3D Orb audio metrics |
+| `get_agent_dashboard` | Get multi-agent activity status (CEO, Planner, Vision, Coding agents) |
+| `get_memory_explorer_data` | Get Vector DB & Knowledge Graph memory node statistics |
+| `get_performance_metrics` | Get live CPU, RAM, VRAM, and LLM latency performance metrics |
+
+---
+
+### 📊 ObservabilitySkill
+**Purpose:** Internal telemetry — cache stats, GPU VRAM, system health, and metric export.
+
+| Tool | Description |
+|------|-------------|
+| `get_cache_stats` | Get dual-layer cache hit ratio, memory usage, and Redis status |
+| `get_gpu_vram_status` | Get CUDA GPU VRAM usage and lazy model load allocations |
+| `get_system_health` | Get CPU/RAM health, crash reports count, and active trace IDs |
+| `export_telemetry_metrics` | Export aggregated telemetry metrics for diagnostics |
+
+---
+
+### 🌐 CrossPlatformSkill
+**Purpose:** OS compatibility matrix, device pairing, and cross-device state sync.
+
+| Tool | Description |
+|------|-------------|
+| `get_platform_compatibility` | Get OS details and feature compatibility matrix |
+| `pair_companion_device` | Pair an Android or iOS companion app device |
+| `sync_cross_device_state` | Sync clipboard or memory state to a paired companion device |
+| `list_paired_devices` | List all paired companion devices |
+
+---
+
+### 🚀 DeploymentSkill
+**Purpose:** System benchmarks, local data backup, restore, and update checking.
+
+| Tool | Description |
+|------|-------------|
+| `run_system_benchmarks` | Run local performance benchmarks (CPU, latency, memory speed) |
+| `trigger_backup` | Create a ZIP backup of all user data and JSON state files |
+| `restore_backup` | Restore user data from a specified backup ZIP file |
+| `check_update_status` | Check the current system version and update availability |
+
+---
+
+### 🧬 AutonomousSkill
+**Purpose:** Habit learning, task prediction, long-term goal management, and self-optimization.
+
+| Tool | Description |
+|------|-------------|
+| `get_learned_habits` | Get learned user habit patterns and automation suggestions |
+| `predict_next_tasks` | Predict upcoming tasks based on time-of-day and habit history |
+| `manage_long_term_goals` | Add or list long-term goals tracked by the Personal AI Project Manager |
+| `optimize_agent_prompt` | Self-improve agent system prompts based on past conversation feedback |
+
+---
+
+### 🔮 ProactiveSkill
+**Purpose:** Schedule background reminders and proactive environment-aware alerts.
+
+| Tool | Description |
+|------|-------------|
+| `schedule_reminder` | Schedule a proactive alert at a specific date/time or interval |
+| `list_reminders` | List all currently scheduled active reminders |
+| `cancel_reminder` | Cancel a scheduled reminder by its numerical ID |
+
+---
+
 ## 🚀 Quick Start
 
 ### Prerequisites

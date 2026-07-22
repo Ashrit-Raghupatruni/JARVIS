@@ -1,11 +1,14 @@
 /* ===== Assistant State ===== */
 export type AssistantState =
+  | 'sleeping'
   | 'idle'
   | 'wake_word_detected'
   | 'listening'
   | 'processing'
   | 'speaking'
   | 'executing'
+  | 'interrupted'
+  | 'error'
 
 /* ===== WebSocket Message Types ===== */
 export type WSMessageType =
@@ -22,6 +25,8 @@ export type WSMessageType =
   | 'heartbeat'
   | 'push_to_talk_start'
   | 'push_to_talk_stop'
+  | 'serious_mode_changed'
+  | 'clap_detected'
 
 export interface WSMessage {
   type: WSMessageType
@@ -153,6 +158,15 @@ export interface Settings {
     ttsVoice: string
     speechRate: number
     wakeWordEnabled: boolean
+    wakeWord: string
+    wakeWordSensitivity: number
+    clapEnabled: boolean
+    clapMode: 'single' | 'double'
+    clapSensitivity: number
+    micSensitivity: number
+    bargeInEnabled: boolean
+    bargeInSensitivity: number
+    seriousMode: boolean
   }
   ai: {
     model: string

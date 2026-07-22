@@ -125,6 +125,24 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
           break
         }
 
+        case 'serious_mode_changed': {
+          const enabled = Boolean((message.data as any)?.enabled)
+          const store = useAppStore.getState()
+          store.updateVoiceSettings({ seriousMode: enabled })
+          break
+        }
+
+        case 'clap_detected': {
+          const store = useAppStore.getState()
+          store.setAssistantState('wake_word_detected')
+          setTimeout(() => {
+            if (store.assistantState === 'wake_word_detected') {
+              store.setAssistantState('listening')
+            }
+          }, 1000)
+          break
+        }
+
         case 'status': {
           const status = message as StatusMessage
           useAppStore.getState().setAssistantState(status.data.state)
@@ -135,13 +153,16 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
           } else if (status.data.state === 'speaking') {
             useAppStore.getState().setListening(false)
             useAppStore.getState().setSpeaking(true)
-          } else if (status.data.state === 'idle') {
+          } else if (status.data.state === 'sleeping' || status.data.state === 'idle') {
             useAppStore.getState().setListening(false)
             useAppStore.getState().setSpeaking(false)
             useAppStore.getState().setCurrentTranscript('')
             useAppStore.getState().setThinkingText('')
           } else if (status.data.state === 'processing') {
             useAppStore.getState().setListening(false)
+          } else if (status.data.state === 'interrupted') {
+            useAppStore.getState().setSpeaking(false)
+            useAppStore.getState().setListening(true)
           }
 
           if (status.data.message) {
@@ -158,6 +179,7 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
 
         case 'error': {
           const error = message as ErrorMessage
+          useAppStore.getState().setAssistantState('error')
           const errorMsg: ConversationMessage = {
             id: generateId(),
             role: 'system',

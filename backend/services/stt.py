@@ -82,6 +82,9 @@ class STTService:
             "STTService created — model={}, device={}, compute={}",
             model_size, device, compute_type,
         )
+        # Pre-load Whisper in background thread executor immediately
+        import threading
+        threading.Thread(target=self._load_model_sync, daemon=True).start()
 
     # ── Lifecycle ────────────────────────────────────────────────────────
 

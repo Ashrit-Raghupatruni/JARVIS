@@ -156,9 +156,11 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    // Launch in background/tray to avoid interrupting the current task.
-    // Instead, we show the Siri-like animation widget.
-    showSiriWindowTemporarily(5000)
+    // Show the main dashboard window immediately on startup
+    mainWindow?.show()
+    mainWindow?.focus()
+    // Also briefly show the Siri greeting animation widget
+    showSiriWindowTemporarily(3000)
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {

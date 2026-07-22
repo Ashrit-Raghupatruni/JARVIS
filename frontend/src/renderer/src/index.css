@@ -48,6 +48,36 @@
   --jarvis-purple: var(--color-jarvis-purple);
 }
 
+/* Serious Mode Tactical Theme Overrides */
+.serious-mode {
+  --jarvis-bg: #090305;
+  --jarvis-bg-alt: #120508;
+  --jarvis-surface: rgba(26, 8, 12, 0.85);
+  --jarvis-surface-solid: #1c080d;
+  --jarvis-surface-hover: rgba(38, 12, 18, 0.95);
+  --jarvis-accent: #ff0033;
+  --jarvis-accent-2: #ff4d00;
+  --jarvis-accent-3: #ffaa00;
+  --jarvis-accent-dim: rgba(255, 0, 51, 0.2);
+  --jarvis-accent-glow: rgba(255, 0, 51, 0.45);
+  --jarvis-border: rgba(255, 0, 51, 0.3);
+  --jarvis-border-bright: rgba(255, 77, 0, 0.6);
+}
+
+.serious-scanlines {
+  background: linear-gradient(
+    rgba(255, 0, 51, 0) 50%, 
+    rgba(255, 0, 51, 0.05) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.03),
+    rgba(0, 0, 0, 0),
+    rgba(255, 0, 0, 0.03)
+  );
+  background-size: 100% 4px, 6px 100%;
+  pointer-events: none;
+}
+
 /* ===== Base Styles ===== */
 *,
 *::before,

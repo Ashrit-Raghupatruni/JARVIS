@@ -117,6 +117,19 @@ def expects_follow_up(text: str) -> bool:
 class VoiceAgent:
     """Manages the voice interaction pipeline and state machine."""
 
+SERIOUS_ACKNOWLEDGMENTS = [
+    "Standing by.",
+    "Directive received.",
+    "Command confirmed.",
+    "Executing.",
+    "Ready for mission instruction.",
+    "Tactical link online.",
+]
+
+
+class VoiceAgent:
+    """Manages the voice interaction pipeline and state machine."""
+
     def __init__(
         self,
         wake_word_service,
@@ -129,7 +142,7 @@ class VoiceAgent:
         self.tts = tts_service
         self.planner = planner_agent
 
-        self._state = AssistantState.IDLE
+        self._state = AssistantState.SLEEPING if (wake_word_service and wake_word_service.is_loaded) else AssistantState.IDLE
         self._audio_buffer: list[bytes] = []
         self._listening_start_time: float = 0
         self._silence_timeout = 10.0  # seconds (follow-up listening window)
@@ -137,6 +150,12 @@ class VoiceAgent:
         self._is_speaking = False
         self._cancel_speech = False
         self._push_to_talk_active = False
+
+        # Voice Settings & Serious Mode
+        self.serious_mode = False
+        self.barge_in_enabled = True
+        self.barge_in_sensitivity = 0.7
+        self.mic_sensitivity = 0.8
 
         # Audio accumulation settings
         self._sample_rate = 16000
@@ -146,7 +165,7 @@ class VoiceAgent:
         self._has_speech = False
         self._played_ack = False
         self._last_speech_time = 0.0
-        self._speech_silence_timeout = 2.0  # 2.0s silence window for VAD completion
+        self._speech_silence_timeout = 1.0  # 1.0s silence window for snappy VAD completion
         self._rolling_audio_history: list[bytes] = []  # rolling history buffer to prevent race conditions
         self._session_id = 0
 
@@ -163,9 +182,47 @@ class VoiceAgent:
     async def handle_audio_chunk(self, chunk: bytes) -> AsyncGenerator[WSMessage, None]:
         """
         Process an incoming audio chunk through the voice pipeline.
-
-        Yields WSMessage objects for state changes, transcripts, responses, and TTS audio.
+        Includes Self-Voice Echo Suppression & Intelligent Barge-In.
         """
+        # Compute RMS energy of incoming microphone audio chunk
+        energy = 0.0
+        try:
+            audio_array = np.frombuffer(chunk, dtype=np.int16).astype(np.float32)
+            if len(audio_array) > 0:
+                energy = float(np.sqrt(np.mean(audio_array ** 2)))
+        except Exception:
+            pass
+
+        # ── Self-Voice Echo Suppression & Barge-In Handling ───────────
+        # While JARVIS is actively speaking via TTS:
+        if self._state == AssistantState.SPEAKING or self._is_speaking:
+            if self.barge_in_enabled:
+                # Calculate adaptive threshold for intentional user interruption
+                barge_threshold = max(600.0, 1500.0 * (1.2 - self.barge_in_sensitivity * 0.6))
+                if energy > barge_threshold:
+                    logger.info(f"Intelligent Barge-In detected! Energy {energy:.1f} > threshold {barge_threshold:.1f}")
+                    self._cancel_speech = True
+                    self._session_id += 1
+                    self.state = AssistantState.INTERRUPTED
+                    yield WSMessage(
+                        type="status",
+                        data=StatusMessage(state=AssistantState.INTERRUPTED, message="Barge-in interrupt").model_dump(),
+                    )
+                    await asyncio.sleep(0.1)
+                    self.state = AssistantState.LISTENING
+                    self._audio_buffer = [chunk]
+                    self._listening_start_time = time.time()
+                    self._last_speech_time = time.time()
+                    self._has_speech = True
+                    self._played_ack = True
+                    yield WSMessage(
+                        type="status",
+                        data=StatusMessage(state=AssistantState.LISTENING).model_dump(),
+                    )
+                    return
+            # Ignore self-voice TTS playback echoing back into mic
+            return
+
         # Maintain rolling audio history when not actively capturing user speech to prevent syllable truncation
         if self._state != AssistantState.LISTENING:
             self._rolling_audio_history.append(chunk)
@@ -174,21 +231,19 @@ class VoiceAgent:
                 removed = self._rolling_audio_history.pop(0)
                 total_bytes -= len(removed)
 
-        # 1. Wake word detection in IDLE and PROCESSING states
-        if self.wake_word and self._state in [AssistantState.IDLE, AssistantState.PROCESSING]:
+        # 1. Wake word detection in SLEEPING, IDLE, and PROCESSING states
+        if self.wake_word and self._state in [AssistantState.SLEEPING, AssistantState.IDLE, AssistantState.PROCESSING]:
             try:
                 detected = self.wake_word.process_audio(chunk)
                 if detected:
                     logger.info(f"Wake word detected in state: {self._state.value}!")
                     
-                    # Stop current speech if speaking
                     if self._state == AssistantState.SPEAKING:
                         self._cancel_speech = True
                         
                     self._session_id += 1
                     logger.info(f"Session ID incremented to {self._session_id} on wake word detection.")
                     self.state = AssistantState.LISTENING
-                    # Pre-populate buffer with the last 1.5s of rolling audio history
                     self._audio_buffer = list(self._rolling_audio_history)
                     self._rolling_audio_history.clear()
                     self._listening_start_time = time.time()
@@ -212,18 +267,13 @@ class VoiceAgent:
         if self._state == AssistantState.LISTENING:
             self._audio_buffer.append(chunk)
 
-            # Check for voice activity (simple energy-based VAD)
-            try:
-                audio_array = np.frombuffer(chunk, dtype=np.int16).astype(np.float32)
-                energy = np.sqrt(np.mean(audio_array ** 2))
-
-                if energy > 500:  # Speech threshold
-                    if not self._has_speech:
-                        logger.info("Speech detected, listening...")
-                    self._has_speech = True
-                    self._last_speech_time = time.time()
-            except Exception:
-                pass
+            # Check for voice activity with mic sensitivity adjustment
+            vad_threshold = max(200.0, 600.0 * (1.2 - self.mic_sensitivity * 0.5))
+            if energy > vad_threshold:
+                if not self._has_speech:
+                    logger.info("Speech detected, listening...")
+                self._has_speech = True
+                self._last_speech_time = time.time()
 
             elapsed = time.time() - self._listening_start_time
 
@@ -238,10 +288,10 @@ class VoiceAgent:
                     async for msg in self._process_speech():
                         yield msg
             else:
-                # If they said the wake word and remained silent for 1.5 seconds, play verbal acknowledgment
+                # Play verbal acknowledgment if wake word triggered and silent for 1.5s
                 if elapsed > 1.5 and not self._played_ack and not self._push_to_talk_active:
                     self._played_ack = True
-                    ack = random.choice(ACKNOWLEDGMENTS)
+                    ack = random.choice(SERIOUS_ACKNOWLEDGMENTS if self.serious_mode else ACKNOWLEDGMENTS)
                     yield WSMessage(
                         type="response",
                         data=ResponseMessage(text=ack).model_dump(),
@@ -250,18 +300,18 @@ class VoiceAgent:
                     async for tts_msg in self._speak(ack):
                         yield tts_msg
                         
-                    # Transition back to listening and reset times
                     self.state = AssistantState.LISTENING
                     self._listening_start_time = time.time()
                     self._last_speech_time = time.time()
                 elif elapsed > self._silence_timeout:
-                    # Timeout — no speech detected at all
-                    logger.info("Listening timeout (no speech detected) — returning to idle")
-                    self.state = AssistantState.IDLE
+                    # Timeout — return to sleeping/idle state
+                    next_idle_state = AssistantState.SLEEPING if (self.wake_word and self.wake_word.is_loaded) else AssistantState.IDLE
+                    logger.info(f"Listening timeout — returning to {next_idle_state.value}")
+                    self.state = next_idle_state
                     self._audio_buffer.clear()
                     yield WSMessage(
                         type="status",
-                        data=StatusMessage(state=AssistantState.IDLE).model_dump(),
+                        data=StatusMessage(state=next_idle_state).model_dump(),
                     )
 
     async def handle_push_to_talk_start(self) -> AsyncGenerator[WSMessage, None]:
@@ -354,23 +404,51 @@ class VoiceAgent:
             if self._session_id != session_id:
                 return
 
-            if not transcript or transcript.lower() in ["", "you", "thank you", "thanks"]:
+            if not transcript or transcript.lower() in ["", "subtitles", "[music]", "watching", "[applause]"]:
                 logger.debug(f"Empty or noise transcript: '{transcript}'")
-                self.state = AssistantState.IDLE
+                next_state = AssistantState.SLEEPING if (self.wake_word and self.wake_word.is_loaded) else AssistantState.IDLE
+                self.state = next_state
                 yield WSMessage(
                     type="status",
-                    data=StatusMessage(state=AssistantState.IDLE).model_dump(),
+                    data=StatusMessage(state=next_state).model_dump(),
                 )
                 return
 
-            # Explicit cancellation command check
+            # Serious Mode voice command toggle check
             clean_tr = transcript.lower().strip(".,!? ")
+            if clean_tr in ["enable serious mode", "activate serious mode", "serious mode on", "serious mode"]:
+                self.serious_mode = True
+                logger.info("Serious Mode ACTIVATED via voice command.")
+                resp_text = "Serious Mode activated, sir. Tactical interface and mission protocols online."
+                yield WSMessage(type="transcript", data={"text": transcript, "is_final": True})
+                yield WSMessage(type="serious_mode_changed", data={"enabled": True})
+                async for tts_msg in self._speak(resp_text, session_id):
+                    yield tts_msg
+                next_state = AssistantState.SLEEPING if (self.wake_word and self.wake_word.is_loaded) else AssistantState.IDLE
+                self.state = next_state
+                yield WSMessage(type="status", data=StatusMessage(state=next_state).model_dump())
+                return
+            elif clean_tr in ["disable serious mode", "deactivate serious mode", "serious mode off"]:
+                self.serious_mode = False
+                logger.info("Serious Mode DEACTIVATED via voice command.")
+                resp_text = "Serious Mode deactivated. Returning to standard protocol, sir."
+                yield WSMessage(type="transcript", data={"text": transcript, "is_final": True})
+                yield WSMessage(type="serious_mode_changed", data={"enabled": False})
+                async for tts_msg in self._speak(resp_text, session_id):
+                    yield tts_msg
+                next_state = AssistantState.SLEEPING if (self.wake_word and self.wake_word.is_loaded) else AssistantState.IDLE
+                self.state = next_state
+                yield WSMessage(type="status", data=StatusMessage(state=next_state).model_dump())
+                return
+
+            # Explicit cancellation command check
             if clean_tr in ["stop listening", "cancel", "goodbye", "bye", "stop"]:
                 logger.info("User explicitly ended the conversation.")
-                self.state = AssistantState.IDLE
+                next_state = AssistantState.SLEEPING if (self.wake_word and self.wake_word.is_loaded) else AssistantState.IDLE
+                self.state = next_state
                 yield WSMessage(
                     type="status",
-                    data=StatusMessage(state=AssistantState.IDLE).model_dump(),
+                    data=StatusMessage(state=next_state).model_dump(),
                 )
                 return
 
@@ -383,18 +461,24 @@ class VoiceAgent:
             logger.error(f"STT failed: {e}")
             if self._session_id != session_id:
                 return
-            self.state = AssistantState.IDLE
+            self.state = AssistantState.ERROR
             yield WSMessage(type="error", data={"message": f"Speech recognition failed: {e}"})
+            next_state = AssistantState.SLEEPING if (self.wake_word and self.wake_word.is_loaded) else AssistantState.IDLE
+            self.state = next_state
             yield WSMessage(
                 type="status",
-                data=StatusMessage(state=AssistantState.IDLE).model_dump(),
+                data=StatusMessage(state=next_state).model_dump(),
             )
             return
 
-        # Process through planner
+        # Process through planner (injecting Serious Mode prompt prefix if active)
+        planner_input = transcript
+        if self.serious_mode:
+            planner_input = f"[SERIOUS MODE ACTIVE: Tactical, mission-focused, concise, authoritative response] {transcript}"
+
         response_text = ""
         try:
-            async for planner_msg in self.planner.plan_and_execute(transcript):
+            async for planner_msg in self.planner.plan_and_execute(planner_input):
                 if self._session_id != session_id:
                     return
                 yield planner_msg
@@ -404,7 +488,7 @@ class VoiceAgent:
             logger.error(f"Planner failed: {e}")
             if self._session_id != session_id:
                 return
-            response_text = "I'm sorry sir, I encountered an error processing that request."
+            response_text = "Command execution failed, sir. Systems reporting error." if self.serious_mode else "I'm sorry sir, I encountered an error processing that request."
             yield WSMessage(
                 type="response",
                 data=ResponseMessage(text=response_text).model_dump(),
@@ -420,7 +504,7 @@ class VoiceAgent:
         if self._session_id != session_id:
             return
 
-        # Return to idle or silently enter listening mode if follow-up is expected
+        # Return to idle/sleeping or silently enter listening mode if follow-up is expected
         if response_text and expects_follow_up(response_text) and not self._cancel_speech:
             logger.info("Response expects follow-up — entering listening mode silently...")
             self.state = AssistantState.LISTENING
@@ -428,16 +512,17 @@ class VoiceAgent:
             self._listening_start_time = time.time()
             self._last_speech_time = time.time()
             self._has_speech = False
-            self._played_ack = True  # Suppress initial "Yes sir?" acknowledgment prompt
+            self._played_ack = True  # Suppress initial acknowledgment prompt
             yield WSMessage(
                 type="status",
                 data=StatusMessage(state=AssistantState.LISTENING).model_dump(),
             )
         else:
-            self.state = AssistantState.IDLE
+            next_state = AssistantState.SLEEPING if (self.wake_word and self.wake_word.is_loaded) else AssistantState.IDLE
+            self.state = next_state
             yield WSMessage(
                 type="status",
-                data=StatusMessage(state=AssistantState.IDLE).model_dump(),
+                data=StatusMessage(state=next_state).model_dump(),
             )
 
     async def _speak(self, text: str, session_id: Optional[int] = None) -> AsyncGenerator[WSMessage, None]:

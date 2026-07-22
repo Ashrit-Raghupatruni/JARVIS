@@ -23,7 +23,7 @@ class WakeWordService:
     configured wake word is detected with sufficient confidence.
     """
 
-    def __init__(self, threshold: float = 0.5) -> None:
+    def __init__(self, threshold: float = 0.35) -> None:
         """
         Initialise the wake word service.
 
@@ -55,7 +55,7 @@ class WakeWordService:
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, self._load_model_sync)
 
-    def _load_model_sync(self) -> None:
+    def _load_model_sync(self, wakeword_name: str = "hey_jarvis") -> None:
         """Synchronous model loading, run in a thread executor."""
         try:
             import openwakeword
@@ -64,12 +64,20 @@ class WakeWordService:
             # Download default models if not present
             openwakeword.utils.download_models()
 
-            self._model = Model(
-                wakeword_models=["hey_jarvis"],
-                inference_framework="onnx",
-            )
+            models_to_load = [wakeword_name] if wakeword_name else ["hey_jarvis"]
+            try:
+                self._model = Model(
+                    wakeword_models=models_to_load,
+                    inference_framework="onnx",
+                )
+                self.selected_model = wakeword_name
+            except Exception as e:
+                logger.warning(f"Could not load specific wake word model '{wakeword_name}': {e}. Using default models.")
+                self._model = Model(inference_framework="onnx")
+                self.selected_model = "default"
+
             self._is_loaded = True
-            logger.info("Wake word model loaded successfully — model=hey_jarvis")
+            logger.info("Wake word model loaded successfully — model={}", self.selected_model)
 
         except Exception as e:
             logger.error("Failed to load wake word model: {}", e)
@@ -81,6 +89,7 @@ class WakeWordService:
                 openwakeword.utils.download_models()
                 self._model = Model(inference_framework="onnx")
                 self._is_loaded = True
+                self.selected_model = "fallback"
                 logger.info("Wake word model loaded with default models (fallback)")
             except Exception as fallback_err:
                 logger.error("Wake word fallback also failed: {}", fallback_err)

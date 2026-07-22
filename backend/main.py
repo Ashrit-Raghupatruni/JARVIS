@@ -15,6 +15,7 @@ from pathlib import Path
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
 
 from fastapi import FastAPI
 from loguru import logger
@@ -29,6 +30,7 @@ from backend.agents.context_manager import SharedContextManager
 from backend.utils.task_queue import AsyncTaskQueue
 from backend.services.config_manager import ConfigurationManager
 from backend.services.manager import ServiceManager
+from backend.models.schemas import AssistantState, WSMessage
 
 
 @asynccontextmanager
@@ -108,7 +110,7 @@ async def lifespan(app: FastAPI):
     app.state.hybrid_memory = hybrid_memory
     ServiceManager.register_instance("hybrid_memory", hybrid_memory)
 
-    # ── Initialize Services ──────────────────────────────────
+    app.loop = asyncio.get_running_loop()
 
     # Safety Service (no external deps, always available)
     from backend.services.safety import SafetyService
@@ -306,6 +308,18 @@ async def lifespan(app: FastAPI):
         logger.error(f"✗ Browser service failed: {e}")
         app.state.browser_service = None
 
+    # Task Queue Service
+    task_queue_service = None
+    try:
+        from backend.services.task_queue import TaskQueueService
+        task_queue_service = TaskQueueService()
+        app.state.task_queue_service = task_queue_service
+        ServiceManager.register_instance("task_queue_service", task_queue_service)
+        logger.info("✓ Task queue service initialized")
+    except Exception as e:
+        logger.error(f"✗ Task queue service failed: {e}")
+        app.state.task_queue_service = None
+
     # Memory Service
     memory_service = None
     try:
@@ -374,6 +388,30 @@ async def lifespan(app: FastAPI):
         )
         app.state.voice_agent = voice_agent
         logger.info("✓ Voice agent initialized")
+
+        # Connect Clap Listener to Voice Agent wake trigger
+        if clap_service:
+            def handle_clap_wake(clap_mode: str):
+                v_agent = getattr(app.state, "voice_agent", None)
+                if v_agent:
+                    # Ignore clap triggers if assistant is already speaking, processing, executing, or listening
+                    if v_agent.state in (AssistantState.SPEAKING, AssistantState.PROCESSING, AssistantState.EXECUTING, AssistantState.LISTENING):
+                        logger.info(f"Ignoring clap trigger during active voice state ({v_agent.state.value})")
+                        return
+                    logger.info(f"Clap trigger activated (mode={clap_mode}) — transitioning voice agent to listening!")
+                    v_agent._session_id += 1
+                    v_agent.state = AssistantState.LISTENING
+                    v_agent._listening_start_time = time.time()
+                    v_agent._last_speech_time = time.time()
+                    v_agent._has_speech = False
+                    v_agent._played_ack = False
+                conn_mgr = getattr(app.state, "connection_manager", None)
+                if conn_mgr and hasattr(app, "loop") and app.loop.is_running():
+                    asyncio.run_coroutine_threadsafe(
+                        conn_mgr.broadcast(WSMessage(type="status", data={"state": "listening", "message": f"{clap_mode.capitalize()} clap trigger"})),
+                        app.loop
+                    )
+            clap_service.on_clap_detected = handle_clap_wake
     except Exception as e:
         logger.error(f"✗ Voice agent failed: {e}")
         app.state.voice_agent = None
@@ -578,6 +616,27 @@ setup_middleware(app)
 app.include_router(api_router, tags=["API"])
 app.include_router(ws_router, tags=["WebSocket"])
 app.include_router(ui_router)
+
+
+# ── Root route (browser-friendly status page) ───────────────
+
+from fastapi.responses import JSONResponse
+
+@app.get("/", include_in_schema=False)
+async def root():
+    """Friendly landing page — open http://localhost:5173 for the full UI."""
+    return JSONResponse({
+        "status": "online",
+        "name": "JARVIS AI Desktop Assistant",
+        "version": "1.0.0",
+        "message": "Backend is running ✓  —  Open the Electron app or http://localhost:5173 for the dashboard.",
+        "endpoints": {
+            "api_docs": "http://127.0.0.1:8000/docs",
+            "health": "http://127.0.0.1:8000/health",
+            "websocket": "ws://127.0.0.1:8000/ws",
+            "frontend": "http://localhost:5173"
+        }
+    })
 
 
 # ── Run with uvicorn ────────────────────────────────────────

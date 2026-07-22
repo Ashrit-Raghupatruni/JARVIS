@@ -190,6 +190,18 @@ This report synthesizes background research and key findings on **{topic}**.
 ## 🔗 References & Citations
 """ + "\n".join(f"- **[{c['id']}]** [{c['title']}]({c['url']})" for c in citations)
 
+        # Auto-persist into RAG Knowledge Base
+        try:
+            from backend.services.rag_service import RAGService
+            rag = RAGService()
+            rag.add_text_document(
+                text=markdown_report,
+                metadata={"title": f"Research Report: {topic.title()}", "source": "autonomous_research", "topic": topic}
+            )
+            logger.info("Persisted research report for '{}' to RAG Knowledge Hub", topic)
+        except Exception as rag_err:
+            logger.warning("RAG persistence for research report skipped: {}", rag_err)
+
         return {
             "topic": topic,
             "citation_count": len(citations),

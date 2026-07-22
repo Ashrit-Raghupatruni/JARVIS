@@ -183,10 +183,52 @@ class Settings(BaseSettings):
         description="ElevenLabs sample rate override (defaults to parsing format).",
     )
 
+    # ── Voice & Wake Word Settings ─────────────────────────────────────────
+    WAKE_WORD: str = Field(
+        default="hey_jarvis",
+        description="Wake word identifier: hey_jarvis, jarvis, alexa, hey_siri.",
+    )
+    WAKE_WORD_SENSITIVITY: float = Field(
+        default=0.5,
+        ge=0.1,
+        le=0.9,
+        description="Wake word detection threshold (0.1 - 0.9).",
+    )
+    MIC_SENSITIVITY: float = Field(
+        default=0.8,
+        ge=0.1,
+        le=1.0,
+        description="Microphone input gain / energy threshold multiplier.",
+    )
+    BARGE_IN_ENABLED: bool = Field(
+        default=True,
+        description="Allow user speech to interrupt JARVIS while speaking.",
+    )
+    BARGE_IN_SENSITIVITY: float = Field(
+        default=0.7,
+        ge=0.1,
+        le=1.0,
+        description="Barge-in interrupt threshold sensitivity.",
+    )
+    SERIOUS_MODE: bool = Field(
+        default=False,
+        description="Enable Serious Mode (authoritative tone, tactical UI, mission-focused responses).",
+    )
+
     # ── Clap Listener Settings ───────────────────────────────────────────
     CLAP_ENABLED: bool = Field(
         default=True,
         description="Whether to enable the background clap listener.",
+    )
+    CLAP_MODE: str = Field(
+        default="double",
+        description="Clap trigger mode: 'single' or 'double'.",
+    )
+    CLAP_SENSITIVITY: float = Field(
+        default=0.7,
+        ge=0.1,
+        le=1.0,
+        description="Clap detection sensitivity.",
     )
     CLAP_SAMPLE_RATE: int = Field(
         default=44100,
@@ -197,7 +239,7 @@ class Settings(BaseSettings):
         description="Analysis block size in milliseconds.",
     )
     CLAP_SPIKE_RATIO: float = Field(
-        default=7.0,
+        default=12.0,
         description="Spike ratio relative to noise floor to detect a clap.",
     )
     CLAP_COOLDOWN_S: float = Field(
@@ -205,7 +247,7 @@ class Settings(BaseSettings):
         description="Cooldown period in seconds between detections.",
     )
     CLAP_MIN_DOUBLE_GAP_S: float = Field(
-        default=0.05,
+        default=0.08,
         description="Minimum gap between double claps.",
     )
     CLAP_MAX_DOUBLE_GAP_S: float = Field(
@@ -213,7 +255,7 @@ class Settings(BaseSettings):
         description="Maximum gap between double claps.",
     )
     CLAP_RETRIGGER_RATIO: float = Field(
-        default=0.55,
+        default=0.45,
         description="Retrigger ratio to arm next detection.",
     )
     CLAP_NOISE_FLOOR_ALPHA: float = Field(
@@ -221,7 +263,7 @@ class Settings(BaseSettings):
         description="Adaptive noise floor tracking alpha coefficient.",
     )
     CLAP_MIN_RMS: float = Field(
-        default=0.012,
+        default=0.045,
         description="Absolute minimum RMS amplitude to consider.",
     )
     CLAP_QUIET_GATE_MULT: float = Field(
@@ -311,7 +353,7 @@ class Settings(BaseSettings):
 
     # ── Wake Word Settings ───────────────────────────────────────────────
     WAKE_WORD_THRESHOLD: float = Field(
-        default=0.5,
+        default=0.35,
         ge=0.0,
         le=1.0,
         description="Confidence threshold for wake word detection (0.0-1.0).",

@@ -35,12 +35,13 @@ class ClapService:
     and triggers a customizable welcome flow.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, on_clap_detected=None) -> None:
         self.settings = get_settings()
         self._thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
         self._stream: Optional[sd.InputStream] = None
         self.welcome_sequence_done = False
+        self.on_clap_detected = on_clap_detected
 
         # State tracking
         self.last_logged_double: float = 0.0
@@ -64,7 +65,7 @@ class ClapService:
         self.welcome_sequence_done = False
         self._thread = threading.Thread(target=self._run_loop, name="ClapListener", daemon=True)
         self._thread.start()
-        logger.info("✓ Clap listener background thread started.")
+        logger.info("✓ Clap listener background thread started (mode={}).", self.settings.CLAP_MODE)
 
     def stop(self) -> None:
         """Stop the background clap listener thread and release audio devices."""
@@ -103,13 +104,16 @@ class ClapService:
         self.first_clap_time = None
         self.spike_armed = True
 
+        mode = getattr(self.settings, "CLAP_MODE", "double").lower()
+        sensitivity = getattr(self.settings, "CLAP_SENSITIVITY", 0.7)
+        spike_ratio = max(3.0, self.settings.CLAP_SPIKE_RATIO * (1.2 - sensitivity * 0.5))
+
         logger.info(
-            "Clap listener active (double clap: {}–{}s apart, rate={}, block={} ms, ratio={}).",
+            "Clap listener active (mode={}, spike_ratio={:.2f}, gap={}–{}s).",
+            mode,
+            spike_ratio,
             self.settings.CLAP_MIN_DOUBLE_GAP_S,
             self.settings.CLAP_MAX_DOUBLE_GAP_S,
-            self.settings.CLAP_SAMPLE_RATE,
-            self.settings.CLAP_BLOCK_MS,
-            self.settings.CLAP_SPIKE_RATIO,
         )
 
         start_time = time.monotonic()
@@ -141,7 +145,7 @@ class ClapService:
                         ) * level
                         self.noise_floor = max(self.noise_floor, 1e-7)
 
-                    threshold = max(self.noise_floor * self.settings.CLAP_SPIKE_RATIO, self.settings.CLAP_MIN_RMS)
+                    threshold = max(self.noise_floor * spike_ratio, self.settings.CLAP_MIN_RMS)
                     now = time.monotonic()
                     retrigger_level = threshold * self.settings.CLAP_RETRIGGER_RATIO
 
@@ -154,25 +158,41 @@ class ClapService:
                         and (now - self.last_logged_double) >= self.settings.CLAP_COOLDOWN_S
                     ):
                         self.spike_armed = False
-                        if self.first_clap_time is None:
-                            self.first_clap_time = now
-                        else:
-                            gap = now - self.first_clap_time
-                            if gap < self.settings.CLAP_MIN_DOUBLE_GAP_S:
-                                pass
-                            elif gap <= self.settings.CLAP_MAX_DOUBLE_GAP_S:
-                                self.first_clap_time = None
-                                self.last_logged_double = now
-                                if not self.welcome_sequence_done:
-                                    self.welcome_sequence_done = True
-                                    logger.info(
-                                        "Double clap detected! (gap={:.3f}s, rms={:.5f}, noise_floor={:.5f}, threshold={:.5f}) — triggering welcome flow",
-                                        gap, level, self.noise_floor, threshold
-                                    )
-                                    # Launch actions in separate thread to not block microphone stream read
-                                    threading.Thread(target=self._run_actions, name="ClapActions", daemon=True).start()
-                            else:
+                        current_mode = getattr(self.settings, "CLAP_MODE", "double").lower()
+
+                        if current_mode == "single":
+                            self.last_logged_double = now
+                            logger.info("Single clap detected! (rms={:.5f}, threshold={:.5f})", level, threshold)
+                            if self.on_clap_detected:
+                                try:
+                                    self.on_clap_detected("single")
+                                except Exception as cb_err:
+                                    logger.error(f"Error in clap callback: {cb_err}")
+                            if not self.welcome_sequence_done:
+                                self.welcome_sequence_done = True
+                                threading.Thread(target=self._run_actions, name="ClapActions", daemon=True).start()
+
+                        else:  # Double clap mode
+                            if self.first_clap_time is None:
                                 self.first_clap_time = now
+                            else:
+                                gap = now - self.first_clap_time
+                                if gap < self.settings.CLAP_MIN_DOUBLE_GAP_S:
+                                    pass
+                                elif gap <= self.settings.CLAP_MAX_DOUBLE_GAP_S:
+                                    self.first_clap_time = None
+                                    self.last_logged_double = now
+                                    logger.info("Double clap detected! (gap={:.3f}s, rms={:.5f})", gap, level)
+                                    if self.on_clap_detected:
+                                        try:
+                                            self.on_clap_detected("double")
+                                        except Exception as cb_err:
+                                            logger.error(f"Error in clap callback: {cb_err}")
+                                    if not self.welcome_sequence_done:
+                                        self.welcome_sequence_done = True
+                                        threading.Thread(target=self._run_actions, name="ClapActions", daemon=True).start()
+                                else:
+                                    self.first_clap_time = now
 
         except Exception as e:
             if self._stop_event.is_set():

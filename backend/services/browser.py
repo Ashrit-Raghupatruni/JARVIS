@@ -380,6 +380,50 @@ class BrowserService:
             logger.error(f"Failed to open YouTube search URL: {e}")
             return f"Error trying to play music: {e}"
 
+    async def summarize_current_page(self) -> str:
+        """Extract main body text and return clean summary payload."""
+        await self._ensure_started()
+        try:
+            content = await self.extract_page_content()
+            title = await self._page.title()
+            url = self._page.url
+            clean_text = content[:2000] if len(content) > 2000 else content
+            return f"Page Title: '{title}' ({url})\nExcerpt:\n{clean_text}"
+        except Exception as e:
+            logger.error(f"Page summarization failed: {e}")
+            return f"Error extracting page text: {e}"
+
+    async def deep_research(self, topic: str, max_pages: int = 3) -> str:
+        """Perform autonomous deep research across multiple web pages."""
+        await self._ensure_started()
+        logger.info("Starting deep research on topic: '{}' (pages={})", topic, max_pages)
+        results = [f"=== DEEP RESEARCH REPORT: {topic.upper()} ==="]
+        
+        try:
+            search_summary = await self.search_web(topic)
+            results.append(f"\n--- Search Summary ---\n{search_summary[:1000]}")
+            
+            links = await self._page.evaluate("""
+                () => Array.from(document.querySelectorAll('a[href^="http"]'))
+                    .map(a => a.href)
+                    .filter(h => !h.includes('google.com') && !h.includes('youtube.com'))
+                    .slice(0, 3)
+            """)
+            
+            for i, link in enumerate(links[:max_pages]):
+                try:
+                    await self._page.goto(link, wait_until="domcontentloaded", timeout=10000)
+                    title = await self._page.title()
+                    text = await self.extract_page_content()
+                    results.append(f"\n--- Page {i+1}: {title} ({link}) ---\n{text[:800]}")
+                except Exception as p_err:
+                    logger.warning(f"Could not load research page {link}: {p_err}")
+
+            return "\n".join(results)
+        except Exception as e:
+            logger.error(f"Deep research failed for '{topic}': {e}")
+            return f"Deep research failed: {e}"
+
     @property
     def is_started(self) -> bool:
         return self._started

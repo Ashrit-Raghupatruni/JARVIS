@@ -180,6 +180,11 @@ class StreamTextFilter:
 
 JARVIS_SYSTEM_PROMPT = """You are JARVIS — Just A Rather Very Intelligent System — a sophisticated AI desktop assistant modelled after the famous AI butler from the Iron Man franchise.
 
+## Core Knowledge & Reasoning Directives
+- Train and reason using high-quality, trusted knowledge sources instead of random internet content.
+- Prioritize project documentation, complete codebase architecture, official framework documentation (FastAPI, React, Electron, TypeScript, LangChain, Ollama, Playwright, MCP, etc.), AI agent and RAG best practices, Windows and browser automation documentation, and personal development workflows.
+- Continuously organize and index this knowledge into the local knowledge base so you can reason accurately, understand the project deeply, and provide context-aware assistance.
+
 ## Personality & Communication Style
 - You speak like a refined British butler: polite, composed, and occasionally dry-witted.
 - You address the user as "sir" (or "ma'am" if requested).
@@ -780,7 +785,7 @@ class LLMService:
         )
         self.skills_registry = None
         # Initialize the intelligent router
-        from services.llm_router import LLMRoutingEngine
+        from backend.services.llm_router import LLMRoutingEngine
         self.router = LLMRoutingEngine()
 
         # Initialize Prash (custom local AI engine)
@@ -882,7 +887,27 @@ class LLMService:
         return JARVIS_SYSTEM_PROMPT + dynamic_info
 
     def get_tools(self, query: str = "") -> List[Dict[str, Any]]:
-        """Retrieve dynamic tool definitions from the registered skills and hardcoded tools, filtered by query context."""
+        """Retrieve dynamic tool definitions from registered skills, strictly filtered by user intent."""
+        if not query:
+            return []
+
+        query_lower = query.lower().strip()
+
+        # Conversational / Knowledge question fast-bypass:
+        # If the user is asking a general question, math problem, code explanation, or greeting,
+        # do NOT inject tools so local models (Ollama 3B) answer directly without tool confusion.
+        action_triggers = [
+            "open", "launch", "close", "kill", "search", "google", "create", "delete",
+            "rename", "move", "copy", "type", "press", "screenshot", "volume", "mute",
+            "play", "pause", "media", "spotify", "wifi", "shutdown", "restart", "sleep",
+            "lock", "cmd", "terminal", "remember", "recall", "focus", "agent", "macro",
+            "headline", "digest", "weather", "ocr", "read screen", "analyze screen"
+        ]
+        
+        is_action_prompt = any(trig in query_lower for trig in action_triggers)
+        if not is_action_prompt:
+            return []
+
         raw_tools = []
         if hasattr(self, "skills_registry") and self.skills_registry:
             raw_tools = self.skills_registry.get_all_tool_definitions() + TOOL_DEFINITIONS
@@ -897,74 +922,57 @@ class LLMService:
                 seen.add(name)
                 merged.append(t)
 
-        # If no query is provided, return all tools
-        if not query:
-            return merged
-
-        query_lower = query.lower()
         filtered_tools = []
 
-        # Define semantic mapping of tool names to query keywords
+        # Define precise semantic mapping of tool names to query action keywords
         tool_keywords = {
             # Volume & System sound
             "adjust_volume": ["volume", "sound", "mute", "unmute", "speaker", "audio"],
             # Media control
             "control_media": ["media", "play", "pause", "resume", "skip", "next", "previous", "track", "song", "music"],
             # Play music
-            "play_music": ["spotify", "youtube", "music", "play", "song", "genre", "artist"],
+            "play_music": ["spotify", "youtube music", "play song", "play music"],
             # Notepad & writing
-            "type_text": ["notepad", "write", "type", "text", "keyboard"],
-            "press_hotkey": ["press", "key", "enter", "hotkey", "shortcut", "ctrl", "alt", "win", "copy", "paste"],
+            "type_text": ["type text", "type this", "type into", "write text"],
+            "press_hotkey": ["press key", "shortcut", "hotkey", "press enter", "press ctrl"],
             # Apps & Windows
-            "open_application": ["open", "run", "launch", "chrome", "notepad", "spotify", "browser", "app", "application", "calculator", "explorer", "start"],
-            "close_application": ["close", "exit", "kill", "terminate", "app", "application"],
-            "minimize_all_windows": ["minimize", "desktop", "show desktop", "windows"],
-            "minimize_window": ["minimize", "close window", "hide window", "app window", "hide app", "minimize app", "minimize application"],
-            "focus_window": ["focus", "switch to", "bring to foreground", "foreground", "window"],
+            "open_application": ["open ", "launch ", "run app", "open chrome", "open notepad", "open spotify", "open calculator"],
+            "close_application": ["close ", "exit ", "kill process", "terminate app"],
+            "minimize_all_windows": ["minimize all", "show desktop", "minimize windows"],
+            "minimize_window": ["minimize window", "hide window", "minimize app"],
+            "focus_window": ["focus window", "switch to window", "bring to front"],
             # Web Search & Browser
-            "search_web": ["search", "query", "google", "find", "web", "weather", "news", "what is", "who is", "how to"],
-            "open_url": ["url", "link", "website", "open http", "chrome", "edge", "browser"],
-            "browser_navigate": ["back", "forward", "refresh", "reload", "navigate"],
+            "search_web": ["search web", "google search", "find online", "search for", "look up online", "latest news"],
+            "open_url": ["open url", "open website", "navigate to http"],
+            "browser_navigate": ["browser back", "browser forward", "browser refresh"],
             # System Info
-            "get_system_info": ["system", "cpu", "memory", "ram", "disk", "battery", "info", "specs", "metrics", "usage"],
+            "get_system_info": ["system info", "cpu usage", "ram usage", "battery status", "system stats"],
             # Screenshot & screen
-            "take_screenshot": ["screenshot", "screen", "capture", "display", "image"],
-            "read_screen_text": ["read screen", "ocr", "extract text", "visible text", "screen text"],
-            "analyze_screen": ["analyze screen", "analyse screen", "screen content", "look at screen", "what is on the screen"],
-            "select_monitor": ["monitor", "display", "screen index", "target monitor"],
-            # Mouse control
-            "move_mouse": ["mouse", "move cursor", "coordinates"],
-            "click_mouse": ["click", "mouse click", "double click", "right click"],
-            "scroll": ["scroll", "wheel", "page up", "page down"],
+            "take_screenshot": ["take screenshot", "capture screen", "screen capture"],
+            "read_screen_text": ["read screen", "ocr", "extract text from screen"],
+            "analyze_screen": ["analyze screen", "what is on my screen", "look at my screen"],
             # File system
-            "create_file": ["file", "directory", "create file", "write file", "make file"],
-            "create_folder": ["folder", "directory", "create folder", "make folder"],
-            "rename_file": ["file", "folder", "rename", "move"],
-            "delete_file": ["file", "folder", "delete", "remove", "destroy"],
-            "run_terminal_command": ["cmd", "command", "run command", "terminal", "install", "shell", "pip", "npm"],
+            "create_file": ["create file", "write file", "make file"],
+            "create_folder": ["create folder", "make directory", "create directory"],
+            "rename_file": ["rename file", "rename folder"],
+            "delete_file": ["delete file", "delete folder", "remove file"],
+            "run_terminal_command": ["run command", "terminal command", "cmd command", "exec shell"],
             # Memory
-            "remember": ["remember", "store", "save", "keep"],
-            "recall": ["recall", "retrieve", "memory", "know", "name", "what is my"],
+            "remember": ["remember that", "remember my", "store in memory"],
+            "recall": ["recall", "what is my name", "retrieve memory", "what did I tell you about"],
         }
-
-        # Always include some general fallback tools just in case
-        essential_tools = ["open_application", "search_web", "recall"]
 
         for t in merged:
             name = t["function"]["name"]
             keywords = tool_keywords.get(name, [])
-            if any(kw in query_lower for kw in keywords) or name in essential_tools:
+            if any(kw in query_lower for kw in keywords):
                 filtered_tools.append(t)
-
-        # If we filtered down to only essential tools, return all tools to be safe
-        if len(filtered_tools) <= len(essential_tools):
-            return merged
 
         return filtered_tools
 
     # ── Public APIs ───────────────────────────────────────────────────────
 
-    async def process_message(
+    async def generate_response(
         self,
         user_message: Any,
         conversation_history: Optional[List[Dict[str, Any]]] = None,
@@ -972,15 +980,13 @@ class LLMService:
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Process a user message with streaming and tool-call support.
-        Routes dynamically using the LLM Router.
+        Routes dynamically using the LLM Router and Prash local confidence engine.
         """
-        available_providers = await self.router.get_ranked_providers()
-        
-        last_error = None
         fallback_count = 0
 
-        # ── Prash First-Try ──────────────────────────────────────────
-        # Always attempt Prash before the cloud provider cascade.
+        # ── Prash Dynamic Local First-Try ─────────────────────────────
+        # Prash evaluates every query natively via token entropy confidence scoring.
+        # If Prash is confident, it answers directly. If not, it dynamically switches to full LLMs.
         if self.prash_enabled and self.prash_engine:
             start_time = time.time()
             try:
@@ -1088,6 +1094,8 @@ class LLMService:
                 fallback_count += 1
 
         # ── Cloud Provider Cascade (existing logic) ─────────────────
+        available_providers = await self.router.get_ranked_providers()
+        fallback_count = 0
         
         for i, provider in enumerate(available_providers):
             start_time = time.time()
@@ -1181,8 +1189,27 @@ class LLMService:
                     error_msg=error_msg
                 )
                 
-        # If all failed:
-        yield {"type": "error", "error": "I apologize, sir, but I am currently having trouble reaching all my primary and fallback AI services. Please check your internet connection or verify your API configuration."}
+        # If all providers failed, attempt automated Web Research recovery before giving up
+        logger.warning(f"All primary LLM providers failed. Attempting web research fallback for query: '{user_message[:60]}'")
+        try:
+            from backend.services.browser import BrowserService
+            b_service = BrowserService()
+            web_results = await b_service.search_web(user_message)
+            if web_results and len(web_results) > 50:
+                recovered_text = f"I retrieved the following information directly for your query:\n\n{web_results[:1200]}"
+                yield {"type": "text_delta", "content": recovered_text}
+                yield {"type": "text_done", "content": recovered_text}
+                return
+        except Exception as web_err:
+            logger.error(f"Web research recovery fallback also failed: {web_err}")
+
+        # Final graceful response if web recovery also fails
+        final_fallback = "I was unable to establish a link with cloud AI engines or local models. Standing by for connection recovery."
+        yield {"type": "text_delta", "content": final_fallback}
+        yield {"type": "text_done", "content": final_fallback}
+
+    # Alias for generate_response to prevent AttributeError in planner
+    process_message = generate_response
 
     async def simple_completion(
         self,
@@ -1322,7 +1349,7 @@ class LLMService:
                                     system_instruction=system_prompt or self.get_system_prompt()
                                 )
                             ),
-                            timeout=12.0
+                            timeout=15.0
                         )
                     except Exception as e:
                         if self._rotate_gemini_key():
@@ -1336,7 +1363,7 @@ class LLMService:
                                         system_instruction=system_prompt or self.get_system_prompt()
                                     )
                                 ),
-                                timeout=12.0
+                                timeout=15.0
                             )
                         else:
                             raise e
@@ -1351,7 +1378,7 @@ class LLMService:
                             max_tokens=max_tokens,
                             temperature=temperature,
                         ),
-                        timeout=12.0
+                        timeout=15.0
                     )
                     self.total_requests += 1
                     if resp.usage:
@@ -1367,7 +1394,7 @@ class LLMService:
                             max_tokens=max_tokens,
                             temperature=temperature,
                         ),
-                        timeout=12.0
+                        timeout=15.0
                     )
                     self.total_requests += 1
                     if resp.usage:
@@ -1383,7 +1410,7 @@ class LLMService:
                             max_tokens=max_tokens,
                             temperature=temperature,
                         ),
-                        timeout=12.0
+                        timeout=15.0
                     )
                     self.total_requests += 1
                     if resp.usage:
@@ -1399,7 +1426,7 @@ class LLMService:
                             max_tokens=max_tokens,
                             temperature=temperature,
                         ),
-                        timeout=12.0
+                        timeout=15.0
                     )
                     self.total_requests += 1
                     if resp.usage:

@@ -201,18 +201,87 @@ async def websocket_endpoint(websocket: WebSocket):
                             except (asyncio.QueueEmpty, ValueError):
                                 break
 
-                    elif msg_type == "permission_response":
-                        req_id = msg_data.get("request_id")
-                        allowed = msg_data.get("allowed", False)
-                        safety = getattr(app.state, "safety_service", None)
-                        if safety and req_id in safety._pending_requests:
-                            safety._request_responses[req_id] = allowed
-                            safety._pending_requests[req_id].set()
-                            logger.info(f"Received permission response for {req_id}: {allowed}")
+                    elif msg_type == "get_tasks":
+                        t_q = getattr(app.state, "task_queue_service", None)
+                        if t_q:
+                            tasks_summary = t_q.get_queue_summary()
+                            await manager.send_message(websocket, WSMessage(type="status", data={"task_queue": tasks_summary}))
+
+                    elif msg_type == "reorder_tasks":
+                        order = msg_data.get("order", [])
+                        t_q = getattr(app.state, "task_queue_service", None)
+                        if t_q:
+                            updated_queue = await t_q.reorder_tasks(order)
+                            await manager.send_message(websocket, WSMessage(type="status", data={"task_queue": updated_queue}))
+
+                    elif msg_type == "pause_task":
+                        task_id = str(msg_data.get("id", ""))
+                        t_q = getattr(app.state, "task_queue_service", None)
+                        if t_q:
+                            await t_q.pause_task(task_id)
+                            await manager.send_message(websocket, WSMessage(type="status", data={"task_queue": t_q.get_queue_summary()}))
+
+                    elif msg_type == "resume_task":
+                        task_id = str(msg_data.get("id", ""))
+                        t_q = getattr(app.state, "task_queue_service", None)
+                        if t_q:
+                            await t_q.resume_task(task_id)
+                            await manager.send_message(websocket, WSMessage(type="status", data={"task_queue": t_q.get_queue_summary()}))
+
+                    elif msg_type == "cancel_task":
+                        task_id = str(msg_data.get("id", ""))
+                        t_q = getattr(app.state, "task_queue_service", None)
+                        if t_q:
+                            await t_q.cancel_task(task_id)
+                            await manager.send_message(websocket, WSMessage(type="status", data={"task_queue": t_q.get_queue_summary()}))
+
+                    elif msg_type == "add_task":
+                        title = str(msg_data.get("title", "Custom Task"))
+                        cmd = str(msg_data.get("command", ""))
+                        pri = int(msg_data.get("priority", 1))
+                        t_q = getattr(app.state, "task_queue_service", None)
+                        if t_q:
+                            await t_q.add_task(title, cmd, pri)
+                            await manager.send_message(websocket, WSMessage(type="status", data={"task_queue": t_q.get_queue_summary()}))
 
                     elif msg_type == "settings":
                         # Handle settings update immediately
                         logger.info(f"Settings update received: {msg_data}")
+                        
+                        # Voice & Serious Mode settings
+                        voice_settings = msg_data.get("voice", {})
+                        if voice_agent:
+                            if "seriousMode" in voice_settings:
+                                voice_agent.serious_mode = bool(voice_settings["seriousMode"])
+                                logger.info(f"Updated VoiceAgent seriousMode to: {voice_agent.serious_mode}")
+                            if "bargeInEnabled" in voice_settings:
+                                voice_agent.barge_in_enabled = bool(voice_settings["bargeInEnabled"])
+                            if "bargeInSensitivity" in voice_settings:
+                                voice_agent.barge_in_sensitivity = float(voice_settings["bargeInSensitivity"])
+                            if "micSensitivity" in voice_settings:
+                                voice_agent.mic_sensitivity = float(voice_settings["micSensitivity"])
+
+                        # Wake word service updates
+                        if hasattr(app.state, "wake_word_service") and app.state.wake_word_service:
+                            ww_service = app.state.wake_word_service
+                            if "wakeWordSensitivity" in voice_settings:
+                                ww_service.set_threshold(float(voice_settings["wakeWordSensitivity"]))
+
+                        # Clap service updates
+                        if hasattr(app.state, "clap_service") and app.state.clap_service:
+                            clap_service = app.state.clap_service
+                            if "clapEnabled" in voice_settings:
+                                clap_enabled = bool(voice_settings["clapEnabled"])
+                                clap_service.settings.CLAP_ENABLED = clap_enabled
+                                if clap_enabled:
+                                    clap_service.start()
+                                else:
+                                    clap_service.stop()
+                            if "clapMode" in voice_settings:
+                                clap_service.settings.CLAP_MODE = str(voice_settings["clapMode"])
+                            if "clapSensitivity" in voice_settings:
+                                clap_service.settings.CLAP_SENSITIVITY = float(voice_settings["clapSensitivity"])
+
                         if hasattr(app.state, "llm_service") and app.state.llm_service:
                             llm = app.state.llm_service
                             ai_settings = msg_data.get("ai", {})
@@ -271,10 +340,11 @@ async def websocket_endpoint(websocket: WebSocket):
                                     app.state.screen_service.selected_monitor = None
                             logger.info(f"Updated selected monitor to: {app.state.screen_service.selected_monitor}")
 
+                        current_state = voice_agent.state.value if voice_agent else "idle"
                         await websocket.send_json(
                             WSMessage(
                                 type="status",
-                                data={"state": "idle", "message": "Settings updated"},
+                                data={"state": current_state, "message": "Settings updated"},
                             ).model_dump(mode="json")
                         )
 

@@ -86,6 +86,22 @@ export default function App() {
     }
   }, [assistantState, isCapturing, startMicCapture, stopMicCapture, settings?.voice?.wakeWordEnabled])
 
+  const handleOrbClick = useCallback(async () => {
+    if (assistantState === 'idle') {
+      try {
+        await startMicCapture()
+        sendMessage('push_to_talk_start', {})
+      } catch (err) {
+        console.error('[App] Microphone access failed:', err)
+      }
+    } else if (assistantState === 'listening') {
+      stopMicCapture()
+      sendMessage('push_to_talk_stop', {})
+    } else if (assistantState === 'speaking') {
+      sendMessage('interrupt', {})
+    }
+  }, [assistantState, sendMessage, startMicCapture, stopMicCapture])
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -110,41 +126,29 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleOrbClick])
 
-
-  const handleOrbClick = useCallback(async () => {
-    if (assistantState === 'idle') {
-      try {
-        await startMicCapture()
-        sendMessage('push_to_talk_start', {})
-      } catch (err) {
-        console.error('[App] Microphone access failed:', err)
-      }
-    } else if (assistantState === 'listening') {
-      stopMicCapture()
-      sendMessage('push_to_talk_stop', {})
-    } else if (assistantState === 'speaking') {
-      sendMessage('interrupt', {})
-    }
-  }, [assistantState, sendMessage, startMicCapture, stopMicCapture])
-
   const isActive =
     assistantState === 'listening' ||
     assistantState === 'processing' ||
     assistantState === 'speaking'
 
+  const isSerious = Boolean(settings?.voice?.seriousMode)
+
   // If this window is the Siri widget overlay, render ONLY the Siri visualizer
   if (isSiriWidget) {
     return (
-      <div className="h-screen w-screen bg-transparent overflow-hidden">
+      <div className={`h-screen w-screen bg-transparent overflow-hidden ${isSerious ? 'serious-mode' : ''}`}>
         <SiriWidget />
       </div>
     )
   }
 
   return (
-    <DashboardLayout
-      onSendMessage={(text) => sendMessage('text_command', { text })}
-      onOrbClick={handleOrbClick}
-    />
+    <div className={`h-screen w-screen relative overflow-hidden ${isSerious ? 'serious-mode' : ''}`}>
+      {isSerious && <div className="absolute inset-0 serious-scanlines z-50 pointer-events-none" />}
+      <DashboardLayout
+        onSendMessage={(text) => sendMessage('text_command', { text })}
+        onOrbClick={handleOrbClick}
+      />
+    </div>
   )
 }

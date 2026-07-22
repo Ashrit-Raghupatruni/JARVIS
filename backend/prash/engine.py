@@ -282,11 +282,18 @@ class PrashEngine:
                 logger.info(f"Prash validation failed: unique word ratio {unique_ratio:.2f} is too low")
                 return False
                 
-        # 5. Check if all generated words are in the training vocabulary (prevent BPE merge errors)
+        # 5. Check if all generated words and prompt words are in the training vocabulary
         if hasattr(self, "valid_vocab") and self.valid_vocab:
+            # Check prompt words (if prompt contains unknown domain words, Prash cannot be confident)
+            query_words = [w.strip(".,!?\"'()[]{}") for w in query.lower().split() if len(w.strip(".,!?\"'()[]{}")) > 2]
+            for qw in query_words:
+                if qw not in self.valid_vocab:
+                    logger.info(f"Prash validation failed: prompt word '{qw}' is not in Prash vocabulary — switching to primary LLM")
+                    return False
+
             for w in cleaned_words:
                 if w not in self.valid_vocab:
-                    logger.info(f"Prash validation failed: word '{w}' is not in training vocabulary")
+                    logger.info(f"Prash validation failed: generated word '{w}' is not in training vocabulary")
                     return False
                     
         # 6. Query relevance check:

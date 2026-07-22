@@ -1,141 +1,113 @@
-import { useState, useEffect } from 'react'
+import React from 'react'
 import { useAppStore } from '../stores/appStore'
+import {
+  Target,
+  GitBranch,
+  Brain,
+  Wrench,
+  BookOpen,
+  Globe,
+  Sparkles,
+  CheckCircle2,
+  MessageSquare,
+  Activity,
+  X
+} from 'lucide-react'
 
-interface TaskProgressProps {
-  className?: string
+interface ExecutionStage {
+  id: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
 }
 
-export default function TaskProgress({ className = '' }: TaskProgressProps) {
-  const { currentTask } = useAppStore()
-  const [isVisible, setIsVisible] = useState(false)
+const STAGES: ExecutionStage[] = [
+  { id: 'intent', label: 'Intent Detection', icon: Target },
+  { id: 'planner', label: 'Planner', icon: GitBranch },
+  { id: 'memory', label: 'Memory', icon: Brain },
+  { id: 'tools', label: 'Tool Selection', icon: Wrench },
+  { id: 'rag', label: 'RAG Knowledge', icon: BookOpen },
+  { id: 'research', label: 'Web Research', icon: Globe },
+  { id: 'llm', label: 'LLM Reasoning', icon: Sparkles },
+  { id: 'validation', label: 'Validation', icon: CheckCircle2 },
+  { id: 'response', label: 'Response', icon: MessageSquare }
+]
 
-  useEffect(() => {
-    if (currentTask) {
-      setIsVisible(true)
-    } else {
-      const timer = setTimeout(() => setIsVisible(false), 500)
-      return () => clearTimeout(timer)
-    }
-  }, [currentTask])
+export default function TaskProgress() {
+  const { currentTask, assistantState, setAssistantState, setCurrentTask } = useAppStore()
 
-  if (!isVisible || !currentTask) return null
+  if (!currentTask && assistantState === 'idle') {
+    return (
+      <div className="h-full w-full rounded-xl border border-slate-800 bg-slate-950/60 p-3 backdrop-blur-md flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Activity className="w-4 h-4 text-cyan-400" />
+          <span className="text-xs font-mono text-slate-400">Execution Pipeline Standing By</span>
+        </div>
+        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-cyan-300">
+          IDLE
+        </span>
+      </div>
+    )
+  }
 
-  const completedSteps = currentTask.steps.filter(s => s.status === 'completed').length
-  const totalSteps = currentTask.steps.length
-  const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0
+  // Calculate current stage index based on assistantState or task steps
+  let activeStageIdx = 0
+  if (assistantState === 'listening') activeStageIdx = 0
+  else if (assistantState === 'processing') activeStageIdx = 3
+  else if (assistantState === 'speaking') activeStageIdx = 8
+  else if (assistantState === 'executing') activeStageIdx = 5
 
   return (
-    <div
-      className={`glass rounded-xl border border-white/10 p-4 w-80 transition-all duration-500 ${
-        currentTask ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-      } ${className}`}
-    >
+    <div className="h-full w-full rounded-xl border border-cyan-500/20 bg-slate-950/90 p-3.5 backdrop-blur-xl shadow-2xl flex flex-col justify-between">
       {/* Header */}
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2 truncate">
-          <div className="w-2 h-2 rounded-full bg-[var(--jarvis-accent)] animate-pulse" />
-          <h3
-            className="text-sm font-semibold truncate"
-            style={{ color: 'var(--jarvis-text)' }}
-          >
-            {currentTask.description || 'Executing Task'}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+          <h3 className="text-xs font-bold font-mono text-slate-100 uppercase tracking-wider">
+            Live Execution Timeline
           </h3>
         </div>
-
         <button
           onClick={() => {
-            const store = useAppStore.getState()
-            store.setCurrentTask(null)
-            store.setAssistantState('idle' as any)
+            setCurrentTask(null)
+            setAssistantState('idle' as any)
           }}
-          className="p-1 rounded bg-red-950/80 hover:bg-red-900 text-red-400 border border-red-800/60 transition-all flex items-center gap-1 text-[10px] font-mono shrink-0"
-          title="Stop & Cancel Action"
+          className="p-1 rounded bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/40 text-[10px] font-mono cursor-pointer"
         >
-          <svg className="w-3 h-3 fill-current" viewBox="0 0 16 16">
-            <rect x="3" y="3" width="10" height="10" rx="1.5" />
-          </svg>
-          <span>Stop</span>
+          Stop Task
         </button>
       </div>
 
+      {/* Task Description */}
+      {currentTask && (
+        <div className="text-xs font-mono text-cyan-300 bg-cyan-950/30 px-2.5 py-1 rounded border border-cyan-500/20 truncate mb-2">
+          {currentTask.description}
+        </div>
+      )}
 
-      {/* Progress Bar */}
-      <div className="w-full h-1.5 rounded-full bg-white/5 mb-3 overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-700 ease-out"
-          style={{
-            width: `${progress}%`,
-            background: 'linear-gradient(90deg, var(--jarvis-accent), var(--jarvis-accent-2))',
-            boxShadow: '0 0 8px var(--jarvis-accent)',
-          }}
-        />
-      </div>
+      {/* 9-Stage Pipeline Indicators */}
+      <div className="grid grid-cols-3 gap-1.5 flex-1 items-center">
+        {STAGES.map((stage, idx) => {
+          const Icon = stage.icon
+          const isDone = idx < activeStageIdx
+          const isActive = idx === activeStageIdx
+          const isPending = idx > activeStageIdx
 
-      {/* Steps */}
-      <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
-        {currentTask.steps.map((step, index) => (
-          <div
-            key={index}
-            className="flex items-start gap-2.5 text-xs transition-all duration-300"
-            style={{
-              opacity: step.status === 'pending' ? 0.4 : 1,
-            }}
-          >
-            {/* Status Icon */}
-            <div className="mt-0.5 flex-shrink-0">
-              {step.status === 'pending' && (
-                <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
-                  <circle cx="8" cy="8" r="6" stroke="var(--jarvis-text-dim)" strokeWidth="1.5" />
-                </svg>
-              )}
-              {step.status === 'running' && (
-                <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 16 16" fill="none">
-                  <circle cx="8" cy="8" r="6" stroke="var(--jarvis-accent)" strokeWidth="1.5" strokeDasharray="20 10" />
-                </svg>
-              )}
-              {step.status === 'completed' && (
-                <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
-                  <circle cx="8" cy="8" r="6" fill="var(--jarvis-success)" fillOpacity="0.2" stroke="var(--jarvis-success)" strokeWidth="1.5" />
-                  <path d="M5 8l2 2 4-4" stroke="var(--jarvis-success)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-              {step.status === 'failed' && (
-                <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
-                  <circle cx="8" cy="8" r="6" fill="var(--jarvis-danger)" fillOpacity="0.2" stroke="var(--jarvis-danger)" strokeWidth="1.5" />
-                  <path d="M6 6l4 4M10 6l-4 4" stroke="var(--jarvis-danger)" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-              )}
-            </div>
-
-            {/* Step Description */}
-            <span
-              className="leading-tight"
-              style={{
-                color:
-                  step.status === 'running'
-                    ? 'var(--jarvis-accent)'
-                    : step.status === 'completed'
-                    ? 'var(--jarvis-success)'
-                    : step.status === 'failed'
-                    ? 'var(--jarvis-danger)'
-                    : 'var(--jarvis-text-dim)',
-              }}
+          return (
+            <div
+              key={stage.id}
+              className={`flex items-center gap-1.5 px-2 py-1 rounded border text-[10px] font-mono transition-all ${
+                isActive
+                  ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(0,229,255,0.3)] animate-pulse'
+                  : isDone
+                  ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
+                  : 'bg-slate-900/40 border-slate-800 text-slate-500 opacity-60'
+              }`}
             >
-              {step.description}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Footer */}
-      <div
-        className="mt-3 pt-2 border-t border-white/5 text-xs flex justify-between"
-        style={{ color: 'var(--jarvis-text-dim)' }}
-      >
-        <span>
-          {completedSteps}/{totalSteps} steps
-        </span>
-        <span>{Math.round(progress)}%</span>
+              <Icon className="w-3 h-3 shrink-0" />
+              <span className="truncate">{stage.label}</span>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
