@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAppStore } from '../stores/appStore'
 import TitleBar from './TitleBar'
 import Orb from './Orb'
@@ -34,6 +34,7 @@ import {
   SlidersHorizontal,
   Bot,
   LayoutGrid,
+  Maximize2,
   X
 } from 'lucide-react'
 
@@ -47,6 +48,38 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
   const [isPaletteOpen, setIsPaletteOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'command' | 'workflows' | 'queue' | 'telemetry' | 'automation'>('command')
 
+  // Responsive compact view check: if window is resized smaller (width < 900 or height < 600), show ONLY the central Orb
+  const [isCompactView, setIsCompactView] = useState<boolean>(() => {
+    return window.innerWidth < 900 || window.innerHeight < 600
+  })
+
+  useEffect(() => {
+    const handleResize = () => {
+      const isCompact = window.innerWidth < 900 || window.innerHeight < 600
+      setIsCompactView(isCompact)
+    }
+
+    window.addEventListener('resize', handleResize)
+
+    const api = (window as any).electronAPI
+    if (api?.onWindowStateChanged) {
+      const unsub = api.onWindowStateChanged((state: { isMaximized: boolean }) => {
+        if (state.isMaximized) {
+          setIsCompactView(false)
+        } else {
+          const isCompact = window.innerWidth < 900 || window.innerHeight < 600
+          setIsCompactView(isCompact)
+        }
+      })
+      return () => {
+        window.removeEventListener('resize', handleResize)
+        unsub()
+      }
+    }
+
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   const handlePaletteAction = (actionId: string) => {
     if (actionId === 'open_palette') {
       setIsPaletteOpen(true)
@@ -59,6 +92,57 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
     }
   }
 
+  // ── COMPACT RESIZED MODE (Hides everything except central 3D Orb) ─────
+  if (isCompactView) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#050811] text-[#e1f5fe] relative overflow-hidden select-none">
+        {/* Background radial glow */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full opacity-20 blur-[100px] bg-[radial-gradient(circle,#00e5ff_0%,transparent_70%)]" />
+        </div>
+
+        {/* Draggable minimal top header bar */}
+        <div
+          className="absolute top-0 left-0 right-0 h-9 z-50 flex items-center justify-between px-3 bg-slate-950/40 backdrop-blur-md border-b border-cyan-500/10"
+          style={{ WebkitAppRegion: 'drag' } as any}
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+            <span className="text-[10px] font-mono font-bold tracking-widest text-cyan-300">
+              JARVIS HUD
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
+            <button
+              onClick={() => (window as any).electronAPI?.maximize()}
+              className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 transition-all cursor-pointer shadow-[0_0_8px_rgba(0,229,255,0.3)]"
+              title="Expand to Full Dashboard"
+            >
+              <Maximize2 className="w-3 h-3" />
+              <span>EXPAND</span>
+            </button>
+            <button
+              onClick={() => (window as any).electronAPI?.close()}
+              className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 transition-all cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Central 3D Orb focal centerpiece */}
+        <div className="relative z-10 flex flex-col items-center justify-center p-2">
+          <Orb onOrbClick={onOrbClick} />
+          <div className="mt-1 w-full max-w-[320px]">
+            <VoiceWave />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── FULLSCREEN / MAXIMIZED DASHBOARD MODE ──────────────────────────────
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden select-none relative bg-[#050811] text-[#e1f5fe]">
       {/* Background radial atmosphere */}
@@ -100,7 +184,7 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <LayoutGrid className="w-3.5 h-3.5" />
             <span>Workflow Studio</span>
           </button>
 
@@ -112,7 +196,7 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <ListOrdered className="w-3.5 h-3.5 text-cyan-300" />
+            <ListOrdered className="w-3.5 h-3.5" />
             <span>Task Queue</span>
           </button>
 
@@ -124,7 +208,7 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Activity className="w-3.5 h-3.5 text-emerald-400" />
+            <Activity className="w-3.5 h-3.5" />
             <span>Telemetry</span>
           </button>
 
@@ -136,47 +220,25 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Globe className="w-3.5 h-3.5 text-purple-400" />
+            <Globe className="w-3.5 h-3.5" />
             <span>Automation</span>
           </button>
         </div>
 
-        {/* Header Right Action Dock */}
+        {/* Global Action Tools */}
         <div className="flex items-center gap-2">
-          {/* Voice State Badge */}
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg border border-cyan-500/30 bg-slate-900/80 text-[11px] font-mono font-bold uppercase transition-all shadow-sm">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                assistantState === 'listening'
-                  ? 'bg-cyan-400 animate-ping'
-                  : assistantState === 'speaking'
-                  ? 'bg-purple-400 animate-ping'
-                  : assistantState === 'processing'
-                  ? 'bg-amber-400 animate-pulse'
-                  : assistantState === 'interrupted'
-                  ? 'bg-orange-400 animate-ping'
-                  : assistantState === 'error'
-                  ? 'bg-rose-500 animate-ping'
-                  : 'bg-slate-500'
-              }`}
-            />
-            <span className="text-slate-200">{assistantState}</span>
-          </div>
-
-          {/* Serious Mode Quick Toggle */}
           <button
             onClick={() => {
-              const cur = Boolean(useAppStore.getState().settings?.voice?.seriousMode)
-              useAppStore.getState().updateVoiceSettings({ seriousMode: !cur })
+              const current = useAppStore.getState().seriousMode
+              useAppStore.getState().setSeriousMode(!current)
             }}
-            title="Toggle Serious Mode"
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all border cursor-pointer ${
-              useAppStore((s) => s.settings?.voice?.seriousMode)
-                ? 'bg-rose-950/80 border-rose-500 text-rose-200 shadow-[0_0_12px_rgba(255,0,51,0.5)] animate-pulse'
-                : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-slate-200'
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono transition-all cursor-pointer ${
+              useAppStore((s) => s.seriousMode)
+                ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Shield className="w-3.5 h-3.5" />
+            <Zap className="w-3.5 h-3.5" />
             <span>SERIOUS MODE</span>
           </button>
 
@@ -268,9 +330,17 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
         )}
       </div>
 
-      {/* Floating Modals & Drawers */}
-      <CommandPalette isOpen={isPaletteOpen} onClose={() => setIsPaletteOpen(false)} onSelectAction={handlePaletteAction} />
-      <SettingsPanel isOpen={showSettings} onClose={toggleSettings} />
+      {/* Global Command Palette Modal */}
+      {isPaletteOpen && (
+        <CommandPalette
+          isOpen={isPaletteOpen}
+          onClose={() => setIsPaletteOpen(false)}
+          onSelectAction={handlePaletteAction}
+        />
+      )}
+
+      {/* Global Settings Modal */}
+      {showSettings && <SettingsPanel />}
     </div>
   )
 }
