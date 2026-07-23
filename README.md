@@ -16,14 +16,20 @@
 
 ## ✨ Features
 
-### 🎤 Voice Control
-- **Wake Word Activation** — Say "Hey Jarvis" to activate
-- **Natural Speech Recognition** — Powered by faster-whisper
-- **Natural Speech Synthesis** — Responds with a refined male voice via edge-tts (configured to exclude female voices)
-- **Push-to-Talk** — Press `Ctrl+Space` as a fallback
+### 🎤 Voice Control & Mobile Companion
+- **Wake Word Activation** — Say "Hey Jarvis" to activate (local `openwakeword` engine tuned to 0.35 threshold)
+- **Mobile Push & Approval Gatekeeper** — `MobileBridgeService` sends instant mobile push alerts to your phone via encrypted Telegram Bot API with 1-click `[Approve]` / `[Deny]` buttons for dangerous system commands.
+- **Laptop ⇄ Phone Context Handoff** — Broadcasts active research links and task states between PC and phone via `SyncService`.
+- **Natural Speech Recognition** — Powered by local `faster-whisper`
+- **Natural Speech Synthesis** — Responds with a refined male voice via `edge-tts` (configured to exclude female voices)
+- **Push-to-Talk** — Press `Ctrl+Space` or single click & release the 3D Orb to toggle listening mode
 
 ### 🎨 Visual HUD & AI Command Center Studio
 - **Unified Command Center** — Modular workspace featuring 3D Orb focal core, AI Chat, Computer Use, Visual Workflow Studio, Task Queue Manager, Telemetry, and RAG Knowledge Hub.
+- **Adaptive Responsive Windowing** — Displays full dashboard in fullscreen/maximized mode; auto-hides panels to show ONLY the central 3D Orb HUD when window is unmaximized or resized compact.
+- **Battery-Saver WebGL Canvas** — Automatically pauses WebGL rendering loops when window is minimized or hidden.
+- **Native Windows UI Automation (UIA)** — `UIAEngine` provides resolution-independent element selection, button clicks by title/name, and focus management.
+- **SQLite FTS5 Natural Language File Indexer** — Sub-second natural language file search engine (`FileIndexerService`).
 - **Visual Workflow Builder** — Node-based visual workflow editor (`VisualWorkflowBuilder.tsx`) with interactive Bezier SVG connectors, node library, parameter tuning, and reusable workflow templates.
 - **Task Queue & Command Scheduler** — Thread-safe task queue visualizer (`TaskQueueManager.tsx`) supporting priority reordering, pause, resume, cancellation, and task persistence.
 - **Live Execution Timeline Pipeline** — 9-stage visual execution pipeline component (`TaskProgress.tsx`) rendering live status indicators across `Intent Detection` → `Planner` → `Memory` → `Tool Selection` → `RAG` → `Web Research` → `LLM` → `Validation` → `Response`.

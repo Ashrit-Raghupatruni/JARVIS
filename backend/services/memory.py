@@ -100,10 +100,12 @@ class MemoryService:
             self._db_engine = create_async_engine(db_url, echo=False)
             self._session_factory = async_sessionmaker(self._db_engine, expire_on_commit=False)
 
+            from sqlalchemy import text
             async with self._db_engine.begin() as conn:
+                await conn.execute(text("PRAGMA journal_mode=WAL;"))
                 await conn.run_sync(Base.metadata.create_all)
 
-            logger.info(f"SQLite database initialized at {db_path}")
+            logger.info(f"SQLite database initialized with WAL mode at {db_path}")
         except Exception as e:
             logger.error(f"Failed to initialize SQLite: {e}")
 

@@ -320,6 +320,35 @@ async def lifespan(app: FastAPI):
         logger.error(f"✗ Task queue service failed: {e}")
         app.state.task_queue_service = None
 
+    # Native Windows UIA & File Indexer & Mobile Gateway Services (Personal AI OS Phase 2 & 3)
+    try:
+        from backend.services.uia_engine import UIAEngine
+        from backend.services.file_indexer import FileIndexerService
+        from backend.services.mobile_bridge import MobileBridgeService
+        from backend.services.mobile_auth import MobileAuthService
+        from backend.services.mobile_gateway import MobileGatewayService
+        
+        uia_engine = UIAEngine()
+        file_indexer = FileIndexerService()
+        mobile_bridge = MobileBridgeService()
+        mobile_auth_service = MobileAuthService()
+        mobile_gateway_service = MobileGatewayService()
+
+        app.state.uia_engine = uia_engine
+        app.state.file_indexer = file_indexer
+        app.state.mobile_bridge = mobile_bridge
+        app.state.mobile_auth_service = mobile_auth_service
+        app.state.mobile_gateway_service = mobile_gateway_service
+
+        ServiceManager.register_instance("uia_engine", uia_engine)
+        ServiceManager.register_instance("file_indexer", file_indexer)
+        ServiceManager.register_instance("mobile_bridge", mobile_bridge)
+        ServiceManager.register_instance("mobile_auth_service", mobile_auth_service)
+        ServiceManager.register_instance("mobile_gateway_service", mobile_gateway_service)
+        logger.info("✓ UIA Engine, File Indexer, Mobile Bridge, Auth, and Gateway services registered")
+    except Exception as e:
+        logger.error(f"✗ Personal AI OS services initialization warning: {e}")
+
     # Memory Service
     memory_service = None
     try:
@@ -535,6 +564,23 @@ async def lifespan(app: FastAPI):
     # ── Shutdown ──────────────────────────────────────────────
     logger.info("JARVIS shutting down...")
 
+    # ── Mobile Gatekeeper Desktop Shutdown Approval Check ──────
+    if hasattr(app.state, "mobile_gateway_service") and app.state.mobile_gateway_service:
+        try:
+            logger.info("🛡️ Requesting Mobile Gatekeeper approval for Desktop shutdown...")
+            decision = await app.state.mobile_gateway_service.request_approval(
+                action_type="desktop_shutdown",
+                description="JARVIS Desktop OS is closing / shutting down.",
+                dangerous_target="JARVIS Desktop Core Process",
+                timeout_seconds=15.0
+            )
+            if decision != "approve":
+                logger.warning("⛔ Mobile Gatekeeper denied or timed out desktop shutdown.")
+            else:
+                logger.info("✅ Mobile Gatekeeper approved desktop shutdown.")
+        except Exception as gate_err:
+            logger.warning("Mobile shutdown approval check error: {}", gate_err)
+
     if hasattr(app.state, "task_queue") and app.state.task_queue:
         try:
             await app.state.task_queue.stop()
@@ -611,11 +657,15 @@ from backend.api.middleware import setup_middleware
 from backend.api.routes import router as api_router
 from backend.api.websocket import router as ws_router
 from backend.api.routes_ui import router as ui_router
+from backend.api.mobile_router import mobile_router
+from backend.api.mobile_ws import mobile_ws_router
 
 setup_middleware(app)
 app.include_router(api_router, tags=["API"])
 app.include_router(ws_router, tags=["WebSocket"])
 app.include_router(ui_router)
+app.include_router(mobile_router)
+app.include_router(mobile_ws_router)
 
 
 # ── Root route (browser-friendly status page) ───────────────

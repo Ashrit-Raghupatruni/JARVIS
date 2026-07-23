@@ -19,6 +19,11 @@ class ServiceManager:
         """Register a pre-initialized service instance."""
         cls._services[name] = instance
         logger.info(f"Service instance '{name}' registered")
+
+    @classmethod
+    def get_instance(cls, name: str) -> Any:
+        """Synchronously get a pre-registered service instance, returning None if not found."""
+        return cls._services.get(name)
         
     @classmethod
     async def get(cls, name: str) -> Any:

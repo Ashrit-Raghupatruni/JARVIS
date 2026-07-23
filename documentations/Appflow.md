@@ -1,6 +1,6 @@
 # 🔄 Application Flow & Execution Sequences
 
-This document maps out the operational lifecycles, message-passing flows, and state machines within the JARVIS desktop ecosystem.
+This document maps out the operational lifecycles, message-passing flows, state machines, and mobile companion interactions within the JARVIS personal AI OS ecosystem. **Last Updated:** July 23, 2026
 
 ---
 
@@ -28,179 +28,65 @@ sequenceDiagram
 
 ---
 
-## 2. Wake Word Activation Flow
+## 2. Dedicated Android Mobile Companion Pairing & Gatekeeper Flow
 
 ```mermaid
 sequenceDiagram
-    participant User as User
-    participant Mic as Hardware Microphone
-    participant Wake as WakeWordService (openwakeword)
-    participant UI as Electron/React Frontend
-    participant WS as WebSocket Controller (/api/voice)
+    participant User as User (Phone)
+    participant App as Android Companion App
+    participant API as FastAPI Mobile Gateway (/api/v1/mobile)
+    participant Auth as MobileAuthService
+    participant Gate as MobileGatewayService
+    participant Store as trusted_devices.json
     
-    Note over Wake: Continuously streams from mic<br/>when JARVIS is in IDLE state.
-    User->>Mic: "Hey Jarvis"
-    Mic->>Wake: Raw audio stream
-    Wake->>Wake: Match embeddings against "Hey Jarvis" model
-    Wake->>UI: Trigger wake word event
-    UI->>UI: Play chime sound (activation notification)
-    UI->>WS: Transition state to 'listening'
-    UI->>User: Highlight JARVIS Orb (Spins & glows)
+    User->>App: Enter PIN "236786" & tap [Connect to JARVIS]
+    App->>API: POST /api/v1/mobile/pair {pin, device_name, device_id}
+    API->>Auth: Validate PIN via easy_pair()
+    Auth->>Store: Register device in trusted_devices.json
+    Auth-->>App: Issue signed 1-year JWT Bearer Access Token
+    App->>API: Open WebSocket /api/v1/mobile/ws?token=...
+    API->>Gate: Accept WS connection immediately (101 Switching Protocols)
+    Gate-->>App: Stream 2s Telemetry Heartbeat (CPU, RAM, GPU, Battery, Task)
 ```
 
 ---
 
-## 3. Voice Request & Execution Loop
-
-This diagram details a complete multi-step task execution from voice input to subagent execution.
+## 3. Mobile Security Approval Gatekeeper Intercept Flow
 
 ```mermaid
 sequenceDiagram
-    autonumber
-    actor User
-    participant UI as Electron/React Frontend
-    participant WS as WebSocket Connection
-    participant BE as FastAPI Backend
-    participant STT as Whisper STT Service
-    participant Router as LLM Provider Router
-    participant Agent as Planner Agent
-    participant Tool as System Automation (Playwright / PyAutoGUI)
-    participant TTS as Edge-TTS Service
-
-    User->>UI: Speaks: "Search for AI news and tell me the top headline"
-    UI->>WS: Stream raw PCM audio chunks
-    WS->>BE: Forward raw audio buffer
-    BE->>STT: Process buffer chunks
-    STT->>BE: Return transcribed text: "Search for AI news..."
-    BE->>WS: Send TranscriptMessage (type: "transcript")
-    WS->>UI: Update chat UI with typed user message
+    participant Planner as PlannerAgent (Desktop)
+    participant Gate as MobileGatewayService
+    participant Phone as Android Mission Control (Tab 3)
+    participant User as User (Phone)
     
-    BE->>Router: Forward prompt query
-    Note over Router: Checks provider stats.<br/>Selects Ollama (Local) as primary.
-    Router->>BE: Return LLM client connection
-    
-    BE->>Agent: Parse request and generate execution plan
-    Agent->>BE: Return structured plan: [Step 1: Browse Google, Step 2: Extract text, Step 3: Summarize]
-    BE->>WS: Send AgentTask plan details (type: "agent_task")
-    WS->>UI: Render steps in TaskProgress widget
-    
-    loop For each step in plan
-        BE->>Agent: Execute Step 1 (Tool: Browser / Playwright)
-        Agent->>Tool: Execute browser search
-        Tool-->>Agent: Return crawled web text
-        BE->>WS: Send Progress Update (type: "agent_progress")
-        WS->>UI: Update Step 1 Status
-    end
-    
-    Agent->>Router: Formulate final response with data
-    Router-->>Agent: Return synthesized text response
-    BE->>WS: Send final text response (type: "response")
-    WS->>UI: Append JARVIS text reply to chat log
-    
-    BE->>TTS: Generate audio speech
-    TTS-->>BE: Stream MP3 audio segments
-    BE->>WS: Stream TTSAudioMessage chunks (type: "tts_audio")
-    WS->>UI: Play audio stream and animate VoiceWave widget
+    Planner->>Planner: Detects dangerous action (delete file, terminal, shutdown)
+    Planner->>Gate: request_approval(action_type, description)
+    Note over Planner: Execution pauses (asyncio.Event locked)
+    Gate->>Phone: Stream WS approval event / FCM push
+    Phone->>User: Display Security Gatekeeper Modal (Approve, Deny, Always Allow)
+    User->>Phone: Taps [ ✅ APPROVE ] or [ 🛡️ ALWAYS ALLOW ]
+    Phone->>Gate: POST /api/v1/mobile/approvals/respond {approval_id, decision}
+    Gate->>Planner: Unlocks asyncio.Event with 'approve' decision
+    Planner->>Planner: Resumes tool execution safely
 ```
 
 ---
 
-## 4. LLM Routing & Failover State Machine
-
-When a query is dispatched, the `LLMRouter` checks the availability of Ollama. If it fails, it cascades through the cloud providers.
-
-```mermaid
-stateDiagram-v2
-    [*] --> CheckOllama: Dispatch Query
-    
-    CheckOllama --> LocalExecution: Ollama online & responsive (<30s)
-    LocalExecution --> LogSuccess: Return Output
-    
-    CheckOllama --> RouteGemini: Ollama offline/timeout
-    RouteGemini --> CloudExecution_Gemini: Gemini API online
-    CloudExecution_Gemini --> LogSuccess: Return Output
-    
-    RouteGemini --> RouteGroq: Gemini API error/rate-limit
-    RouteGroq --> CloudExecution_Groq: Groq API online
-    CloudExecution_Groq --> LogSuccess: Return Output
-    
-    RouteGroq --> RouteOpenAI: Groq API error
-    RouteOpenAI --> CloudExecution_OpenAI: OpenAI API online
-    CloudExecution_OpenAI --> LogSuccess: Return Output
-    
-    RouteOpenAI --> RouteOpenRouter: OpenAI API error
-    RouteOpenRouter --> CloudExecution_OR: OpenRouter online
-    CloudExecution_OR --> LogSuccess: Return Output
-    
-    RouteOpenRouter --> FailState: All providers offline
-    FailState --> [*]: Return System Error Message
-    
-    LogSuccess --> UpdateRoutingMetrics: Update latency/cost/throughput stats
-    UpdateRoutingMetrics --> [*]
-```
-
----
-
-## 5. Main UI State Transitions
-
-The JARVIS frontend Orb and VoiceWave widgets change state dynamically according to WebSocket status events:
-
-1. **`idle`**: Default state. Central orb breathes slowly. Voice waves are flat. Wake word engine runs in background.
-2. **`wake_word_detected`**: Triggered by local OpenWakeWord. Plays wake audio chime and pulses orb.
-3. **`listening`**: Mic is active. Orb spins slowly; waveform displays active real-time input amplitude.
-4. **`processing`**: LLM router is executing or Planner is building tasks. Orb glows intensely and rotates quickly; waveform displays computing loading pulses.
-5. **`executing`**: Subagents are executing automation tools or shell commands. Orb transitions to an orange/amber color layout, spinning and pulsing; UI lists running task checkmarks.
-6. **`speaking`**: TTS audio plays. Orb scales dynamically (core vibrates) in sync with audio amplitude levels.
-
----
-
-## 6. Hand Gesture Control Flow
-
-The local hand gesture processing pipelines map frames to 3D matrix manipulations:
+## 4. Native Windows UI Automation (UIA) Execution Flow
 
 ```mermaid
 sequenceDiagram
-    participant Cam as Webcam Hardware
-    participant HT as HandTracker (MediaPipe)
-    participant OS as OrbScene (Three.js WebGL)
-    participant UI as React UI HUD
+    participant User as User (Voice / Chat)
+    participant Planner as PlannerAgent
+    participant UIA as UIAEngine (Win32 Accessibility)
+    participant Win as Windows Desktop Application
     
-    HT->>Cam: Request webcam stream (640x480)
-    Cam->>HT: Stream video frames (transient memory)
-    Note over HT: For each frame: run HandLandmarker.<br/>Detect wrist, thumb tip, index tip, middle MCP landmarks.
-    HT->>HT: Calculate distance ratio between thumb & index tips
-    alt Single Hand Pinch (Pinch Ratio less than 0.32)
-        HT->>OS: Trigger rotateBy(dx, dy)
-        OS->>OS: Rotate OrbitControls camera view
-        HT->>UI: Emit state "hands: 1, mode: spin"
-    else Double Hand Pinch
-        HT->>OS: Trigger zoomBy(factor)
-        OS->>OS: Change camera distance (zoom)
-        HT->>UI: Emit state "hands: 2, mode: zoom"
-    end
-    HT->>UI: Render landmark connecting lines in mirrored overlay canvas
-```
-
----
-
-## 7. Performance, Mobile Companion Sync & Autonomous Execution Flow
-
-```mermaid
-sequenceDiagram
-    participant User as Mobile / Desktop User
-    participant Auto as AutonomousEngineService
-    participant Cache as RedisCacheService
-    participant GPU as GPUSchedulerService
-    participant Sync as CrossPlatformService
-    
-    User->>Auto: Send goal or trigger routine
-    Auto->>Cache: Query hybrid cache for prompt / RAG context
-    alt Cache Hit
-        Cache-->>Auto: Return cached prompt response instantly
-    else Cache Miss
-        Auto->>GPU: Request lazy model load (CUDA VRAM check)
-        GPU-->>Auto: Model loaded into VRAM
-    end
-    Auto->>Sync: Broadcast updated memory / clipboard state
-    Sync->>User: Sync state to Android/iOS companion device over local socket
+    User->>Planner: "Click Save button in Notepad"
+    Planner->>UIA: click_element_by_name("Save")
+    UIA->>Win: Inspect Win32 control hierarchy (HWND & accessibility trees)
+    UIA->>UIA: Match element name & compute exact bounding box
+    UIA->>Win: Send native Win32 click message / pyautogui click
+    UIA-->>Planner: Return {"status": "clicked", "target": "Save"}
+    Planner-->>User: "Save button clicked, sir."
 ```

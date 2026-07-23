@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JARVIS Mission Control</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    }
+    body {
+      background-color: #050811;
+      color: #e0f7fc;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(180deg, rgba(0, 229, 255, 0.15) 0%, rgba(5, 8, 17, 0) 100%);
+      padding: 12px 14px 6px 14px;
+      text-align: center;
+      border-bottom: 1px solid rgba(0, 229, 255, 0.2);
+    }
+    .reactor-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .reactor {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid #00e5ff;
+      box-shadow: 0 0 12px #00e5ff, inset 0 0 12px #00e5ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: pulse 2s infinite ease-in-out;
+    }
+    .reactor-inner {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #00e5ff;
+      box-shadow: 0 0 8px #ffffff;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 8px #00e5ff, inset 0 0 8px #00e5ff; }
+      50% { box-shadow: 0 0 20px #00e5ff, inset 0 0 16px #00e5ff; }
+      100% { box-shadow: 0 0 8px #00e5ff, inset 0 0 8px #00e5ff; }
+    }
+    h1 {
+      font-size: 1rem;
+      letter-spacing: 2px;
+      color: #00e5ff;
+      text-transform: uppercase;
+      text-shadow: 0 0 8px rgba(0,229,255,0.6);
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: rgba(255,235,59,0.2);
+      color: #ffeb3b;
+      border: 1px solid #ffeb3b;
+    }
+    .status-badge.connected {
+      background: rgba(76,175,80,0.2);
+      color: #4caf50;
+      border-color: #4caf50;
+    }
+
+    /* Navigation Bar */
+    .tab-bar {
+      display: flex;
+      overflow-x: auto;
+      background: rgba(8, 14, 28, 0.95);
+      border-bottom: 1px solid rgba(0, 229, 255, 0.2);
+      padding: 4px 6px;
+      gap: 4px;
+      scrollbar-width: none;
+    }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      padding: 8px 12px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      color: #80deea;
+      font-size: 0.72rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .tab-btn.active {
+      background: rgba(0, 229, 255, 0.15);
+      border-color: #00e5ff;
+      color: #ffffff;
+      box-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
+    }
+
+    /* Main Container */
+    .main-container {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .tab-content {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+    }
+    .tab-content.active {
+      display: flex;
+    }
+
+    .card {
+      background: rgba(12, 20, 36, 0.75);
+      border: 1px solid rgba(0, 229, 255, 0.25);
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+    .card-title {
+      font-size: 0.75rem;
+      color: #80deea;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 700;
+    }
+
+    /* Grid layout */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; text-align: center; }
+
+    .metric-val { font-size: 0.95rem; font-weight: 700; color: #00e5ff; }
+    .metric-lbl { font-size: 0.62rem; color: #80deea; }
+
+    input {
+      width: 100%;
+      padding: 8px;
+      background: rgba(6, 9, 19, 0.8);
+      border: 1px solid rgba(0, 229, 255, 0.4);
+      border-radius: 6px;
+      color: #ffffff;
+      font-size: 0.85rem;
+      outline: none;
+    }
+    input:focus { border-color: #00e5ff; box-shadow: 0 0 6px rgba(0, 229, 255, 0.4); }
+
+    .btn {
+      width: 100%;
+      padding: 9px;
+      background: linear-gradient(135deg, #00b0ff 0%, #00e5ff 100%);
+      border: none;
+      border-radius: 6px;
+      color: #050811;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .action-btn {
+      padding: 8px 6px;
+      background: rgba(0, 229, 255, 0.1);
+      border: 1px solid rgba(0, 229, 255, 0.3);
+      border-radius: 6px;
+      color: #80deea;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+    }
+    .action-btn:active { background: rgba(0, 229, 255, 0.3); color: #ffffff; }
+
+    .log-box {
+      min-height: 100px;
+      max-height: 200px;
+      background: rgba(3, 5, 10, 0.9);
+      border: 1px solid rgba(0, 229, 255, 0.2);
+      border-radius: 6px;
+      padding: 8px;
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: #00e5ff;
+      overflow-y: auto;
+    }
+
+    .prompt-bar { display: flex; gap: 6px; }
+    .mic-btn {
+      width: 36px;
+      background: rgba(0, 229, 255, 0.15);
+      border: 1px solid #00e5ff;
+      border-radius: 6px;
+      color: #00e5ff;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .mic-btn.listening { background: rgba(244, 67, 54, 0.4); border-color: #f44336; color: #ffffff; animation: pulse 1s infinite; }
+
+    .screenshot-img { width: 100%; border-radius: 6px; border: 1px solid #00e5ff; margin-top: 6px; display: none; }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="reactor-row">
+      <div class="reactor"><div class="reactor-inner"></div></div>
+      <h1>J.A.R.V.I.S. Mission Control</h1>
+      <div id="statusBadge" class="status-badge">DISCONNECTED</div>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('tab-dash', this)">📊 Dashboard</button>
+    <button class="tab-btn" onclick="switchTab('tab-chat', this)">💬 Chat & Voice</button>
+    <button class="tab-btn" onclick="switchTab('tab-approval', this)">🛡️ Approvals</button>
+    <button class="tab-btn" onclick="switchTab('tab-screen', this)">🖥️ Screen & Apps</button>
+    <button class="tab-btn" onclick="switchTab('tab-tasks', this)">⚙️ Tasks & Workflows</button>
+    <button class="tab-btn" onclick="switchTab('tab-files', this)">📁 Files</button>
+    <button class="tab-btn" onclick="switchTab('tab-brain', this)">🧠 Brain & Memory</button>
+    <button class="tab-btn" onclick="switchTab('tab-diag', this)">🩺 Diagnostics</button>
+  </div>
+
+  <div class="main-container">
+    <!-- ── TAB 1: DASHBOARD ──────────────────────────────────────── -->
+    <div id="tab-dash" class="tab-content active">
+      <div class="card" id="setupCard">
+        <div class="card-title">Desktop Connection Setup</div>
+        <div class="grid-2">
+          <div>
+            <label>Server URL</label>
+            <input type="text" id="serverUrl" value="http://10.102.57.177:8000">
+          </div>
+          <div>
+            <label>Pairing PIN</label>
+            <input type="text" id="pairingPin" value="236786">
+          </div>
+        </div>
+        <button class="btn" style="margin-top: 8px;" onclick="pairDevice()">Connect to JARVIS Desktop</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Live Hardware Telemetry</div>
+        <div class="grid-4">
+          <div><div class="metric-val" id="cpuVal">--%</div><div class="metric-lbl">CPU</div></div>
+          <div><div class="metric-val" id="ramVal">--%</div><div class="metric-lbl">RAM</div></div>
+          <div><div class="metric-val" id="diskVal">--%</div><div class="metric-lbl">DISK</div></div>
+          <div><div class="metric-val" id="batVal">--%</div><div class="metric-lbl">BATTERY</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Desktop AI Engine State</div>
+        <div class="grid-2">
+          <div><label>Active Provider</label><div style="color:#00e5ff; font-size:0.8rem;" id="llmProvider">Ollama Local</div></div>
+          <div><label>Active Task</label><div style="color:#80deea; font-size:0.8rem;" id="activeTask">Mission Control Active</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Quick Actions</div>
+        <div class="grid-2">
+          <div class="action-btn" onclick="sendAction('system_status')">📊 Refresh State</div>
+          <div class="action-btn" onclick="sendAction('lock_pc')">🔒 Lock Laptop</div>
+          <div class="action-btn" onclick="sendAction('screenshot')">📸 Screenshot</div>
+          <div class="action-btn" onclick="sendAction('shutdown_backend')">🔌 Stop Backend</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB 2: LIVE CHAT & VOICE ──────────────────────────────── -->
+    <div id="tab-chat" class="tab-content">
+      <div class="card">
+        <div class="card-title">AI Prompt to JARVIS</div>
+        <div class="prompt-bar">
+          <input type="text" id="promptText" placeholder="Ask JARVIS anything..." onkeypress="if(event.key==='Enter') sendPrompt()">
+          <button class="mic-btn" id="micBtn" onclick="toggleVoiceInput()">🎙️</button>
+          <button class="btn" style="width:auto; padding:0 12px;" onclick="sendPrompt()">Send</button>
+        </div>
+      </div>
+
+      <div class="card" style="flex:1;">
+        <div class="card-title">Live Chat & Response Stream</div>
+        <div class="log-box" id="chatBox">
+          🤖 [JARVIS]: Online and ready, sir. What can I do for you today?
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB 3: APPROVAL CENTER ───────────────────────────────── -->
+    <div id="tab-approval" class="tab-content">
+      <div class="card">
+        <div class="card-title">Mobile Security Gatekeeper</div>
+        <div style="font-size:0.8rem; color:#80deea; margin-bottom:8px;">Pending desktop dangerous command approvals will appear here.</div>
+        <div id="approvalContainer" style="display:flex; flex-direction:column; gap:8px;">
+          <div style="font-size:0.75rem; color:#4caf50;">✓ No pending security approvals</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB 4: SCREEN & APPS ─────────────────────────────────── -->
+    <div id="tab-screen" class="tab-content">
+      <div class="card">
+        <div class="card-title">Live Desktop Screen Preview</div>
+        <button class="btn" onclick="sendAction('screenshot')">📸 Capture Screen Now</button>
+        <img id="screenshotDisplay" class="screenshot-img" alt="Desktop Screen Preview">
+      </div>
+
+      <div class="card">
+        <div class="card-title">Application Control</div>
+        <div class="grid-2">
+          <div class="action-btn" onclick="fetchRunningApps()">🔄 List Running Apps</div>
+          <div class="action-btn" onclick="sendAction('lock_pc')">🔒 Lock Workstation</div>
+        </div>
+        <div class="log-box" id="appsBox" style="margin-top:6px; min-height:80px;">
+          Tap 'List Running Apps' to inspect desktop processes.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB 5: TASKS & WORKFLOWS ─────────────────────────────── -->
+    <div id="tab-tasks" class="tab-content">
+      <div class="card">
+        <div class="card-title">Task Queue & Autonomous Engine</div>
+        <button class="btn" onclick="fetchTaskQueue()">🔄 Fetch Task Queue</button>
+        <div class="log-box" id="taskBox" style="margin-top:6px;">
+          Task queue state will appear here.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB 6: FILES ─────────────────────────────────────────── -->
+    <div id="tab-files" class="tab-content">
+      <div class="card">
+        <div class="card-title">Desktop File Index Search</div>
+        <div style="display:flex; gap:6px;">
+          <input type="text" id="fileQuery" placeholder="Search desktop files..." onkeypress="if(event.key==='Enter') searchFiles()">
+          <button class="btn" style="width:auto; padding:0 12px;" onclick="searchFiles()">Search</button>
+        </div>
+        <div class="log-box" id="filesBox" style="margin-top:6px;">
+          Enter query to search files indexed by SQLite FTS5.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB 7: BRAIN & MEMORY ───────────────────────────────── -->
+    <div id="tab-brain" class="tab-content">
+      <div class="card">
+        <div class="card-title">Hybrid Memory System</div>
+        <button class="btn" onclick="fetchBrainMemories()">🧠 Fetch Long-Term Memories</button>
+        <div class="log-box" id="brainBox" style="margin-top:6px;">
+          Long-term & procedural memories will load here.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB 8: DIAGNOSTICS ──────────────────────────────────── -->
+    <div id="tab-diag" class="tab-content">
+      <div class="card">
+        <div class="card-title">System Self-Diagnostics</div>
+        <button class="btn" onclick="runDiagnostics()">🩺 Run Self-Health Check</button>
+        <div class="log-box" id="diagBox" style="margin-top:6px;">
+          Self-diagnostics report will display here.
+        </div>
+      </div>
+    </div>
+
+    <!-- Unified Communications Log -->
+    <div class="card">
+      <div class="card-title">Communications Log</div>
+      <div class="log-box" id="logBox">
+        [SYS] JARVIS Mission Control Ready.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let ws = null;
+    let deviceToken = localStorage.getItem('jarvis_device_token') || 'companion-token';
+    let recognition = null;
+
+    function switchTab(tabId, btnEl) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      btnEl.classList.add('active');
+    }
+
+    function log(msg) {
+      const box = document.getElementById('logBox');
+      if (box) {
+        box.innerHTML += '<br>> ' + msg;
+        box.scrollTop = box.scrollHeight;
+      }
+    }
+
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      log('❌ JS Error: ' + msg + ' (Line ' + lineNo + ')');
+      return false;
+    };
+    window.onunhandledrejection = function(event) {
+      log('❌ Promise Rejection: ' + (event.reason ? (event.reason.message || event.reason) : 'Unknown'));
+    };
+
+    function logChat(speaker, msg) {
+      const box = document.getElementById('chatBox');
+      box.innerHTML += `<br><b>${speaker}:</b> ${msg}`;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function pairDevice() {
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      const pin = document.getElementById('pairingPin').value.trim();
+
+      if (!pin) { log('❌ Please enter PIN.'); return; }
+      log('Connecting to ' + baseUrl + '...');
+
+      try {
+        const res = await fetch(baseUrl + '/api/v1/mobile/pair', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: pin, device_name: 'Android Phone', device_id: 'android-companion-1' })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          deviceToken = data.token || data.access_token;
+          localStorage.setItem('jarvis_device_token', deviceToken);
+          log('✅ Paired Successfully!');
+          connectWebSocket(baseUrl);
+        } else {
+          log('❌ Pairing Rejected (Invalid PIN)');
+        }
+      } catch (err) {
+        log('❌ Fetch Error: ' + err.message);
+      }
+    }
+
+    function connectWebSocket(baseUrl) {
+      const wsUrl = baseUrl.replace(/^http/, 'ws') + '/api/v1/mobile/ws?token=' + deviceToken;
+      log('Opening WebSocket pipeline...');
+
+      try {
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          const badge = document.getElementById('statusBadge');
+          badge.innerText = 'ONLINE / CONNECTED';
+          badge.classList.add('connected');
+          log('🟢 WebSocket Connected to JARVIS!');
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'telemetry' || msg.type === 'system_status') {
+              const d = msg.data || {};
+              if (d.cpu_percent !== undefined) document.getElementById('cpuVal').innerText = d.cpu_percent + '%';
+              if (d.ram_percent !== undefined) document.getElementById('ramVal').innerText = d.ram_percent + '%';
+              if (d.disk_percent !== undefined) document.getElementById('diskVal').innerText = d.disk_percent + '%';
+              if (d.battery_percent !== undefined) document.getElementById('batVal').innerText = d.battery_percent + '%';
+              if (d.active_llm_provider) document.getElementById('llmProvider').innerText = d.active_llm_provider;
+              if (d.active_task) document.getElementById('activeTask').innerText = d.active_task;
+              if (msg.text) log('📊 Refresh Stats: ' + msg.text.replace(/\n/g, ' | '));
+            }
+            else if (msg.type === 'approval_request') {
+              renderApprovalCard(msg);
+              showMobileNotification('🛡️ Security Gatekeeper Intercept', msg.description);
+              // Switch to Approvals Tab
+              const tabBtn = document.querySelectorAll('.tab-btn')[2];
+              if (tabBtn) switchTab('tab-approval', tabBtn);
+            }
+            else if (msg.type === 'screenshot' && msg.image) {
+              log('📸 Screenshot received!');
+              const imgEl = document.getElementById('screenshotDisplay');
+              imgEl.src = msg.image;
+              imgEl.style.display = 'block';
+            }
+            else if (msg.type === 'chat_response') {
+              logChat('🤖 [JARVIS]', msg.text);
+              playMobileVoiceResponse(msg.text, msg.audio_base64);
+              showMobileNotification('🤖 JARVIS Response', msg.text.slice(0, 100));
+            }
+            else if (msg.type === 'response') {
+              log('✅ ' + msg.message);
+            }
+          } catch(e) { log('📥 ' + event.data); }
+        };
+
+        ws.onclose = () => {
+          const badge = document.getElementById('statusBadge');
+          badge.innerText = 'DISCONNECTED';
+          badge.classList.remove('connected');
+          log('🔴 Connection Closed');
+        };
+      } catch(e) { log('❌ WS Exception: ' + e.message); }
+    }
+
+    function sendAction(actionType) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) { log('⚠️ Connect first.'); return; }
+      ws.send(JSON.stringify({ type: 'action', action: actionType }));
+      log('📤 Sent: ' + actionType);
+    }
+
+    function sendPrompt() {
+      const input = document.getElementById('promptText');
+      const query = input.value.trim();
+      if (!query) return;
+      if (!ws || ws.readyState !== WebSocket.OPEN) { log('⚠️ Connect first.'); return; }
+
+      ws.send(JSON.stringify({ type: 'chat', text: query }));
+      logChat('🗣️ [You]', query);
+      input.value = '';
+    }
+
+    function toggleVoiceInput() {
+      const micBtn = document.getElementById('micBtn');
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) { log('⚠️ Voice dictation unsupported.'); return; }
+
+      if (recognition) { recognition.stop(); recognition = null; micBtn.classList.remove('listening'); return; }
+
+      recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.onstart = () => { micBtn.classList.add('listening'); log('🎙️ Listening...'); };
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById('promptText').value = transcript;
+        sendPrompt();
+      };
+      recognition.onend = () => { micBtn.classList.remove('listening'); recognition = null; };
+      recognition.start();
+    }
+
+    async function fetchRunningApps() {
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      try {
+        const res = await fetch(baseUrl + '/api/v1/mobile/apps/running');
+        const apps = await res.json();
+        const box = document.getElementById('appsBox');
+        box.innerHTML = apps.map(a => `• ${a.name} (PID ${a.pid}) - RAM: ${a.memory}%`).join('<br>');
+      } catch(e) { document.getElementById('appsBox').innerText = 'Error: ' + e.message; }
+    }
+
+    async function fetchTaskQueue() {
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      try {
+        const res = await fetch(baseUrl + '/api/v1/mobile/tasks/queue');
+        const data = await res.json();
+        document.getElementById('taskBox').innerText = `Tasks Total: ${data.tasks.length} | Pending: ${data.pending} | Running: ${data.running} | Completed: ${data.completed}`;
+      } catch(e) { document.getElementById('taskBox').innerText = 'Error: ' + e.message; }
+    }
+
+    async function searchFiles() {
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      const q = document.getElementById('fileQuery').value.trim();
+      try {
+        const res = await fetch(baseUrl + '/api/v1/mobile/files/search?query=' + encodeURIComponent(q));
+        const files = await res.json();
+        document.getElementById('filesBox').innerHTML = files.length ? files.map(f => `📄 ${f.path || f}`).join('<br>') : 'No matching files found.';
+      } catch(e) { document.getElementById('filesBox').innerText = 'Error: ' + e.message; }
+    }
+
+    async function fetchBrainMemories() {
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      try {
+        const res = await fetch(baseUrl + '/api/v1/mobile/brain/memory');
+        const data = await res.json();
+        document.getElementById('brainBox').innerHTML = JSON.stringify(data, null, 2);
+      } catch(e) { document.getElementById('brainBox').innerText = 'Error: ' + e.message; }
+    }
+
+    async function runDiagnostics() {
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      try {
+        const res = await fetch(baseUrl + '/api/v1/mobile/diagnostics');
+        const data = await res.json();
+        document.getElementById('diagBox').innerHTML = `<pre style="color:#00e5ff;">${JSON.stringify(data, null, 2)}</pre>`;
+      } catch(e) { document.getElementById('diagBox').innerText = 'Error: ' + e.message; }
+    }
+
+    function playMobileVoiceResponse(text, audioBase64) {
+      if (!text) return;
+      if (audioBase64) {
+        try {
+          const snd = new Audio('data:audio/mp3;base64,' + audioBase64);
+          snd.play().catch(e => speakWebSpeech(text));
+          return;
+        } catch(e) {}
+      }
+      speakWebSpeech(text);
+    }
+
+    function speakWebSpeech(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const clean = text.replace(/[*#]/g, '').trim();
+        const utt = new SpeechSynthesisUtterance(clean);
+        utt.rate = 1.0;
+        utt.pitch = 1.0;
+        window.speechSynthesis.speak(utt);
+      }
+    }
+
+    function renderApprovalCard(appr) {
+      const container = document.getElementById('approvalContainer');
+      const cardId = 'appr_card_' + appr.approval_id;
+      if (document.getElementById(cardId)) return;
+
+      const html = `
+        <div class="card" id="${cardId}" style="border-color:#ff4081; background:rgba(255,64,129,0.1);">
+          <div class="card-title" style="color:#ff4081;">🛡️ SECURITY GATEKEEPER INTERCEPT</div>
+          <div style="font-size:0.85rem; font-weight:bold; color:#ffffff;">${appr.description}</div>
+          <div style="font-size:0.72rem; color:#80deea; margin:4px 0;">Target: ${appr.dangerous_target} | Timeout: ${appr.timeout_seconds || 30}s</div>
+          <div class="grid-2" style="margin-top:8px;">
+            <button class="btn" style="background:#4caf50; color:#fff;" onclick="submitApprovalDecision('${appr.approval_id}', 'approve')">✅ APPROVE</button>
+            <button class="btn" style="background:#f44336; color:#fff;" onclick="submitApprovalDecision('${appr.approval_id}', 'deny')">❌ DENY</button>
+          </div>
+          <div class="grid-2" style="margin-top:6px;">
+            <div class="action-btn" onclick="submitApprovalDecision('${appr.approval_id}', 'always_allow')">🛡️ Always Allow Target</div>
+            <div class="action-btn" onclick="submitApprovalDecision('${appr.approval_id}', 'always_deny')">⛔ Always Deny Target</div>
+          </div>
+        </div>
+      `;
+      container.innerHTML = html + container.innerHTML;
+    }
+
+    async function submitApprovalDecision(approvalId, decision) {
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      try {
+        const res = await fetch(baseUrl + '/api/v1/mobile/approvals/respond', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ approval_id: approvalId, decision: decision })
+        });
+        const card = document.getElementById('appr_card_' + approvalId);
+        if (card) card.remove();
+        log('🛡️ Decision submitted: ' + decision + ' for ' + approvalId);
+      } catch(e) { log('❌ Decision Error: ' + e.message); }
+    }
+
+    function showMobileNotification(title, bodyText) {
+      if ('Notification' in window) {
+        if (Notification.permission === 'granted') {
+          try { new Notification(title, { body: bodyText }); } catch(e) {}
+        } else if (Notification.permission !== 'denied') {
+          Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+              try { new Notification(title, { body: bodyText }); } catch(e) {}
+            }
+          });
+        }
+      }
+    }
+  </script>
+</body>
+</html>

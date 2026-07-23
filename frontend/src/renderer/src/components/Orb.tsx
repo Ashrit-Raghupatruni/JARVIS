@@ -41,7 +41,18 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
     // Sync initial state
     scene.setAssistantState(assistantState, audioLevel)
 
+    // Battery saver: pause/resume rendering when document is hidden/minimized
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        scene.setAssistantState('sleeping', 0)
+      } else {
+        scene.setAssistantState(useAppStore.getState().assistantState, useAppStore.getState().audioLevel)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
       trackerRef.current?.stop()
       trackerRef.current = null
       scene.dispose()

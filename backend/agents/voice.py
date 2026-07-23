@@ -145,8 +145,8 @@ class VoiceAgent:
         self._state = AssistantState.SLEEPING if (wake_word_service and wake_word_service.is_loaded) else AssistantState.IDLE
         self._audio_buffer: list[bytes] = []
         self._listening_start_time: float = 0
-        self._silence_timeout = 10.0  # seconds (follow-up listening window)
-        self._min_audio_length = 0.5  # minimum seconds of audio to process
+        self._silence_timeout = 4.0  # seconds (snappy follow-up listening window)
+        self._min_audio_length = 0.4  # minimum seconds of audio to process
         self._is_speaking = False
         self._cancel_speech = False
         self._push_to_talk_active = False
@@ -161,11 +161,11 @@ class VoiceAgent:
         self._sample_rate = 16000
         self._bytes_per_sample = 2  # 16-bit
         self._silence_frames = 0
-        self._silence_threshold = 30  # frames of silence before processing
+        self._silence_threshold = 15  # frames of silence before processing
         self._has_speech = False
         self._played_ack = False
         self._last_speech_time = 0.0
-        self._speech_silence_timeout = 1.0  # 1.0s silence window for snappy VAD completion
+        self._speech_silence_timeout = 0.55  # 0.55s silence window for instant speech completion
         self._rolling_audio_history: list[bytes] = []  # rolling history buffer to prevent race conditions
         self._session_id = 0
 
@@ -268,7 +268,7 @@ class VoiceAgent:
             self._audio_buffer.append(chunk)
 
             # Check for voice activity with mic sensitivity adjustment
-            vad_threshold = max(200.0, 600.0 * (1.2 - self.mic_sensitivity * 0.5))
+            vad_threshold = max(450.0, 800.0 * (1.2 - self.mic_sensitivity * 0.5))
             if energy > vad_threshold:
                 if not self._has_speech:
                     logger.info("Speech detected, listening...")

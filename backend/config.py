@@ -361,7 +361,7 @@ class Settings(BaseSettings):
 
     # ── Server Settings ──────────────────────────────────────────────────
     SERVER_HOST: str = Field(
-        default="127.0.0.1",
+        default="0.0.0.0",
         description="Host address for the FastAPI server.",
     )
     SERVER_PORT: int = Field(

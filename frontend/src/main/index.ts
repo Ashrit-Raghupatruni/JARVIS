@@ -87,7 +87,7 @@ function startBackendProcess(): void {
     : join(backendPath, 'venv', 'bin', 'python')
 
   try {
-    backendProcess = spawn(venvPython, ['-m', 'uvicorn', 'main:app', '--host', '127.0.0.1', '--port', String(port)], {
+    backendProcess = spawn(venvPython, ['-m', 'uvicorn', 'main:app', '--host', '0.0.0.0', '--port', String(port)], {
       cwd: backendPath,
       stdio: 'pipe',
       shell: true,

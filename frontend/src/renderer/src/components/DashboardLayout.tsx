@@ -18,6 +18,7 @@ import CommandPalette from './CommandPalette'
 import SettingsPanel from './SettingsPanel'
 import VisualWorkflowBuilder from './VisualWorkflowBuilder'
 import TaskQueueManager from './TaskQueueManager'
+import { MobileCompanionCard } from './MobileCompanionCard'
 import {
   Command,
   Mic,
@@ -303,6 +304,7 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
         {/* VIEW 4: TELEMETRY & SYSTEM GAUGES */}
         {activeTab === 'telemetry' && (
           <div className="h-full overflow-y-auto space-y-3 custom-scrollbar">
+            <MobileCompanionCard />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
               <div className="lg:col-span-2">
                 <HardwareGauges />
