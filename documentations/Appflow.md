@@ -90,3 +90,36 @@ sequenceDiagram
     UIA-->>Planner: Return {"status": "clicked", "target": "Save"}
     Planner-->>User: "Save button clicked, sir."
 ```
+
+---
+
+## 5. Self-Improving Action Trace, Reflection & Fault Recovery Sequence
+
+```mermaid
+sequenceDiagram
+    participant User as User / Mobile Client
+    participant Agent as PlannerAgent
+    participant Exp as ExperienceEngineService
+    participant Heal as SelfHealingEngine
+    participant Strat as StrategyMemoryService
+    participant Refl as ReflectionEngineService
+    participant Mem as HybridMemorySystem
+    
+    User->>Agent: "Launch VS Code and start local server"
+    Agent->>Strat: get_preferred_strategy("ui_automation")
+    Strat-->>Agent: Returns "win32_uia" (Confidence: 95%)
+    
+    Agent->>Agent: Execute tool action
+    alt Action Fails (e.g. Executable Path Changed)
+        Agent->>Heal: diagnose_and_recover(action, error, target)
+        Heal->>Heal: Scan PATH & Program Files for target.exe
+        Heal-->>Agent: Auto-recovered path & update learned_recoveries
+    end
+    
+    Agent->>Exp: record_experience(goal, duration, result, success, confidence)
+    Exp->>Exp: Save trace into experiences.db (SQLite WAL)
+    
+    Agent->>Refl: reflect_on_task(goal, result, success, duration)
+    Refl->>Mem: Store episode reflection & strategy recommendation
+    Refl-->>User: Return response & streaming progress updates
+```

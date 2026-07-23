@@ -99,7 +99,47 @@ class UIAEngine:
                         "class_name": ctrl.get("class_name"),
                         "coordinates": {"x": click_x, "y": click_y}
                     }
-                except Exception as click_err:
-                    return {"status": "error", "error": str(click_err)}
+                except Exception as e:
+                    return {"status": "error", "message": str(e)}
 
-        return {"status": "element_not_found", "target_name": element_name}
+        return {"status": "not_found", "target": element_name}
+
+    def invoke_control(self, automation_id_or_name: str) -> Dict[str, Any]:
+        """Execute Win32 UIA InvokePattern on a button or control by AutomationID / Name."""
+        try:
+            from backend.services.perception.uia_scene_graph import UIASceneGraph
+            sg = UIASceneGraph()
+            scene = sg.capture_scene(max_depth=3, max_elements=50)
+            target = automation_id_or_name.lower().strip()
+
+            for elem in scene.elements:
+                if target in elem.name.lower() or target in elem.id.lower():
+                    # Execute click at center bounds of UIA element
+                    b = elem.bounds
+                    if b and len(b) == 4:
+                        cx = (b[0] + b[2]) // 2
+                        cy = (b[1] + b[3]) // 2
+                        try:
+                            import pyautogui
+                            pyautogui.click(cx, cy)
+                            return {"status": "invoked", "element_id": elem.id, "name": elem.name, "coords": [cx, cy]}
+                        except Exception as e:
+                            return {"status": "error", "message": str(e)}
+
+            return {"status": "not_found", "query": automation_id_or_name}
+        except Exception as err:
+            return {"status": "error", "message": str(err)}
+
+    def set_control_value(self, field_name: str, value: str) -> Dict[str, Any]:
+        """Type text value directly into a Win32 input text field."""
+        try:
+            res = self.click_element_by_name(field_name)
+            if res.get("status") in ("clicked", "invoked"):
+                time.sleep(0.1)
+                import pyautogui
+                pyautogui.hotkey("ctrl", "a")
+                pyautogui.typewrite(value, interval=0.01)
+                return {"status": "value_set", "field": field_name, "value": value}
+            return res
+        except Exception as e:
+            return {"status": "error", "message": str(e)}

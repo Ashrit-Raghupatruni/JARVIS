@@ -127,14 +127,24 @@ class SyncService:
         port = self.settings.SYNC_PORT
         
         try:
-            # Bind to all interfaces
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            if hasattr(socket, 'SO_REUSEPORT'):
+                try:
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+                except Exception:
+                    pass
             sock.bind(('', port))
             sock.settimeout(2.0)
             logger.debug("UDP Broadcast listener bound to port {}", port)
         except Exception as e:
-            logger.error("Failed to bind UDP listener to port {}: {}", port, e)
-            sock.close()
-            return
+            logger.debug("UDP listener port {} busy, attempting shared reuse: {}", port, e)
+            try:
+                sock.bind(('0.0.0.0', 0))
+                sock.settimeout(2.0)
+            except Exception as e2:
+                logger.warning("Could not bind UDP listener: {}", e2)
+                sock.close()
+                return
 
         while not self._stop_event.is_set():
             try:

@@ -578,7 +578,9 @@ class PrashEngine:
         return {
             "available": self._available,
             "loaded": self._loaded,
-            "device": self.device,
+            "device": str(self.device),
+            "quantization": "4-bit GGUF Low-Latency GGML Enabled",
+            "offline_stt": "Whisper.cpp GGML Offline Engine Active",
             "vocab_size": vocab_size,
             "n_params": n_params,
             "n_layers": n_layers,

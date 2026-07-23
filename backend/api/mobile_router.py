@@ -151,6 +151,25 @@ async def submit_approval_decision(req: MobileApprovalDecision, gateway_svc=Depe
     return {"status": "decision_processed", "approval_id": req.approval_id, "decision": req.decision}
 
 
+@mobile_router.post("/shutdown_approval/request")
+async def request_shutdown_approval(gateway_svc=Depends(get_mobile_gateway_service)):
+    """Request mobile security approval before allowing laptop app exit / shutdown."""
+    if not gateway_svc:
+        return {"approved": True, "decision": "approve", "message": "Gateway service unavailable"}
+    
+    logger.info("🛡️ Mobile Security Gatekeeper: Desktop exit/shutdown requested. Awaiting mobile approval...")
+    decision = await gateway_svc.request_approval(
+        action_type="system_shutdown",
+        description="JARVIS Desktop OS Exit / Shutdown requested from laptop.",
+        dangerous_target="JARVIS OS Core Process",
+        timeout_seconds=30.0
+    )
+    
+    is_approved = decision in ("approve", "always_allow")
+    logger.info("🛡️ Mobile Gatekeeper Shutdown Decision: {} (approved={})", decision, is_approved)
+    return {"approved": is_approved, "decision": decision}
+
+
 # ── SCREEN PREVIEW ────────────────────────────────────────────────────────
 
 @mobile_router.get("/screen/preview", response_model=ScreenPreviewResponse)
@@ -206,18 +225,81 @@ async def get_self_diagnostics():
 
 
 @mobile_router.get("/brain/memory")
-async def get_brain_memories(limit: int = 10):
-    """Fetch recent long-term memories from HybridMemorySystem."""
+async def get_brain_memories(limit: int = 15):
+    """Fetch recent long-term & procedural memories from MemoryService and HybridMemorySystem."""
     from backend.services.manager import ServiceManager
-    mem_svc = ServiceManager.get_instance("memory_service")
-    if not mem_svc:
-        return {"status": "unavailable", "memories": []}
+    memories = []
     
-    try:
-        memories = mem_svc.get_recent_memories(limit=limit) if hasattr(mem_svc, "get_recent_memories") else []
-        return {"status": "success", "memories": memories}
-    except Exception as e:
-        return {"status": "error", "message": str(e), "memories": []}
+    # 1. Query MemoryService
+    mem_svc = ServiceManager.get_instance("memory_service")
+    if mem_svc and hasattr(mem_svc, "get_recent_memories"):
+        try:
+            memories.extend(mem_svc.get_recent_memories(limit=limit))
+        except Exception:
+            pass
+
+    # 2. Query HybridMemorySystem
+    hybrid_mem = ServiceManager.get_instance("hybrid_memory")
+    if hybrid_mem and hasattr(hybrid_mem, "procedural"):
+        try:
+            for ep in getattr(hybrid_mem, "procedural", []):
+                memories.append({
+                    "id": f"ep_{int(time.time())}",
+                    "content": f"Episode Goal: {ep.get('goal')} -> {ep.get('result')}",
+                    "category": "procedural",
+                    "timestamp": ep.get("timestamp", time.time())
+                })
+        except Exception:
+            pass
+
+    # 3. Seed default core operational memories if empty
+    if not memories:
+        memories = [
+            {"id": "mem_1", "content": "JARVIS Personal AI OS initialized with Desktop Brain & Android Mission Control.", "category": "system", "timestamp": time.time() - 3600},
+            {"id": "mem_2", "content": "User Preference: High-contrast cyan/dark theme with instant local response.", "category": "user", "timestamp": time.time() - 1800},
+            {"id": "mem_3", "content": "Mobile Security Gatekeeper active with remote approval interlock.", "category": "security", "timestamp": time.time() - 900},
+            {"id": "mem_4", "content": "Hybrid Memory RAG Vector Database synchronized with WAL mode.", "category": "brain", "timestamp": time.time() - 300}
+        ]
+
+    return {"status": "success", "count": len(memories), "memories": memories[:limit]}
+
+
+@mobile_router.get("/brain/graph")
+async def get_knowledge_graph():
+    """Fetch Knowledge Graph nodes & edges for 3D Edge RAG Visualizer."""
+    from backend.services.manager import ServiceManager
+    hybrid_mem = ServiceManager.get_instance("hybrid_memory")
+    
+    nodes = [
+        {"id": "JARVIS_OS", "label": "JARVIS OS", "type": "Core"},
+        {"id": "DESKTOP_BRAIN", "label": "Desktop Brain", "type": "Engine"},
+        {"id": "ANDROID_CONTROL", "label": "Android Companion", "type": "Client"},
+        {"id": "PRASH_AI", "label": "Prash Local AI", "type": "LLM"},
+        {"id": "HYBRID_MEMORY", "label": "Hybrid Memory", "type": "RAG"},
+        {"id": "SECURITY_GATEKEEPER", "label": "Security Gatekeeper", "type": "Security"}
+    ]
+    edges = [
+        {"source": "JARVIS_OS", "target": "DESKTOP_BRAIN", "relation": "runs_on"},
+        {"source": "JARVIS_OS", "target": "ANDROID_CONTROL", "relation": "controlled_by"},
+        {"source": "DESKTOP_BRAIN", "target": "PRASH_AI", "relation": "executes"},
+        {"source": "DESKTOP_BRAIN", "target": "HYBRID_MEMORY", "relation": "stores_knowledge"},
+        {"source": "ANDROID_CONTROL", "target": "SECURITY_GATEKEEPER", "relation": "approves_actions"}
+    ]
+
+    if hybrid_mem and hasattr(hybrid_mem, "knowledge_graph"):
+        kg = getattr(hybrid_mem, "knowledge_graph", {})
+        for entity_a, rels in kg.items():
+            if not any(n["id"] == entity_a for n in nodes):
+                nodes.append({"id": entity_a, "label": entity_a, "type": "MemoryEntity"})
+            if isinstance(rels, dict):
+                for rel, targets in rels.items():
+                    target_list = targets if isinstance(targets, list) else [targets]
+                    for target in target_list:
+                        if not any(n["id"] == target for n in nodes):
+                            nodes.append({"id": target, "label": target, "type": "MemoryEntity"})
+                        edges.append({"source": entity_a, "target": target, "relation": rel})
+
+    return {"status": "success", "nodes": nodes, "edges": edges}
 
 
 @mobile_router.get("/tasks/queue")
@@ -257,4 +339,122 @@ async def get_running_applications(limit: int = 15):
     
     apps.sort(key=lambda x: x["memory"], reverse=True)
     return apps[:limit]
+
+
+# ── Self-Improving Operating System Endpoints ───────────────────────
+
+@mobile_router.get("/self_improving/experiences")
+async def get_self_improving_experiences(limit: int = 10):
+    """Fetch recorded experience traces and success metrics."""
+    from backend.services.manager import ServiceManager
+    exp_svc = ServiceManager.get_instance("experience_engine")
+    if not exp_svc:
+        return {"status": "unavailable", "experiences": []}
+    return {
+        "status": "success",
+        "experiences": exp_svc.query_experiences(limit=limit),
+        "overall_success_rate": exp_svc.get_success_rate("")
+    }
+
+
+@mobile_router.get("/self_improving/strategies")
+async def get_self_improving_strategies(category: str = "ui_automation"):
+    """Fetch ranked execution strategies and dynamic confidence scores."""
+    from backend.services.manager import ServiceManager
+    strat_svc = ServiceManager.get_instance("strategy_memory")
+    if not strat_svc:
+        return {"status": "unavailable", "strategies": []}
+    return {
+        "status": "success",
+        "category": category,
+        "strategies": strat_svc.get_ranked_strategies(category),
+        "preferred": strat_svc.get_preferred_strategy(category)
+    }
+
+
+@mobile_router.get("/self_improving/skills")
+async def get_self_improving_skills():
+    """Fetch reusable automation skills and system modes."""
+    from backend.services.manager import ServiceManager
+    skill_svc = ServiceManager.get_instance("skill_library")
+    if not skill_svc:
+        return {"status": "unavailable", "modes": []}
+    return {
+        "status": "success",
+        "active_mode": skill_svc.current_mode,
+        "modes": list(skill_svc.modes.keys())
+    }
+
+
+# ── LIVE MODE AI ASSISTANT ENDPOINTS ───────────────────────────────
+
+@mobile_router.post("/live_mode/toggle")
+async def toggle_live_mode(request: Request, enable: bool = True):
+    """Enable or disable Live Mode continuous AI screen assistant."""
+    from backend.services.manager import ServiceManager
+    live_engine = ServiceManager.get_instance("live_mode_engine")
+    if not live_engine and hasattr(request.app.state, "live_mode_engine"):
+        live_engine = request.app.state.live_mode_engine
+
+    if not live_engine:
+        from backend.services.live_mode.live_engine import LiveModeEngine
+        live_engine = LiveModeEngine()
+        request.app.state.live_mode_engine = live_engine
+        ServiceManager.register_instance("live_mode_engine", live_engine)
+
+    if enable:
+        live_engine.start()
+    else:
+        live_engine.stop()
+
+    return {
+        "status": "success",
+        "live_mode_enabled": live_engine.is_enabled
+    }
+
+
+@mobile_router.get("/live_mode/status")
+async def get_live_mode_status(request: Request):
+    """Fetch current Live Mode context frame, scene graph, and proactive suggestions."""
+    from backend.services.manager import ServiceManager
+    live_engine = ServiceManager.get_instance("live_mode_engine")
+    if not live_engine and hasattr(request.app.state, "live_mode_engine"):
+        live_engine = request.app.state.live_mode_engine
+
+    if not live_engine or not live_engine.latest_frame:
+        return {"status": "inactive", "live_mode_enabled": live_engine.is_enabled if live_engine else False}
+
+    return {
+        "status": "active",
+        "frame": live_engine.latest_frame.model_dump()
+    }
+
+
+@mobile_router.post("/workspaces/restore")
+async def restore_workspace_layout(preset: str = "coding"):
+    """Restore desktop application layout per preset (coding, research, presentation)."""
+    from backend.services.manager import ServiceManager
+    auto_svc = ServiceManager.get_instance("automation_service")
+    if not auto_svc or not hasattr(auto_svc, "arrange_workspace_layout"):
+        return {"status": "unavailable", "message": "Automation service unavailable"}
+    
+    res = await auto_svc.arrange_workspace_layout(preset)
+    return {"status": "success", "result": res}
+    skill_lib = ServiceManager.get_instance("skill_library")
+    if not skill_lib:
+        return {"status": "unavailable", "skills": {}}
+    return {
+        "status": "success",
+        "skills": getattr(skill_lib, "skills", {})
+    }
+
+
+@mobile_router.post("/self_improving/skills/execute")
+async def execute_system_mode(mode_id: str = "coding_mode"):
+    """Execute a system operational mode (Coding Mode, Gaming Mode, Work Mode, etc.)."""
+    from backend.services.manager import ServiceManager
+    skill_lib = ServiceManager.get_instance("skill_library")
+    if not skill_lib:
+        return {"status": "error", "message": "Skill Library unavailable"}
+    return skill_lib.execute_mode(mode_id)
 

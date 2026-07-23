@@ -195,11 +195,21 @@ async def lifespan(app: FastAPI):
     clap_service = None
     try:
         from backend.services.clap import ClapService
-        clap_service = ClapService()
+        
+        def handle_clap_event(mode):
+            logger.info("👏 Double clap event triggered (mode={}). Restoring JARVIS desktop window...", mode)
+            try:
+                auto_svc = ServiceManager.get_instance("automation_service")
+                if auto_svc and hasattr(auto_svc, "focus_window"):
+                    auto_svc.focus_window("JARVIS")
+            except Exception as e:
+                logger.warning("Could not focus JARVIS window on clap: {}", e)
+
+        clap_service = ClapService(on_clap_detected=handle_clap_event)
         clap_service.start()
         app.state.clap_service = clap_service
         ServiceManager.register_instance("clap_service", clap_service)
-        logger.info("✓ Clap service initialized and listening")
+        logger.info("✓ Clap service initialized and listening (with window restore callback)")
     except Exception as e:
         logger.error(f"✗ Clap service failed: {e}")
         app.state.clap_service = None
@@ -345,7 +355,39 @@ async def lifespan(app: FastAPI):
         ServiceManager.register_instance("mobile_bridge", mobile_bridge)
         ServiceManager.register_instance("mobile_auth_service", mobile_auth_service)
         ServiceManager.register_instance("mobile_gateway_service", mobile_gateway_service)
-        logger.info("✓ UIA Engine, File Indexer, Mobile Bridge, Auth, and Gateway services registered")
+
+        # ── Self-Improving Core Services ──────────────────────────────
+        from backend.services.experience_engine import ExperienceEngineService
+        from backend.services.reflection_engine import ReflectionEngineService
+        from backend.services.self_healing import SelfHealingEngine
+        from backend.services.strategy_memory import StrategyMemoryService
+        from backend.services.skills.skill_library import SkillLibraryService
+
+        exp_engine = ExperienceEngineService()
+        refl_engine = ReflectionEngineService()
+        self_healing = SelfHealingEngine()
+        strat_memory = StrategyMemoryService()
+        skill_library = SkillLibraryService()
+
+        app.state.experience_engine = exp_engine
+        app.state.reflection_engine = refl_engine
+        app.state.self_healing = self_healing
+        app.state.strategy_memory = strat_memory
+        app.state.skill_library = skill_library
+
+        ServiceManager.register_instance("experience_engine", exp_engine)
+        ServiceManager.register_instance("reflection_engine", refl_engine)
+        ServiceManager.register_instance("self_healing", self_healing)
+        ServiceManager.register_instance("strategy_memory", strat_memory)
+        ServiceManager.register_instance("skill_library", skill_library)
+
+        # ── Live Mode AI Assistant Engine ────────────────────────────────
+        from backend.services.live_mode.live_engine import LiveModeEngine
+        live_mode_engine = LiveModeEngine()
+        app.state.live_mode_engine = live_mode_engine
+        ServiceManager.register_instance("live_mode_engine", live_mode_engine)
+
+        logger.info("✓ Self-Improving Engines & Live Mode AI Assistant initialized")
     except Exception as e:
         logger.error(f"✗ Personal AI OS services initialization warning: {e}")
 

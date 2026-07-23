@@ -97,6 +97,35 @@ class ClapService:
             return 0.0
         return float(np.sqrt(np.mean(block**2)))
 
+    def _is_sharp_clap_impulse(self, block: np.ndarray, level: float) -> bool:
+        """Filter out speech, background noise, and music. Returns True ONLY for sharp acoustic clap impulses."""
+        if block is None or block.size <= 1 or level < 0.035:  # Minimum energy gate
+            return False
+        
+        # Peak-to-Average Power Ratio (PAPR) check
+        peak = float(np.max(np.abs(block)))
+        papr = peak / (level + 1e-6)
+        if papr < 3.2:  # Speech vowels have PAPR < 3.0, sharp claps have PAPR > 3.2
+            return False
+
+        # Transient step height check (max first derivative spike)
+        max_diff = float(np.max(np.abs(np.diff(block.astype(np.float64)))))
+        if max_diff < peak * 0.5:
+            return False
+
+        return True
+
+    def _is_speaker_active(self) -> bool:
+        """Return True if TTS audio or system audio playback is active to prevent self-triggering."""
+        try:
+            from backend.services.manager import ServiceManager
+            tts = ServiceManager.get_instance("tts_service")
+            if tts and hasattr(tts, "is_speaking") and tts.is_speaking():
+                return True
+        except Exception:
+            pass
+        return False
+
     def _run_loop(self) -> None:
         blocksize = self._block_samples()
         self.noise_floor = 1e-4
@@ -106,7 +135,7 @@ class ClapService:
 
         mode = getattr(self.settings, "CLAP_MODE", "double").lower()
         sensitivity = getattr(self.settings, "CLAP_SENSITIVITY", 0.7)
-        spike_ratio = max(3.0, self.settings.CLAP_SPIKE_RATIO * (1.2 - sensitivity * 0.5))
+        spike_ratio = max(3.5, self.settings.CLAP_SPIKE_RATIO * (1.3 - sensitivity * 0.5))
 
         logger.info(
             "Clap listener active (mode={}, spike_ratio={:.2f}, gap={}–{}s).",
@@ -131,8 +160,8 @@ class ClapService:
                     if overflowed:
                         logger.warning("Clap listener input overflow; try increasing CLAP_BLOCK_MS")
 
-                    # Skip processing during startup transient calibration period
-                    if time.monotonic() - start_time < 2.0:
+                    # Skip processing during startup transient calibration period or when speaker is active
+                    if time.monotonic() - start_time < 2.0 or self._is_speaker_active():
                         continue
 
                     level = self._rms_mono(data)
@@ -152,9 +181,11 @@ class ClapService:
                     if level < retrigger_level:
                         self.spike_armed = True
 
+                    # Enforce strict PAPR sharp impulse verification
                     if (
                         self.spike_armed
                         and level >= threshold
+                        and self._is_sharp_clap_impulse(data, level)
                         and (now - self.last_logged_double) >= self.settings.CLAP_COOLDOWN_S
                     ):
                         self.spike_armed = False

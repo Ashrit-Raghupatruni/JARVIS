@@ -25,10 +25,22 @@ JARVIS/
 │   │   ├── schemas.py       # Pydantic validation models
 │   │   └── mobile_schemas.py# Pydantic mobile schemas (SystemTelemetry, ScreenPreview, Approval)
 │   ├── services/
+│   │   ├── perception/
+│   │   │   ├── uia_scene_graph.py  # Sub-30ms Win32 UIA structured scene graph extractor
+│   │   │   └── spatial_engine.py   # Multi-monitor bounds & spatial reference anchor engine ("this/that")
+│   │   ├── live_mode/
+│   │   │   ├── live_engine.py      # 1.0 FPS background observation loop & LiveContextFrame generator
+│   │   │   └── form_assistant.py   # Smart form parser, profile auto-filler & pre-submission validator
+│   │   ├── experience_engine.py # Action trace logger & SQLite WAL database (experiences.db)
+│   │   ├── reflection_engine.py # Post-task self-evaluation & procedural strategy generator
+│   │   ├── self_healing.py      # Runtime fault detector, auto-recovery & fallback cascade
+│   │   ├── strategy_memory.py   # Procedural memory & dynamic confidence scoring
+│   │   ├── skills/
+│   │   │   └── skill_library.py # Dynamic skill synthesis & OS operational modes (Coding, Gaming, Work, Research)
 │   │   ├── mobile_auth.py    # Device pairing, 6-digit PIN, trusted_devices.json, JWT
 │   │   ├── mobile_gateway.py # Real-time telemetry, mobile approval gatekeeper, screen preview
 │   │   ├── mobile_bridge.py  # Telegram bot push gateway & fallback notification bridge
-│   │   ├── uia_engine.py     # Native Win32 Accessibility UI Automation engine
+│   │   ├── uia_engine.py     # Native Win32 Accessibility UI Automation engine with pattern invocation
 │   │   ├── file_indexer.py   # SQLite FTS5 sub-second natural language file indexer
 │   │   ├── automation.py    # Desktop GUI automation wrapper
 │   │   ├── browser.py       # Playwright browser manager

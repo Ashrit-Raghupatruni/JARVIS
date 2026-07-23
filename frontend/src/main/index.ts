@@ -168,11 +168,42 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
-  // Handle window close -> minimize to tray
-  mainWindow.on('close', (event) => {
-    if (!isQuitting) {
+let isQuittingApproved = false
+
+async function requestMobileShutdownApproval(): Promise<boolean> {
+  try {
+    const response = await net.fetch('http://127.0.0.1:8000/api/v1/mobile/shutdown_approval/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+    if (response.ok) {
+      const data = await response.json()
+      console.log('[Security Gatekeeper] Backend shutdown approval result:', data)
+      return data.approved === true
+    }
+  } catch (err) {
+    console.error('[Security Gatekeeper] Shutdown approval check error:', err)
+  }
+  // Default to FALSE so JARVIS stays open if mobile approval was denied, timed out, or unavailable!
+  return false
+}
+
+  // Handle window close -> Intercept with Mobile Security Gatekeeper Approval!
+  mainWindow.on('close', async (event) => {
+    if (!isQuittingApproved) {
       event.preventDefault()
-      mainWindow?.hide()
+      console.log('[Security Gatekeeper] Intercepted window close! Awaiting mobile approval...')
+      const approved = await requestMobileShutdownApproval()
+      if (approved) {
+        console.log('[Security Gatekeeper] Mobile approved desktop shutdown. Closing app...')
+        isQuittingApproved = true
+        isQuitting = true
+        app.quit()
+      } else {
+        console.log('[Security Gatekeeper] Mobile DENIED desktop shutdown. Keeping JARVIS active.')
+        mainWindow?.show()
+        mainWindow?.focus()
+      }
     }
   })
 

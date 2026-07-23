@@ -302,6 +302,72 @@ class AutomationService:
             logger.error("Error closing '{}': {}", app_name, e)
             return f"Error closing '{app_name}': {e}"
 
+    async def arrange_workspace_layout(self, preset_name: str) -> str:
+        """
+        Arrange desktop window positions according to predefined Workspace Presets.
+        Presets: 'coding', 'research', 'presentation'.
+        """
+        preset = preset_name.lower().strip()
+        logger.info(f"Arranging workspace layout for preset: '{preset}'")
+
+        try:
+            if not HAS_WIN32:
+                return "Win32 GUI extensions unavailable on this platform."
+
+            from backend.services.perception.spatial_engine import SpatialEngine
+            se = SpatialEngine()
+            monitors = se.get_monitors()
+
+            m1_bounds = monitors[0].bounds if monitors else [0, 0, 1920, 1080]
+            m1_w = m1_bounds[2] - m1_bounds[0]
+            m1_h = m1_bounds[3] - m1_bounds[1]
+
+            m2_bounds = monitors[1].bounds if len(monitors) > 1 else m1_bounds
+
+            def move_win(hwnd, left, top, width, height):
+                try:
+                    import win32gui, win32con
+                    win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                    win32gui.SetWindowPos(
+                        hwnd, win32con.HWND_TOP,
+                        int(left), int(top), int(width), int(height),
+                        win32con.SWP_SHOWWINDOW
+                    )
+                except Exception as err:
+                    logger.debug(f"SetWindowPos warning for {hwnd}: {err}")
+
+            import win32gui
+            hwnds = []
+
+            def enum_proc(hwnd, _):
+                if win32gui.IsWindowVisible(hwnd) and win32gui.GetWindowText(hwnd):
+                    hwnds.append((hwnd, win32gui.GetWindowText(hwnd).lower()))
+
+            win32gui.EnumWindows(enum_proc, None)
+
+            if preset == "coding":
+                # VS Code Left, Chrome Right
+                for h, title in hwnds:
+                    if "code" in title or "visual studio" in title:
+                        move_win(h, m1_bounds[0], m1_bounds[1], m1_w * 0.55, m1_h)
+                    elif "chrome" in title or "edge" in title or "firefox" in title:
+                        move_win(h, m1_bounds[0] + m1_w * 0.55, m1_bounds[1], m1_w * 0.45, m1_h)
+
+            elif preset == "research":
+                # Browser Monitor 1, PDF Monitor 2
+                for h, title in hwnds:
+                    if "chrome" in title or "edge" in title:
+                        move_win(h, m1_bounds[0], m1_bounds[1], m1_w, m1_h)
+                    elif any(w in title for w in ["pdf", "acrobat", "reader"]):
+                        m2_w = m2_bounds[2] - m2_bounds[0]
+                        m2_h = m2_bounds[3] - m2_bounds[1]
+                        move_win(h, m2_bounds[0], m2_bounds[1], m2_w, m2_h)
+
+            return f"Workspace layout restored for preset: '{preset}'."
+        except Exception as e:
+            logger.error(f"Error arranging workspace: {e}")
+            return f"Error arranging workspace: {e}"
+
     # ── Keyboard & Mouse ─────────────────────────────────────────────────
 
     async def type_text(self, text: str) -> str:

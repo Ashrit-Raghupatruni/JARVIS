@@ -18,6 +18,7 @@ import CommandPalette from './CommandPalette'
 import SettingsPanel from './SettingsPanel'
 import VisualWorkflowBuilder from './VisualWorkflowBuilder'
 import TaskQueueManager from './TaskQueueManager'
+import LiveModeCard from './LiveModeCard'
 import { MobileCompanionCard } from './MobileCompanionCard'
 import {
   Command,
@@ -36,7 +37,8 @@ import {
   Bot,
   LayoutGrid,
   Maximize2,
-  X
+  X,
+  Eye
 } from 'lucide-react'
 
 interface DashboardLayoutProps {
@@ -214,6 +216,18 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
           </button>
 
           <button
+            onClick={() => setActiveTab('live')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+              activeTab === 'live'
+                ? 'bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(0,229,255,0.4)]'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>Live Mode</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('automation')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
               activeTab === 'automation'
@@ -300,6 +314,9 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
 
         {/* VIEW 3: TASK QUEUE & SCHEDULER */}
         {activeTab === 'queue' && <TaskQueueManager />}
+
+        {/* VIEW 4: LIVE MODE (AI SCREEN ASSISTANT) */}
+        {activeTab === 'live' && <LiveModeCard />}
 
         {/* VIEW 4: TELEMETRY & SYSTEM GAUGES */}
         {activeTab === 'telemetry' && (

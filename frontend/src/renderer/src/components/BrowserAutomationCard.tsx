@@ -22,7 +22,7 @@ export default function BrowserAutomationCard() {
     setLoading(true)
     setStatusMsg('Navigating URL with Playwright...')
     try {
-      const res = await fetch('/api/ui/browser_action', {
+      const res = await fetch('http://127.0.0.1:8000/api/ui/browser_action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'navigate', url })
@@ -51,13 +51,12 @@ export default function BrowserAutomationCard() {
     }
   }
 
-
   const handleSearch = async () => {
     if (!query.trim()) return
     setLoading(true)
     setStatusMsg(`Searching web for "${query}"...`)
     try {
-      const res = await fetch('/api/ui/browser_action', {
+      const res = await fetch('http://127.0.0.1:8000/api/ui/browser_action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'search', query })
@@ -77,14 +76,14 @@ export default function BrowserAutomationCard() {
     setLoading(true)
     setStatusMsg('Summarizing web page...')
     try {
-      const res = await fetch('/api/ui/browser_action', {
+      const res = await fetch('http://127.0.0.1:8000/api/ui/browser_action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'summarize', url })
       })
       const data = await res.json()
       if (data.status === 'success') {
-        alert(`Page Summary:\n\n${data.summary}`)
+        alert(`Page Summary (${data.title}):\n\n${data.summary}`)
       }
     } catch (e) {
       alert('Summarized current webpage content.')
@@ -96,7 +95,7 @@ export default function BrowserAutomationCard() {
 
   const handleSaveRAG = async () => {
     try {
-      const res = await fetch('/api/ui/browser_action', {
+      const res = await fetch('http://127.0.0.1:8000/api/ui/browser_action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'save_rag', url, query })

@@ -16,13 +16,13 @@
 
 ## ✨ Features
 
-### 🎤 Voice Control & Mobile Companion
-- **Wake Word Activation** — Say "Hey Jarvis" to activate (local `openwakeword` engine tuned to 0.35 threshold)
-- **Mobile Push & Approval Gatekeeper** — `MobileBridgeService` sends instant mobile push alerts to your phone via encrypted Telegram Bot API with 1-click `[Approve]` / `[Deny]` buttons for dangerous system commands.
-- **Laptop ⇄ Phone Context Handoff** — Broadcasts active research links and task states between PC and phone via `SyncService`.
-- **Natural Speech Recognition** — Powered by local `faster-whisper`
-- **Natural Speech Synthesis** — Responds with a refined male voice via `edge-tts` (configured to exclude female voices)
-- **Push-to-Talk** — Press `Ctrl+Space` or single click & release the 3D Orb to toggle listening mode
+### 🎤 Voice Control, Mobile Companion & Live Mode AI Co-Pilot
+- **Dedicated Live Mode (AI Screen Assistant)** — Real-time continuous desktop observation operating mode. Extracts sub-30ms structured Win32 UIA Scene Graphs, offers step-by-step next logical guidance, smart form auto-fill with pre-submission validation, and multi-monitor workspace layout restorer (**Coding** & **Research** layouts).
+- **Mobile Security Gatekeeper Intercept** — Intercepts laptop window close ('X' button) or terminal exit (`start.bat` / `Ctrl+C`). Broadcasts high-priority approval cards to your Android phone for 1-click `[Approve]` / `[Deny]` control.
+- **Laptop Battery Level Mobile Alerts** — Automatic push & WebSocket notifications sent to phone at 30% (Warning) and 20% (Critical) unplugged battery levels.
+- **Double Clap Detection Engine** — Acoustic Peak-to-Average Power Ratio (PAPR > 3.2) transient filter with TTS speaker activity guard; double clapping when JARVIS is minimized or sleeping instantly restores and focuses the desktop window.
+- **Wake Word Activation** — Say "Hey Jarvis" to activate (local `openwakeword` engine tuned to 0.35 threshold).
+- **Mobile Companion App (Android)** — Android app featuring Arc Reactor launcher icon, 8 modular tabs (including Tab 8 Live Mode Co-Pilot), real-time telemetry HUD streaming, remote screen preview, and approval management.
 
 ### 🎨 Visual HUD & AI Command Center Studio
 - **Unified Command Center** — Modular workspace featuring 3D Orb focal core, AI Chat, Computer Use, Visual Workflow Studio, Task Queue Manager, Telemetry, and RAG Knowledge Hub.

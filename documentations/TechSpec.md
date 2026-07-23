@@ -20,6 +20,14 @@ graph TD
         Router[LLM Router]
         Planner[PlannerAgent]
         MemoryService[Memory & Vector RAG]
+        ExpEngine[ExperienceEngine]
+        ReflEngine[ReflectionEngine]
+        SelfHealing[SelfHealingEngine]
+        StratMemory[StrategyMemoryService]
+        LiveEngine[LiveModeEngine - 1.0 FPS Perception Loop]
+        SceneGraph[UIASceneGraph - Win32 UIA Parser]
+        SpatialEngine[SpatialEngine - Multi-Monitor Engine]
+        FormAssistant[FormAssistant - Smart Form Parser]
         STT[Faster-Whisper STT]
         TTS[Edge-TTS Engine]
     end
@@ -27,11 +35,19 @@ graph TD
     Backend <--> Auth
     Backend <--> Gate
     Backend <--> UIA
+    Backend <--> LiveEngine
+    Backend <--> SceneGraph
+    Backend <--> SpatialEngine
+    Backend <--> FormAssistant
     Backend <--> FTS
     Backend <--> Router
     Backend <--> STT
     Backend <--> TTS
     Backend <--> MemoryService
+    Backend <--> ExpEngine
+    Backend <--> ReflEngine
+    Backend <--> SelfHealing
+    Backend <--> StratMemory
     
     subgraph Databases
         SQLite[(SQLite WAL Mode)]

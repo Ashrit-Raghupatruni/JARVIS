@@ -36,7 +36,9 @@ Unlike commercial cloud SaaS platforms, JARVIS is **100% local-first, privacy-fo
 * **Resolution-Independent UI Control**: Native Win32 Accessibility UI Automation (`UIAEngine`) for locating buttons and text fields by title, control type, or automation ID without pixel coordinate drift.
 * **Sub-second Natural Language File Indexing**: SQLite FTS5 indexer (`FileIndexerService`) for searching local workspace documents and code.
 
-### 3.3. Core Stability & Hardware Optimization
-* **SQLite WAL Mode**: Enforced `PRAGMA journal_mode=WAL;` across all database connections to eliminate concurrent write lock errors.
-* **WebGL Battery Saver**: `visibilitychange` listener in `Orb.tsx` pauses WebGL rendering loops when window is hidden or minimized.
-* **Adaptive Windowing**: Fullscreen dashboard vs. compact floating 3D Orb HUD toggle.
+### 3.4. Self-Improving Personal AI Operating System Architecture
+* **Experience Engine (`ExperienceEngineService`)**: Records every action goal, tool used, execution steps, duration, result, success/failure boolean, confidence score, failure cause, and recovery method into SQLite `data/experiences.db` (WAL mode).
+* **Reflection Engine (`ReflectionEngineService`)**: Post-task evaluator assessing *Did it succeed/fail? Why? What could have been better, faster, or safer? Should this become the preferred strategy?*
+* **Self-Healing Engine (`SelfHealingEngine`)**: Automatically diagnoses runtime failures (executable moved, missing file, UI selector changed, element moved, network error) and executes recovery cascades (PATH scan -> Win32 UIA -> Screen OCR -> Mobile Gatekeeper) without repeating past mistakes.
+* **Strategy Memory & Dynamic Confidence System (`StrategyMemoryService`)**: Ranks procedural strategies by dynamic confidence scores (Win32 UIA: 95%, Playwright: 92%, OCR: 70%, Pixel: 40%).
+* **Skill Library & System Operational Modes (`SkillLibraryService`)**: Predefined and dynamic system modes (**Coding Mode**, **Research Mode**, **Gaming Mode**, **Presentation Mode**).

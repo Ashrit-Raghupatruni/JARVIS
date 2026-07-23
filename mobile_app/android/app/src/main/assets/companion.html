@@ -230,6 +230,7 @@
   <!-- Navigation Tabs -->
   <div class="tab-bar">
     <button class="tab-btn active" onclick="switchTab('tab-dash', this)">📊 Dashboard</button>
+    <button class="tab-btn" onclick="switchTab('tab-live', this)">👁️ Live Mode</button>
     <button class="tab-btn" onclick="switchTab('tab-chat', this)">💬 Chat & Voice</button>
     <button class="tab-btn" onclick="switchTab('tab-approval', this)">🛡️ Approvals</button>
     <button class="tab-btn" onclick="switchTab('tab-screen', this)">🖥️ Screen & Apps</button>
@@ -364,10 +365,26 @@
     <!-- ── TAB 7: BRAIN & MEMORY ───────────────────────────────── -->
     <div id="tab-brain" class="tab-content">
       <div class="card">
-        <div class="card-title">Hybrid Memory System</div>
-        <button class="btn" onclick="fetchBrainMemories()">🧠 Fetch Long-Term Memories</button>
-        <div class="log-box" id="brainBox" style="margin-top:6px;">
-          Long-term & procedural memories will load here.
+        <div class="card-title">Self-Improving OS Engine & 3D Knowledge Graph</div>
+        <div class="grid-2">
+          <button class="btn" onclick="fetchBrainMemories()">🧠 Fetch Memories</button>
+          <button class="btn" style="background:rgba(0,229,255,0.2); color:#00e5ff; border:1px solid #00e5ff;" onclick="fetchKnowledgeGraph()">🌐 Render Graph</button>
+        </div>
+        <canvas id="kgCanvas" width="340" height="180" style="border:1px solid rgba(0,229,255,0.4); border-radius:6px; background:#030712; width:100%; margin-top:8px; display:block;"></canvas>
+        
+        <div class="card-title" style="margin-top:12px;">Operating System Modes</div>
+        <div class="grid-2">
+          <button class="btn" style="background:rgba(76,175,80,0.2); color:#4caf50; border-color:#4caf50;" onclick="triggerMode('coding_mode')">💻 Coding Mode</button>
+          <button class="btn" style="background:rgba(255,152,0,0.2); color:#ff9800; border-color:#ff9800;" onclick="triggerMode('research_mode')">🔬 Research Mode</button>
+        </div>
+        
+        <div class="grid-2" style="margin-top:6px;">
+          <button class="btn" onclick="fetchExperiences()">📈 Experience Traces</button>
+          <button class="btn" onclick="fetchStrategies()">🎯 Strategy Ranks</button>
+        </div>
+
+        <div class="log-box" id="brainBox" style="margin-top:6px; min-height:90px;">
+          Tap 'Fetch Memories', 'Experience Traces', or 'Strategy Ranks' to inspect AI learning.
         </div>
       </div>
     </div>
@@ -379,6 +396,33 @@
         <button class="btn" onclick="runDiagnostics()">🩺 Run Self-Health Check</button>
         <div class="log-box" id="diagBox" style="margin-top:6px;">
           Self-diagnostics report will display here.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB 8: LIVE MODE CO-PILOT ──────────────────────────────── -->
+    <div id="tab-live" class="tab-content">
+      <div class="card">
+        <div class="card-title">👁️ Dedicated Live Mode (AI Screen Assistant)</div>
+        <div class="grid-2">
+          <button class="btn" style="background:#00e5ff; color:#070b13; font-weight:bold;" onclick="toggleLiveMode(true)">▶️ START LIVE MODE</button>
+          <button class="btn" style="background:#f44336; color:#fff;" onclick="toggleLiveMode(false)">⏹️ STOP LIVE MODE</button>
+        </div>
+        <button class="btn" style="margin-top:8px;" onclick="fetchLiveStatus()">🔄 Refresh Live Context Frame</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Active Screen Scene Graph & Context</div>
+        <div style="font-size:0.85rem; color:#00e5ff; font-weight:bold;" id="liveWorkflow">Status: Waiting for Live Mode...</div>
+        <div style="font-size:0.75rem; color:#80deea; margin-top:4px;" id="liveApp">Active App: None</div>
+        <div style="font-size:0.75rem; color:#fff; margin-top:6px; background:rgba(0,229,255,0.05); padding:8px; border-radius:4px;" id="liveSuggestion">Proactive Guidance: Standing by...</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Workspace Layout Presets</div>
+        <div class="grid-2">
+          <div class="action-btn" onclick="restoreWorkspace('coding')">💻 Coding Layout</div>
+          <div class="action-btn" onclick="restoreWorkspace('research')">🔬 Research Layout</div>
         </div>
       </div>
     </div>
@@ -454,8 +498,35 @@
       }
     }
 
+    function updateTelemetryUI(d) {
+      if (!d) return;
+      const cpu = d.cpu_percent ?? d.cpu ?? d.cpu_usage_percent ?? 0;
+      const ram = d.ram_percent ?? d.ram ?? d.memory_usage_percent ?? 0;
+      const disk = d.disk_percent ?? d.disk ?? 0;
+      const bat = d.battery_percent ?? d.battery ?? 85;
+
+      if (document.getElementById('cpuVal')) document.getElementById('cpuVal').innerText = Math.round(cpu) + '%';
+      if (document.getElementById('ramVal')) document.getElementById('ramVal').innerText = Math.round(ram) + '%';
+      if (document.getElementById('diskVal')) document.getElementById('diskVal').innerText = Math.round(disk) + '%';
+      if (document.getElementById('batVal')) document.getElementById('batVal').innerText = Math.round(bat) + '%';
+      if (d.active_llm_provider && document.getElementById('llmProvider')) document.getElementById('llmProvider').innerText = d.active_llm_provider;
+      if (d.active_task && document.getElementById('activeTask')) document.getElementById('activeTask').innerText = d.active_task;
+    }
+
+    async function pollTelemetryREST() {
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      try {
+        const res = await fetch(baseUrl + '/api/v1/mobile/telemetry');
+        if (res.ok) {
+          const telem = await res.json();
+          updateTelemetryUI(telem);
+        }
+      } catch(e) {}
+    }
+
     function connectWebSocket(baseUrl) {
-      const wsUrl = baseUrl.replace(/^http/, 'ws') + '/api/v1/mobile/ws?token=' + deviceToken;
+      const token = deviceToken || localStorage.getItem('jarvis_token') || 'demo_token';
+      const wsUrl = baseUrl.replace(/^http/, 'ws') + '/api/v1/mobile/ws?token=' + token;
       log('Opening WebSocket pipeline...');
 
       try {
@@ -472,20 +543,14 @@
           try {
             const msg = JSON.parse(event.data);
             if (msg.type === 'telemetry' || msg.type === 'system_status') {
-              const d = msg.data || {};
-              if (d.cpu_percent !== undefined) document.getElementById('cpuVal').innerText = d.cpu_percent + '%';
-              if (d.ram_percent !== undefined) document.getElementById('ramVal').innerText = d.ram_percent + '%';
-              if (d.disk_percent !== undefined) document.getElementById('diskVal').innerText = d.disk_percent + '%';
-              if (d.battery_percent !== undefined) document.getElementById('batVal').innerText = d.battery_percent + '%';
-              if (d.active_llm_provider) document.getElementById('llmProvider').innerText = d.active_llm_provider;
-              if (d.active_task) document.getElementById('activeTask').innerText = d.active_task;
+              updateTelemetryUI(msg.data || msg);
               if (msg.text) log('📊 Refresh Stats: ' + msg.text.replace(/\n/g, ' | '));
             }
             else if (msg.type === 'approval_request') {
               renderApprovalCard(msg);
               showMobileNotification('🛡️ Security Gatekeeper Intercept', msg.description);
-              // Switch to Approvals Tab
-              const tabBtn = document.querySelectorAll('.tab-btn')[2];
+              // Switch to Approvals Tab dynamically
+              const tabBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick')?.includes('tab-approval'));
               if (tabBtn) switchTab('tab-approval', tabBtn);
             }
             else if (msg.type === 'screenshot' && msg.image) {
@@ -495,9 +560,15 @@
               imgEl.style.display = 'block';
             }
             else if (msg.type === 'chat_response') {
-              logChat('🤖 [JARVIS]', msg.text);
-              playMobileVoiceResponse(msg.text, msg.audio_base64);
-              showMobileNotification('🤖 JARVIS Response', msg.text.slice(0, 100));
+              if (msg.status !== 'thinking') {
+                logChat('🤖 [JARVIS]', msg.text);
+                playMobileVoiceResponse(msg.text, msg.audio_base64);
+                showMobileNotification('🤖 JARVIS Response', msg.text.slice(0, 100));
+              }
+            }
+            else if (msg.type === 'notification') {
+              log('🔔 ' + (msg.title || 'Notification') + ': ' + msg.text);
+              showMobileNotification(msg.title || 'JARVIS Alert', msg.text);
             }
             else if (msg.type === 'response') {
               log('✅ ' + msg.message);
@@ -584,8 +655,111 @@
       try {
         const res = await fetch(baseUrl + '/api/v1/mobile/brain/memory');
         const data = await res.json();
-        document.getElementById('brainBox').innerHTML = JSON.stringify(data, null, 2);
+        const box = document.getElementById('brainBox');
+        if (data.memories && data.memories.length) {
+          box.innerHTML = data.memories.map(m => `🧠 <b>[${m.category || 'Memory'}]</b> ${m.content}`).join('<br>');
+        } else {
+          box.innerText = JSON.stringify(data, null, 2);
+        }
       } catch(e) { document.getElementById('brainBox').innerText = 'Error: ' + e.message; }
+    }
+
+    async function fetchKnowledgeGraph() {
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      try {
+        const res = await fetch(baseUrl + '/api/v1/mobile/brain/graph');
+        const data = await res.json();
+        drawGraph(data.nodes || [], data.edges || []);
+        document.getElementById('brainBox').innerText = `🌐 Knowledge Graph: ${data.nodes.length} Nodes, ${data.edges.length} Relations Rendered`;
+      } catch(e) { document.getElementById('brainBox').innerText = 'Graph Error: ' + e.message; }
+    }
+
+    function drawGraph(nodes, edges) {
+      const canvas = document.getElementById('kgCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      // Node positions
+      const coords = {};
+      nodes.forEach((n, idx) => {
+        const angle = (idx / nodes.length) * 2 * Math.PI;
+        coords[n.id] = {
+          x: w / 2 + Math.cos(angle) * (w * 0.35),
+          y: h / 2 + Math.sin(angle) * (h * 0.35),
+          label: n.label || n.id
+        };
+      });
+
+      // Draw edges
+      ctx.strokeStyle = 'rgba(0, 229, 255, 0.4)';
+      ctx.lineWidth = 1;
+      edges.forEach(e => {
+        const src = coords[e.source];
+        const tgt = coords[e.target];
+        if (src && tgt) {
+          ctx.beginPath();
+          ctx.moveTo(src.x, src.y);
+          ctx.lineTo(tgt.x, tgt.y);
+          ctx.stroke();
+        }
+      });
+
+      // Draw nodes
+      nodes.forEach(n => {
+        const c = coords[n.id];
+        if (!c) return;
+        ctx.fillStyle = '#00e5ff';
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, 6, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '9px Segoe UI';
+        ctx.fillText(c.label, c.x - 18, c.y + 14);
+      });
+    }
+
+    async function fetchExperiences() {
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      try {
+        const res = await fetch(baseUrl + '/api/v1/mobile/self_improving/experiences');
+        const data = await res.json();
+        const box = document.getElementById('brainBox');
+        if (data.experiences && data.experiences.length) {
+          box.innerHTML = `<b>Overall Success Rate: ${(data.overall_success_rate * 100).toFixed(0)}%</b><br>` +
+            data.experiences.map(e => `📈 <b>[${e.success ? 'SUCCESS' : 'FAILED'}]</b> ${e.goal} (Conf: ${(e.confidence_score*100).toFixed(0)}%)`).join('<br>');
+        } else {
+          box.innerText = 'No recorded experiences yet.';
+        }
+      } catch(e) { document.getElementById('brainBox').innerText = 'Experience Error: ' + e.message; }
+    }
+
+    async function fetchStrategies() {
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      try {
+        const res = await fetch(baseUrl + '/api/v1/mobile/self_improving/strategies');
+        const data = await res.json();
+        const box = document.getElementById('brainBox');
+        if (data.strategies) {
+          box.innerHTML = `<b>Preferred Strategy:</b> ${data.preferred.name} (${(data.preferred.confidence*100).toFixed(0)}%)<br>` +
+            data.strategies.map(s => `🎯 <b>[${(s.confidence*100).toFixed(0)}%]</b> ${s.name}`).join('<br>');
+        } else {
+          box.innerText = JSON.stringify(data, null, 2);
+        }
+      } catch(e) { document.getElementById('brainBox').innerText = 'Strategy Error: ' + e.message; }
+    }
+
+    async function triggerMode(modeId) {
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      try {
+        log('🚀 Triggering System Mode: ' + modeId);
+        const res = await fetch(baseUrl + '/api/v1/mobile/self_improving/skills/execute?mode_id=' + modeId, { method: 'POST' });
+        const data = await res.json();
+        log('✅ Mode Executed: ' + (data.mode_name || modeId));
+        showMobileNotification('🚀 Mode Active', 'Activated ' + (data.mode_name || modeId));
+      } catch(e) { log('❌ Mode Error: ' + e.message); }
     }
 
     async function runDiagnostics() {
@@ -657,6 +831,41 @@
       } catch(e) { log('❌ Decision Error: ' + e.message); }
     }
 
+    async function toggleLiveMode(enable) {
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      try {
+        const res = await fetch(baseUrl + '/api/v1/mobile/live_mode/toggle?enable=' + enable, { method: 'POST' });
+        const data = await res.json();
+        log('👁️ Live Mode Enabled: ' + data.live_mode_enabled);
+        fetchLiveStatus();
+      } catch(e) { log('❌ Live Mode Error: ' + e.message); }
+    }
+
+    async function fetchLiveStatus() {
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      try {
+        const res = await fetch(baseUrl + '/api/v1/mobile/live_mode/status');
+        const data = await res.json();
+        if (data.status === 'active' && data.frame) {
+          const f = data.frame;
+          document.getElementById('liveWorkflow').innerText = 'Workflow: ' + (f.active_workflow || 'Active');
+          document.getElementById('liveApp').innerText = 'Active App: ' + (f.window_title || f.active_app);
+          document.getElementById('liveSuggestion').innerText = 'Guidance: ' + (f.proactive_suggestion || f.next_logical_step || 'Observing screen...');
+        } else {
+          document.getElementById('liveWorkflow').innerText = 'Status: Live Mode Stopped';
+        }
+      } catch(e) {}
+    }
+
+    async function restoreWorkspace(preset) {
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      try {
+        const res = await fetch(baseUrl + '/api/v1/mobile/workspaces/restore?preset=' + preset, { method: 'POST' });
+        const data = await res.json();
+        log('🖥️ Workspace restored: ' + preset);
+      } catch(e) { log('❌ Workspace Error: ' + e.message); }
+    }
+
     function showMobileNotification(title, bodyText) {
       if ('Notification' in window) {
         if (Notification.permission === 'granted') {
@@ -670,6 +879,17 @@
         }
       }
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedToken = localStorage.getItem('jarvis_token');
+      if (savedToken) {
+        deviceToken = savedToken;
+      }
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      connectWebSocket(baseUrl);
+      pollTelemetryREST();
+      setInterval(pollTelemetryREST, 2000);
+    });
   </script>
 </body>
 </html>

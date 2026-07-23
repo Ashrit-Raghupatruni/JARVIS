@@ -37,6 +37,20 @@ erDiagram
         text content
         float last_modified
     }
+    EXPERIENCES {
+        string id PK
+        string goal
+        text plan
+        text tools_used
+        text execution_steps
+        float execution_time_seconds
+        text result
+        boolean success
+        float confidence_score
+        string failure_reason
+        string recovery_method
+        float timestamp
+    }
 ```
 
 ---

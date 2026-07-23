@@ -43,3 +43,38 @@ This document provides a testing catalog of **user voice/text commands**, **mobi
 
 * **Command**: `"Search local files for budget report"`
   * **Expected Output from JARVIS**: Sub-second search result list powered by SQLite FTS5 (`FileIndexerService`).
+
+---
+
+### 3. Self-Improving Personal AI Operating System Tests
+* **Command**: `GET /api/v1/mobile/self_improving/experiences`
+  * **Expected Response**:
+    ```json
+    {
+      "status": "success",
+      "experiences": [
+        {
+          "id": "exp_1784801923000",
+          "goal": "Launch VS Code and start local server",
+          "success": true,
+          "confidence_score": 0.98,
+          "execution_time_seconds": 1.45
+        }
+      ],
+      "overall_success_rate": 0.98
+    }
+    ```
+
+* **Command**: `GET /api/v1/mobile/self_improving/strategies`
+  * **Expected Response**: Ranked list of procedural strategies (Win32 UIA: 95%, Playwright: 92%, OCR: 70%, Pixel: 40%).
+
+* **Command**: `POST /api/v1/mobile/self_improving/skills/execute?mode_id=coding_mode`
+  * **Expected Response**:
+    ```json
+    {
+      "status": "completed",
+      "mode_name": "Coding Mode",
+      "executed_actions_count": 4,
+      "confidence": 0.98
+    }
+    ```

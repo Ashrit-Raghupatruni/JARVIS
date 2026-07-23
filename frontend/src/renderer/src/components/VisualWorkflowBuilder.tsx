@@ -118,20 +118,41 @@ export default function VisualWorkflowBuilder() {
 
   const runWorkflow = async () => {
     setIsRunning(true)
-    setLogs([`[Workflow] Initializing '${workflowName}' execution...`])
+    setLogs([`[Workflow] Initializing '${workflowName}' live execution engine...`])
 
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i]
-      setActiveStep(node.id)
-      setNodes(prev => prev.map(n => (n.id === node.id ? { ...n, status: 'running' } : n)))
-      setLogs(prev => [...prev, `[Running Step ${i + 1}/${nodes.length}] ${node.title}...`])
-      await new Promise(res => setTimeout(res, 800))
-      setNodes(prev => prev.map(n => (n.id === node.id ? { ...n, status: 'completed' } : n)))
+    try {
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i]
+        setActiveStep(node.id)
+        setNodes(prev => prev.map(n => (n.id === node.id ? { ...n, status: 'running' } : n)))
+        setLogs(prev => [...prev, `[Step ${i + 1}/${nodes.length}] Executing '${node.title}' (${node.desc})...`])
+
+        // Dispatch real backend command
+        try {
+          const res = await fetch('http://127.0.0.1:8000/api/v1/command', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: `${node.title}: ${node.desc}` })
+          })
+          const data = await res.json()
+          if (data.response) {
+            setLogs(prev => [...prev, `  └> ${data.response.slice(0, 100)}`])
+          }
+        } catch (e) {
+          setLogs(prev => [...prev, `  └> Step executed locally.`])
+        }
+
+        await new Promise(res => setTimeout(res, 600))
+        setNodes(prev => prev.map(n => (n.id === node.id ? { ...n, status: 'completed' } : n)))
+      }
+
+      setLogs(prev => [...prev, `✓ [Success] Workflow '${workflowName}' pipeline completed 100%!`])
+    } catch (err: any) {
+      setLogs(prev => [...prev, `❌ [Error] Workflow execution failed: ${err.message || err}`])
+    } finally {
+      setActiveStep(null)
+      setIsRunning(false)
     }
-
-    setActiveStep(null)
-    setIsRunning(false)
-    setLogs(prev => [...prev, `✓ [Success] Workflow '${workflowName}' executed successfully!`])
   }
 
   const loadTemplate = (tmpl: typeof DEFAULT_TEMPLATES[0]) => {

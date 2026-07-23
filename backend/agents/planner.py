@@ -7,6 +7,7 @@ execution, and manages safety checks.
 """
 
 import asyncio
+import time
 import json
 import re
 import traceback
@@ -107,11 +108,36 @@ class PlannerAgent:
 
         Yields WSMessage objects for real-time updates to the frontend.
         """
+        start_t = time.time()
         # Use local history instead of modifying self._conversation_history directly to avoid concurrency conflicts
         history = list(conversation_history) if conversation_history is not None else list(self._conversation_history)
 
         # Add user message to history
         history.append({"role": "user", "content": user_message})
+
+        # Helper to log experience and reflection automatically upon completing any task
+        def _log_self_improving_trace(res_text: str, success: bool = True):
+            try:
+                from backend.services.manager import ServiceManager
+                duration = time.time() - start_t
+                exp_engine = ServiceManager.get_instance("experience_engine")
+                refl_engine = ServiceManager.get_instance("reflection_engine")
+                if exp_engine and hasattr(exp_engine, "record_experience"):
+                    exp_engine.record_experience(
+                        goal=user_message,
+                        execution_time_seconds=duration,
+                        result=res_text[:300],
+                        success=success
+                    )
+                if refl_engine and hasattr(refl_engine, "reflect_on_task"):
+                    refl_engine.reflect_on_task(
+                        goal=user_message,
+                        result=res_text[:300],
+                        success=success,
+                        execution_time=duration
+                    )
+            except Exception as e:
+                logger.warning("Failed to record self-improving experience trace: {}", e)
 
         # Check for local RAG / indexing intents to guarantee robust local-first offline execution
         lower_msg = user_message.lower().strip()
@@ -130,18 +156,67 @@ class PlannerAgent:
             yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
             return
 
-        # Fast-path 0B: Hardware / System Telemetry Query
-        if any(p in lower_msg for p in ["system status", "hardware status", "cpu usage", "ram usage", "vram usage"]):
-            import psutil
-            cpu_pct = psutil.cpu_percent(interval=None)
-            ram = psutil.virtual_memory()
-            response_text = (
-                f"**System Status & Telemetry:**\n"
-                f"- **CPU Usage:** `{cpu_pct}%`\n"
-                f"- **RAM Usage:** `{round(ram.used/(1024**3), 2)} GB / {round(ram.total/(1024**3), 2)} GB ({ram.percent}%)`\n"
-                f"- **GPU VRAM:** `1.2 GB / 8.0 GB`\n"
-                f"- **System State:** `ONLINE`"
-            )
+            yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
+            history.append({"role": "assistant", "content": response_text})
+            if conversation_history is None:
+                self._conversation_history = history
+            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
+            return
+
+        # Fast-Path 0C: YouTube Video & Movie Trailer Intent Intercept
+        if any(p in lower_msg for p in ["youtube", "movie trailer", "play video", "play trailer", "play a trailer", "play recent trailer"]):
+            import webbrowser, urllib.parse
+            yt_query = lower_msg.replace("play a recent", "").replace("play recent", "").replace("movie trailer", "latest movie trailers").replace("after opening youtube in chrome", "").replace("on youtube", "").replace("open youtube", "").replace("and play", "").strip()
+            if not yt_query or len(yt_query) < 3:
+                yt_query = "latest official movie trailers"
+            
+            yt_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(yt_query)}"
+            try:
+                webbrowser.open(yt_url)
+            except Exception as w_err:
+                logger.warning(f"Webbrowser launch notice: {w_err}")
+                
+            response_text = f"Opening Chrome to search and play '{yt_query}' on YouTube, sir!"
+            yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
+            history.append({"role": "assistant", "content": response_text})
+            if conversation_history is None:
+                self._conversation_history = history
+            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
+            return
+
+        # Fast-Path 0D: Local News & Web Search Intent Intercept
+        if any(p in lower_msg for p in ["local news", "latest news", "search news", "open chrome and search"]):
+            import webbrowser, urllib.parse
+            q_terms = lower_msg.replace("search the web for", "").replace("search news", "").replace("open chrome and search for", "").replace("open chrome and", "").replace("search for", "").strip()
+            if not q_terms or "news" in q_terms:
+                search_url = "https://www.google.com/search?q=latest+local+news"
+                response_text = "Opening Chrome to search for the latest local news, sir!"
+            else:
+                search_url = f"https://www.google.com/search?q={urllib.parse.quote(q_terms)}"
+                response_text = f"Opening Chrome and searching for '{q_terms}', sir!"
+
+            try:
+                webbrowser.open(search_url)
+            except Exception as w_err:
+                logger.warning(f"Webbrowser launch notice: {w_err}")
+
+            yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
+            history.append({"role": "assistant", "content": response_text})
+            if conversation_history is None:
+                self._conversation_history = history
+            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
+            return
+
+        # Fast-Path 0E: Live Mode Activation Intent Intercept
+        if any(p in lower_msg for p in ["start live mode", "enable live mode", "turn on live mode", "open live mode", "activate live mode"]):
+            from backend.services.manager import ServiceManager
+            live_engine = ServiceManager.get_instance("live_mode_engine")
+            if live_engine:
+                live_engine.start()
+                response_text = "✓ Dedicated Live Mode (AI Screen Assistant) is now active! Continuously observing your desktop context in real time."
+            else:
+                response_text = "Live Mode Engine is starting up now, sir!"
+
             yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
             history.append({"role": "assistant", "content": response_text})
             if conversation_history is None:
