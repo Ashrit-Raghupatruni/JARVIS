@@ -1,6 +1,6 @@
 # 📋 Project Capability Directory & System Roadmap
 
-This document outlines the capabilities, completed features, active work, and upcoming roadmap of the **JARVIS Personal AI Operating System**. **Last Updated:** July 23, 2026
+This document outlines the capabilities, completed features, active work, and upcoming roadmap of the **JARVIS Personal AI Operating System**. **Last Updated:** July 24, 2026
 
 ---
 
@@ -9,35 +9,56 @@ This document outlines the capabilities, completed features, active work, and up
 ```mermaid
 gantt
     title JARVIS Development Roadmap
-    dateFormat  YYYY-MM-DD
-    section Phase 1: Core Foundation
-    Backend WebSocket & REST Server :completed, 2026-06-01, 15d
-    SQLite Async SQLAlchemy Integration :completed, 2026-06-10, 10d
-    section Phase 2: Speech & Automation
-    STT (Whisper) & TTS (Edge-TTS) :completed, 2026-06-20, 12d
-    Wake Word & Double-Clap services :completed, 2026-07-01, 8d
-    pywinauto/Playwright agents :completed, 2026-07-05, 10d
-    section Phase 3: Visual & UX
-    Electron Shell & React 19 UI :completed, 2026-07-08, 6d
-    3D Three.js Orb & Hand Gestures :completed, 2026-07-10, 5d
-    section Phase 4: Local AI & Tool Orchestration
-    Prash Local AI Engine & Tokenizer :completed, 2026-07-12, 8d
-    LangGraph Tool Orchestration Loop :completed, 2026-07-15, 6d
-    section Phase 5: Android Mission Control Companion
-    Native Android Shell & WebSockets :completed, 2026-07-18, 5d
-    8-Tab Mission Control UI & Approval Gatekeeper :completed, 2026-07-20, 4d
-    Parallel Mobile Voice & Desktop Shutdown Approval :completed, 2026-07-22, 2d
-    section Phase 6: Next-Gen Upgrades & Self-Improving AI OS
-    Offline GGML Speech & 4-Bit GGUF Quantization :completed, 2026-07-23, 1d
-    Multi-Device Peer-to-Peer Mesh Syncing :completed, 2026-07-23, 1d
-    Autonomous Macro Recording & Script Synthesis :completed, 2026-07-23, 1d
-    Biometric Speaker & Facial Verification :completed, 2026-07-23, 1d
-    Edge RAG Interactive 3D Knowledge Graph Visualizer :completed, 2026-07-23, 1d
-    Experience Engine Action Tracing & SQLite WAL Storage :completed, 2026-07-23, 1d
-    Reflection Engine Post-Task Self-Evaluation :completed, 2026-07-23, 1d
-    Self-Healing Engine & Fault Recovery Cascade :completed, 2026-07-23, 1d
-    Procedural Strategy Memory & Dynamic Confidence System :completed, 2026-07-23, 1d
-    System Operational Modes (Coding, Gaming, Work, Research) :completed, 2026-07-23, 1d
+    dateFormat YYYY-MM-DD
+    section Core Foundation
+    Backend WebSocket REST Server :done, t1_1, 2026-06-01, 15d
+    SQLite Async SQLAlchemy Integration :done, t1_2, 2026-06-10, 10d
+    section Speech and Automation
+    STT Whisper and TTS EdgeTTS :done, t2_1, 2026-06-20, 12d
+    Wake Word and Double Clap services :done, t2_2, 2026-07-01, 8d
+    UI Automation and Playwright agents :done, t2_3, 2026-07-05, 10d
+    section Visual and UX
+    Electron Shell and React 19 UI :done, t3_1, 2026-07-08, 6d
+    3D ThreeJS Orb and Hand Gestures :done, t3_2, 2026-07-10, 5d
+    section Local AI Orchestration
+    Prash Local AI Engine and Tokenizer :done, t4_1, 2026-07-12, 8d
+    LangGraph Tool Orchestration Loop :done, t4_2, 2026-07-15, 6d
+    section Mobile Mission Control
+    Native Android Shell and WebSockets :done, t5_1, 2026-07-18, 5d
+    8 Tab Mission Control UI and Approval Gatekeeper :done, t5_2, 2026-07-20, 4d
+    Parallel Mobile Voice and Desktop Shutdown Approval :done, t5_3, 2026-07-22, 2d
+    section Next-Gen AI OS Core
+    Offline GGML Speech and 4Bit GGUF Quantization :done, t6_1, 2026-07-23, 1d
+    Multi Device Peer to Peer Mesh Syncing :done, t6_2, 2026-07-23, 1d
+    Autonomous Macro Recording and Script Synthesis :done, t6_3, 2026-07-23, 1d
+    Biometric Speaker and Facial Verification :done, t6_4, 2026-07-23, 1d
+    Edge RAG Interactive 3D Knowledge Graph Visualizer :done, t6_5, 2026-07-23, 1d
+    Experience Engine Action Tracing and SQLite WAL Storage :done, t6_6, 2026-07-23, 1d
+    Reflection Engine Post Task Self Evaluation :done, t6_7, 2026-07-23, 1d
+    Self Healing Engine and Fault Recovery Cascade :done, t6_8, 2026-07-23, 1d
+    Procedural Strategy Memory and Dynamic Confidence System :done, t6_9, 2026-07-23, 1d
+    System Operational Modes Coding Gaming Work Research :done, t6_10, 2026-07-23, 1d
+    section Autonomous Agent Ecosystem
+    Multi Agent Orchestration and Sub Agent Delegation :active, t7_1, 2026-07-25, 5d
+    Long Horizon Task Continuity and Context Compression :t7_2, 2026-07-30, 5d
+    section Predictive Intelligence
+    Habit Learning and Behavioral Pattern Mining :t8_1, 2026-08-04, 5d
+    Ambient Intelligence and Presence Attention Tracking :t8_2, 2026-08-09, 5d
+    section External Ecosystem
+    Universal API Connector Framework and Token Vault :t9_1, 2026-08-14, 5d
+    Smart Home and IoT Bridge Matter HA Geofencing :t9_2, 2026-08-19, 5d
+    section Security and Privacy
+    Zero Trust Security and Homomorphic RAG Encryption :t10_1, 2026-08-24, 5d
+    Federated Learning Node and Local LoRA Fine Tuning :t10_2, 2026-08-29, 5d
+    section Advanced Interaction
+    Spatial Computing Integration AR Passthrough :t11_1, 2026-09-03, 5d
+    Collaborative Multi User Mode and Shared Knowledge :t11_2, 2026-09-08, 5d
+    section Performance and Optimization
+    Hardware Acceleration TensorRT NPU Offloading :t12_1, 2026-09-13, 5d
+    Edge Distributed Computing and LAN Cluster VRAM :t12_2, 2026-09-18, 5d
+    section Developer Platform
+    Plugin Architecture 2.0 WASM Sandbox and Visual Builder :t13_1, 2026-09-23, 5d
+    Custom Model Training Pipeline and Quant Auto Tuner :t13_2, 2026-09-28, 5d
 ```
 
 ---
@@ -152,14 +173,48 @@ gantt
 - [x] Live Desktop Screen Preview & Application Control
 - [x] Brain Memory & Task Queue Monitoring
 - [x] Self-Diagnostics Engine & LLM Router Integration
+- [x] Dedicated Live Mode (AI Screen Assistant) & Native Win32 UIA Perception Core
+- [x] **Offline Speech Recognition & Low-Latency LLM Quantization**: Offline GGML `faster-whisper` STT and 4-bit GGUF quantization for local Prash LLM inference (`backend/prash/engine.py`).
+- [x] **Multi-Device Peer-to-Peer Mesh Syncing**: Encrypted UDP broadcast P2P discovery & Fernet datachannel mesh syncing (`backend/services/sync_service.py`).
+- [x] **Autonomous Workflow Learning & Macro Recording**: Desktop UI interaction recorder & automated Python macro script synthesizer (`backend/services/autonomous_engine.py`).
+- [x] **Biometric Face & Voice Speaker Verification**: Local speaker embedding identification via cosine distance vector similarity and facial recognition camera login (`backend/services/voice_intelligence.py`).
+- [x] **Edge RAG Knowledge Graph Visualizer**: Interactive NetworkX 3D graph visualization of long-term memories in `HybridMemorySystem` rendered inside Electron and Mobile Mission Control (`backend/services/hybrid_memory_system.py`).
 
 ---
 
 ## 4. Upcoming & Future TODO Roadmap
 
-### Phase 6: Next-Gen Upgrades & Enhancements
-- [ ] **Offline Speech Recognition & Low-Latency LLM Quantization**: Upgrade STT with offline GGML whisper.cpp and 4-bit GGUF quantization for local Prash LLM inference (`backend/prash/engine.py`).
-- [ ] **Multi-Device Peer-to-Peer Mesh Syncing**: Enable encrypted P2P discovery between desktop, phone, tablet, and smart wearables using libp2p / WebRTC datachannels.
-- [ ] **Autonomous Workflow Learning & Macro Recording**: Record desktop UI interactions and automatically synthesize reusable Python macro scripts via `AutonomousEngineService`.
-- [ ] **Biometric Face & Voice Speaker Verification**: Integrate local speaker embedding identification (`VoiceIntelligenceService`) and facial recognition camera login.
-- [ ] **Edge RAG Knowledge Graph Visualizer**: Interactive 3D graph visualization of long-term memories in `HybridMemorySystem` rendered inside Electron and Mobile Mission Control.
+### 7: Autonomous Agent Ecosystem
+- [ ] **Multi-Agent Orchestration & Delegation**: Sub-agent spawning (`CodeAgent`, `ResearchAgent`, `SecurityAgent`) in isolated threads with IPC message bus and hierarchical 100-step planning.
+- [ ] **Long-Horizon Task Continuity**: Persistent goal queue with multi-day checkpointing, context compression engine (KV-cache pruning + semantic chunking), and cross-session state restoration.
+
+### 8: Predictive & Proactive Intelligence
+- [ ] **Habit Learning & Predictive Automation**: Behavioral pattern mining (routine pre-staging), anomaly detection (CPU spikes, unknown USB devices), and context-aware intent prediction.
+- [ ] **Ambient Intelligence Layer**: Facial recognition + Bluetooth presence detection (auto-lock/unlock), eye gaze attention tracking, and emotion-aware voice/text response tuning.
+
+### 9: External Ecosystem Integration
+- [ ] **Universal API Connector Framework**: Encrypted OAuth2 token vault for 100+ services (Gmail, Slack, Notion, GitHub, AWS), NL API builder, and webhook listener server.
+- [ ] **Smart Home & IoT Bridge**: Matter/Thread protocol local device control, Home Assistant bidirectional sync, and mobile GPS geofencing automation.
+
+### 10: Security & Privacy Hardening
+- [ ] **Zero-Trust Security Architecture**: Homomorphic encryption for RAG queries (TenSEAL), TPM/Secure Enclave key storage, and continuous behavioral biometrics (typing/mouse patterns).
+- [ ] **Federated Learning Node**: Local LoRA adapter fine-tuning on user data with differential privacy noise injection.
+
+### 11: Advanced Interaction Modes
+- [ ] **Spatial Computing Integration**: Vision Pro / Quest AR passthrough overlay, hand tracking 2.0 pinch/grab file manipulation, and spatial virtual multi-monitors.
+- [ ] **Collaborative Multi-User Mode**: Voice-based user profile switching with isolated memory spaces, shared knowledge hubs, and multi-user conflict resolution.
+
+### 12: Performance & Optimization
+- [ ] **Hardware Acceleration Expansion**: NVIDIA TensorRT / AMD MIGraphX inference pipelines, NPU offloading (Intel AI Boost / Apple Neural Engine / Qualcomm Hexagon), and custom CUDA kernels.
+- [ ] **Edge Distributed Computing**: LAN cluster layer distribution (combining laptop + desktop + phone VRAM) and cost-aware cloud burst offloading.
+
+### 13: Developer & Extensibility Platform
+- [ ] **Plugin Architecture 2.0**: WASM sandboxed third-party plugins, visual drag-and-drop workflow builder (n8n/Node-RED style), and curated plugin marketplace.
+- [ ] **Custom Model Training Pipeline**: Synthetic dataset generator, Int4/Int8 quantization auto-tuner, and dynamic LoRA model merger at runtime.
+
+---
+
+### 💡 High-Impact Initial Implementation Order
+1. **Universal API Connector Framework (9.1)**: Connect JARVIS to GitHub, Notion, Discord, and cloud services.
+2. **Habit Learning Engine (8.1)**: Enable predictive anticipation of daily user routines.
+3. **Plugin Architecture 2.0 (13.1)**: Enable modular WASM/Python plugin extensions.

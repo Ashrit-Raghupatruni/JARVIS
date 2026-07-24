@@ -42,3 +42,43 @@ Unlike commercial cloud SaaS platforms, JARVIS is **100% local-first, privacy-fo
 * **Self-Healing Engine (`SelfHealingEngine`)**: Automatically diagnoses runtime failures (executable moved, missing file, UI selector changed, element moved, network error) and executes recovery cascades (PATH scan -> Win32 UIA -> Screen OCR -> Mobile Gatekeeper) without repeating past mistakes.
 * **Strategy Memory & Dynamic Confidence System (`StrategyMemoryService`)**: Ranks procedural strategies by dynamic confidence scores (Win32 UIA: 95%, Playwright: 92%, OCR: 70%, Pixel: 40%).
 * **Skill Library & System Operational Modes (`SkillLibraryService`)**: Predefined and dynamic system modes (**Coding Mode**, **Research Mode**, **Gaming Mode**, **Presentation Mode**).
+
+### 3.5. 6: Next-Gen Upgrades & Live Mode Core (100% Completed)
+- [x] **Offline Speech Recognition & Low-Latency LLM Quantization**: Upgraded STT with offline GGML `faster-whisper` and 4-bit GGUF quantization for local `PrashEngine` LLM inference (`backend/prash/engine.py`).
+- [x] **Multi-Device Peer-to-Peer Mesh Syncing**: Encrypted UDP broadcast P2P discovery & Fernet datachannel mesh syncing between desktop, phone, tablet, and smart wearables (`backend/services/sync_service.py`).
+- [x] **Autonomous Workflow Learning & Macro Recording**: Desktop UI interaction recorder & automated Python macro script synthesizer (`backend/services/autonomous_engine.py`).
+- [x] **Biometric Face & Voice Speaker Verification**: Local speaker embedding identification via cosine distance vector similarity and facial recognition camera login (`backend/services/voice_intelligence.py`).
+- [x] **Edge RAG Knowledge Graph Visualizer**: Interactive NetworkX 3D graph visualization of long-term memories in `HybridMemorySystem` rendered inside Electron and Mobile Mission Control (`backend/services/hybrid_memory_system.py`).
+- [x] **Dedicated Live Mode (AI Screen Assistant)**: Real-time continuous desktop observation mode with sub-30ms Win32 UIA Scene Graph extraction, 1.0 FPS perception loop, step-by-step guidance, smart form auto-fill with pre-submission regex validation, and multi-monitor workspace layout restorer (`backend/services/live_mode/`).
+
+---
+
+## 4. Future Product Architecture Roadmap (7–13)
+
+### 7: Autonomous Agent Ecosystem
+* **Multi-Agent Orchestration & Delegation**: Sub-agent spawning (`CodeAgent`, `ResearchAgent`, `SecurityAgent`) in isolated threads with IPC message bus and hierarchical 100-step planning.
+* **Long-Horizon Task Continuity**: Persistent goal queue with multi-day checkpointing, context compression engine (KV-cache pruning + semantic chunking), and cross-session state restoration.
+
+### 8: Predictive & Proactive Intelligence
+* **Habit Learning & Predictive Automation**: Behavioral pattern mining (routine pre-staging), anomaly detection (CPU spikes, unknown USB devices), and context-aware intent prediction.
+* **Ambient Intelligence Layer**: Facial recognition + Bluetooth presence detection (auto-lock/unlock), eye gaze attention tracking, and emotion-aware voice/text response tuning.
+
+### 9: External Ecosystem Integration
+* **Universal API Connector Framework**: Encrypted OAuth2 token vault for 100+ services (Gmail, Slack, Notion, GitHub, AWS), NL API builder, and webhook listener server.
+* **Smart Home & IoT Bridge**: Matter/Thread protocol local device control, Home Assistant bidirectional sync, and mobile GPS geofencing automation.
+
+### 10: Security & Privacy Hardening
+* **Zero-Trust Security Architecture**: Homomorphic encryption for RAG queries (TenSEAL), TPM/Secure Enclave key storage, and continuous behavioral biometrics (typing/mouse patterns).
+* **Federated Learning Node**: Local LoRA adapter fine-tuning on user data with differential privacy noise injection.
+
+### 11: Advanced Interaction Modes
+* **Spatial Computing Integration**: Vision Pro / Quest AR passthrough overlay, hand tracking 2.0 pinch/grab file manipulation, and spatial virtual multi-monitors.
+* **Collaborative Multi-User Mode**: Voice-based user profile switching with isolated memory spaces, shared knowledge hubs, and multi-user conflict resolution.
+
+### 12: Performance & Optimization
+* **Hardware Acceleration Expansion**: NVIDIA TensorRT / AMD MIGraphX inference pipelines, NPU offloading (Intel AI Boost / Apple Neural Engine / Qualcomm Hexagon), and custom CUDA kernels.
+* **Edge Distributed Computing**: LAN cluster layer distribution (combining laptop + desktop + phone VRAM) and cost-aware cloud burst offloading.
+
+### 13: Developer & Extensibility Platform
+* **Plugin Architecture 2.0**: WASM sandboxed third-party plugins, visual drag-and-drop workflow builder (n8n/Node-RED style), and curated plugin marketplace.
+* **Custom Model Training Pipeline**: Synthetic dataset generator, Int4/Int8 quantization auto-tuner, and dynamic LoRA model merger at runtime.
