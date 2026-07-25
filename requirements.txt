@@ -1,0 +1,37 @@
+fastapi>=0.100.0
+uvicorn[standard]>=0.22.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+sqlalchemy>=2.0.0
+aiosqlite>=0.19.0
+loguru>=0.7.0
+httpx>=0.24.0
+numpy>=1.24.0
+networkx>=3.0
+beautifulsoup4>=4.12.0
+PyPDF2>=3.0.0
+pypdf>=3.10.0
+Pillow>=9.5.0
+pytesseract>=0.3.10
+cryptography>=41.0.0
+PyJWT>=2.7.0
+keyring>=24.0.0
+send2trash>=1.8.0
+pyperclip>=1.8.2
+pyautogui>=0.9.54
+playwright>=1.35.0
+chromadb>=0.4.0
+langchain-core>=0.1.0
+langgraph>=0.0.10
+openai>=1.0.0
+google-genai>=0.1.0
+google-generativeai>=0.3.0
+faster-whisper>=0.10.0
+sounddevice>=0.4.6
+openwakeword>=0.5.0
+edge-tts>=6.1.9
+elevenlabs>=0.2.27
+pywhatkit>=5.4
+pywin32>=306; sys_platform == "win32"
+pywinauto>=0.6.8; sys_platform == "win32"
+pycaw>=20230407; sys_platform == "win32"

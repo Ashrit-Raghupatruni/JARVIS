@@ -8,7 +8,7 @@ maps data from memory profiles, and performs pre-submission data validation.
 from __future__ import annotations
 
 import re
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from loguru import logger
 from backend.services.perception.uia_scene_graph import SceneElement
 

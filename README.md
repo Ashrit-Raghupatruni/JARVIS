@@ -49,6 +49,13 @@
 - **Workflow & Macro Manager** — Custom workflow recorder, macro playback, and deletion.
 
 
+### 🎭 Marvel J.A.R.V.I.S. Personality & Learning Assistant Engine
+- **Marvel J.A.R.V.I.S. Personality Directives** — Refined British butler persona establishing a composed technical co-pilot and partner. Provides polite constructive pushback on unwise or inefficient user decisions, proposes superior technical alternatives, explains reasoning, and maintains dry wit.
+- **Learning & Study Assistant (`LearningSkill`)** — Socratic concept explanations using the Feynman technique (`explain_concept`), interactive quiz generation (`generate_quiz`), and study note summarization (`summarize_study_notes`).
+- **Proactive Repetitive Action Macro Detector (`ProactiveEngine`)** — Monitors desktop action history and proactively offers macro skill automation when repetitive manual sequences are detected.
+- **Interactive Safety Permission Modal (`SafetyPermissionModal.tsx`)** — Renders backend `permission_request` WebSocket events in the Electron desktop UI with interactive Approve/Deny buttons.
+- **"What JARVIS is Seeing" Visualizer (`LivePerceptionVisualizer.tsx`)** — Real-time scene graph panel rendering active window, foreground PID, connected monitors, Win32 UIA control tree, buttons, textboxes, and form fields.
+
 ### 🖥️ Computer Control
 - Open & close applications
 - Type text & use keyboard shortcuts

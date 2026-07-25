@@ -90,11 +90,23 @@ async def pair_device_easy(req: Dict[str, Any], auth_svc=Depends(get_mobile_auth
 
 
 @mobile_router.get("/devices", response_model=List[DeviceInfo])
-async def list_trusted_devices(auth_svc=Depends(get_mobile_auth_service)):
-    """List registered trusted mobile companion devices."""
+async def list_trusted_devices(auth_svc=Depends(get_mobile_auth_service), gateway_svc=Depends(get_mobile_gateway_service)):
+    """List registered trusted mobile companion devices with real-time online state."""
+    from backend.api.mobile_ws import active_mobile_connections
+    from backend.api.websocket import manager as main_ws_manager
     if not auth_svc:
         return []
-    return auth_svc.get_trusted_devices()
+    
+    devices = auth_svc.get_trusted_devices()
+    is_online = False
+    if gateway_svc and hasattr(gateway_svc, "is_mobile_connected"):
+        is_online = gateway_svc.is_mobile_connected()
+    if not is_online:
+        is_online = (len(active_mobile_connections) > 0) or (len(main_ws_manager.active_connections) > 0)
+    
+    for dev in devices:
+        dev.is_online = is_online
+    return devices
 
 
 # ── TELEMETRY & STATUS ────────────────────────────────────────────────────
@@ -102,6 +114,8 @@ async def list_trusted_devices(auth_svc=Depends(get_mobile_auth_service)):
 @mobile_router.get("/telemetry", response_model=SystemTelemetry)
 async def get_telemetry(gateway_svc=Depends(get_mobile_gateway_service)):
     """Fetch current desktop telemetry (CPU, RAM, GPU, Battery, Task)."""
+    if gateway_svc and hasattr(gateway_svc, "last_mobile_heartbeat"):
+        gateway_svc.last_mobile_heartbeat = time.time()
     if not gateway_svc:
         raise HTTPException(status_code=503, detail="Mobile gateway unavailable")
     return gateway_svc.get_system_telemetry()

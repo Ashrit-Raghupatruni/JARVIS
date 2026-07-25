@@ -14,6 +14,7 @@ interface DeviceInfo {
   registered_at: number;
   last_active: number;
   trusted: boolean;
+  is_online?: boolean;
 }
 
 export const MobileCompanionCard: React.FC = () => {
@@ -21,10 +22,12 @@ export const MobileCompanionCard: React.FC = () => {
   const [trustedDevices, setTrustedDevices] = useState<DeviceInfo[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const getHost = () => typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.hostname : '127.0.0.1';
+
   const fetchPairingCode = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/mobile/pair/initiate', {
+      const res = await fetch(`http://${getHost()}:8000/api/v1/mobile/pair/initiate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -45,7 +48,7 @@ export const MobileCompanionCard: React.FC = () => {
 
   const fetchTrustedDevices = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/mobile/devices');
+      const res = await fetch(`http://${getHost()}:8000/api/v1/mobile/devices`);
       if (res.ok) {
         const data = await res.json();
         setTrustedDevices(data);
@@ -58,7 +61,7 @@ export const MobileCompanionCard: React.FC = () => {
   useEffect(() => {
     fetchPairingCode();
     fetchTrustedDevices();
-    const interval = setInterval(fetchTrustedDevices, 5000);
+    const interval = setInterval(fetchTrustedDevices, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -120,9 +123,15 @@ export const MobileCompanionCard: React.FC = () => {
                       <div className="text-[10px] text-jarvis-text-muted font-mono">{dev.device_id.slice(0, 12)}...</div>
                     </div>
                   </div>
-                  <span className="inline-flex items-center text-[10px] text-green-400 font-bold gap-1">
-                    <CheckCircle className="w-3 h-3" /> PAIRED
-                  </span>
+                  {dev.is_online ? (
+                    <span className="inline-flex items-center text-[10px] text-emerald-400 font-bold gap-1 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30">
+                      <CheckCircle className="w-3 h-3" /> ONLINE & CONNECTED
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center text-[10px] text-slate-400 font-medium gap-1 px-2 py-0.5 rounded bg-slate-800 border border-slate-700">
+                      DISCONNECTED (PAIRED)
+                    </span>
+                  )}
                 </div>
               ))}
             </div>

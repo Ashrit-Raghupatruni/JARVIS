@@ -337,6 +337,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, formatTime }) =>
               : 'bg-jarvis-accent-dim border border-jarvis-border'
           }`}
         >
+          {!isUser && (
+            <div className="mb-1 flex items-center gap-1.5">
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                ⚡ Prash Local Engine
+              </span>
+            </div>
+          )}
           <p className="text-sm text-jarvis-text leading-relaxed whitespace-pre-wrap break-words">
             {message.content}
           </p>

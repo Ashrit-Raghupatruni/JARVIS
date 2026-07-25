@@ -122,6 +122,7 @@ async def system_status(request: Request):
 
 
 @router.post("/command")
+@router.post("/api/v1/command")
 async def process_command(cmd: CommandRequest, request: Request):
     """Process a text command and return the AI response."""
     app = request.app

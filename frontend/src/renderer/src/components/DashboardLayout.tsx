@@ -20,6 +20,9 @@ import VisualWorkflowBuilder from './VisualWorkflowBuilder'
 import TaskQueueManager from './TaskQueueManager'
 import LiveModeCard from './LiveModeCard'
 import { MobileCompanionCard } from './MobileCompanionCard'
+import { LiveDebugInspector } from './LiveDebugInspector'
+import { SafetyPermissionModal, PermissionRequestPayload } from './SafetyPermissionModal'
+import { LivePerceptionVisualizer } from './LivePerceptionVisualizer'
 import {
   Command,
   Mic,
@@ -38,7 +41,8 @@ import {
   LayoutGrid,
   Maximize2,
   X,
-  Eye
+  Eye,
+  Terminal
 } from 'lucide-react'
 
 interface DashboardLayoutProps {
@@ -238,6 +242,18 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
             <Globe className="w-3.5 h-3.5" />
             <span>Automation</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('debug')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+              activeTab === 'debug'
+                ? 'bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(0,229,255,0.4)]'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Terminal className="w-3.5 h-3.5" />
+            <span>Debug Inspector</span>
+          </button>
         </div>
 
         {/* Global Action Tools */}
@@ -316,7 +332,12 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
         {activeTab === 'queue' && <TaskQueueManager />}
 
         {/* VIEW 4: LIVE MODE (AI SCREEN ASSISTANT) */}
-        {activeTab === 'live' && <LiveModeCard />}
+        {activeTab === 'live' && (
+          <div className="h-full overflow-y-auto space-y-4 custom-scrollbar">
+            <LiveModeCard />
+            <LivePerceptionVisualizer />
+          </div>
+        )}
 
         {/* VIEW 4: TELEMETRY & SYSTEM GAUGES */}
         {activeTab === 'telemetry' && (
@@ -347,6 +368,9 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
             <KnowledgeHubCard />
           </div>
         )}
+
+        {/* VIEW 6: LIVE MODE DEBUG & VALIDATION INSPECTOR */}
+        {activeTab === 'debug' && <LiveDebugInspector />}
       </div>
 
       {/* Global Command Palette Modal */}

@@ -16,7 +16,7 @@ class SandboxResult:
 class SecuritySandbox:
     """Provides isolated, restricted, and resource-bounded execution for Python and terminal scripts."""
     
-    def __init__(self, use_docker: bool = False, timeout_limit: float = 15.0):
+    def __init__(self, use_docker: bool = False, timeout_limit: float = 60.0):
         self.use_docker = use_docker
         self.timeout_limit = timeout_limit
         self.blocked_patterns = [

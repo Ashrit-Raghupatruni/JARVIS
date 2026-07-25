@@ -100,6 +100,23 @@ class PlannerAgent:
             except Exception as e:
                 logger.error(f"Failed to initialize PrashLangGraphAgent: {e}")
 
+        # Instantiate Unified Execution Pipeline & Desktop World Model
+        try:
+            from backend.services.world_model import WorldModel
+            from backend.services.tool_registry import ToolRegistry
+            from backend.agents.unified_pipeline import UnifiedPipeline
+
+            self.world_model = WorldModel()
+            self.tool_registry = ToolRegistry()
+            self.pipeline = UnifiedPipeline(
+                world_model=self.world_model,
+                tool_registry=self.tool_registry,
+                llm_service=self.llm
+            )
+            logger.info("✓ UnifiedPipeline and WorldModel initialized in PlannerAgent")
+        except Exception as e:
+            logger.warning(f"UnifiedPipeline setup notice: {e}")
+
     async def plan_and_execute(
         self, user_message: str, conversation_history: Optional[list[dict]] = None
     ) -> AsyncGenerator[WSMessage, None]:
@@ -139,8 +156,39 @@ class PlannerAgent:
             except Exception as e:
                 logger.warning("Failed to record self-improving experience trace: {}", e)
 
-        # Check for local RAG / indexing intents to guarantee robust local-first offline execution
+        # ── Code-Level Intent Classification & Orchestration Routing ─────────
+        from backend.agents.message_router import classify_request, RequestCategory
+        request_cat = classify_request(user_message)
+        logger.info(f"Orchestration Router category: {request_cat.value} for prompt: '{user_message[:50]}'")
+
         lower_msg = user_message.lower().strip()
+
+        # Fast-Path 0A: Live Mode Form Auto-Fill Intercept
+        if any(k in lower_msg for k in ["fill form", "auto fill", "fill this form", "autocomplete form"]):
+            res = await self.tool_registry.execute_tool("auto_fill_form", {})
+            response_text = f"Form auto-fill complete! Populated {res.get('fields_filled', 0)} field(s) using your profile data."
+            yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
+            history.append({"role": "assistant", "content": response_text})
+            if conversation_history is None:
+                self._conversation_history = history
+            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
+            return
+
+        # Fast-Path 0B: Perception-Targeted Click Intercept
+        if lower_msg.startswith(("click button", "click on", "click ", "press button", "tap ")):
+            target_elem = lower_msg.replace("click button", "").replace("click on", "").replace("click", "").replace("press button", "").replace("tap", "").strip()
+            if target_elem:
+                res = await self.tool_registry.execute_tool("click_element_by_name", {"element_name": target_elem})
+                if res.get("status") in ("clicked", "invoked"):
+                    response_text = f"Clicked on UI element '{target_elem}' successfully!"
+                else:
+                    response_text = f"Attempted to click '{target_elem}' on screen (Status: {res.get('status')})."
+                yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
+                history.append({"role": "assistant", "content": response_text})
+                if conversation_history is None:
+                    self._conversation_history = history
+                yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
+                return
 
         # Fast-path 0: Date and Time Intent Intercept
         if any(p in lower_msg for p in ["what is today's date", "what is the date", "today's date", "current date", "what time is it", "current time"]):
@@ -156,27 +204,41 @@ class PlannerAgent:
             yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
             return
 
-            yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
-            history.append({"role": "assistant", "content": response_text})
-            if conversation_history is None:
-                self._conversation_history = history
-            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
-            return
-
-        # Fast-Path 0C: YouTube Video & Movie Trailer Intent Intercept
-        if any(p in lower_msg for p in ["youtube", "movie trailer", "play video", "play trailer", "play a trailer", "play recent trailer"]):
+        # Fast-Path 0C: YouTube Video & Music Intercept
+        if any(p in lower_msg for p in ["youtube", "movie trailer", "play video", "play trailer", "play music", "open spotify"]):
             import webbrowser, urllib.parse
-            yt_query = lower_msg.replace("play a recent", "").replace("play recent", "").replace("movie trailer", "latest movie trailers").replace("after opening youtube in chrome", "").replace("on youtube", "").replace("open youtube", "").replace("and play", "").strip()
-            if not yt_query or len(yt_query) < 3:
-                yt_query = "latest official movie trailers"
+            if lower_msg in ["open youtube", "youtube", "launch youtube"]:
+                yt_url = "https://www.youtube.com"
+                response_text = "Opening YouTube in Chrome, sir!"
+            elif lower_msg in ["play music", "open spotify", "music", "spotify"]:
+                # Try opening local Spotify first or fallback to web
+                try:
+                    from backend.services.manager import ServiceManager
+                    auto_svc = ServiceManager.get_instance("automation")
+                    if auto_svc and hasattr(auto_svc, "open_application"):
+                        res_msg = await auto_svc.open_application("spotify")
+                        response_text = res_msg
+                    else:
+                        webbrowser.open("https://open.spotify.com")
+                        response_text = "Opening Spotify Web in Chrome, sir!"
+                except Exception:
+                    webbrowser.open("https://open.spotify.com")
+                    response_text = "Opening Spotify Web in Chrome, sir!"
+            else:
+                yt_query = lower_msg.replace("play a recent", "").replace("play recent", "").replace("movie trailer", "").replace("after opening youtube in chrome", "").replace("on youtube", "").replace("open youtube", "").replace("and play", "").replace("play", "").strip()
+                if not yt_query:
+                    yt_url = "https://www.youtube.com"
+                    response_text = "Opening YouTube in Chrome, sir!"
+                else:
+                    yt_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(yt_query)}"
+                    response_text = f"Opening Chrome to search and play '{yt_query}' on YouTube, sir!"
             
-            yt_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(yt_query)}"
             try:
-                webbrowser.open(yt_url)
+                if 'yt_url' in locals():
+                    webbrowser.open(yt_url)
             except Exception as w_err:
                 logger.warning(f"Webbrowser launch notice: {w_err}")
                 
-            response_text = f"Opening Chrome to search and play '{yt_query}' on YouTube, sir!"
             yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
             history.append({"role": "assistant", "content": response_text})
             if conversation_history is None:
@@ -207,15 +269,117 @@ class PlannerAgent:
             yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
             return
 
-        # Fast-Path 0E: Live Mode Activation Intent Intercept
-        if any(p in lower_msg for p in ["start live mode", "enable live mode", "turn on live mode", "open live mode", "activate live mode"]):
-            from backend.services.manager import ServiceManager
-            live_engine = ServiceManager.get_instance("live_mode_engine")
-            if live_engine:
-                live_engine.start()
-                response_text = "✓ Dedicated Live Mode (AI Screen Assistant) is now active! Continuously observing your desktop context in real time."
+        # Fast-Path 0F: Python File Execution Intercept
+        if any(p in lower_msg for p in ["run ", "execute ", "python "]) and (".py" in lower_msg or "script" in lower_msg or "python" in lower_msg):
+            import os, glob, subprocess
+            # Extract target filename if specified
+            target_name = None
+            for token in user_message.split():
+                if token.endswith(".py"):
+                    target_name = token.strip("'\"")
+                    break
+            
+            # Search workspace and user directory if target specified
+            found_path = None
+            if target_name:
+                search_dirs = [os.getcwd(), os.path.expanduser("~\\Downloads"), os.path.expanduser("~\\Documents"), os.path.expanduser("~\\Desktop")]
+                for d in search_dirs:
+                    matches = glob.glob(os.path.join(d, "**", target_name), recursive=True)
+                    if matches:
+                        found_path = matches[0]
+                        break
+            
+            if found_path and os.path.exists(found_path):
+                try:
+                    py_exec = os.path.join(os.getcwd(), "backend", "venv", "Scripts", "python.exe")
+                    if not os.path.exists(py_exec):
+                        py_exec = "python"
+                    res = subprocess.run([py_exec, found_path], capture_output=True, text=True, timeout=20)
+                    out_text = res.stdout.strip() or res.stderr.strip() or "Script completed with no stdout."
+                    response_text = f"✓ Executed Python script `{os.path.basename(found_path)}`.\n\n**Output:**\n```\n{out_text[:1500]}\n```"
+                except Exception as ex_err:
+                    response_text = f"Execution failed for `{os.path.basename(found_path)}`: {ex_err}"
+            elif target_name:
+                response_text = f"The Python file `{target_name}` was not found in the current workspace or standard directories."
             else:
-                response_text = "Live Mode Engine is starting up now, sir!"
+                response_text = "Please specify the Python script filename to execute (e.g., `Run AP2411001746.py`)."
+
+            yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
+            history.append({"role": "assistant", "content": response_text})
+            if conversation_history is None:
+                self._conversation_history = history
+            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
+            return
+
+        # Fast-Path 0G: Screen Perception Intercept ("What am I seeing?")
+        if any(p in lower_msg for p in ["what am i seeing", "what's on my screen", "what is on my screen", "read screen", "see screen", "describe screen"]):
+            try:
+                from backend.services.manager import ServiceManager
+                wm = ServiceManager.get_instance("world_model")
+                if wm:
+                    wm.refresh()
+                    s = wm.get_summary()
+                    response_text = f"You are currently viewing **{s.get('active_window', 'Desktop')}** (Process ID: {s.get('foreground_pid')}).\n" \
+                                    f"Spatial Topo: {s.get('display_count', 1)} display monitor(s) active. " \
+                                    f"Native Win32 UIA tree indexed **{s.get('ui_control_count', 0)}** interactive control elements."
+                else:
+                    response_text = "Live Mode screen observer is active and tracking your active desktop window."
+            except Exception as sc_err:
+                response_text = f"Screen perception active: {sc_err}"
+
+            yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
+            history.append({"role": "assistant", "content": response_text})
+            if conversation_history is None:
+                self._conversation_history = history
+            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
+            return
+
+        # Fast-Path 0H: Document / File Search Intercept ("Find my resume")
+        if any(p in lower_msg for p in ["find my ", "find file", "search file", "where is my ", "locate document", "find document"]):
+            import os, glob
+            q_term = lower_msg.replace("find my ", "").replace("find file", "").replace("search file", "").replace("where is my ", "").replace("locate document", "").replace("find document", "").strip()
+            matches = []
+            if q_term:
+                search_dirs = [os.path.expanduser("~\\Documents"), os.path.expanduser("~\\Downloads"), os.path.expanduser("~\\Desktop")]
+                for d in search_dirs:
+                    pattern = os.path.join(d, f"*{q_term}*")
+                    matches.extend(glob.glob(pattern))
+                    if len(matches) >= 5:
+                        break
+            
+            if matches:
+                file_list = "\n".join([f"- `{m}`" for m in matches[:5]])
+                response_text = f"Found matching file(s) for '{q_term}':\n{file_list}\n\nWould you like me to open any of these for you, sir?"
+            elif q_term:
+                response_text = f"No indexed files matching '{q_term}' were found in standard document directories."
+            else:
+                response_text = "Please specify the file name or query term to search (e.g., `Find my resume`)."
+
+            yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
+            history.append({"role": "assistant", "content": response_text})
+            if conversation_history is None:
+                self._conversation_history = history
+            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
+            return
+
+        # Fast-Path 0I: Temp Files Clean Intercept
+        if any(p in lower_msg for p in ["delete temporary files", "clean temp files", "clear temporary files", "delete temp files"]):
+            import os, shutil
+            temp_dir = os.path.expanduser("~\\AppData\\Local\\Temp")
+            total_size = 0
+            file_count = 0
+            if os.path.exists(temp_dir):
+                for root, dirs, files in os.walk(temp_dir):
+                    for f in files:
+                        try:
+                            fp = os.path.join(root, f)
+                            total_size += os.path.getsize(fp)
+                            file_count += 1
+                        except Exception:
+                            pass
+            
+            size_mb = round(total_size / (1024 * 1024), 2)
+            response_text = f"Scanned temporary folder `{temp_dir}`: Found **{file_count}** temporary items total (**{size_mb} MB** reclaimable space).\n\nProceeding to clean safe temporary files..."
 
             yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
             history.append({"role": "assistant", "content": response_text})

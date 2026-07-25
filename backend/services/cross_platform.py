@@ -33,9 +33,7 @@ class CrossPlatformService:
                     return json.load(f)
             except Exception as e:
                 logger.warning("Failed to load paired devices: {}", e)
-        return [
-            {"device_id": "dev_android_01", "name": "Ashrit Android Companion", "platform": "Android", "status": "connected", "last_synced": time.time()}
-        ]
+        return []
 
     def _save_paired_devices(self) -> None:
         try:
@@ -51,8 +49,8 @@ class CrossPlatformService:
             "platform_release": platform.release(),
             "architecture": platform.machine(),
             "python_version": sys.version.split()[0],
-            "gui_automation_backend": "pywinauto/win32gui" if self.os_type == "Windows" else "xdotool/pyautogui",
-            "audio_backend": "PyAudio/WASAPI" if self.os_type == "Windows" else "CoreAudio/ALSA",
+            "gui_automation_backend": "pywinauto/win32gui" if self.os_type == "Windows" else "unsupported",
+            "audio_backend": "PyAudio/WASAPI" if self.os_type == "Windows" else "unsupported",
             "mobile_companion_ready": True
         }
 

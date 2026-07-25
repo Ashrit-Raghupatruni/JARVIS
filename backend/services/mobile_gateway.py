@@ -38,7 +38,26 @@ class MobileGatewayService:
         self.approval_decisions: Dict[str, str] = {}           # approval_id -> decision
         self.always_allowed_patterns: List[str] = []
         self.always_denied_patterns: List[str] = []
+        self.active_connections: set = set()
+        self.last_mobile_heartbeat: float = 0.0
         logger.info("MobileGatewayService initialized (Mobile Gateway Active)")
+
+    def register_connection(self, ws: Any) -> None:
+        """Register active mobile WebSocket connection."""
+        self.active_connections.add(ws)
+        self.last_mobile_heartbeat = time.time()
+
+    def unregister_connection(self, ws: Any) -> None:
+        """Remove disconnected mobile WebSocket connection."""
+        self.active_connections.discard(ws)
+
+    def is_mobile_connected(self) -> bool:
+        """Check if mobile phone is currently connected via WebSocket or recent REST heartbeat."""
+        if len(self.active_connections) > 0:
+            return True
+        if self.last_mobile_heartbeat > 0 and (time.time() - self.last_mobile_heartbeat) < 12.0:
+            return True
+        return False
 
     def get_system_telemetry(self) -> SystemTelemetry:
         """Fetch current hardware & system telemetry metrics."""

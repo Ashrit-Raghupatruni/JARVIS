@@ -208,6 +208,12 @@ class AutomationService:
         """
         logger.info("Opening application: {}", app_name)
 
+        # Handle python script execution in interactive terminal
+        if app_name.lower().endswith(".py") or (os.path.exists(app_name) and app_name.lower().endswith(".py")):
+            script_path = os.path.abspath(app_name) if os.path.exists(app_name) else app_name
+            subprocess.Popen(["cmd", "/c", "start", "cmd", "/k", "python", script_path], shell=False)
+            return f"Launched Python script '{os.path.basename(app_name)}' in interactive command prompt."
+
         try:
             path = _resolve_app_path(app_name)
             if path:
@@ -231,6 +237,23 @@ class AutomationService:
                 return f"Opened {app_name} successfully."
 
             else:
+                # Intercept via Self-Healing Engine to search system paths
+                try:
+                    from backend.services.self_healing import SelfHealingEngine
+                    healer = SelfHealingEngine()
+                    recovery = healer.diagnose_and_recover("open_application", f"App '{app_name}' not found", app_name)
+                    if (recovery.get("recovered") or recovery.get("success")) and recovery.get("recovered_path"):
+                        await asyncio.to_thread(os.startfile, recovery["recovered_path"])
+                        return f"Opened '{app_name}' via Self-Healing Engine ({recovery['recovered_path']})."
+                except Exception as h_err:
+                    logger.debug("Self-Healing lookup notice: {}", h_err)
+
+                # If app is spotify or music and local exe is not found, launch web player in browser
+                if any(m in app_name.lower() for m in ["spotify", "music"]):
+                    import webbrowser
+                    webbrowser.open("https://open.spotify.com")
+                    return f"Spotify desktop app was not found locally, so I opened Spotify Web in Chrome, sir!"
+
                 # Try via start command (works for many Windows apps)
                 subprocess.Popen(
                     ["cmd", "/c", "start", "", app_name],
@@ -241,7 +264,17 @@ class AutomationService:
                 return f"Attempted to open '{app_name}' via system search."
 
         except FileNotFoundError:
-            # Fallback: try via start command
+            # Try Self-Healing Engine recovery before falling back
+            try:
+                from backend.services.self_healing import SelfHealingEngine
+                healer = SelfHealingEngine()
+                recovery = healer.diagnose_and_recover("open_application", f"File not found for '{app_name}'", app_name)
+                if (recovery.get("recovered") or recovery.get("success")) and recovery.get("recovered_path"):
+                    await asyncio.to_thread(os.startfile, recovery["recovered_path"])
+                    return f"Opened '{app_name}' via Self-Healing Engine ({recovery['recovered_path']})."
+            except Exception:
+                pass
+
             try:
                 subprocess.Popen(
                     ["cmd", "/c", "start", "", app_name],
@@ -252,6 +285,7 @@ class AutomationService:
                 return f"Opened '{app_name}' via system search (primary path not found)."
             except Exception as e2:
                 logger.error("Failed to open '{}': {}", app_name, e2)
+                return f"Could not open '{app_name}': {e2}"
                 return f"Failed to open '{app_name}': {e2}"
 
         except Exception as e:

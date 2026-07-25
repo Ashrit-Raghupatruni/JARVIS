@@ -27,7 +27,8 @@ export default function LiveModeCard() {
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/mobile/live_mode/status')
+      const host = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.hostname : '127.0.0.1'
+      const res = await fetch(`http://${host}:8000/api/v1/mobile/live_mode/status`)
       const data = await res.json()
       if (data.status === 'active' && data.frame) {
         setIsEnabled(true)
@@ -124,14 +125,21 @@ export default function LiveModeCard() {
               <span>STOP LIVE MODE</span>
             </button>
           )}
-
-          <button
-            onClick={fetchStatus}
-            className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 cursor-pointer"
-            title="Refresh Live Context"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 flex items-center gap-1">
+              <Cpu className="w-3 h-3" /> World Model Active
+            </span>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 flex items-center gap-1">
+              <Layers className="w-3 h-3" /> Unified 10-Step Pipeline
+            </span>
+            <button
+              onClick={fetchStatus}
+              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors border border-slate-700 cursor-pointer"
+              title="Refresh Perception Status"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 

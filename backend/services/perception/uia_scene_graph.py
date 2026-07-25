@@ -44,6 +44,15 @@ class SceneGraph(BaseModel):
     elements: List[SceneElement] = Field(default_factory=list)
     total_elements: int = 0
 
+    @property
+    def controls(self) -> List[SceneElement]:
+        return self.elements
+
+    def model_dump(self, *args, **kwargs) -> Dict[str, Any]:
+        data = super().model_dump(*args, **kwargs)
+        data["controls"] = [e.model_dump() if hasattr(e, "model_dump") else e for e in self.elements]
+        return data
+
 
 class UIASceneGraph:
     """

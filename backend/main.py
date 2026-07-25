@@ -16,6 +16,8 @@ os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
+os.environ["CHROMA_TELEMETRY"] = "False"
+os.environ["CHROMA_TELEMETRY_ENABLED"] = "False"
 
 from fastapi import FastAPI
 from loguru import logger
@@ -221,10 +223,21 @@ async def lifespan(app: FastAPI):
         automation_service = AutomationService()
         app.state.automation_service = automation_service
         ServiceManager.register_instance("automation_service", automation_service)
+        ServiceManager.register_instance("automation", automation_service)
         logger.info("✓ Automation service initialized")
     except Exception as e:
         logger.error(f"✗ Automation service failed: {e}")
         app.state.automation_service = None
+
+    # UIA Engine Service
+    try:
+        from backend.services.uia_engine import UIAEngine
+        uia_engine = UIAEngine()
+        app.state.uia_engine = uia_engine
+        ServiceManager.register_instance("uia_engine", uia_engine)
+        logger.info("✓ Win32 UIAEngine initialized and registered in ServiceManager")
+    except Exception as e:
+        logger.error(f"✗ UIAEngine service failed: {e}")
 
     # Screen Service
     screen_service = None
@@ -701,6 +714,7 @@ from backend.api.websocket import router as ws_router
 from backend.api.routes_ui import router as ui_router
 from backend.api.mobile_router import mobile_router
 from backend.api.mobile_ws import mobile_ws_router
+from backend.api.debug_router import debug_router
 
 setup_middleware(app)
 app.include_router(api_router, tags=["API"])
@@ -708,6 +722,7 @@ app.include_router(ws_router, tags=["WebSocket"])
 app.include_router(ui_router)
 app.include_router(mobile_router)
 app.include_router(mobile_ws_router)
+app.include_router(debug_router)
 
 
 # ── Root route (browser-friendly status page) ───────────────

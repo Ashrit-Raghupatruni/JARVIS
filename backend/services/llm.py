@@ -189,15 +189,29 @@ JARVIS_SYSTEM_PROMPT = """You are J.A.R.V.I.S. (Just A Rather Very Intelligent S
 - You speak like a refined British butler: polite, composed, and occasionally dry-witted.
 - You address the user as "sir" (or "ma'am" if requested).
 - Your humour is understated — think dry wit, not slapstick.
+- You act as a trusted technical co-pilot and partner rather than a passive chatbot.
+- **Constructive Pushback & Advisory**: You are not a passive yes-man. If the user suggests an unwise, inefficient, fragile, or risky strategy (e.g. manually editing system files, running destructive scripts, or using inefficient manual commands), politely challenge the idea:
+  *"If I may offer a suggestion, sir: attempting to delete this directory manually may break your virtual environment. A cleaner approach would be..."*
+- **Superior Alternatives**: Always propose a faster, safer, or more automated approach before executing an inferior user idea.
+- **Honesty & Transparency**: Never pretend to know something you don't or claim capabilities you lack.
 - You are proactive: if the user asks for something vague, you infer the most helpful interpretation and act on it, then report what you did.
 - You are concise in speech but thorough in action.
 - When reporting results, you provide just enough detail to be helpful without rambling.
+
+## Action-First Agent Directives
+- You are a Personal AI Operating System with full local system access, file system tools, terminal controls, and UI automation.
+- You must NEVER act like a passive chatbot or say "I cannot access your laptop", "I cannot run files", "I cannot search your computer", or "I cannot execute programs".
+- For every user action request, your default execution loop is ALWAYS:
+  THINK → PLAN → EXECUTE → OBSERVE → RESPOND.
+- NEVER respond with THINK → APOLOGIZE → STOP.
+- Always check available tools and permissions first, create an execution plan, execute it, observe stdout/stderr or screen state, and return the concrete result.
+- Only respond with "I cannot" when no suitable tool exists, user permissions are denied, or the request is unsafe. In those cases, explain WHY and suggest the exact missing capability to install.
 
 ## Capabilities
 You can control the user's Windows desktop via the tools provided to you. This includes:
 - Opening and closing applications.
 - Typing text, pressing hotkeys, moving/clicking the mouse, and scrolling.
-- Creating, renaming, and deleting files and folders.
+- Creating, renaming, running, and deleting files and folders.
 - Running terminal commands (with safety checks).
 - Taking screenshots, reading screen text via OCR, and analysing screen content.
 - Opening URLs, searching the web, and navigating a browser.
@@ -476,6 +490,43 @@ TOOL_DEFINITIONS: List[Dict[str, Any]] = [
                 },
                 "required": ["url"]
             }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "click_element_by_name",
+            "description": "Perception-targeted click on a UI element (button, link, field) by visible label or control name.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "element_name": {"type": "string", "description": "Visible name or label of the button or element to click."}
+                },
+                "required": ["element_name"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_control_value",
+            "description": "Perception-targeted text input into a UI text field or form input by control name.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "field_name": {"type": "string", "description": "Name or label of the text field."},
+                    "value": {"type": "string", "description": "Value/text to enter."}
+                },
+                "required": ["field_name", "value"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "auto_fill_form",
+            "description": "Detects all input fields on current focused screen and populates user profile data automatically.",
+            "parameters": {"type": "object", "properties": {}, "required": []}
         }
     },
     {
@@ -983,6 +1034,30 @@ class LLMService:
         Routes dynamically using the LLM Router and Prash local confidence engine.
         """
         fallback_count = 0
+
+        # ── Enforce OS Orchestration Context Injection ─────────────────
+        # Ensures raw user messages are NEVER sent alone to LLMs without Desktop World Model & OS Tool context
+        try:
+            from backend.services.manager import ServiceManager
+            wm = ServiceManager.get_instance("world_model")
+            desktop_state = ""
+            if wm:
+                wm.refresh()
+                s = wm.get_summary()
+                desktop_state = f"[LIVE DESKTOP WORLD MODEL: Active Window='{s.get('active_window')}', PID={s.get('foreground_pid')}, UIA Controls={s.get('ui_control_count')}, Displays={s.get('display_count')}]"
+            else:
+                desktop_state = "[LIVE DESKTOP WORLD MODEL: OS Core Online & Active]"
+                
+            os_system_msg = {
+                "role": "system",
+                "content": f"You are JARVIS AI Operating System Core. You have FULL system access, tool execution, and local permissions.\n{desktop_state}\nNEVER say 'I cannot access your laptop', 'I cannot run files', 'I cannot see your screen', or 'I cannot execute programs'."
+            }
+            
+            if isinstance(user_message, list):
+                if not any(isinstance(m, dict) and m.get("role") == "system" and "AI Operating System" in str(m.get("content", "")) for m in user_message):
+                    user_message.insert(0, os_system_msg)
+        except Exception as os_err:
+            logger.debug("OS context injection notice: {}", os_err)
 
         # ── Prash Dynamic Local First-Try ─────────────────────────────
         # Prash evaluates every query natively via token entropy confidence scoring.

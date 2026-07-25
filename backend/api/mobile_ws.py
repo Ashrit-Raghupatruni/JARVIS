@@ -28,6 +28,9 @@ async def handle_mobile_ws(websocket: WebSocket):
     """Real-time Mobile Companion WebSocket Handler."""
     await websocket.accept()
     active_mobile_connections.add(websocket)
+    gw_svc = ServiceManager.get_instance("mobile_gateway_service")
+    if gw_svc and hasattr(gw_svc, "register_connection"):
+        gw_svc.register_connection(websocket)
     logger.info("📱 Mobile companion WebSocket connected: {}", websocket.client)
 
     # State tracking for mobile battery notifications
@@ -249,7 +252,6 @@ async def handle_mobile_ws(websocket: WebSocket):
                 # Synthesize TTS Audio for Mobile Voice Response
                 audio_b64 = ""
                 try:
-                    import base64
                     import edge_tts
                     
                     # Clean text for TTS (remove markdown asterisks)
@@ -281,6 +283,9 @@ async def handle_mobile_ws(websocket: WebSocket):
         logger.warning("Mobile WS loop exception: {}", e)
     finally:
         active_mobile_connections.discard(websocket)
+        gw_svc = ServiceManager.get_instance("mobile_gateway_service")
+        if gw_svc and hasattr(gw_svc, "unregister_connection"):
+            gw_svc.unregister_connection(websocket)
         telemetry_task.cancel()
 
 

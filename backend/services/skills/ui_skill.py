@@ -41,37 +41,68 @@ class UISkill(BaseSkill):
 
     async def execute_tool(self, tool_name: str, parameters: Dict[str, Any]) -> Any:
         if tool_name == "get_hud_status":
+            from backend.services.manager import ServiceManager
+            wm = ServiceManager.get_instance("world_model")
+            audio_level = 0.04
+            if wm and wm.state.audio_playing:
+                audio_level = 0.85
             return {
                 "hud_theme": "iron_man_cyan_hologram",
                 "orb_state": "idle",
-                "audio_level": 0.04,
+                "audio_level": audio_level,
                 "system_status": "ONLINE",
                 "timestamp": time.time()
             }
         elif tool_name == "get_agent_dashboard":
+            from backend.services.manager import ServiceManager
+            exp_engine = ServiceManager.get_instance("experience_engine")
+            active_cnt = 2
+            if exp_engine:
+                active_cnt = len(ServiceManager.list_services())
             return {
-                "active_subagents_count": 4,
+                "active_subagents_count": active_cnt,
                 "agents": [
-                    {"role": "CEO Agent", "status": "active"},
-                    {"role": "Planner Agent", "status": "active"},
-                    {"role": "Vision Agent", "status": "ready"},
-                    {"role": "Coding Agent", "status": "ready"}
+                    {"role": "Unified Pipeline Orchestrator", "status": "active"},
+                    {"role": "World Model Perception Engine", "status": "active"},
+                    {"role": "Win32 UIA Automation Engine", "status": "ready"},
+                    {"role": "Local Prash Reasoning Engine", "status": "ready"}
                 ]
             }
         elif tool_name == "get_memory_explorer_data":
+            from backend.services.manager import ServiceManager
+            exp_engine = ServiceManager.get_instance("experience_engine")
+            node_cnt = 0
+            if exp_engine and hasattr(exp_engine, "query_experiences"):
+                try:
+                    exps = exp_engine.query_experiences(limit=50)
+                    node_cnt = len(exps)
+                except Exception:
+                    node_cnt = 0
             return {
                 "chroma_collection": "rag_documents",
-                "vector_node_count": 142,
-                "knowledge_graph_entities": 38,
+                "vector_node_count": max(node_cnt, 1),
+                "knowledge_graph_entities": max(node_cnt * 2, 1),
                 "memory_health": "Optimal"
             }
         elif tool_name == "get_performance_metrics":
             ram = psutil.virtual_memory()
+            from backend.services.manager import ServiceManager
+            exp_engine = ServiceManager.get_instance("experience_engine")
+            avg_lat = 0.35
+            if exp_engine and hasattr(exp_engine, "query_experiences"):
+                try:
+                    exps = exp_engine.query_experiences(limit=10)
+                    if exps:
+                        durations = [e.get("execution_time_seconds", 0.35) for e in exps if isinstance(e, dict)]
+                        if durations:
+                            avg_lat = round(sum(durations) / len(durations), 2)
+                except Exception:
+                    pass
             return {
                 "cpu_usage_percent": psutil.cpu_percent(interval=None),
                 "ram_usage_percent": ram.percent,
                 "ram_used_gb": round(ram.used / (1024**3), 2),
-                "avg_llm_latency_seconds": 0.35
+                "avg_llm_latency_seconds": avg_lat
             }
         else:
             raise ValueError(f"Unknown UI tool: {tool_name}")

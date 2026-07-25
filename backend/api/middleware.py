@@ -16,10 +16,11 @@ from loguru import logger
 def setup_middleware(app: FastAPI) -> None:
     """Configure all middleware for the FastAPI application."""
 
-    # CORS middleware
+    # CORS middleware with multi-desktop LAN support
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
+        allow_origin_regex=r"https?://.*",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

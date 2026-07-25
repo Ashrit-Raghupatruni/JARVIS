@@ -129,7 +129,8 @@ export default function VisualWorkflowBuilder() {
 
         // Dispatch real backend command
         try {
-          const res = await fetch('http://127.0.0.1:8000/api/v1/command', {
+          const host = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.hostname : '127.0.0.1'
+          const res = await fetch(`http://${host}:8000/api/v1/command`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: `${node.title}: ${node.desc}` })

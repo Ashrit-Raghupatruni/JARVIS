@@ -47,6 +47,17 @@ class LiveModeEngine:
         self.spatial_engine = SpatialEngine()
         self.form_assistant = FormAssistant()
 
+        # Live Mode 2.0 Intelligent Collaborator Engines
+        from backend.services.world_model import WorldModel
+        from backend.services.proactive_engine import ProactiveEngine
+        from backend.services.perception.spatial_ref_parser import SpatialRefParser
+        from backend.services.workspace_memory import WorkspaceMemory
+
+        self.world_model = WorldModel()
+        self.proactive_engine = ProactiveEngine()
+        self.spatial_parser = SpatialRefParser()
+        self.workspace_memory = WorkspaceMemory()
+
         self._task: Optional[asyncio.Task] = None
         self.latest_frame: Optional[LiveContextFrame] = None
         self._last_window_title: str = ""
@@ -68,14 +79,17 @@ class LiveModeEngine:
         logger.info("Live Mode AI Assistant stopped.")
 
     async def _perception_loop(self) -> None:
-        """Background streaming perception loop."""
+        """Background streaming perception loop driven by WorldModel single source of truth."""
         while self.is_enabled:
             try:
                 start_t = time.time()
-                scene = await asyncio.to_thread(self.scene_extractor.capture_scene, max_depth=3, max_elements=50)
                 
-                # Analyze workflow context
-                app_name = scene.window_title.lower()
+                # Single Source of Truth: Refresh World Model
+                wm_state = await asyncio.to_thread(self.world_model.refresh)
+                
+                # Extract details from unified state
+                window_title = wm_state.window_title
+                app_name = wm_state.window_title.lower()
                 workflow = "General Workspace"
                 next_step = None
                 suggestion = None
@@ -91,30 +105,37 @@ class LiveModeEngine:
                 elif any(w in app_name for w in ["excel", "spreadsheet"]):
                     workflow = "Data Analysis & Spreadsheet Mode"
 
-                # Check form fields
-                form_fields = self.form_assistant.detect_form_fields(scene.elements)
-                if form_fields:
-                    suggestion = f"Detected {len(form_fields)} form field(s). Say 'Fill form' to auto-complete."
+                # Check active scene graph controls for form fields
+                form_fields = []
+                try:
+                    controls = (wm_state.scene_graph or {}).get("controls", [])
+                    from backend.services.perception.uia_scene_graph import SceneElement
+                    elements = [SceneElement(**c) for c in controls if "control_type" in c]
+                    form_fields = self.form_assistant.detect_form_fields(elements)
+                    if form_fields and not suggestion:
+                        suggestion = f"Detected {len(form_fields)} form field(s). Say 'Fill form' to auto-complete."
+                except Exception as f_err:
+                    logger.debug("Form field detection notice: {}", f_err)
 
-                # Construct Frame
+                # Construct Frame off WorldModel state
                 frame = LiveContextFrame(
                     is_live_mode_enabled=self.is_enabled,
-                    active_app=scene.active_app,
-                    window_title=scene.window_title,
+                    active_app=wm_state.active_app,
+                    window_title=wm_state.window_title,
                     active_workflow=workflow,
-                    current_step=f"Active in {scene.window_title}",
+                    current_step=f"Active in {wm_state.window_title}",
                     next_logical_step=next_step,
                     proactive_suggestion=suggestion,
                     detected_form_fields=len(form_fields),
-                    confidence_score=0.95 if scene.total_elements > 0 else 0.70,
-                    scene_graph=scene
+                    confidence_score=0.95,
+                    scene_graph=None
                 )
 
                 self.latest_frame = frame
                 
-                # Notify listener if context changed meaningfully
-                if self.on_context_update and (scene.window_title != self._last_window_title or suggestion):
-                    self._last_window_title = scene.window_title
+                # Event-driven callback trigger: notify when window changes or proactive suggestion is generated
+                if self.on_context_update and (window_title != self._last_window_title or suggestion):
+                    self._last_window_title = window_title
                     try:
                         if asyncio.iscoroutinefunction(self.on_context_update):
                             await self.on_context_update(frame)

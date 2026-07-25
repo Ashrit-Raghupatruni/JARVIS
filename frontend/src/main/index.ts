@@ -1,5 +1,6 @@
 import {
   app,
+  net,
   shell,
   BrowserWindow,
   globalShortcut,
@@ -400,8 +401,47 @@ function setupIPC(): void {
     return false
   })
 
-  ipcMain.handle('window-close', () => {
-    mainWindow?.close()
+  ipcMain.handle('window-close', async () => {
+    try {
+      const port = getBackendPort()
+      const http = require('http')
+      
+      // Query mobile gatekeeper for approval
+      const req = http.request({
+        hostname: '127.0.0.1',
+        port: port,
+        path: '/api/v1/mobile/shutdown_approval/request',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 4000
+      }, (res: any) => {
+        let body = ''
+        res.on('data', (chunk: any) => body += chunk)
+        res.on('end', () => {
+          try {
+            const data = JSON.parse(body)
+            if (data.approved === false) {
+              if (Notification.isSupported()) {
+                new Notification({
+                  title: '🛡️ Security Gatekeeper Interlock',
+                  body: 'Desktop exit denied by Mobile Companion approval gate.'
+                }).show()
+              }
+              return
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+          mainWindow?.close()
+        })
+      })
+      req.on('error', () => {
+        mainWindow?.close()
+      })
+      req.end()
+    } catch (err) {
+      mainWindow?.close()
+    }
   })
 
   ipcMain.handle('window-is-maximized', () => {

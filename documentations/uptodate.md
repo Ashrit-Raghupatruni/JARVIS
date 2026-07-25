@@ -1,6 +1,6 @@
 # JARVIS — Comprehensive Status, Tech Stack, & Features Overview
 
-This document serves as the single source of truth for JARVIS's current capabilities, system architecture, tech stack, and development status. **Last Updated:** July 23, 2026
+This document serves as the single source of truth for JARVIS's current capabilities, system architecture, tech stack, and development status. **Last Updated:** July 25, 2026
 
 ---
 
@@ -38,6 +38,8 @@ gantt
     Self Healing Engine and Fault Recovery Cascade :done, t6_8, 2026-07-23, 1d
     Procedural Strategy Memory and Dynamic Confidence System :done, t6_9, 2026-07-23, 1d
     System Operational Modes Coding Gaming Work Research :done, t6_10, 2026-07-23, 1d
+    Live Mode 2.0 Event Driven Real Time Collaborator :done, t6_11, 2026-07-24, 1d
+    Unified 10-Step Self-Improving OS Lifecycle Pipeline :done, t6_12, 2026-07-24, 1d
     section Autonomous Agent Ecosystem
     Multi Agent Orchestration and Sub Agent Delegation :active, t7_1, 2026-07-25, 5d
     Long Horizon Task Continuity and Context Compression :t7_2, 2026-07-30, 5d
@@ -74,6 +76,15 @@ The architecture is split into a **React + Electron** desktop client (frontend),
 * **Styling:** Tailwind CSS v4.1.0 + `@tailwindcss/vite`
 * **State Management:** Zustand v5.0.0
 * **3D Visuals:** Three.js v0.185.1 (WebGL rendering of a procedural 3D Arc Reactor focal core with battery-saver visibility listener)
+
+## 2. Capability Directory
+
+### 2.0. Unified AI OS Architecture & World Model
+* **Unified Execution Pipeline (`UnifiedPipeline`)**: Single 10-step lifecycle for every request across all entry points: `User Request → Intent → Planner → Tool Selection → Execute → Observe → Reflection → Learning → Strategy Update → Save Experience`.
+* **Central Desktop World Model (`WorldModel`)**: Single source of truth tracking spatial monitor topologies, foreground window title, process ID, native Win32 UIA control tree, browser tab title, and Windows clipboard state.
+* **Unified Tool Registry (`ToolRegistry`)**: Decouples task planning from concrete service implementations with parameter schemas and risk audits (`low`, `medium`, `high`).
+
+### 2.1. Live Mode (AI Screen Assistant) & Native Perception Core
 
 ### Mobile Mission Control App (Native Android Companion)
 * **Project Folder:** [`mobile_app/android/`](file:///c:/Users/ashri/JARVIS/mobile_app/android/)

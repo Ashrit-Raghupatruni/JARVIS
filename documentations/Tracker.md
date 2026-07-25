@@ -1,6 +1,6 @@
 # 📋 Project Capability Directory & System Roadmap
 
-This document outlines the capabilities, completed features, active work, and upcoming roadmap of the **JARVIS Personal AI Operating System**. **Last Updated:** July 24, 2026
+This document outlines the capabilities, completed features, active work, and upcoming roadmap of the **JARVIS Personal AI Operating System**. **Last Updated:** July 25, 2026
 
 ---
 
@@ -38,6 +38,8 @@ gantt
     Self Healing Engine and Fault Recovery Cascade :done, t6_8, 2026-07-23, 1d
     Procedural Strategy Memory and Dynamic Confidence System :done, t6_9, 2026-07-23, 1d
     System Operational Modes Coding Gaming Work Research :done, t6_10, 2026-07-23, 1d
+    Live Mode 2.0 Event Driven Real Time Collaborator :done, t6_11, 2026-07-24, 1d
+    Unified 10-Step Self-Improving OS Lifecycle Pipeline :done, t6_12, 2026-07-24, 1d
     section Autonomous Agent Ecosystem
     Multi Agent Orchestration and Sub Agent Delegation :active, t7_1, 2026-07-25, 5d
     Long Horizon Task Continuity and Context Compression :t7_2, 2026-07-30, 5d
@@ -64,6 +66,12 @@ gantt
 ---
 
 ## 2. Complete Capability Directory
+
+### 2.0. Unified AI OS Architecture & Central Desktop World Model
+* **Unified Execution Pipeline (`UnifiedPipeline`)**: Enforces a single 10-step lifecycle for every request across all entry points: `User Request → Intent → Planner → Tool Selection → Execute → Observe → Reflection → Learning → Strategy Update → Save Experience`.
+* **Central Desktop World Model (`WorldModel`)**: Single source of truth tracking spatial monitor topologies, foreground window title, process ID, native Win32 UIA control tree, browser tab title, and Windows clipboard state.
+* **Unified Tool Registry (`ToolRegistry`)**: Decouples task planning from concrete service implementations with parameter schemas and risk audits (`low`, `medium`, `high`).
+* **Hybrid Perception Cascade**: Multi-tiered perception for Live Mode (1. Win32 UIA → 2. Accessibility APIs → 3. Win32 APIs → 4. Vision AI → 5. OCR).
 
 ### 2.1. Live Mode (AI Screen Assistant) & Native Perception Core
 * **Dedicated Live Mode (`LiveModeEngine`)**: Real-time continuous observation operating mode. Runs a low-latency 1.0 FPS perception loop emitting structured `LiveContextFrame`s with workflow classification, next-step logical guidance, and proactive suggestions.
