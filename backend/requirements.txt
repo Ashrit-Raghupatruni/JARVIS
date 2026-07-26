@@ -1,64 +1,46 @@
-# JARVIS AI Desktop Assistant — Python Dependencies
+# JARVIS Personal AI Operating System - Backend Requirements (Mirror of Root requirements.txt)
 
-# Core Server
-fastapi==0.115.9
-uvicorn[standard]==0.34.2
-python-dotenv==1.1.0
-pydantic==2.11.3
-pydantic-settings==2.9.1
-
-# WebSocket
-websockets==15.0.1
-
-# AI / LLM
-openai==1.82.0
-google-genai==2.11.0
-
-# Prash Custom AI Engine
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+python-dotenv>=1.0.0
+pydantic>=2.10.0
+pydantic-settings>=2.9.0
+websockets>=15.0.0
+sqlalchemy>=2.0.0
+aiosqlite>=0.20.0
+chromadb>=1.0.0
+sentence-transformers>=4.0.0
+loguru>=0.7.0
+httpx>=0.24.0
+aiofiles>=24.0.0
+psutil>=6.0.0
+numpy>=1.24.0
+networkx>=3.0
+beautifulsoup4>=4.12.0
+PyPDF2>=3.0.0
+pypdf>=3.10.0
+Pillow>=9.5.0
+pytesseract>=0.3.10
+cryptography>=41.0.0
+PyJWT>=2.7.0
+keyring>=24.0.0
+send2trash>=1.8.0
 torch>=2.0.0
 langchain-core>=0.1.0
 langgraph>=0.1.0
-
-
-# Speech-to-Text
-faster-whisper==1.1.1
-
-# Text-to-Speech
-edge-tts>=7.2.8
-elevenlabs>=1.50,<3
-
-# Wake Word Detection
-openwakeword==0.6.0
-
-# Audio Processing
-numpy==2.2.6
-sounddevice==0.5.1
-
-# Desktop Automation
-pyautogui==0.9.54
-pywinauto==0.6.9
-pywin32==310
-keyboard==0.13.5
-
-# Screen Understanding
-pytesseract==0.3.13
-Pillow==11.2.1
-
-# Browser Automation
-playwright==1.52.0
-
-# Memory & Database
-chromadb==1.0.7
-sentence-transformers==4.1.0
-sqlalchemy==2.0.41
-aiosqlite==0.21.0
-
-# Utilities
-loguru==0.7.3
-aiofiles==24.1.0
-
-# Advanced Upgrades
-send2trash>=1.8.0
-psutil>=6.0.0
+openai>=1.0.0
+google-genai>=0.1.0
+google-generativeai>=0.3.0
+faster-whisper>=1.0.0
+sounddevice>=0.4.6
+openwakeword>=0.5.0
+edge-tts>=6.1.9
+elevenlabs>=0.2.27
+pyautogui>=0.9.54
+keyboard>=0.13.5
 pyperclip>=1.8.2
 pywhatkit>=5.4
+playwright>=1.35.0
+pywin32>=306; sys_platform == "win32"
+pywinauto>=0.6.8; sys_platform == "win32"
+pycaw>=20230407; sys_platform == "win32"

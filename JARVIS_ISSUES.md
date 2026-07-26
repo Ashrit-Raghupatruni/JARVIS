@@ -7,10 +7,10 @@ All issues identified across P0, P1, P2, and newly discovered bugs have been ful
 ## 🟢 P0 — Structural & Bootstrapping Core (ALL RESOLVED)
 
 - [x] **Missing `backend` package wrapper**: Resolved. Whole repository structured inside `backend/` with `backend/__init__.py`.
-- [x] **`backend.config` module**: Resolved. `backend/config.py` provides Pydantic `Settings` and `get_settings()`.
-- [x] **FastAPI Entrypoint**: Resolved. `backend/main.py` mounts all routers (`api_router`, `routes_ui`, `ws_router`, `mobile_router`, `mobile_ws_router`, `debug_router`).
-- [x] **Dependency Manifest**: Resolved. `requirements.txt` created and verified with all 39 dependencies.
-- [x] **Environment & Setup Docs**: Resolved. `.env.example`, `README.md`, and diagnostic test suites active.
+- [x] **`backend/config.py`**: Resolved. `backend/config.py` provides Pydantic `Settings` and `get_settings()`.
+- [x] **FastAPI Entrypoint**: Resolved. `backend/main.py` mounts all routers (`api_router`, `ws_router`, `ui_router`, `mobile_router`, `mobile_ws_router`, `debug_router`).
+- [x] **Authoritative `requirements.txt`**: Resolved. Consolidated root `requirements.txt` and `backend/requirements.txt` into one single authoritative file containing `torch`, `psutil`, `pycaw`, `pywinauto`, `chromadb`, and `sentence-transformers`.
+- [x] **`DEFAULT_LOG_DIR` in `config.py`**: Resolved. Defined `DEFAULT_LOG_DIR = PROJECT_ROOT / "logs"` in `backend/config.py`.
 
 ---
 

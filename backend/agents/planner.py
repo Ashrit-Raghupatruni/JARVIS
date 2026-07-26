@@ -161,6 +161,24 @@ class PlannerAgent:
         request_cat = classify_request(user_message)
         logger.info(f"Orchestration Router category: {request_cat.value} for prompt: '{user_message[:50]}'")
 
+        # Execute 10-Step Self-Improving OS Lifecycle Pipeline asynchronously for background trace tracking
+        if hasattr(self, "pipeline") and self.pipeline:
+            try:
+                asyncio.create_task(self.pipeline.run(user_message))
+                logger.debug("UnifiedPipeline 10-step lifecycle triggered for query: '{}'", user_message[:40])
+            except Exception as e:
+                logger.warning("UnifiedPipeline background execution notice: {}", e)
+
+        # Branch on RequestCategory
+        if request_cat == RequestCategory.LIVE_MODE_REQUEST:
+            logger.info("Executing Live Mode Perception Workflow")
+        elif request_cat == RequestCategory.KNOWLEDGE_REQUEST:
+            logger.info("Executing Knowledge Retrieval Workflow")
+        elif request_cat == RequestCategory.ACTION_REQUEST:
+            logger.info("Executing Desktop Action Workflow")
+        else:
+            logger.info("Executing Conversational Workflow")
+
         lower_msg = user_message.lower().strip()
 
         # Fast-Path 0A: Live Mode Form Auto-Fill Intercept
@@ -1327,6 +1345,14 @@ class PlannerAgent:
                 return str(res)
             except ValueError:
                 pass
+
+            # Dispatch via ToolRegistry if available
+            if hasattr(self, "tool_registry") and self.tool_registry and func_name in self.tool_registry.tools:
+                try:
+                    res = await self.tool_registry.execute_tool(func_name, func_args)
+                    return str(res)
+                except Exception as e:
+                    logger.warning("ToolRegistry execution exception for '{}': {}", func_name, e)
 
             # Automation tools
             if func_name == "open_application":

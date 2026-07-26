@@ -17,6 +17,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_DIR = Path(__file__).resolve().parent
 DEFAULT_DATA_DIR = PROJECT_ROOT / "data"
+DEFAULT_LOG_DIR = PROJECT_ROOT / "logs"
 _WARNED_PLACEHOLDERS = set()
 
 

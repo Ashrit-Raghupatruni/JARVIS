@@ -43,7 +43,7 @@ graph TD
 
 ### 2. Local AI Reasoning (`PrashEngine`)
 - **Primary Execution Engine**: Local Transformer model (`data/prash`) evaluating token prediction entropy.
-- **Entropy Confidence Gate**: Low entropy (< 0.45) returns instant local responses. High entropy (> 0.45) triggers explicit, logged handoff to secondary cloud cascades.
+- **Entropy Confidence Gate**: Low entropy (<= 3.0 Shannon entropy) returns instant local responses. High entropy (> 3.0) triggers explicit, logged handoff to secondary cloud cascades.
 - **Uniform Prompt & Tool Context**: Both Prash local engine and cloud LLMs receive identical tool schemas (`TOOL_DEFINITIONS`), World Model desktop context, and conversation history.
 
 ### 3. Unified 10-Step Self-Improving OS Lifecycle (`UnifiedPipeline`)
