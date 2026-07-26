@@ -124,7 +124,18 @@ class WorldModel:
         except Exception:
             pass
 
-        # 7. Construct updated state
+        # 7. Feed updates into WorkspaceIntelligenceService
+        ws_workflow = scene.active_app or "General Desktop Automation"
+        try:
+            from backend.services.manager import ServiceManager
+            ws_intel = ServiceManager.get_instance("workspace_intelligence")
+            if ws_intel and hasattr(ws_intel, "update_from_desktop_state"):
+                ctx = ws_intel.update_from_desktop_state(app_name, window_title, browser_url)
+                ws_workflow = ctx.current_workflow
+        except Exception:
+            pass
+
+        # 8. Construct updated state
         self._state = WorldModelState(
             timestamp=now,
             monitors=monitors_data,
@@ -139,7 +150,7 @@ class WorldModel:
             clipboard_text=clipboard_text,
             audio_playing=is_audio_active,
             internet_online=is_online,
-            current_workflow=scene.active_app or "General Desktop Automation"
+            current_workflow=ws_workflow
         )
         return self._state
 

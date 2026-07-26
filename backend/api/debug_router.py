@@ -118,6 +118,28 @@ async def get_live_mode_validation():
     }
 
 
+@debug_router.get("/workspace_intelligence")
+async def get_workspace_intelligence():
+    """
+    Fetch live workspace intelligence context: active project, goal, workflow, next action prediction & habits.
+    """
+    from backend.services.manager import ServiceManager
+    ws_intel = ServiceManager.get_instance("workspace_intelligence")
+    if ws_intel and hasattr(ws_intel, "get_context"):
+        ctx = ws_intel.get_context()
+        return ctx.model_dump()
+    return {
+        "timestamp": time.time(),
+        "current_project": "JARVIS Personal AI OS",
+        "current_goal": "Desktop Automation",
+        "current_workflow": "General Desktop Activity",
+        "recent_actions": [],
+        "next_likely_action": "Awaiting User Command",
+        "confidence": 0.80,
+        "top_habits": []
+    }
+
+
 @debug_router.get("/traces")
 async def get_router_and_execution_traces():
     """

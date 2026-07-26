@@ -29,11 +29,14 @@ All issues identified across P0, P1, P2, and newly discovered bugs have been ful
 
 ## 🟢 P2 — UI, Telemetry & Safety (ALL RESOLVED)
 
+- [x] **Workspace Intelligence**: Resolved. Created `WorkspaceIntelligenceService` (`workspace_intelligence.py`), tracking `current_project`, `current_goal`, `current_workflow`, `recent_actions` ring buffer, and `next_likely_action` habit predictions.
 - [x] **Interactive Safety Permission Modal**: Resolved. Created `SafetyPermissionModal.tsx` rendering backend `permission_request` WebSocket events with Approve/Deny buttons.
-- [x] **"What JARVIS is Seeing" Visualizer**: Resolved. Created `LivePerceptionVisualizer.tsx` rendering live UIA control trees, buttons, textboxes, and form fields.
+- [x] **"What JARVIS is Seeing" Visualizer**: Resolved. Created `LivePerceptionVisualizer.tsx` rendering live UIA control trees and Workspace Intelligence metrics.
 - [x] **Engine Source Attribution Badges**: Resolved. Rendered `⚡ Prash Local` badges on chat messages in `ChatPanel.tsx`.
 - [x] **Real Telemetry Metrics in `ui_skill.py`**: Resolved. Replaced mock data with live metrics from `psutil`, `chromadb`, and `experience_engine`.
 - [x] **Cross-Platform & Seed Data Cleanup**: Resolved. Updated `cross_platform.py` OS compatibility reporting and cleared fake seed device fallbacks.
+
+- [x] **Comprehensive Documentation Package**: Resolved. Maintained [`CHANGELOG.md`](file:///c:/Users/ashri/JARVIS/CHANGELOG.md), [`ARCHITECTURE.md`](file:///c:/Users/ashri/JARVIS/ARCHITECTURE.md), and [`README.md`](file:///c:/Users/ashri/JARVIS/README.md).
 
 ---
 

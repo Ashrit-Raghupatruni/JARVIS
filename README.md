@@ -49,12 +49,13 @@
 - **Workflow & Macro Manager** — Custom workflow recorder, macro playback, and deletion.
 
 
-### 🎭 Marvel J.A.R.V.I.S. Personality & Learning Assistant Engine
-- **Marvel J.A.R.V.I.S. Personality Directives** — Refined British butler persona establishing a composed technical co-pilot and partner. Provides polite constructive pushback on unwise or inefficient user decisions, proposes superior technical alternatives, explains reasoning, and maintains dry wit.
+### 🎭 J.A.R.V.I.S. Personality, Learning & Workspace Intelligence
+- **J.A.R.V.I.S. Personality Directives** — Refined British butler persona establishing a composed technical co-pilot and partner. Provides polite constructive pushback on unwise or inefficient user decisions, proposes superior technical alternatives, explains reasoning, and maintains dry wit.
+- **Workspace Intelligence (`WorkspaceIntelligenceService`)** — Continuously tracks active project context, operational goals, session workflows (`coding`, `research`, `study`), 20-action ring buffer, and long-term user habit transitions persisted in `data/user_habits.json`.
+- **Predictive Habit & Action Forecaster** — Uses habit transition matrices to predict your next anticipated desktop action (*"Action A -> Action B"*) and proactively offers macro skill automation when repetitive sequences are detected.
 - **Learning & Study Assistant (`LearningSkill`)** — Socratic concept explanations using the Feynman technique (`explain_concept`), interactive quiz generation (`generate_quiz`), and study note summarization (`summarize_study_notes`).
-- **Proactive Repetitive Action Macro Detector (`ProactiveEngine`)** — Monitors desktop action history and proactively offers macro skill automation when repetitive manual sequences are detected.
 - **Interactive Safety Permission Modal (`SafetyPermissionModal.tsx`)** — Renders backend `permission_request` WebSocket events in the Electron desktop UI with interactive Approve/Deny buttons.
-- **"What JARVIS is Seeing" Visualizer (`LivePerceptionVisualizer.tsx`)** — Real-time scene graph panel rendering active window, foreground PID, connected monitors, Win32 UIA control tree, buttons, textboxes, and form fields.
+- **"What JARVIS is Seeing" Visualizer (`LivePerceptionVisualizer.tsx`)** — Real-time scene graph panel rendering active window, foreground PID, connected monitors, Win32 UIA control tree, and Workspace Intelligence habit metrics.
 
 ### 🖥️ Computer Control
 - Open & close applications

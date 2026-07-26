@@ -123,6 +123,7 @@ The architecture is split into a **React + Electron** desktop client (frontend),
 
 ## 🔮 Upcoming & Future TODO Roadmap
 
-- [ ] **Phase 6.1: Offline Low-Latency LLM Quantization**: Quantize local Prash engine models to 4-bit GGUF for sub-100ms response times.
-- [ ] **Phase 6.2: Multi-Device P2P Sync**: Secure peer-to-peer WebRTC mesh network between desktop and mobile devices.
-- [ ] **Phase 6.3: Autonomous Macro Learning**: Dynamic learning and recording of repetitive desktop tasks into automated execution pipelines.
+- [x] **Workspace Intelligence & Habit Forecaster**: Tracking project context, goals, workflows, and habit predictions (`WorkspaceIntelligenceService`).
+- [ ] **Offline Low-Latency LLM Quantization**: Quantize local Prash engine models to 4-bit GGUF for sub-100ms response times.
+- [ ] **Multi-Device P2P Sync**: Secure peer-to-peer WebRTC mesh network between desktop and mobile devices.
+- [ ] **Autonomous Macro Learning**: Dynamic learning and recording of repetitive desktop tasks into automated execution pipelines.

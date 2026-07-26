@@ -239,6 +239,16 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"✗ UIAEngine service failed: {e}")
 
+    # Workspace Intelligence Service
+    try:
+        from backend.services.workspace_intelligence import WorkspaceIntelligenceService
+        ws_intel = WorkspaceIntelligenceService()
+        app.state.workspace_intelligence = ws_intel
+        ServiceManager.register_instance("workspace_intelligence", ws_intel)
+        logger.info("✓ WorkspaceIntelligenceService initialized (Project, Goal & Habit Engine Active)")
+    except Exception as e:
+        logger.error(f"✗ WorkspaceIntelligenceService failed: {e}")
+
     # Screen Service
     screen_service = None
     try:

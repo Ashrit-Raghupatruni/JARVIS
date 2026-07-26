@@ -44,8 +44,9 @@ gantt
     Multi Agent Orchestration and Sub Agent Delegation :active, t7_1, 2026-07-25, 5d
     Long Horizon Task Continuity and Context Compression :t7_2, 2026-07-30, 5d
     section Predictive Intelligence
-    Habit Learning and Behavioral Pattern Mining :t8_1, 2026-08-04, 5d
-    Ambient Intelligence and Presence Attention Tracking :t8_2, 2026-08-09, 5d
+    Habit Learning and Behavioral Pattern Mining :done, t8_1, 2026-07-25, 1d
+    Workspace Intelligence and Context Forecasting :done, t8_2, 2026-07-25, 1d
+    Ambient Intelligence and Presence Attention Tracking :t8_3, 2026-08-09, 5d
     section External Ecosystem
     Universal API Connector Framework and Token Vault :t9_1, 2026-08-14, 5d
     Smart Home and IoT Bridge Matter HA Geofencing :t9_2, 2026-08-19, 5d

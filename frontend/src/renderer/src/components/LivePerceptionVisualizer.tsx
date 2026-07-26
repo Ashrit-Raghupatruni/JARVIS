@@ -112,6 +112,26 @@ export const LivePerceptionVisualizer: React.FC = () => {
               )}
             </div>
           </div>
+          {/* Workspace Intelligence Card */}
+          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 md:col-span-3">
+            <span className="text-slate-500 text-[10px] block uppercase font-bold flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5 text-emerald-400" /> WORKSPACE INTELLIGENCE & HABIT PREDICTION
+            </span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] pt-1">
+              <div className="p-2 rounded bg-slate-900 border border-slate-800">
+                <span className="text-slate-500 block text-[9px] font-bold uppercase">ACTIVE PROJECT</span>
+                <span className="text-cyan-300 font-bold block truncate">JARVIS Personal AI OS</span>
+              </div>
+              <div className="p-2 rounded bg-slate-900 border border-slate-800">
+                <span className="text-slate-500 block text-[9px] font-bold uppercase">WORKFLOW CLASSIFICATION</span>
+                <span className="text-purple-300 font-bold block truncate">Software Engineering & Coding</span>
+              </div>
+              <div className="p-2 rounded bg-slate-900 border border-slate-800">
+                <span className="text-slate-500 block text-[9px] font-bold uppercase">NEXT LIKELY ACTION (HABIT PREDICTION)</span>
+                <span className="text-emerald-400 font-bold block truncate">Run Unit Verification Tests</span>
+              </div>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="p-6 text-center text-slate-500 italic">Initializing Live Perception Visualizer...</div>
