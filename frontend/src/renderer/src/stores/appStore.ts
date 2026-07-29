@@ -21,6 +21,7 @@ interface AppState {
   commandHistory: CommandEntry[]
   screenPreview: string | null
   pushToTalkActive: boolean
+  is3DRotationEnabled: boolean
 
   /* ----- UI State ----- */
   showSettings: boolean
@@ -49,6 +50,7 @@ interface AppState {
   setThinkingText: (text: string) => void
 
   /* ----- UI Actions ----- */
+  toggle3DRotation: () => void
   toggleSettings: () => void
   setShowSettings: (show: boolean) => void
   toggleChat: () => void
@@ -103,6 +105,7 @@ export const useAppStore = create<AppState>((set) => ({
   commandHistory: [],
   screenPreview: null,
   pushToTalkActive: false,
+  is3DRotationEnabled: true,
   showSettings: false,
   showChat: true,
   showCommandHistory: false,
@@ -163,6 +166,7 @@ export const useAppStore = create<AppState>((set) => ({
   setThinkingText: (thinkingText) => set({ thinkingText }),
 
   /* ----- UI Actions ----- */
+  toggle3DRotation: () => set((state) => ({ is3DRotationEnabled: !state.is3DRotationEnabled })),
   toggleSettings: () => set((state) => ({ showSettings: !state.showSettings })),
 
   setShowSettings: (showSettings) => set({ showSettings }),

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useAppStore } from '../stores/appStore'
 import TitleBar from './TitleBar'
 import Orb from './Orb'
@@ -21,28 +21,25 @@ import TaskQueueManager from './TaskQueueManager'
 import LiveModeCard from './LiveModeCard'
 import { MobileCompanionCard } from './MobileCompanionCard'
 import { LiveDebugInspector } from './LiveDebugInspector'
-import { SafetyPermissionModal, PermissionRequestPayload } from './SafetyPermissionModal'
 import { LivePerceptionVisualizer } from './LivePerceptionVisualizer'
 import {
   Command,
-  Mic,
-  RefreshCw,
-  Shield,
+  ChevronDown,
+  Menu,
+  MessageSquare,
   Sliders,
-  Play,
   Trash2,
-  Power,
   Zap,
   ListOrdered,
   Activity,
   Globe,
-  SlidersHorizontal,
   Bot,
   LayoutGrid,
   Maximize2,
   X,
   Eye,
-  Terminal
+  Terminal,
+  GripVertical
 } from 'lucide-react'
 
 interface DashboardLayoutProps {
@@ -50,12 +47,70 @@ interface DashboardLayoutProps {
   onOrbClick: () => void
 }
 
+type NavTab = 'command' | 'history' | 'workflows' | 'queue' | 'telemetry' | 'live' | 'automation' | 'debug'
+
+const NAV_ITEMS: { id: NavTab; label: string; icon: React.ReactNode }[] = [
+  { id: 'command', label: 'Command Center', icon: <Bot className="w-4 h-4 text-cyan-400" /> },
+  { id: 'history', label: 'Chat History', icon: <MessageSquare className="w-4 h-4 text-cyan-400" /> },
+  { id: 'workflows', label: 'Workflow Studio', icon: <LayoutGrid className="w-4 h-4 text-cyan-400" /> },
+  { id: 'queue', label: 'Task Queue', icon: <ListOrdered className="w-4 h-4 text-cyan-400" /> },
+  { id: 'telemetry', label: 'Telemetry', icon: <Activity className="w-4 h-4 text-cyan-400" /> },
+  { id: 'live', label: 'Live Mode', icon: <Eye className="w-4 h-4 text-cyan-400" /> },
+  { id: 'automation', label: 'Automation', icon: <Globe className="w-4 h-4 text-cyan-400" /> },
+  { id: 'debug', label: 'Debug Inspector', icon: <Terminal className="w-4 h-4 text-cyan-400" /> }
+]
+
 export default function DashboardLayout({ onSendMessage, onOrbClick }: DashboardLayoutProps) {
   const { assistantState, showSettings, toggleSettings, clearMessages } = useAppStore()
   const [isPaletteOpen, setIsPaletteOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<'command' | 'workflows' | 'queue' | 'telemetry' | 'automation'>('command')
+  const [activeTab, setActiveTab] = useState<NavTab>('command')
+  const [isNavOpen, setIsNavOpen] = useState(false)
 
-  // Responsive compact view check: if window is resized smaller (width < 900 or height < 600), show ONLY the central Orb
+  // Resizable 70/30 panel split ratio (default 0.70, persisted in localStorage)
+  const [splitRatio, setSplitRatio] = useState<number>(() => {
+    const saved = localStorage.getItem('jarvis_split_ratio')
+    return saved ? Math.min(0.8, Math.max(0.2, parseFloat(saved))) : 0.70
+  })
+
+  const [isDragging, setIsDragging] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Drag handler for panel resizing
+  const handleMouseDown = useCallback(() => {
+    setIsDragging(true)
+  }, [])
+
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDragging || !containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      const offset = e.clientX - rect.left
+      const newRatio = Math.min(0.85, Math.max(0.15, offset / rect.width))
+      setSplitRatio(newRatio)
+      localStorage.setItem('jarvis_split_ratio', newRatio.toString())
+    },
+    [isDragging]
+  )
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false)
+  }, [])
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+    } else {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp])
+
+  // Responsive compact view check
   const [isCompactView, setIsCompactView] = useState<boolean>(() => {
     return window.innerWidth < 900 || window.innerHeight < 600
   })
@@ -99,16 +154,12 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
     }
   }
 
-  // ── COMPACT RESIZED MODE (Hides everything except central 3D Orb) ─────
+  const activeNavItem = NAV_ITEMS.find((item) => item.id === activeTab) || NAV_ITEMS[0]
+
+  // ── COMPACT RESIZED MODE ────────────────────────────────────────────────
   if (isCompactView) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#050811] text-[#e1f5fe] relative overflow-hidden select-none">
-        {/* Background radial glow */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full opacity-20 blur-[100px] bg-[radial-gradient(circle,#00e5ff_0%,transparent_70%)]" />
-        </div>
-
-        {/* Draggable minimal top header bar */}
         <div
           className="absolute top-0 left-0 right-0 h-9 z-50 flex items-center justify-between px-3 bg-slate-950/40 backdrop-blur-md border-b border-cyan-500/10"
           style={{ WebkitAppRegion: 'drag' } as any}
@@ -124,7 +175,6 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
             <button
               onClick={() => (window as any).electronAPI?.maximize()}
               className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 transition-all cursor-pointer shadow-[0_0_8px_rgba(0,229,255,0.3)]"
-              title="Expand to Full Dashboard"
             >
               <Maximize2 className="w-3 h-3" />
               <span>EXPAND</span>
@@ -138,7 +188,6 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
           </div>
         </div>
 
-        {/* Central 3D Orb focal centerpiece */}
         <div className="relative z-10 flex flex-col items-center justify-center p-2">
           <Orb onOrbClick={onOrbClick} />
           <div className="mt-1 w-full max-w-[320px]">
@@ -152,7 +201,7 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
   // ── FULLSCREEN / MAXIMIZED DASHBOARD MODE ──────────────────────────────
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden select-none relative bg-[#050811] text-[#e1f5fe]">
-      {/* Background radial atmosphere */}
+      {/* Background Radial Cyan Glow */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         <div
           className="absolute inset-0 opacity-[0.03]"
@@ -168,95 +217,43 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
       <TitleBar />
 
       {/* OS Command Bar Header Dock */}
-      <div className="relative z-20 px-4 py-2 bg-slate-950/80 border-b border-cyan-500/20 backdrop-blur-xl flex items-center justify-between gap-2 shadow-lg">
-        {/* Navigation Mode Selector Tabs */}
-        <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+      <div className="relative z-30 px-4 py-2 bg-slate-950/80 border-b border-cyan-500/20 backdrop-blur-xl flex items-center justify-between gap-2 shadow-lg">
+        {/* Consolidated Top Nav Dropdown Menu */}
+        <div className="relative">
           <button
-            onClick={() => setActiveTab('command')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
-              activeTab === 'command'
-                ? 'bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(0,229,255,0.4)]'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
+            onClick={() => setIsNavOpen((prev) => !prev)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-cyan-500/30 text-cyan-200 text-xs font-mono font-bold transition-all cursor-pointer shadow-[0_0_12px_rgba(0,229,255,0.2)]"
           >
-            <Bot className="w-3.5 h-3.5" />
-            <span>Command Center</span>
+            <Menu className="w-4 h-4 text-cyan-400" />
+            <span>☰ {activeNavItem.label}</span>
+            <ChevronDown className={`w-3.5 h-3.5 text-cyan-400 transition-transform duration-200 ${isNavOpen ? 'rotate-180' : ''}`} />
           </button>
 
-          <button
-            onClick={() => setActiveTab('workflows')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
-              activeTab === 'workflows'
-                ? 'bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(0,229,255,0.4)]'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <LayoutGrid className="w-3.5 h-3.5" />
-            <span>Workflow Studio</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('queue')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
-              activeTab === 'queue'
-                ? 'bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(0,229,255,0.4)]'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <ListOrdered className="w-3.5 h-3.5" />
-            <span>Task Queue</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('telemetry')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
-              activeTab === 'telemetry'
-                ? 'bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(0,229,255,0.4)]'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Activity className="w-3.5 h-3.5" />
-            <span>Telemetry</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('live')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
-              activeTab === 'live'
-                ? 'bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(0,229,255,0.4)]'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Eye className="w-3.5 h-3.5" />
-            <span>Live Mode</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('automation')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
-              activeTab === 'automation'
-                ? 'bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(0,229,255,0.4)]'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Globe className="w-3.5 h-3.5" />
-            <span>Automation</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('debug')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
-              activeTab === 'debug'
-                ? 'bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(0,229,255,0.4)]'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Terminal className="w-3.5 h-3.5" />
-            <span>Debug Inspector</span>
-          </button>
+          {/* Expanded Dropdown Menu items */}
+          {isNavOpen && (
+            <div className="absolute top-full left-0 mt-1.5 w-56 bg-slate-950/95 border border-cyan-500/40 rounded-xl shadow-[0_10px_30px_rgba(0,229,255,0.25)] backdrop-blur-2xl py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+              {NAV_ITEMS.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id)
+                    setIsNavOpen(false)
+                  }}
+                  className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-mono text-left transition-colors cursor-pointer ${
+                    activeTab === item.id
+                      ? 'bg-cyan-500/20 text-cyan-300 font-bold border-l-2 border-cyan-400'
+                      : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+                  }`}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Global Action Tools */}
+        {/* Global Right Action Tools */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
@@ -269,7 +266,7 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
                 : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Zap className="w-3.5 h-3.5" />
+            <Zap className="w-3.5 h-3.5 text-cyan-400" />
             <span>SERIOUS MODE</span>
           </button>
 
@@ -302,36 +299,64 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
 
       {/* Main View Port */}
       <div className="flex-1 relative z-10 p-3 overflow-hidden">
-        {/* VIEW 1: COMMAND CENTER (Clean Hero Orb + Live Workspace) */}
+        {/* VIEW 1: COMMAND CENTER (Default 70/30 Resizable Split) */}
         {activeTab === 'command' && (
-          <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
-            {/* Left AI Central Hero Orb Visualizer */}
-            <div className="lg:col-span-5 flex flex-col items-center justify-center p-4 rounded-xl border border-cyan-500/20 bg-slate-900/40 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+          <div ref={containerRef} className="h-full flex items-stretch gap-0 relative overflow-hidden">
+            {/* Left 3D Face / Orb Panel (Default ~70% width) */}
+            <div
+              style={{ width: `${splitRatio * 100}%` }}
+              className="flex flex-col items-center justify-center p-4 rounded-xl border border-cyan-500/20 bg-slate-900/40 backdrop-blur-xl shadow-2xl relative overflow-hidden min-w-[250px]"
+            >
               <Orb onOrbClick={onOrbClick} />
               <div className="mt-2 w-full max-w-[360px]">
                 <VoiceWave />
               </div>
             </div>
 
-            {/* Right Live Conversational Workspace */}
-            <div className="lg:col-span-7 flex flex-col h-full overflow-hidden gap-3">
+            {/* Draggable Vertical Splitter Bar */}
+            <div
+              onMouseDown={handleMouseDown}
+              className={`w-3 mx-1 flex items-center justify-center cursor-col-resize hover:bg-cyan-500/30 rounded transition-colors group ${
+                isDragging ? 'bg-cyan-500/40' : 'bg-transparent'
+              }`}
+              title="Drag to resize panels"
+            >
+              <GripVertical className="w-3.5 h-3.5 text-cyan-400/60 group-hover:text-cyan-400" />
+            </div>
+
+            {/* Right Chat & Task Panel (Default ~30% width) */}
+            <div
+              style={{ width: `${(1 - splitRatio) * 100}%` }}
+              className="flex flex-col h-full overflow-hidden gap-3 min-w-[250px]"
+            >
               <div className="flex-1 min-h-0">
                 <ChatPanel onSendMessage={onSendMessage} />
               </div>
-              <div className="h-44">
+              <div className="h-40">
                 <TaskProgress />
               </div>
             </div>
           </div>
         )}
 
-        {/* VIEW 2: VISUAL WORKFLOW STUDIO */}
+        {/* VIEW 2: CHAT HISTORY */}
+        {activeTab === 'history' && (
+          <div className="h-full rounded-xl border border-cyan-500/20 bg-slate-900/40 backdrop-blur-xl p-4 overflow-y-auto custom-scrollbar">
+            <h2 className="text-sm font-bold text-cyan-400 tracking-widest uppercase mb-3 flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              <span>SESSION CONVERSATION LOG</span>
+            </h2>
+            <CommandHistory />
+          </div>
+        )}
+
+        {/* VIEW 3: VISUAL WORKFLOW STUDIO */}
         {activeTab === 'workflows' && <VisualWorkflowBuilder />}
 
-        {/* VIEW 3: TASK QUEUE & SCHEDULER */}
+        {/* VIEW 4: TASK QUEUE & SCHEDULER */}
         {activeTab === 'queue' && <TaskQueueManager />}
 
-        {/* VIEW 4: LIVE MODE (AI SCREEN ASSISTANT) */}
+        {/* VIEW 5: LIVE MODE */}
         {activeTab === 'live' && (
           <div className="h-full overflow-y-auto space-y-4 custom-scrollbar">
             <LiveModeCard />
@@ -339,7 +364,7 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
           </div>
         )}
 
-        {/* VIEW 4: TELEMETRY & SYSTEM GAUGES */}
+        {/* VIEW 6: TELEMETRY & SYSTEM GAUGES */}
         {activeTab === 'telemetry' && (
           <div className="h-full overflow-y-auto space-y-3 custom-scrollbar">
             <MobileCompanionCard />
@@ -358,7 +383,7 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
           </div>
         )}
 
-        {/* VIEW 5: DESKTOP & BROWSER AUTOMATION */}
+        {/* VIEW 7: DESKTOP & BROWSER AUTOMATION */}
         {activeTab === 'automation' && (
           <div className="h-full overflow-y-auto space-y-3 custom-scrollbar">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -369,7 +394,7 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
           </div>
         )}
 
-        {/* VIEW 6: LIVE MODE DEBUG & VALIDATION INSPECTOR */}
+        {/* VIEW 8: DEBUG INSPECTOR */}
         {activeTab === 'debug' && <LiveDebugInspector />}
       </div>
 

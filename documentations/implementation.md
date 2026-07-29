@@ -1,6 +1,6 @@
 # 🏗️ Implementation Architecture & Component Breakdown
 
-This document provides a deep dive into the code structure, file layouts, startup execution sequence, and background services in JARVIS. **Last Updated:** July 23, 2026
+This document provides a deep dive into the code structure, file layouts, startup execution sequence, 3D Face Engine pipeline, and background services in JARVIS. **Last Updated:** July 29, 2026
 
 ---
 
@@ -35,8 +35,9 @@ JARVIS/
 │   │   ├── reflection_engine.py # Post-task self-evaluation & procedural strategy generator
 │   │   ├── self_healing.py      # Runtime fault detector, auto-recovery & fallback cascade
 │   │   ├── strategy_memory.py   # Procedural memory & dynamic confidence scoring
-│   │   ├── skills/
-│   │   │   └── skill_library.py # Dynamic skill synthesis & OS operational modes (Coding, Gaming, Work, Research)
+│   │   ├── system_autostart.py      # Windows Registry boot auto-start service
+│   │   ├── clipboard_intelligence.py# Quick-action text analysis (Translate, Summarize, Explain, Fix)
+│   │   ├── proactive_engine.py      # Proactive 2.0 with 20-min cooldown, session memory & safe topic watcher
 │   │   ├── mobile_auth.py    # Device pairing, 6-digit PIN, trusted_devices.json, JWT
 │   │   ├── mobile_gateway.py # Real-time telemetry, mobile approval gatekeeper, screen preview
 │   │   ├── mobile_bridge.py  # Telegram bot push gateway & fallback notification bridge
@@ -63,31 +64,44 @@ JARVIS/
 └── frontend/                # React + Electron Desktop Shell
     ├── src/main/index.ts    # BrowserWindow setup & uvicorn process spawner (--host 0.0.0.0)
     └── src/renderer/src/
-        ├── components/Orb.tsx # WebGL 3D Arc Reactor (Battery Saver visibility listener)
-        └── components/DashboardLayout.tsx # Adaptive Responsive Fullscreen vs Compact Orb HUD
+        ├── components/
+        │   ├── DashboardLayout.tsx # Adaptive Responsive Dashboard with 70/30 Resizable Panel Splitter & Header Dropdown
+        │   ├── TalkingFace3D.tsx   # 3D Talking Face Component with 3D ROTATION TOGGLE
+        │   ├── IdleHUD.tsx         # Circular Tech-Ring HUD with live digital clock & date
+        │   ├── ChatPanel.tsx       # AI Conversation Panel with Mic toggle & history timeline
+        │   └── Orb.tsx             # Visual Mode Switcher (AUTO / HUD / 3D FACE / REACTOR)
+        └── lib/
+            └── face-engine/        # Production Asset-Based 3D Face Engine
+                ├── types/          # faceEngine.types.ts
+                ├── configs/        # faceEngine.config.ts
+                ├── loaders/        # GltfHeadLoader.ts (GLTF 2.0 asset loader)
+                ├── animation/      # VisemeLipSync.ts & NaturalIdleAnimator.ts
+                ├── prompt-engine/  # PromptEngine.ts & PromptOptimizer.ts
+                ├── anatomy/        # FacialAnatomyBuilder.ts
+                ├── materials/      # SubsurfaceSkinShader.ts & PhysicalEyeShader.ts
+                ├── hair/           # ProceduralHairSystem.ts
+                ├── lighting/       # StudioLightingRig.ts (3-point studio lighting & Kelvin conversion)
+                ├── camera/         # PortraitCameraRig.ts (DSLR 85mm optical framing)
+                ├── validation/     # QualityValidator.ts
+                ├── renderers/      # FaceRenderer.ts (32-bit Float ACES Filmic pass)
+                └── tests/          # faceEngine.test.ts
 ```
 
 ---
 
-## 2. Service Manager Lifecycle & Initialization Sequence
+## 2. 3D Face Engine Architecture & Execution Loop
 
-During application startup in [`backend/main.py`](file:///c:/Users/ashri/JARVIS/backend/main.py), services initialize in strict dependency order:
-
-1. **Database & Storage Services**:
-   - `MemoryService` initializes SQLite database with `PRAGMA journal_mode=WAL;` and ChromaDB vector collections.
-   - `FileIndexerService` initializes SQLite FTS5 virtual tables at `data/file_index.db`.
-2. **Desktop & Automation Services**:
-   - `UIAEngine` binds to Win32 Accessibility APIs.
-   - `DesktopAutomationService` registers GUI actions.
-3. **Mobile Gateway & Security Services**:
-   - `MobileAuthService` loads trusted device registrations from `data/trusted_devices.json`.
-   - `MobileGatewayService` prepares system telemetry collectors & approval event queues.
-   - `MobileBridgeService` binds Telegram push gateway for remote alerts.
-4. **Agent & Voice Engines**:
-   - `STTService` pre-loads local faster-whisper model in background.
-   - `PlannerAgent` registers standard skill tools and UIA selectors.
-5. **FastAPI & WebSockets**:
-   - Exposes `/api/v1/mobile` REST routes and `/api/v1/mobile/ws` WebSockets bound to `0.0.0.0:8000`.
+1. **Asset Loading Pipeline (`GltfHeadLoader.ts`)**:
+   - Asynchronously loads pre-modeled 3D humanoid head assets (`head.glb`).
+   - Computes bounding box, auto-centers, and scales for 85mm portrait camera framing.
+   - Synchronously mounts an immediate head model on frame 0 to guarantee **zero blank screen delay**.
+2. **Viseme Speech Lip-Sync (`VisemeLipSync.ts`)**:
+   - Evaluates Web Audio API `AnalyserNode` amplitude output during TTS speech.
+   - Maps audio volume levels into speech visemes (`viseme_aa`, `viseme_E`, `viseme_O`, `viseme_FF`, `viseme_PP`, `jawOpen`).
+3. **Natural Idle Motion (`NaturalIdleAnimator.ts`)**:
+   - Executes natural chest/neck breathing oscillations (`rootGroup.position.y = Math.sin(elapsed * 1.8) * 0.02`).
+   - Drives micro-saccade eye gaze shifts and randomized double-blinking (`eyeBlinkLeft`, `eyeBlinkRight`).
+   - Evaluates `is3DRotationEnabled` state from Zustand `appStore`: smooth 360° Y-axis rotation when ON, frozen in position when OFF.
 
 ---
 

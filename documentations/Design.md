@@ -1,17 +1,17 @@
 # 🎨 Design System & Visual Guidelines
 
-JARVIS features a futuristic sci-fi Heads-Up Display (HUD) interface inspired by Iron Man's home terminal. The interface prioritizes deep, dark space blues, semi-transparent glassmorphic panels, neon cyan glowing states, and a dedicated **Android Mobile Companion** Material 3 dark aesthetic. **Last Updated:** July 22, 2026
+JARVIS features an iconic sci-fi Heads-Up Display (HUD) interface inspired by Iron Man's home terminal. The interface prioritizes deep space navy backgrounds, semi-transparent glassmorphic panels, neon cyan glowing states, an asset-based 3D face visualizer, and a dedicated **Android Mobile Companion** Material 3 dark aesthetic. **Last Updated:** July 29, 2026
 
 ---
 
-## 1. Color Palette
+## 1. Color Palette & Typography
 
 The theme values are configured globally in [index.css](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/index.css) and mirrored in the Android companion app ([`mobile_app/src/screens/`](file:///c:/Users/ashri/JARVIS/mobile_app/src/screens/)):
 
-### 1.1. Core Colors
+### 1.1. Core Colors & Materials
 * **Core Background (`--color-jarvis-bg`)**: `#070b13` — Deep space black-blue.
 * **Alternative Background (`--color-jarvis-bg-alt`)**: `#0a1120` — Slightly lighter navy for panel separation.
-* **Surface (`--color-jarvis-surface`)**: `rgba(10, 20, 38, 0.7)` — Glassmorphic background with alpha opacity.
+* **Surface (`--color-jarvis-surface`)**: `rgba(10, 20, 38, 0.75)` — Glassmorphic background with alpha opacity.
 * **Solid Surface (`--color-jarvis-surface-solid`)**: `#0c162b` — Non-translucent panel backing.
 * **Hover Surface (`--color-jarvis-surface-hover`)**: `rgba(15, 30, 56, 0.95)` — Highlight backing for interactive items.
 
@@ -24,24 +24,42 @@ The theme values are configured globally in [index.css](file:///c:/Users/ashri/J
 * **Success Indicator (`--color-jarvis-success`)**: `#00e676` — Neon green.
 * **Danger/Error Indicator (`--color-jarvis-danger`)**: `#ff3d00` — Vivid neon red-orange.
 
+### 1.3. Typography
+* **Primary Font**: `Inter` (-apple-system, BlinkMacSystemFont, Segoe UI).
+* **Monospace Font**: `JetBrains Mono` (used for code blocks, terminal outputs, and HUD badges).
+
 ---
 
-## 2. Desktop Responsive Window Modes
+## 2. 3D Face & HUD Visualizer Design Architecture
+
+1. **Idle Circular Tech HUD (`IdleHUD.tsx` & `idleHudScene.ts`)**:
+   - Digital HH:MM:SS clock with superscript seconds display.
+   - J.A.R.V.I.S. wordmark with tagline (*"JUST A RATHER VERY INTELLIGENT SYSTEM"*).
+   - Live date display and 80-notched rotating gear ring with ticking dot matrix LEDs.
+
+2. **Asset-Based 3D Face Engine (`TalkingFace3D.tsx` & `FaceRenderer.ts`)**:
+   - Pre-modeled 3D humanoid head asset loaded via `GLTFLoader`.
+   - Metallic-roughness PBR skin shading with smooth organic cranium curves and sculpted 3D ears.
+   - **3D ROTATION TOGGLE**: Interactive HUD button (`ROTATE: ON` / `ROTATE: OFF`) allowing users to freeze or resume continuous 360-degree rotation.
+   - Real-time TTS audio amplitude viseme lip-sync and procedural double-blinking.
+
+---
+
+## 3. Resizable Panel Splitter & Header Dropdown Navigation
+
+- **Header Command Dropdown (`☰ Command Center ▾`)**:
+  - Consolidates 8 workspace sections into a single header dropdown button.
+  - Includes **Chat History** session conversation log option.
+- **70/30 Resizable Panel Splitter**:
+  - Draggable vertical divider bar between the ~70% Left Visualizer Panel and ~30% Right Chat Panel.
+  - `localStorage` split ratio persistence (`jarvis_split_ratio`).
+
+---
+
+## 4. Desktop Responsive Window Modes
 
 1. **Fullscreen / Maximized Mode**:
-   - Displays full OS Command Center dashboard (TitleBar, Command Dock, 3D Arc Reactor, ChatPanel, TaskProgress timeline, Visual Workflow Studio, Task Queue, Telemetry, and Automation cards).
+   - Displays full OS Command Center dashboard (TitleBar, Command Dock, 3D Visualizer, ChatPanel, TaskProgress timeline, Visual Workflow Studio, Task Queue, Telemetry, and Automation cards).
 2. **Resized / Compact Floating HUD Mode**:
    - Automatically activates when window is unmaximized or resized (`width < 900px` or `height < 600px`).
    - Auto-hides panels and displays **ONLY the central 3D Orb** with a minimal draggable header and **EXPAND** toggle button.
-3. **Battery-Saver WebGL Canvas**:
-   - `visibilitychange` listener pauses WebGL rendering loops when window is hidden/minimized to save CPU and battery.
-
----
-
-## 3. Dedicated Android Mobile Companion UI Design System
-
-The Android companion application ([`mobile_app/`](file:///c:/Users/ashri/JARVIS/mobile_app/)) follows Material 3 dark guidelines:
-
-* **Theme**: `#050811` background, `#0e1726` surface cards, `#00e5ff` cyan accents.
-* **Security Gatekeeper Modal**: High-contrast orange/red borders with 1-click `[ ✅ APPROVE ]`, `[ ❌ DENY ]`, `[ 🛡️ ALWAYS ALLOW ]`, and `[ ⛔ ALWAYS DENY ]` touch targets.
-* **Real-time Telemetry HUD**: Material 3 stat cards for CPU %, RAM %, GPU %, battery status, and active desktop tasks.

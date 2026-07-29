@@ -2,6 +2,31 @@
 
 All notable changes and architectural upgrades to JARVIS are documented in this file.
 
+## [1.1.0-master-upgrade] - 2026-07-29
+
+### 💬 Persistent Chat History (Claude/GPT-Style)
+- **Database & CRUD Methods**: Implemented `get_conversation`, `rename_conversation`, `delete_conversation`, and `auto_generate_title` in `MemoryService` (`backend/services/memory.py`).
+- **REST API Endpoints**: Exposed `/api/conversations` (GET, GET by ID, PUT rename, DELETE) in `backend/api/routes.py`.
+- **React Sidebar UI**: Created `ConversationSidebar.tsx` rendering persistent session lists with inline title editing, deletion, and transcript restoration into `ChatPanel.tsx`.
+
+### 🌐 Live Mode Browser Automation Engine
+- **Perceive-Decide-Act-Observe Loop**: Built `run_browser_agent` and `perceive_page_state` in `BrowserService` (`backend/services/browser.py`) leveraging Playwright cleanly without external package dependencies.
+- **Tool Registry Integration**: Registered `browser_agent_task` tool in `ToolRegistry` for natural language multi-step web navigation.
+
+### ⚡ Proactive Desktop Intelligence Suite
+- **Instant Interrupt (Barge-In)**: Added `cancel_playback()` method to `TTSService` (`backend/services/tts.py`) for immediate audio stream cancellation on user speech.
+- **Exponential Backoff & Retry**: Implemented `exponential_backoff_retry` decorator in `backend/utils/retry.py` for cloud LLM and web search retries.
+- **Vision Cooldown Rate-Limiter**: Added 3.0-second rate-limiting timer to `VisionService`.
+- **Auto-Start on Boot**: Created `AutoStartService` (`backend/services/system_autostart.py`) managing Windows Registry (`Run`) startup keys.
+- **Clipboard Intelligence**: Built `ClipboardIntelligenceService` (`backend/services/clipboard_intelligence.py`) for quick-action text processing (Translate, Summarize, Explain, Fix).
+- **Assistant & User Customization**: Added dynamic runtime name customization (`update_custom_names`) to `ConfigurationManager` (`backend/services/config_manager.py`).
+- **Session Memory Ephemeral Continuity**: Implemented 1-2 sentence session summaries stored in `data/session_memory.json` on shutdown, mentioned once on boot and reset.
+- **Background Topic Monitoring**: Integrated topic watcher in `ProactiveEngine` with hardcoded safety guardrails blocking crypto/trading spam.
+- **Proactive 2.0 Cooldown**: Enforced a 20-minute interjection cooldown timer (`1200s`) in `ProactiveEngine`.
+
+### 👁️ High-Precision Structured OCR Fallback
+- **Structured Table & Bounding Box Extraction**: Added `extract_structured_ocr_tables` in `VisionService` supporting PP-StructureV3 deep vision, pytesseract, and PIL grid fallback for bounding box extraction.
+
 ---
 
 ## [1.0.0-upgrade] - 2026-07-26

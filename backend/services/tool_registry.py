@@ -138,6 +138,14 @@ class ToolRegistry:
             webbrowser.open(url)
             return f"Opened YouTube search for '{query}'."
 
+        async def _browser_agent_handler(task: str):
+            from backend.services.manager import ServiceManager
+            browser_svc = ServiceManager.get_instance("browser_service")
+            if not browser_svc:
+                from backend.services.browser import BrowserService
+                browser_svc = BrowserService()
+            return await browser_svc.run_browser_agent(task)
+
         async def _click_element_handler(element_name: str):
             from backend.services.uia_engine import UIAEngine
             uia = UIAEngine()
@@ -239,6 +247,18 @@ class ToolRegistry:
                 "required": ["query"]
             },
             handler=_yt_handler
+        )
+        self.register(
+            name="browser_agent_task",
+            description="Executes a multi-step natural language web browsing task using the perceive-decide-act-observe loop.",
+            category="web",
+            risk_level="medium",
+            parameters={
+                "type": "object",
+                "properties": {"task": {"type": "string"}},
+                "required": ["task"]
+            },
+            handler=_browser_agent_handler
         )
         async def _rag_handler(query: str):
             from backend.services.manager import ServiceManager

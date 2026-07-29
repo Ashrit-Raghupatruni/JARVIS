@@ -3,7 +3,7 @@
 ## 1. System Overview
 
 JARVIS is built as a split-architecture personal AI OS:
-1. **Frontend Desktop (Presentation Layer)**: An Electron-based shell wrapping a React 19 application with a 3D WebGL Arc Reactor Orb, Visual Workflow Studio, and Task Queue Manager.
+1. **Frontend Desktop (Presentation Layer)**: An Electron-based shell wrapping a React 19 application with a 3D WebGL asset-based Face Engine (`face-engine`), Idle Circular Tech HUD, Visual Workflow Studio, and Task Queue Manager.
 2. **Dedicated Mobile Companion App**: Native Android App wrapper ([`mobile_app/android/`](file:///c:/Users/ashri/JARVIS/mobile_app/android/)) hosting an 8-Tab Material 3 Dark-Theme Mission Control Dashboard ([`companion.html`](file:///c:/Users/ashri/JARVIS/mobile_app/android/app/src/main/assets/companion.html)) connecting via secure HTTPS REST API and WebSockets (`0.0.0.0:8000`).
 3. **Backend Engine (Application & Intelligence Layer)**: A FastAPI application running locally bound to `0.0.0.0:8000`. It manages speech services, multi-provider LLM fallback routing, native Win32 accessibility UI automation, SQLite FTS5 file search, and mobile security gatekeeping.
 
@@ -28,6 +28,11 @@ graph TD
         SceneGraph[UIASceneGraph - Win32 UIA Parser]
         SpatialEngine[SpatialEngine - Multi-Monitor Engine]
         FormAssistant[FormAssistant - Smart Form Parser]
+        BrowserAgent[BrowserAgent - Perceive-Decide-Act-Observe Loop]
+        AutoStart[AutoStartService - Windows Registry]
+        ClipboardIntel[ClipboardIntelligenceService]
+        Proactive2[ProactiveEngine - Session Memory & 20m Cooldown]
+        StructuredOCR[VisionService - High-Precision OCR & Tables]
         STT[Faster-Whisper STT]
         TTS[Edge-TTS Engine]
     end
@@ -62,26 +67,24 @@ graph TD
 
 ## 2. Technical Stack Details
 
-### 2.1. Mobile Gateway & Android Mission Control
+### 2.1. Asset-Based 3D Face Engine (`frontend/src/renderer/src/lib/face-engine/`)
+* **3D Asset Loading**: Three.js `GLTFLoader` asynchronously loading `head.glb` GLTF 2.0 binary head models into 32-bit floating point WebGL scenes (`FaceRenderer.ts`).
+* **Frame-0 Immediate Rendering**: Synchronous initial head construction ensuring zero blank canvas delay on component mount.
+* **Viseme Lip-Sync & Natural Idle Animator**: Audio amplitude-driven viseme mapping (`VisemeLipSync.ts`) and 60 FPS natural breathing/blinking animator (`NaturalIdleAnimator.ts`) with interactive `is3DRotationEnabled` toggle.
+* **PBR Shading & Optics**: Metallic-roughness PBR materials, ACES filmic tonemapping, Kelvin studio 3-point lighting rig, and DSLR 85mm portrait camera optics (`PortraitCameraRig.ts`).
+
+### 2.2. Mobile Gateway & Android Mission Control
 * **Mobile Router & WebSockets**: `mobile_router.py` & `mobile_ws.py` handling PIN pairing, device JWT authentication, live telemetry streaming, remote system commands (`shutdown`, `restart`, `lock`), screen preview thumbnails, and 8-tab Mission Control navigation.
 * **Mobile Security Gatekeeper**: `MobileGatewayService` pausing dangerous desktop operations (`asyncio.Event`) until resolved via mobile push notification.
 * **Android Shell Security**: Configured [`network_security_config.xml`](file:///c:/Users/ashri/JARVIS/mobile_app/android/app/src/main/res/xml/network_security_config.xml) and `setAllowUniversalAccessFromFileURLs(true)` in [`MainActivity.java`](file:///c:/Users/ashri/JARVIS/mobile_app/android/app/src/main/java/com/jarvis/companion/MainActivity.java#L28) allowing local cleartext HTTP/WebSocket connections on Wi-Fi network `0.0.0.0:8000`.
 
-### 2.2. Desktop UI Automation & Natural Language File Indexing
+### 2.3. Desktop UI Automation & Natural Language File Indexing
 * **Native Win32 Accessibility Automation**: `UIAEngine` wrapping Win32 accessibility controls to locate and interact with desktop applications resolution-independently.
 * **Sub-second File Indexer**: `FileIndexerService` employing SQLite Full-Text Search (FTS5) virtual tables for searching local workspace files.
 
-### 2.3. Database Concurrency & WebGL Battery Throttling
+### 2.4. Database Concurrency & WebGL Battery Throttling
 * **SQLite WAL Mode**: Enforced `PRAGMA journal_mode=WAL;` across all connections (`MemoryService`, `RAGService`, `FileIndexerService`).
 * **WebGL Battery Saver**: `visibilitychange` listener in `Orb.tsx` pauses WebGL rendering loops when window is obscured or minimized.
-
-### 2.4. 6: Next-Gen Upgrades & Live Mode Core (100% Completed)
-* **Offline GGML Speech & 4-Bit GGUF Quantization**: `backend/prash/engine.py` supports 4-bit GGUF quantization and offline GGML `faster-whisper` STT.
-* **Multi-Device Peer-to-Peer Mesh Syncing**: `SyncService` (`sync_service.py`) handles UDP broadcast discovery & Fernet encrypted P2P datachannel mesh syncing.
-* **Autonomous Workflow Learning & Macro Recording**: `AutonomousEngineService` (`autonomous_engine.py`) records desktop UI interactions and synthesizes Python macro scripts.
-* **Biometric Face & Voice Speaker Verification**: `VoiceIntelligenceService` (`voice_intelligence.py`) provides local speaker embedding identification (`verify_speaker_biometrics`) and facial recognition camera login (`verify_face_biometrics`).
-* **Edge RAG Knowledge Graph Visualizer**: `HybridMemorySystem` (`hybrid_memory_system.py`) exports NetworkX 3D Knowledge Graph representation of episodic, semantic, and working memories.
-* **Dedicated Live Mode Core**: `LiveModeEngine` (`backend/services/live_mode/`) runs a low-latency 1.0 FPS perception loop emitting structured `LiveContextFrame`s with workflow classification, next-step guidance, smart form auto-fill with pre-submission validation, and multi-monitor workspace layout restorer.
 
 ---
 

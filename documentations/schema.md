@@ -1,6 +1,6 @@
-# 🗄️ Database, Mobile Schemas & WebSocket Message Protocols
+# 🗄️ Database, Mobile Schemas, Zustand Store & 3D Morph Schemas
 
-This document provides a comprehensive technical layout of the relational database schemas, SQLite FTS5 virtual tables, mobile data models, and WebSocket message formats. **Last Updated:** July 22, 2026
+This document provides a technical layout of relational database schemas, Zustand app store state, 3D face morph targets, and mobile data models. **Last Updated:** July 29, 2026
 
 ---
 
@@ -23,6 +23,14 @@ erDiagram
         string role
         text content
         datetime timestamp
+    }
+    SESSION_MEMORY_JSON {
+        string summary
+        float timestamp
+        string formatted_date
+    }
+    MONITORED_TOPICS_JSON {
+        array monitored_topics
     }
     TRUSTED_DEVICES {
         string device_id PK
@@ -55,25 +63,68 @@ erDiagram
 
 ---
 
-## 2. Trusted Device Store Layout (`data/trusted_devices.json`)
+## 2. Zustand App Store State Schema (`appStore.ts`)
 
-```json
-{
-  "dev_android_uuid_12345": {
-    "device_id": "dev_android_uuid_12345",
-    "friendly_name": "Ashrit's Android Phone",
-    "registered_at": 1784732000.0,
-    "last_active": 1784732500.0,
-    "trusted": true
-  }
+```typescript
+interface AppState {
+  assistantState: 'idle' | 'listening' | 'thinking' | 'speaking' | 'processing'
+  isConnected: boolean
+  messages: ConversationMessage[]
+  currentTranscript: string
+  isListening: boolean
+  isSpeaking: boolean
+  audioLevel: number // 0.0 to 1.0 (TTS amplitude level)
+  currentTask: CurrentTask | null
+  commandHistory: CommandEntry[]
+  screenPreview: string | null
+  pushToTalkActive: boolean
+  is3DRotationEnabled: boolean // Toggles 360-degree Y-axis continuous rotation ON/OFF
+  showSettings: boolean
+  showChat: boolean
+  showCommandHistory: boolean
+  isWindowMaximized: boolean
+  thinkingText: string
+  settings: Settings
 }
 ```
 
 ---
 
-## 3. Mobile Companion Pydantic Schemas (`backend/models/mobile_schemas.py`)
+## 3. 3D Face Engine Morph Target & Viseme Schemas
 
-### 3.1. System Telemetry (`SystemTelemetry`)
+### 3.1. Speech Viseme Weights (`VisemeWeights`)
+```typescript
+interface VisemeWeights {
+  viseme_sil: number // Silence (0.0 to 1.0)
+  viseme_PP: number  // Bilabial (p, b, m)
+  viseme_FF: number  // Labiodental (f, v)
+  viseme_TH: number  // Dental (th)
+  viseme_DD: number  // Alveolar (d, t, n)
+  viseme_kk: number  // Velar (k, g)
+  viseme_aa: number  // Open Vowel (a)
+  viseme_E: number   // Front Vowel (e)
+  viseme_O: number   // Rounded Vowel (o)
+  jawOpen: number    // Mandible Open (0.0 to 1.0)
+}
+```
+
+### 3.2. FACS Morph Target Dictionary (`morphTargetDictionary`)
+```json
+{
+  "jawOpen": 0,
+  "viseme_aa": 0,
+  "mouthSmile": 1,
+  "eyeBlinkLeft": 2,
+  "eyeBlinkRight": 2,
+  "browInnerUp": 3
+}
+```
+
+---
+
+## 4. Mobile Companion Pydantic Schemas (`backend/models/mobile_schemas.py`)
+
+### 4.1. System Telemetry (`SystemTelemetry`)
 ```json
 {
   "timestamp": 1784732500.0,
@@ -92,7 +143,7 @@ erDiagram
 }
 ```
 
-### 3.2. Mobile Security Approval Request (`MobileApprovalRequest`)
+### 4.2. Mobile Security Approval Request (`MobileApprovalRequest`)
 ```json
 {
   "approval_id": "appr_1784732500123",
@@ -101,29 +152,5 @@ erDiagram
   "dangerous_target": "C:\\Users\\ashri\\JARVIS\\data",
   "timestamp": 1784732500.123,
   "timeout_seconds": 30.0
-}
-```
-
----
-
-## 4. Mobile Companion WebSocket Stream (`/api/v1/mobile/ws/stream`)
-
-### Telemetry Broadcast Frame (Server ➔ Mobile)
-```json
-{
-  "type": "telemetry",
-  "data": {
-    "cpu_percent": 12.5,
-    "ram_percent": 45.0,
-    "active_task": "System Idle"
-  }
-}
-```
-
-### Chat Query Frame (Mobile ➔ Server)
-```json
-{
-  "type": "chat",
-  "text": "Summarize my active task queue, JARVIS."
 }
 ```

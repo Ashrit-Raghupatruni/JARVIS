@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 from torch.utils.data import DataLoader, Dataset
 
 from loguru import logger
@@ -78,7 +78,8 @@ class PrashTrainer:
     Supports:
         • Loading JSONL instruction/response pairs
         • Tokenizing with the custom PrashTokenizer
-        • AdamW + cosine-annealing schedule
+        • AdamW + Linear Warmup + Cosine-Annealing schedule
+        • Label smoothing (epsilon=0.1)
         • Gradient clipping, periodic checkpointing
         • Training on JARVIS conversation history (SQLite)
 
@@ -98,24 +99,15 @@ class PrashTrainer:
         device: str = "cpu",
         data_dir: Optional[str] = None,
     ) -> None:
-        self.model = model
+        self.model = model.to(device)
         self.tokenizer = tokenizer
         self.config = config
         self.device = torch.device(device)
-        self.model.to(self.device)
-
-        # Resolve data directory for checkpoints / logs
-        if data_dir is not None:
-            self.data_dir = Path(data_dir)
-        else:
-            self.data_dir = Path(__file__).resolve().parent.parent.parent / "data" / "prash"
+        self.data_dir = Path(data_dir) if data_dir else Path("data/prash")
         self.data_dir.mkdir(parents=True, exist_ok=True)
 
-        # Will be initialised in train()
         self.optimizer: Optional[AdamW] = None
-        self.scheduler: Optional[CosineAnnealingLR] = None
-
-        # Running training history
+        self.scheduler: Optional[Any] = None
         self.history: List[Dict[str, Any]] = []
 
         logger.info(
@@ -128,7 +120,7 @@ class PrashTrainer:
 
     # ── Data helpers ─────────────────────────────────────────────────────
 
-    def _load_jsonl(self, path: str) -> List[Dict[str, str]]:
+    def _load_jsonl(self, filepath: Path | str) -> List[Dict[str, str]]:
         """
         Load instruction/response pairs from a JSONL file.
 
@@ -145,7 +137,7 @@ class PrashTrainer:
         Raises:
             FileNotFoundError: If *path* does not exist.
         """
-        filepath = Path(path)
+        filepath = Path(filepath)
         if not filepath.exists():
             raise FileNotFoundError(f"Training data not found: {filepath}")
 
@@ -300,12 +292,12 @@ class PrashTrainer:
 
         checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
 
-        # Restore model weights
-        self.model.load_state_dict(checkpoint["model_state_dict"])
+        state_dict = checkpoint["model_state_dict"] if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint else checkpoint
+        self.model.load_state_dict(state_dict)
         logger.info("Model weights restored from {}", checkpoint_path.name)
 
         # Restore optimizer state if available and optimizer is initialised
-        if self.optimizer and checkpoint.get("optimizer_state_dict"):
+        if self.optimizer and isinstance(checkpoint, dict) and checkpoint.get("optimizer_state_dict"):
             try:
                 self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
                 logger.info("Optimizer state restored")
@@ -313,10 +305,10 @@ class PrashTrainer:
                 logger.warning("Could not restore optimizer state: {}", exc)
 
         metadata = {
-            "epoch": checkpoint.get("epoch", 0),
-            "loss": checkpoint.get("loss", float("inf")),
-            "config": checkpoint.get("config", {}),
-            "timestamp": checkpoint.get("timestamp", 0.0),
+            "epoch": checkpoint.get("epoch", 0) if isinstance(checkpoint, dict) else 0,
+            "loss": checkpoint.get("loss", float("inf")) if isinstance(checkpoint, dict) else float("inf"),
+            "config": checkpoint.get("config", {}) if isinstance(checkpoint, dict) else {},
+            "timestamp": checkpoint.get("timestamp", 0.0) if isinstance(checkpoint, dict) else 0.0,
         }
         logger.info(
             "Checkpoint loaded — epoch={}, loss={:.4f}",
@@ -347,27 +339,7 @@ class PrashTrainer:
         lr: float = 3e-4,
         save_every: int = 2,
     ) -> Dict[str, Any]:
-        """
-        Run the full training loop on JSONL instruction/response data.
-
-        Pipeline:
-            1. Load JSONL → list of instruction/response dicts
-            2. Tokenize into padded ``<BOS> inst <SEP> resp <EOS>`` tensors
-            3. Wrap in a ``DataLoader``
-            4. Train with AdamW + cosine-annealing LR + gradient clipping
-            5. Checkpoint every *save_every* epochs
-            6. Write ``training_log.json`` at the end
-
-        Args:
-            data_path:  Path to the JSONL training file.
-            epochs:     Number of full passes over the dataset.
-            batch_size: Mini-batch size.
-            lr:         Peak learning rate for AdamW.
-            save_every: Save a checkpoint every N epochs.
-
-        Returns:
-            Summary dict with final loss, total steps, and epochs completed.
-        """
+        """Run full training loop with Linear Warmup + Cosine Annealing & Label Smoothing."""
         logger.info("═══ Training started ═══")
         logger.info(
             "epochs={}, batch_size={}, lr={}, save_every={}",
@@ -404,18 +376,25 @@ class PrashTrainer:
             len(dataloader),
         )
 
-        # 4. Optimizer + scheduler
+        # 4. Optimizer + Chained Warmup & Cosine Scheduler
         self.optimizer = AdamW(self.model.parameters(), lr=lr, weight_decay=0.01)
         total_steps = len(dataloader) * epochs
-        self.scheduler = CosineAnnealingLR(
+
+        warmup_steps = max(int(total_steps * 0.05), 2)
+        cosine_steps = max(total_steps - warmup_steps, 1)
+
+        warmup_scheduler = LinearLR(self.optimizer, start_factor=0.1, end_factor=1.0, total_iters=warmup_steps)
+        cosine_scheduler = CosineAnnealingLR(self.optimizer, T_max=cosine_steps, eta_min=lr * 0.1)
+
+        self.scheduler = SequentialLR(
             self.optimizer,
-            T_max=max(total_steps, 1),
-            eta_min=lr * 0.1,
+            schedulers=[warmup_scheduler, cosine_scheduler],
+            milestones=[warmup_steps]
         )
 
-        # Loss function — ignore PAD tokens
+        # Loss function with Label Smoothing (epsilon=0.1)
         pad_id: int = getattr(self.tokenizer, "pad_id", 0)
-        criterion = nn.CrossEntropyLoss(ignore_index=pad_id)
+        criterion = nn.CrossEntropyLoss(ignore_index=pad_id, label_smoothing=0.1)
 
         # 5. Training loop
         self.model.train()

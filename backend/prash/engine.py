@@ -180,9 +180,14 @@ class PrashEngine:
                         map_location=self.device,
                         weights_only=False,
                     )
-                    self.model.load_state_dict(checkpoint["model_state_dict"])
-                    epoch = checkpoint.get("epoch", "?")
-                    loss = checkpoint.get("loss", "?")
+                    state_dict = (
+                        checkpoint["model_state_dict"]
+                        if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint
+                        else checkpoint
+                    )
+                    self.model.load_state_dict(state_dict)
+                    epoch = checkpoint.get("epoch", "?") if isinstance(checkpoint, dict) else "?"
+                    loss = checkpoint.get("loss", "?") if isinstance(checkpoint, dict) else "?"
                     logger.info(
                         "Weights loaded from {} (epoch={}, loss={})",
                         checkpoint_path.name,
@@ -579,8 +584,8 @@ class PrashEngine:
             "available": self._available,
             "loaded": self._loaded,
             "device": str(self.device),
-            "quantization": "4-bit GGUF Low-Latency GGML Enabled",
-            "offline_stt": "Whisper.cpp GGML Offline Engine Active",
+            "quantization": "4-Bit Quantized PyTorch Engine (PrashTransformer)",
+            "offline_stt": "faster-whisper Local Speech Engine",
             "vocab_size": vocab_size,
             "n_params": n_params,
             "n_layers": n_layers,

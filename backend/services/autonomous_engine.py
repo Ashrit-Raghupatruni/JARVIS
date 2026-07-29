@@ -72,11 +72,17 @@ class AutonomousEngineService:
         """Start recording UI automation events for a macro."""
         self._is_recording = True
         self._active_macro_name = macro_name
-        self._recorded_events = [
-            {"event": "start", "time": time.time(), "macro": macro_name}
-        ]
+        self._recorded_events = []
         logger.info("🎬 Started macro recording for '{}'", macro_name)
         return {"status": "recording_started", "macro_name": macro_name}
+
+    def record_macro_event(self, event_dict: Dict[str, Any]) -> None:
+        """Record an event into the active macro event log."""
+        if not getattr(self, "_is_recording", False):
+            return
+        if not hasattr(self, "_recorded_events"):
+            self._recorded_events = []
+        self._recorded_events.append(event_dict)
 
     def stop_macro_recording(self) -> Dict[str, Any]:
         """Stop active macro recording and synthesize executable Python script."""
@@ -84,7 +90,49 @@ class AutonomousEngineService:
         name = getattr(self, "_active_macro_name", "user_macro")
         events = getattr(self, "_recorded_events", [])
         
-        script_content = f"\"\"\"\nJARVIS Synthesized Macro: {name}\n\"\"\"\nimport time\nimport pyautogui\n\n# Synthesized steps\nprint('Executing macro {name}...')\ntime.sleep(0.5)\nprint('Macro {name} complete.')\n"
+        lines = [
+            '"""',
+            f'JARVIS Synthesized Macro: {name}',
+            f'Generated at: {time.strftime("%Y-%m-%d %H:%M:%S")}',
+            '"""',
+            'import time',
+            'import pyautogui',
+            'pyautogui.FAILSAFE = True',
+            f'print("Executing synthesized macro \'{name}\'...")',
+            ''
+        ]
+        
+        if not events:
+            lines.append('# No recorded events found. Default delay.')
+            lines.append('time.sleep(0.5)')
+        else:
+            for idx, evt in enumerate(events):
+                evt_type = evt.get("type") or evt.get("action") or "click"
+                x = evt.get("x")
+                y = evt.get("y")
+                text = evt.get("text")
+                keys = evt.get("keys")
+                delay = evt.get("delay", 0.5)
+
+                if evt_type in ("click", "click_mouse"):
+                    if x is not None and y is not None:
+                        lines.append(f'pyautogui.click({x}, {y})')
+                    else:
+                        lines.append('pyautogui.click()')
+                elif evt_type in ("type", "type_text"):
+                    if text:
+                        lines.append(f'pyautogui.typewrite({json.dumps(text)})')
+                elif evt_type in ("hotkey", "press_hotkey"):
+                    if keys:
+                        keys_args = ", ".join(f'"{k.strip()}"' for k in keys.split("+"))
+                        lines.append(f'pyautogui.hotkey({keys_args})')
+                else:
+                    lines.append('time.sleep(0.2)')
+                
+                lines.append(f'time.sleep({delay})')
+
+        lines.append(f'print("Macro \'{name}\' completed successfully.")')
+        script_content = "\n".join(lines) + "\n"
         
         macro_path = self.data_dir / f"macro_{name}.py"
         try:

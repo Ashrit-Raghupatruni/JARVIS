@@ -48,14 +48,23 @@ class ConfigurationManager:
             if changes:
                 self._settings = new_settings
                 # Explicitly override the global cache as well
-                import backend.config
-                backend.config._settings = new_settings
-                logger.info(f"✓ Configuration hot-reloaded: {list(changes.keys())}")
-                await self._event_bus.publish("config.updated", changes)
+                from backend.config import _settings_instance
+                import backend.config as cfg
+                cfg._settings_instance = new_settings
+                
+                await self._event_bus.publish("config_reloaded", {"changes": changes})
+                logger.info(f"Configuration hot-reloaded successfully with {len(changes)} field changes.")
                 return True
-            else:
-                logger.info("No configuration changes detected during reload")
-                return False
         except Exception as e:
-            logger.error(f"✗ Failed to reload settings: {e}")
-            return False
+            logger.error(f"Failed to hot-reload configuration: {e}")
+        return False
+
+    def update_custom_names(self, assistant_name: str, user_name: str) -> dict:
+        """Dynamically update assistant and user preferred names at runtime."""
+        a_name = assistant_name.strip() or "JARVIS"
+        u_name = user_name.strip() or "User"
+        
+        setattr(self._settings, "ASSISTANT_NAME", a_name)
+        setattr(self._settings, "USER_PREFERRED_NAME", u_name)
+        logger.info(f"Updated Assistant Customization: Assistant='{a_name}', User='{u_name}'")
+        return {"status": "ok", "assistant_name": a_name, "user_preferred_name": u_name}

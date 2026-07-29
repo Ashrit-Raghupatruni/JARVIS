@@ -112,6 +112,10 @@ class TTSService:
         self._cancel_flag = True
         logger.info("TTS cancellation requested")
 
+    def cancel_playback(self) -> None:
+        """Alias for instant interrupt / barge-in playback cancellation."""
+        self.cancel()
+
     @property
     def is_cancelled(self) -> bool:
         """Whether a cancellation has been requested."""

@@ -266,7 +266,23 @@ class MemoryService:
             except Exception as e:
                 logger.error(f"Failed to store conversation in ChromaDB: {e}")
 
-    async def get_recent_conversations(self, limit: int = 10) -> list[dict]:
+    async def create_conversation(self, title: str = "New Session") -> Optional[int]:
+        """Explicitly create a new conversation session in SQLite."""
+        if not self._session_factory:
+            return None
+        try:
+            from backend.models.database import Conversation
+            async with self._session_factory() as session:
+                conv = Conversation(title=title)
+                session.add(conv)
+                await session.commit()
+                await session.refresh(conv)
+                return conv.id
+        except Exception as e:
+            logger.error(f"Failed to create conversation session: {e}")
+            return None
+
+    async def get_recent_conversations(self, limit: int = 20) -> list[dict]:
         """Get recent conversations from SQLite."""
         if not self._session_factory:
             return []
@@ -285,12 +301,102 @@ class MemoryService:
                         "id": str(c.id),
                         "title": c.title,
                         "created_at": c.created_at.isoformat() if c.created_at else None,
+                        "updated_at": c.updated_at.isoformat() if c.updated_at else None,
+                        "message_count": len(c.messages) if c.messages else 0
                     }
                     for c in conversations
                 ]
         except Exception as e:
             logger.error(f"Failed to get recent conversations: {e}")
             return []
+
+    async def get_conversation(self, conv_id: int) -> Optional[dict]:
+        """Get a single conversation with full message transcript by ID."""
+        if not self._session_factory:
+            return None
+
+        try:
+            from sqlalchemy import select
+            async with self._session_factory() as session:
+                result = await session.execute(
+                    select(Conversation).where(Conversation.id == conv_id)
+                )
+                c = result.scalar_one_or_none()
+                if not c:
+                    return None
+                return {
+                    "id": str(c.id),
+                    "title": c.title,
+                    "created_at": c.created_at.isoformat() if c.created_at else None,
+                    "updated_at": c.updated_at.isoformat() if c.updated_at else None,
+                    "messages": [
+                        {
+                            "id": m.id,
+                            "role": m.role,
+                            "content": m.content,
+                            "timestamp": m.timestamp.isoformat() if m.timestamp else None,
+                        }
+                        for m in (c.messages or [])
+                    ]
+                }
+        except Exception as e:
+            logger.error(f"Failed to get conversation {conv_id}: {e}")
+            return None
+
+    async def rename_conversation(self, conv_id: int, new_title: str) -> bool:
+        """Rename a conversation in SQLite."""
+        if not self._session_factory:
+            return False
+
+        try:
+            from sqlalchemy import select
+            async with self._session_factory() as session:
+                result = await session.execute(
+                    select(Conversation).where(Conversation.id == conv_id)
+                )
+                c = result.scalar_one_or_none()
+                if not c:
+                    return False
+                c.title = new_title.strip()
+                await session.commit()
+                logger.info(f"Renamed conversation {conv_id} to '{new_title.strip()}'")
+                return True
+        except Exception as e:
+            logger.error(f"Failed to rename conversation {conv_id}: {e}")
+            return False
+
+    async def delete_conversation(self, conv_id: int) -> bool:
+        """Delete a conversation and its messages from SQLite."""
+        if not self._session_factory:
+            return False
+
+        try:
+            from sqlalchemy import select
+            async with self._session_factory() as session:
+                result = await session.execute(
+                    select(Conversation).where(Conversation.id == conv_id)
+                )
+                c = result.scalar_one_or_none()
+                if not c:
+                    return False
+                await session.delete(c)
+                await session.commit()
+                logger.info(f"Deleted conversation {conv_id}")
+                return True
+        except Exception as e:
+            logger.error(f"Failed to delete conversation {conv_id}: {e}")
+            return False
+
+    @staticmethod
+    def auto_generate_title(first_msg: str) -> str:
+        """Auto-generate a 3-6 word title from initial user message."""
+        clean = first_msg.strip()
+        if not clean:
+            return "New Conversation"
+        words = clean.split()
+        if len(words) <= 6:
+            return clean.capitalize()
+        return " ".join(words[:6]).capitalize() + "..."
 
     async def log_command(self, command: str, result: str, status: str = "success") -> None:
         """Log a command execution to SQLite."""

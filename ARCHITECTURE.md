@@ -59,7 +59,23 @@ Every user command undergoes a 10-stage execution pipeline:
 9. **Reflection**: Evaluate execution outcome (`ReflectionEngine`).
 10. **Experience Recording**: Log trace to SQLite-WAL (`experiences.db`) and update `StrategyMemory`.
 
-### 4. Interactive Safety Interlocks & Mobile Gatekeeper
+### 4. Live Mode Browser Automation Engine
+- **Perceive-Decide-Act-Observe Loop**: Native multi-step agent loop (`run_browser_agent` in `BrowserService`) combining Playwright DOM perception, interactive element indexing, LLM action decision, execution, and step observation without heavy third-party dependency bloat.
+- **Tool Integration**: Registered as `browser_agent_task` tool in `ToolRegistry`.
+
+### 5. Proactive Desktop Intelligence Suite & Proactive 2.0
+- **Instant Interrupt (Barge-In)**: Immediate audio cancellation (`cancel_playback`) on user voice speech.
+- **Exponential Backoff & Retry**: `@exponential_backoff_retry` decorator for cloud LLM and search calls in `backend/utils/retry.py`.
+- **Vision Cooldown & Auto-Start**: 3.0s vision rate-limiter in `VisionService` and Windows Registry startup management in `backend/services/system_autostart.py`.
+- **Clipboard Intelligence**: Quick-action text analysis (Translate, Summarize, Explain, Fix) in `backend/services/clipboard_intelligence.py`.
+- **Session Memory Continuity**: Ephemeral 1-2 sentence session summaries stored in `data/session_memory.json` on shutdown, mentioned once on startup and reset.
+- **Background Topic Monitoring & Content Safety**: Topic watcher in `ProactiveEngine` with hardcoded safety guardrails blocking crypto/trading spam.
+- **Proactive 2.0 Cooldown**: 20-minute interjection cooldown (`1200s`) for respectful, unobtrusive proactive desktop guidance.
+
+### 6. High-Precision Structured OCR Fallback
+- **Structured Layout & Bounding Boxes**: `extract_structured_ocr_tables` in `VisionService` with PP-StructureV3 deep vision, pytesseract, and PIL grid fallback for bounding box extraction.
+
+### 7. Interactive Safety Interlocks & Mobile Gatekeeper
 - **Destructive Command Guard**: Commands containing `del`, `rmdir`, `format`, `shutdown`, `reboot` require explicit confirmation.
 - **Desktop Exit Interlock**: Window close ('X') or application shutdown triggers a signed approval request via `MobileGatewayService` to the paired Android companion app and renders a desktop `SafetyPermissionModal.tsx`.
 

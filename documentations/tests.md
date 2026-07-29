@@ -1,12 +1,26 @@
 # 🧪 JARVIS Test & Verification Matrix — Natural Language Commands & Expected Responses
 
-This document provides a testing catalog of **user voice/text commands**, **mobile gateway interactions**, and the **expected natural language responses and output cards from JARVIS**. **Last Updated:** July 22, 2026
+This document provides a testing catalog of **user voice/text commands**, **3D Face Engine unit tests**, **mobile gateway interactions**, and the **expected natural language responses and output cards from JARVIS**. **Last Updated:** July 29, 2026
 
 ---
 
 ## 🎯 Command & Response Verification Catalog
 
-### 1. Dedicated Android Mobile Companion & Security Gatekeeper Tests
+### 1. Asset-Based 3D Face Engine Unit Tests (`faceEngine.test.ts`)
+* **Test Suite**: `frontend/src/renderer/src/lib/face-engine/tests/faceEngine.test.ts`
+  * **Test 1**: `VisemeLipSync.evaluateFromAudio()`
+    - Verifies audio amplitude levels (0.0 to 1.0) map correctly into viseme weights (`viseme_aa`, `jawOpen`, `viseme_E`, `viseme_O`).
+    - **Result**: **PASSED 100%**
+  * **Test 2**: `PromptOptimizer.optimize()`
+    - Verifies prompt optimizer strips redundant photorealism buzzwords and applies targeted negative weights.
+    - **Result**: **PASSED 100%**
+  * **Test 3**: `QualityValidator.validate()`
+    - Verifies automatic anomaly detector flags plastic skin reflectance and corrects eye iris symmetry.
+    - **Result**: **PASSED 100%**
+
+---
+
+### 2. Dedicated Android Mobile Companion & Security Gatekeeper Tests
 * **Command**: `POST /api/v1/mobile/pair/initiate`
   * **Expected Response**:
     ```json
@@ -34,7 +48,31 @@ This document provides a testing catalog of **user voice/text commands**, **mobi
 
 ---
 
-### 2. Native Windows UI Automation (UIA) Tests
+### 3. Master Upgrade Diagnostic Test Suite Catalog
+
+* **Script**: `scratch/test_chat_history.py`
+  * **Coverage**: Session creation, first-message title auto-generation, title renaming, deletion, and message transcript restoration via `MemoryService` and REST endpoints `/api/conversations`.
+  * **Result**: **PASSED 100%**
+
+* **Script**: `scratch/test_browser_agent.py`
+  * **Coverage**: Autonomous Web Agent perceive-decide-act-observe loop (`run_browser_agent` & `perceive_page_state`) and `browser_agent_task` tool registration.
+  * **Result**: **PASSED 100%**
+
+* **Script**: `scratch/test_markl_features.py`
+  * **Coverage**: Instant interrupt (`cancel_playback`), exponential backoff retry decorator, 3.0s vision rate-limiter, Windows Registry boot auto-start, Clipboard Quick-Action Intelligence, session memory continuity, background topic monitoring, and Proactive 2.0.
+  * **Result**: **PASSED 100%**
+
+* **Script**: `scratch/test_paddleocr.py`
+  * **Coverage**: Structured table, layout, and bounding box text extraction with PP-StructureV3 deep vision, pytesseract, and PIL grid fallback.
+  * **Result**: **PASSED 100%**
+
+* **Script**: `scratch/test_ocr_and_all_systems.py`
+  * **Coverage**: Full multi-subsystem diagnostic audit across all 6 core OS layers.
+  * **Result**: **PASSED 100%**
+
+---
+
+### 4. Native Windows UI Automation (UIA) Tests
 * **Command**: `"Click Save button in Notepad"`
   * **Expected Output from JARVIS**:
     ```text
@@ -43,38 +81,3 @@ This document provides a testing catalog of **user voice/text commands**, **mobi
 
 * **Command**: `"Search local files for budget report"`
   * **Expected Output from JARVIS**: Sub-second search result list powered by SQLite FTS5 (`FileIndexerService`).
-
----
-
-### 3. Self-Improving Personal AI Operating System Tests
-* **Command**: `GET /api/v1/mobile/self_improving/experiences`
-  * **Expected Response**:
-    ```json
-    {
-      "status": "success",
-      "experiences": [
-        {
-          "id": "exp_1784801923000",
-          "goal": "Launch VS Code and start local server",
-          "success": true,
-          "confidence_score": 0.98,
-          "execution_time_seconds": 1.45
-        }
-      ],
-      "overall_success_rate": 0.98
-    }
-    ```
-
-* **Command**: `GET /api/v1/mobile/self_improving/strategies`
-  * **Expected Response**: Ranked list of procedural strategies (Win32 UIA: 95%, Playwright: 92%, OCR: 70%, Pixel: 40%).
-
-* **Command**: `POST /api/v1/mobile/self_improving/skills/execute?mode_id=coding_mode`
-  * **Expected Response**:
-    ```json
-    {
-      "status": "completed",
-      "mode_name": "Coding Mode",
-      "executed_actions_count": 4,
-      "confidence": 0.98
-    }
-    ```

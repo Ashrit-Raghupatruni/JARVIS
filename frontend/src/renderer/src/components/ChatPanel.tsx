@@ -219,7 +219,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
                 </button>
               </div>
             )}
-            <div className="flex items-center gap-2 glass rounded-lg px-3 py-1.5">
+            <div className="flex items-center gap-2 glass rounded-lg px-3 py-1.5 border border-cyan-500/20">
               <input
                 ref={inputRef}
                 type="text"
@@ -227,7 +227,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={assistantState === 'listening' ? "🎤 Listening to your voice..." : "Type a message or say 'Hey Jarvis'..."}
-                className="flex-1 bg-transparent text-sm text-jarvis-text placeholder-jarvis-text-muted outline-none"
+                className="flex-1 bg-transparent text-sm font-sans text-jarvis-text placeholder-jarvis-text-muted outline-none caret-cyan-400"
               />
 
               {/* Mic Toggle Button inside Chat Box */}
@@ -243,7 +243,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
                 }}
                 className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${
                   assistantState === 'listening'
-                    ? 'bg-red-500/30 text-red-400 border border-red-500/50 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.4)]'
+                    ? 'bg-rose-500/30 text-rose-400 border border-rose-500/50 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.4)]'
                     : 'bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff]/30'
                 }`}
                 title={assistantState === 'listening' ? "Stop Mic (Click or Ctrl+Space)" : "Activate Mic (Click or Ctrl+Space)"}

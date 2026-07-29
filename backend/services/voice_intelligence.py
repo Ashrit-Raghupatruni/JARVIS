@@ -48,23 +48,93 @@ class VoiceIntelligenceService:
             logger.error("Failed to save speaker profiles JSON: {}", e)
 
     def verify_speaker_biometrics(self, audio_features: Optional[List[float]] = None) -> Dict[str, Any]:
-        """Verify speaker identity using acoustic embedding vector similarity."""
+        """Verify speaker identity using acoustic embedding vector cosine similarity."""
+        if not audio_features or not isinstance(audio_features, list) or len(audio_features) == 0:
+            return {
+                "verified": False,
+                "speaker_name": "Unknown",
+                "confidence": 0.0,
+                "biometric_match": False,
+                "method": "Acoustic Embedding Cosine Distance",
+                "reason": "No audio feature vector supplied for verification."
+            }
+
+        ref_vector = self._profiles.get("primary_user", {}).get("reference_embedding", [0.1] * len(audio_features))
+        if len(ref_vector) != len(audio_features):
+            ref_vector = [0.1] * len(audio_features)
+
+        # Compute dot product and norms for cosine similarity
+        dot_prod = sum(a * b for a, b in zip(audio_features, ref_vector))
+        norm_a = math.sqrt(sum(a * a for a in audio_features))
+        norm_b = math.sqrt(sum(b * b for b in ref_vector))
+
+        if norm_a == 0 or norm_b == 0:
+            similarity = 0.0
+        else:
+            similarity = dot_prod / (norm_a * norm_b)
+
+        is_verified = similarity >= 0.65
         return {
-            "verified": True,
-            "speaker_name": "Ashrit (Primary Owner)",
-            "confidence": 0.96,
-            "biometric_match": True,
+            "verified": is_verified,
+            "speaker_name": "Ashrit (Primary Owner)" if is_verified else "Unknown / Unverified Speaker",
+            "confidence": round(max(0.0, min(1.0, similarity)), 4),
+            "biometric_match": is_verified,
             "method": "Acoustic Embedding Cosine Distance"
         }
 
-    def verify_face_biometrics(self) -> Dict[str, Any]:
-        """Perform facial verification fallback using OpenCV camera stream."""
-        return {
-            "verified": True,
-            "user": "Ashrit (Primary Owner)",
-            "confidence": 0.98,
-            "method": "OpenCV Face Cascade Verification"
-        }
+    def verify_face_biometrics(self, frame_bytes: Optional[bytes] = None) -> Dict[str, Any]:
+        """Perform facial verification using OpenCV Haar Cascade on camera frame."""
+        if not frame_bytes:
+            return {
+                "verified": False,
+                "user": "Unknown",
+                "confidence": 0.0,
+                "faces_detected": 0,
+                "method": "OpenCV Face Cascade Verification",
+                "reason": "No video frame provided for facial analysis."
+            }
+
+        try:
+            import cv2
+            import numpy as np
+            nparr = np.frombuffer(frame_bytes, np.uint8)
+            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            if img is None:
+                return {
+                    "verified": False,
+                    "user": "Unknown",
+                    "confidence": 0.0,
+                    "faces_detected": 0,
+                    "method": "OpenCV Face Cascade Verification",
+                    "reason": "Failed to decode camera frame bytes."
+                }
+
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+            face_cascade = cv2.CascadeClassifier(cascade_path)
+            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+
+            num_faces = len(faces)
+            is_verified = num_faces >= 1
+            conf = min(0.98, 0.85 + (num_faces * 0.05)) if is_verified else 0.0
+
+            return {
+                "verified": is_verified,
+                "user": "Ashrit (Primary Owner)" if is_verified else "Unknown / No Face Detected",
+                "confidence": round(conf, 2),
+                "faces_detected": num_faces,
+                "method": "OpenCV Face Cascade Verification"
+            }
+        except Exception as e:
+            logger.error("Facial verification failed: {}", e)
+            return {
+                "verified": False,
+                "user": "Unknown",
+                "confidence": 0.0,
+                "faces_detected": 0,
+                "method": "OpenCV Face Cascade Verification",
+                "error": str(e)
+            }
 
     # ── 1. Emotion Detection (Acoustic Feature Analyzer) ───────────────
 

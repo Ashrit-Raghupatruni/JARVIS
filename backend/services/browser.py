@@ -424,6 +424,230 @@ class BrowserService:
             logger.error(f"Deep research failed for '{topic}': {e}")
             return f"Deep research failed: {e}"
 
+    async def perceive_page_state(self) -> dict:
+        """
+        Perceive current page structure: title, URL, and interactive elements.
+        Used by the Autonomous Web Agent perceive-decide-act-observe loop.
+        """
+        if not self._page:
+            return {
+                "url": "about:blank",
+                "title": "No Active Page",
+                "interactive_elements": [],
+                "interactive_elements_count": 0
+            }
+
+        try:
+            # Inject lightweight element visual indexing script
+            elements_data = await self._page.evaluate("""
+                () => {
+                    const selectors = 'a, button, input, select, textarea, [role="button"], [role="link"]';
+                    const nodes = Array.from(document.querySelectorAll(selectors));
+                    return nodes.slice(0, 50).map((el, index) => {
+                        const rect = el.getBoundingClientRect();
+                        return {
+                            index: index + 1,
+                            tag: el.tagName.toLowerCase(),
+                            text: (el.innerText || el.value || el.placeholder || el.ariaLabel || '').trim().substring(0, 50),
+                            visible: rect.width > 0 && rect.height > 0,
+                            bbox: [Math.round(rect.left), Math.round(rect.top), Math.round(rect.width), Math.round(rect.height)]
+                        };
+                    }).filter(e => e.visible && e.text.length > 0);
+                }
+            """)
+
+            title = await self._page.title()
+            url = self._page.url
+
+            return {
+                "url": url,
+                "title": title,
+                "interactive_elements": elements_data,
+                "interactive_elements_count": len(elements_data)
+            }
+        except Exception as e:
+            logger.error(f"Failed to perceive page state: {e}")
+            return {
+                "url": self._page.url if self._page else "",
+                "title": "Error",
+                "interactive_elements": [],
+                "interactive_elements_count": 0,
+                "error": str(e)
+            }
+
+    async def run_browser_agent(self, task: str, max_steps: int = 5) -> str:
+        """
+        Autonomous Web Agent Loop: Perceive -> Decide -> Act -> Observe.
+        Runs a multi-step natural language browser navigation task using LLM-driven decision making & native Playwright actions.
+        """
+        if not self._page or not self._started:
+            await self.start()
+
+        logger.info(f"🌐 Starting Autonomous Web Agent Loop for task: '{task}'")
+        action_log = [f"Task: {task}"]
+
+        # Try to retrieve LLM service instance
+        llm_service = None
+        try:
+            from backend.services.manager import ServiceManager
+            llm_service = ServiceManager.get_instance("llm_service")
+        except Exception:
+            pass
+
+        for step in range(1, max_steps + 1):
+            # 1. PERCEIVE
+            perception = await self.perceive_page_state()
+            current_url = perception.get("url", "")
+            current_title = perception.get("title", "")
+            elements = perception.get("interactive_elements", [])
+
+            # Format elements list for LLM decision context
+            elements_str_list = []
+            for idx, el in enumerate(elements[:30], 1):
+                elements_str_list.append(f"[{idx}] <{el.get('tag')}> '{el.get('text')}'")
+            elements_formatted = "\n".join(elements_str_list) if elements_str_list else "No interactive elements detected."
+
+            page_text = await self.get_page_content()
+            text_excerpt = page_text[:1200] if page_text else ""
+
+            action_log.append(f"\nStep {step}: On '{current_title}' ({current_url})")
+
+            # 2. DECIDE (LLM-driven)
+            decision = None
+            if llm_service and hasattr(llm_service, "simple_completion"):
+                prompt = f"""You are the Browser Autonomous Agent for JARVIS. Your goal is to fulfill the user's task on the web.
+
+USER TASK: "{task}"
+
+CURRENT STATE:
+- URL: {current_url}
+- Page Title: {current_title}
+
+INTERACTIVE ELEMENTS:
+{elements_formatted}
+
+PAGE TEXT EXCERPT:
+{text_excerpt[:800]}
+
+PREVIOUS STEPS:
+{chr(10).join(action_log[-4:])}
+
+Respond strictly in valid JSON format with your next action:
+{{
+    "thought": "Reasoning about current state and what to do next to progress toward the user task",
+    "action": "navigate" | "click" | "fill" | "extract" | "finish",
+    "element_index": 1,
+    "text": "text to type if action is fill, OR URL if action is navigate",
+    "answer": "Final comprehensive answer if action is finish"
+}}
+"""
+                try:
+                    res_raw = await llm_service.simple_completion(prompt)
+                    import json, re
+                    json_match = re.search(r"\{.*\}", res_raw, re.DOTALL)
+                    if json_match:
+                        decision = json.loads(json_match.group(0))
+                except Exception as llm_err:
+                    logger.debug(f"LLM browser decision parsing failed: {llm_err}")
+
+            # Fallback heuristic decision if LLM unavailable or failed to parse
+            if not decision:
+                lower_task = task.lower()
+                if step == 1 and current_url in ("about:blank", "", "https://www.google.com", "chrome://newtab"):
+                    query = task.replace("search for", "").replace("search", "").strip()
+                    decision = {
+                        "action": "navigate",
+                        "text": f"https://en.wikipedia.org/wiki/Special:Search?search={query}",
+                        "thought": f"Navigating to search for '{query}'"
+                    }
+                elif any(kw in lower_task for kw in ["founding year", "history", "details", "extract", "tell me"]):
+                    decision = {
+                        "action": "extract",
+                        "thought": "Extracting information from page text to answer user task"
+                    }
+                elif elements:
+                    decision = {
+                        "action": "click",
+                        "element_index": 1,
+                        "thought": "Clicking primary interactive element"
+                    }
+                else:
+                    decision = {
+                        "action": "finish",
+                        "answer": text_excerpt[:1000],
+                        "thought": "Task completion threshold reached"
+                    }
+
+            action_type = str(decision.get("action", "finish")).lower().strip()
+            thought = decision.get("thought", "")
+            action_log.append(f"Thought: {thought}")
+
+            # 3. ACT (Real Playwright execution)
+            if action_type in ("navigate", "goto"):
+                target_url = str(decision.get("text", "")).strip()
+                if not target_url.startswith("http"):
+                    target_url = f"https://www.google.com/search?q={target_url}"
+                await self.open_url(target_url)
+                action_log.append(f"Action: Navigated to '{target_url}'")
+
+            elif action_type == "click":
+                elem_idx = int(decision.get("element_index", 1)) - 1
+                if 0 <= elem_idx < len(elements):
+                    target_el = elements[elem_idx]
+                    bbox = target_el.get("bbox")
+                    if bbox and len(bbox) == 4 and bbox[2] > 0 and bbox[3] > 0:
+                        click_x = bbox[0] + (bbox[2] / 2)
+                        click_y = bbox[1] + (bbox[3] / 2)
+                        await self._page.mouse.click(click_x, click_y)
+                    else:
+                        tag_name = target_el.get("tag", "button")
+                        el_text = target_el.get("text", "")
+                        try:
+                            await self._page.click(f"{tag_name}:has-text('{el_text}')")
+                        except Exception:
+                            await self._page.mouse.click(100, 100)
+                    action_log.append(f"Action: Clicked element [{elem_idx+1}] <{target_el.get('tag')}> '{target_el.get('text')}'")
+                else:
+                    action_log.append(f"Action: Element index {elem_idx+1} out of bounds")
+
+            elif action_type in ("fill", "type"):
+                elem_idx = int(decision.get("element_index", 1)) - 1
+                fill_text = str(decision.get("text", ""))
+                if 0 <= elem_idx < len(elements):
+                    target_el = elements[elem_idx]
+                    tag_name = target_el.get("tag", "input")
+                    el_text = target_el.get("text", "")
+                    try:
+                        await self._page.fill(f"{tag_name}:has-text('{el_text}')", fill_text)
+                    except Exception:
+                        await self._page.keyboard.type(fill_text)
+                    action_log.append(f"Action: Typed '{fill_text}' into element [{elem_idx+1}] <{target_el.get('tag')}>")
+                else:
+                    await self._page.keyboard.type(fill_text)
+                    action_log.append(f"Action: Typed '{fill_text}' via keyboard")
+
+            elif action_type == "extract":
+                full_text = await self.get_page_content()
+                action_log.append(f"Action: Extracted page content ({len(full_text)} chars)")
+                summary = full_text[:1500] if full_text else "No content extracted."
+                action_log.append(f"\n✓ Task Completed: {summary}")
+                return "\n".join(action_log)
+
+            elif action_type == "finish":
+                ans = decision.get("answer", text_excerpt[:1500])
+                action_log.append(f"\n✓ Task Completed: {ans}")
+                return "\n".join(action_log)
+
+            # 4. OBSERVE
+            try:
+                await self._page.wait_for_load_state("domcontentloaded", timeout=3000)
+            except Exception:
+                pass
+            await asyncio.sleep(1.0)
+
+        summary_out = "\n".join(action_log)
+        return summary_out
+
     @property
     def is_started(self) -> bool:
         return self._started

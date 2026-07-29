@@ -18,6 +18,10 @@
 
 ### 🎤 Voice Control, Mobile Companion & Live Mode AI Co-Pilot
 - **Dedicated Live Mode (AI Screen Assistant)** — Real-time continuous desktop observation operating mode. Extracts sub-30ms structured Win32 UIA Scene Graphs, offers step-by-step next logical guidance, smart form auto-fill with pre-submission validation, and multi-monitor workspace layout restorer (**Coding** & **Research** layouts).
+- **Persistent Chat History (Claude/GPT-Style)** — Browsable, persistent conversation sessions stored in SQLite (`jarvis.db`) with automatic first-message title generation, session sidebar (`ConversationSidebar.tsx`), inline renaming, deletion, and transcript restoration.
+- **Live Mode Browser Automation Engine** — Native multi-step perceive-decide-act-observe agent loop (`run_browser_agent` in `BrowserService`) and `browser_agent_task` tool for autonomous web research.
+- **Proactive Desktop Intelligence Suite** — Instant TTS interrupt barge-in (`cancel_playback`), exponential backoff retry decorator, 3.0s vision rate-limiter, Windows Registry boot auto-start (`system_autostart.py`), Clipboard Quick-Action Intelligence (`clipboard_intelligence.py`), session memory continuity (`session_memory.json`), background topic monitoring with content safety filters, and Proactive 2.0 with a 20-minute interjection cooldown timer.
+- **Structured Layout & Table OCR Engine** — Bounding box, structured table, and layout extraction in `VisionService` with PP-StructureV3 deep vision, pytesseract, and PIL grid fallback.
 - **Mobile Security Gatekeeper Intercept** — Intercepts laptop window close ('X' button) or terminal exit (`start.bat` / `Ctrl+C`). Broadcasts high-priority approval cards to your Android phone for 1-click `[Approve]` / `[Deny]` control.
 - **Laptop Battery Level Mobile Alerts** — Automatic push & WebSocket notifications sent to phone at 30% (Warning) and 20% (Critical) unplugged battery levels.
 - **Double Clap Detection Engine** — Acoustic Peak-to-Average Power Ratio (PAPR > 3.2) transient filter with TTS speaker activity guard; double clapping when JARVIS is minimized or sleeping instantly restores and focuses the desktop window.

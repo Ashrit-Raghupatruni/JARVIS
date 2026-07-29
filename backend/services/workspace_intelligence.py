@@ -111,7 +111,9 @@ class WorkspaceIntelligenceService:
                 self._current_project = "Web Research Session"
 
         # Inquire Workflow Classification
-        if any(k in app_lower or k in title_lower for k in ["code", "vscode", "pycharm", "git", "terminal", "powershell"]):
+        if any(k in app_lower or k in title_lower for k in ["steam", "epicgames", "valorant", "league", "minecraft", "overwatch", "csgo", "genshin", "cyberpunk", "game"]):
+            self._current_workflow = "Gaming Operational Mode"
+        elif any(k in app_lower or k in title_lower for k in ["code", "vscode", "pycharm", "git", "terminal", "powershell"]):
             self._current_workflow = "Software Engineering & Coding"
         elif any(k in app_lower or k in title_lower for k in ["chrome", "edge", "firefox", "pdf", "acrobat", "research"]):
             self._current_workflow = "Web Research & Knowledge Indexing"

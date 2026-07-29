@@ -70,18 +70,24 @@ class UISkill(BaseSkill):
             }
         elif tool_name == "get_memory_explorer_data":
             from backend.services.manager import ServiceManager
+            rag_svc = ServiceManager.get_instance("rag_service")
             exp_engine = ServiceManager.get_instance("experience_engine")
-            node_cnt = 0
-            if exp_engine and hasattr(exp_engine, "query_experiences"):
+            vector_cnt = 0
+            if rag_svc and hasattr(rag_svc, "vector_store") and hasattr(rag_svc.vector_store, "_collection"):
                 try:
-                    exps = exp_engine.query_experiences(limit=50)
-                    node_cnt = len(exps)
+                    vector_cnt = rag_svc.vector_store._collection.count()
                 except Exception:
-                    node_cnt = 0
+                    vector_cnt = 0
+            if vector_cnt == 0 and exp_engine and hasattr(exp_engine, "query_experiences"):
+                try:
+                    exps = exp_engine.query_experiences(limit=100)
+                    vector_cnt = len(exps)
+                except Exception:
+                    vector_cnt = 0
             return {
                 "chroma_collection": "rag_documents",
-                "vector_node_count": max(node_cnt, 1),
-                "knowledge_graph_entities": max(node_cnt * 2, 1),
+                "vector_node_count": vector_cnt,
+                "rag_indexed_entities": vector_cnt,
                 "memory_health": "Optimal"
             }
         elif tool_name == "get_performance_metrics":

@@ -188,6 +188,19 @@ class SyncService:
         decrypted = self._fernet.decrypt(token_str.encode("utf-8"))
         return json.loads(decrypted.decode("utf-8"))
 
+    def resolve_state_conflict(self, local_state: Dict[str, Any], remote_state: Dict[str, Any]) -> Dict[str, Any]:
+        """Deterministic Last-Write-Wins conflict resolution."""
+        local_ts = local_state.get("updated_at", 0.0)
+        remote_ts = remote_state.get("updated_at", 0.0)
+        return remote_state if remote_ts >= local_ts else local_state
+
+    def cleanup_stale_peers(self, timeout_seconds: float = 30.0) -> None:
+        """Purges peers that haven't sent a heartbeat within timeout_seconds."""
+        now = time.time()
+        expired = [ip for ip, data in self.peers.items() if (now - data.get("last_seen", 0.0)) > timeout_seconds]
+        for ip in expired:
+            del self.peers[ip]
+
     # ── Sync Operations ────────────────────────────────────────────────────
 
     def get_sync_payload(self) -> Dict[str, Any]:

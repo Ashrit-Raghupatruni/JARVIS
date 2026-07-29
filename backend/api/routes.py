@@ -166,19 +166,58 @@ async def process_command(cmd: CommandRequest, request: Request):
 
 
 @router.get("/history")
-async def get_history(request: Request, limit: int = 20):
-    """Get recent conversation history."""
+@router.get("/api/conversations")
+async def get_conversations_list(request: Request, limit: int = 30):
+    """Get list of recent conversations for sidebar UI."""
     app = request.app
-
     if hasattr(app.state, "memory_service") and app.state.memory_service:
         try:
             conversations = await app.state.memory_service.get_recent_conversations(limit=limit)
             return {"status": "ok", "conversations": conversations}
         except Exception as e:
-            logger.error(f"Failed to get history: {e}")
-            return {"status": "ok", "conversations": [], "error": str(e)}
-
+            logger.error(f"Failed to get conversations: {e}")
+            return {"status": "error", "conversations": [], "error": str(e)}
     return {"status": "ok", "conversations": []}
+
+
+@router.get("/api/conversations/{conv_id}")
+async def get_single_conversation(conv_id: int, request: Request):
+    """Get single conversation by ID including full message transcript."""
+    app = request.app
+    if hasattr(app.state, "memory_service") and app.state.memory_service:
+        conv = await app.state.memory_service.get_conversation(conv_id)
+        if conv:
+            return {"status": "ok", "conversation": conv}
+        return JSONResponse(status_code=404, content={"status": "error", "message": "Conversation not found"})
+    return JSONResponse(status_code=503, content={"status": "error", "message": "Memory service unavailable"})
+
+
+class RenameRequest(BaseModel):
+    title: str
+
+
+@router.put("/api/conversations/{conv_id}")
+async def rename_conversation_endpoint(conv_id: int, body: RenameRequest, request: Request):
+    """Rename a conversation title."""
+    app = request.app
+    if hasattr(app.state, "memory_service") and app.state.memory_service:
+        success = await app.state.memory_service.rename_conversation(conv_id, body.title)
+        if success:
+            return {"status": "ok", "message": f"Renamed conversation {conv_id}"}
+        return JSONResponse(status_code=404, content={"status": "error", "message": "Conversation not found"})
+    return JSONResponse(status_code=503, content={"status": "error", "message": "Memory service unavailable"})
+
+
+@router.delete("/api/conversations/{conv_id}")
+async def delete_conversation_endpoint(conv_id: int, request: Request):
+    """Delete a conversation and its messages."""
+    app = request.app
+    if hasattr(app.state, "memory_service") and app.state.memory_service:
+        success = await app.state.memory_service.delete_conversation(conv_id)
+        if success:
+            return {"status": "ok", "message": f"Deleted conversation {conv_id}"}
+        return JSONResponse(status_code=404, content={"status": "error", "message": "Conversation not found"})
+    return JSONResponse(status_code=503, content={"status": "error", "message": "Memory service unavailable"})
 
 
 @router.post("/settings")

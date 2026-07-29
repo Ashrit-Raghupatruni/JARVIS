@@ -106,6 +106,15 @@ class Settings(BaseSettings):
     )
 
 
+    ASSISTANT_NAME: str = Field(
+        default="JARVIS",
+        description="Name of the desktop AI assistant.",
+    )
+    USER_PREFERRED_NAME: str = Field(
+        default="User",
+        description="Preferred name for the primary user.",
+    )
+
     # ── Prash (Custom Local AI Engine) ──────────────────────────────────
     PRASH_ENABLED: bool = Field(
         default=True,
