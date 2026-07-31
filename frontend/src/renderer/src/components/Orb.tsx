@@ -82,21 +82,21 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
         {activeVisual === 'reactor' && (
           <div
             onClick={onOrbClick}
-            className="relative w-full h-full max-w-[480px] max-h-[480px] overflow-hidden transition-all duration-500 rounded-full border border-cyan-500/20"
+            className="relative w-full h-full max-w-[480px] max-h-[480px] overflow-hidden transition-all duration-500 rounded-full border border-emerald-500/20"
           >
             <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
           </div>
         )}
       </div>
 
-      {/* Sleek Mode Switcher & 3D Rotation Bar */}
+      {/* Sleek Green Hacker Mode Switcher & 3D Rotation Bar */}
       <div className="mt-2 flex items-center gap-2 z-30">
         <button
           type="button"
           onClick={() => setViewMode('auto')}
           className={`px-3 py-1 border rounded text-[10px] font-mono font-bold tracking-wider cursor-pointer transition-all ${
             viewMode === 'auto'
-              ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(0,229,255,0.3)]'
+              ? 'bg-emerald-500/20 border-emerald-400 text-emerald-200 shadow-[0_0_10px_rgba(0,255,102,0.3)]'
               : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
           }`}
           title="Auto-switch between Idle HUD and 3D Talking Face during speech"
@@ -109,7 +109,7 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
           onClick={() => setViewMode('hud')}
           className={`px-3 py-1 border rounded text-[10px] font-mono font-bold tracking-wider cursor-pointer transition-all ${
             viewMode === 'hud'
-              ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(0,229,255,0.3)]'
+              ? 'bg-emerald-500/20 border-emerald-400 text-emerald-200 shadow-[0_0_10px_rgba(0,255,102,0.3)]'
               : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
           }`}
           title="Lock display to Idle HUD"
@@ -122,7 +122,7 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
           onClick={() => setViewMode('face')}
           className={`px-3 py-1 border rounded text-[10px] font-mono font-bold tracking-wider cursor-pointer transition-all ${
             viewMode === 'face'
-              ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(0,229,255,0.3)]'
+              ? 'bg-emerald-500/20 border-emerald-400 text-emerald-200 shadow-[0_0_10px_rgba(0,255,102,0.3)]'
               : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
           }`}
           title="Lock display to 3D Talking Face"
@@ -136,14 +136,14 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
           onClick={toggle3DRotation}
           className={`flex items-center gap-1.5 px-3 py-1 border rounded text-[10px] font-mono font-bold tracking-wider cursor-pointer transition-all ${
             is3DRotationEnabled
-              ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(0,229,255,0.4)]'
+              ? 'bg-emerald-500/20 border-emerald-400 text-emerald-200 shadow-[0_0_10px_rgba(0,255,102,0.4)]'
               : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
           }`}
           title="Toggle 3D Head 360-Degree Rotation ON / OFF"
         >
           {is3DRotationEnabled ? (
             <>
-              <RotateCw className="w-3 h-3 animate-spin text-cyan-400" style={{ animationDuration: '4s' }} />
+              <RotateCw className="w-3 h-3 animate-spin text-emerald-400" style={{ animationDuration: '4s' }} />
               <span>ROTATE: ON</span>
             </>
           ) : (
@@ -156,7 +156,7 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
       </div>
 
       {pushToTalkActive && (
-        <span className="mt-1 text-[9px] text-cyan-300 animate-pulse font-mono tracking-widest uppercase z-20">
+        <span className="mt-1 text-[9px] text-emerald-300 animate-pulse font-mono tracking-widest uppercase z-20">
           PTT HOTKEY ACTIVE (CTRL+SPACE)
         </span>
       )}

@@ -7,6 +7,7 @@ import { NaturalIdleAnimator } from '../animation/NaturalIdleAnimator'
 import { StudioLightingRig } from '../lighting/StudioLightingRig'
 import { PortraitCameraRig } from '../camera/PortraitCameraRig'
 import { useAppStore } from '../../../stores/appStore'
+import headModelAssetUrl from '../../../assets/models/head.glb?url'
 
 export interface FaceRendererApi {
   render(): void
@@ -18,8 +19,8 @@ export interface FaceRendererApi {
 
 /**
  * Production Asset-Based 3D Face Renderer
- * Guarantees 100% immediate 3D face visibility on frame 0, viseme speech lip-sync,
- * and 60 FPS natural idle breathing/blinking animations with 3D rotation toggle support.
+ * Renders real facecap.glb 3D face scan model asset with green hacker theme materials (#00ff66),
+ * speech viseme lip-sync, and 60 FPS natural idle breathing/blinking animator.
  */
 export class FaceRenderer {
   public static create(
@@ -46,15 +47,12 @@ export class FaceRenderer {
     scene.add(rootGroup)
 
     const idleAnimator = new NaturalIdleAnimator()
+    let loadedAsset: LoadedHeadAsset | null = null
 
-    // 1. Mount Immediate Head Asset on frame 0
-    let loadedAsset: LoadedHeadAsset = GltfHeadLoader.createImmediateHead()
-    rootGroup.add(loadedAsset.model)
-
-    // 2. Load GLTF 3D Head Asset asynchronously and swap seamlessly when loaded
-    GltfHeadLoader.load(customAssetUrl).then((asset) => {
+    // Load real facecap.glb 3D Head Asset
+    const targetUrl = customAssetUrl || headModelAssetUrl
+    GltfHeadLoader.load(targetUrl).then((asset) => {
       if (asset && asset.headMesh) {
-        rootGroup.remove(loadedAsset.model)
         loadedAsset = asset
         rootGroup.add(asset.model)
       }
@@ -76,7 +74,7 @@ export class FaceRenderer {
       const isRotationEnabled = useAppStore.getState().is3DRotationEnabled
 
       if (loadedAsset) {
-        // Evaluate Viseme Speech Lip Sync
+        // Evaluate Viseme Speech Lip Sync on real model blendshapes
         const visemeWeights = VisemeLipSync.evaluateFromAudio(currentAudioLevel)
         VisemeLipSync.applyToMesh(
           loadedAsset.headMesh,

@@ -1,22 +1,24 @@
+import * as THREE from 'three'
+
 /**
  * Standard Speech Viseme Mapping Interface
  */
 export interface VisemeWeights {
-  viseme_sil: number // Silence
-  viseme_PP: number  // p, b, m
-  viseme_FF: number  // f, v
-  viseme_TH: number  // th
-  viseme_DD: number  // d, t, n
-  viseme_kk: number  // k, g
-  viseme_CH: number  // ch, j, sh
-  viseme_SS: number  // s, z
-  viseme_nn: number  // n, l
-  viseme_RR: number  // r
-  viseme_aa: number  // a (open)
-  viseme_E: number   // e
-  viseme_I: number   // i
-  viseme_O: number   // o
-  viseme_U: number   // u
+  viseme_sil: number
+  viseme_PP: number
+  viseme_FF: number
+  viseme_TH: number
+  viseme_DD: number
+  viseme_kk: number
+  viseme_CH: number
+  viseme_SS: number
+  viseme_nn: number
+  viseme_RR: number
+  viseme_aa: number
+  viseme_E: number
+  viseme_I: number
+  viseme_O: number
+  viseme_U: number
   jawOpen: number
 }
 
@@ -49,6 +51,7 @@ export class VisemeLipSync {
 
   /**
    * Applies computed viseme weights onto a target 3D Mesh's morph target influences.
+   * Matches both ARKit `blendShape1.` prefixed keys and standard viseme names.
    */
   public static applyToMesh(
     mesh: THREE.Mesh | null,
@@ -57,18 +60,20 @@ export class VisemeLipSync {
   ): void {
     if (!mesh || !mesh.morphTargetInfluences) return
 
-    const apply = (name: string, val: number) => {
-      const idx = dict[name]
+    const apply = (targetName: string, val: number) => {
+      const idx =
+        dict[`blendShape1.${targetName}`] ??
+        dict[targetName] ??
+        dict[targetName.toLowerCase()]
       if (idx !== undefined && mesh.morphTargetInfluences) {
         mesh.morphTargetInfluences[idx] = val
       }
     }
 
     apply('jawOpen', weights.jawOpen)
-    apply('viseme_aa', weights.viseme_aa)
-    apply('viseme_E', weights.viseme_E)
-    apply('viseme_O', weights.viseme_O)
-    apply('viseme_FF', weights.viseme_FF)
-    apply('viseme_PP', weights.viseme_PP)
+    apply('mouthFunnel', weights.viseme_O)
+    apply('mouthPucker', weights.viseme_PP)
+    apply('mouthSmile_L', weights.viseme_E * 0.5)
+    apply('mouthSmile_R', weights.viseme_E * 0.5)
   }
 }

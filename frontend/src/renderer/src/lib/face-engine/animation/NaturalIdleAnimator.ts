@@ -40,13 +40,21 @@ export class NaturalIdleAnimator {
       this.blinkProgress += dt * 8.0
       const blinkValue = Math.sin(Math.min(Math.PI, this.blinkProgress * Math.PI))
 
-      const leftIdx = dict['eyeBlinkLeft'] ?? dict['eyeBlink_L'] ?? 1
-      const rightIdx = dict['eyeBlinkRight'] ?? dict['eyeBlink_R'] ?? 2
+      const leftIdx =
+        dict['blendShape1.eyeBlink_L'] ??
+        dict['eyeBlinkLeft'] ??
+        dict['eyeBlink_L'] ??
+        1
+      const rightIdx =
+        dict['blendShape1.eyeBlink_R'] ??
+        dict['eyeBlinkRight'] ??
+        dict['eyeBlink_R'] ??
+        2
 
-      if (mesh.morphTargetInfluences[leftIdx] !== undefined) {
+      if (leftIdx !== undefined && mesh.morphTargetInfluences[leftIdx] !== undefined) {
         mesh.morphTargetInfluences[leftIdx] = blinkValue
       }
-      if (mesh.morphTargetInfluences[rightIdx] !== undefined) {
+      if (rightIdx !== undefined && mesh.morphTargetInfluences[rightIdx] !== undefined) {
         mesh.morphTargetInfluences[rightIdx] = blinkValue
       }
 
