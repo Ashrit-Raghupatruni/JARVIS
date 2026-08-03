@@ -50,9 +50,13 @@ export class GltfHeadLoader {
                 side: THREE.DoubleSide
               })
 
+              if (!headMesh) {
+                headMesh = mesh
+              }
+
               if (mesh.morphTargetDictionary && mesh.morphTargetInfluences) {
                 // Target the head mesh containing blendShape1 morph targets
-                if (!headMesh || mesh.name === 'mesh_2' || Object.keys(mesh.morphTargetDictionary).length > 5) {
+                if (mesh.name === 'mesh_2' || Object.keys(mesh.morphTargetDictionary).length > 5) {
                   headMesh = mesh
                   morphTargetDictionary = mesh.morphTargetDictionary
                   morphTargetInfluences = mesh.morphTargetInfluences

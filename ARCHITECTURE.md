@@ -37,7 +37,7 @@ graph TD
 ## 🧩 Core Architectural Subsystems
 
 ### 1. Central Perception (`WorldModel` & `UIASceneGraph`)
-- **Sub-30ms State Aggregation**: `WorldModel` thread-safely aggregates active window titles, process IDs, connected display monitor bounds, clipboard text, WASAPI audio activity, and internet connectivity.
+- **Low-Latency Desktop State Aggregation (~170ms avg WorldModel refresh, ~15ms Win32 UIA tree capture)**: `WorldModel` thread-safely aggregates active window titles, process IDs, connected display monitor bounds, clipboard text, WASAPI audio activity, and internet connectivity.
 - **Native Win32 Control Tree (`UIASceneGraph`)**: Uses `pywinauto.uia_element_info` to parse native Windows controls (buttons, textboxes, form fields, menus, dialogs) into structured scene graphs without visual OCR overhead.
 - **Workspace Intelligence (`WorkspaceIntelligenceService`)**: Infers active project name, operational goal, session workflow (`coding`, `research`, `study`), 20-action ring buffer, and habit transition predictions persisted to `data/user_habits.json`.
 

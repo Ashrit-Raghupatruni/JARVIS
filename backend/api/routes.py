@@ -539,7 +539,6 @@ async def handle_browser_ui_action(req: BrowserActionRequest, request: Request):
                 results = await browser_svc.search_web(search_query)
                 return {"status": "success", "results": results}
             return {"status": "success", "results": f"Searched: {search_query}"}
-
         return {"status": "error", "message": f"Unknown action: {req.action}"}
 
     except Exception as e:
@@ -548,3 +547,211 @@ async def handle_browser_ui_action(req: BrowserActionRequest, request: Request):
             "status": "success",
             "summary": f"Summary for {req.url or 'webpage'}:\n- Successfully extracted page elements.\n- Contains structured research paper metadata and articles."
         }
+
+
+# ── Autonomous Agent Ecosystem REST Endpoints ─────────────────────────────────
+
+class SubAgentSpawnReq(BaseModel):
+    role: str  # CodeAgent | ResearchAgent | SecurityAgent
+    task_goal: str
+
+
+class IPCMessageReq(BaseModel):
+    sender: str
+    recipient: str
+    content: str
+    message_type: Optional[str] = "request"
+    payload: Optional[dict] = None
+
+
+class GoalCreateReq(BaseModel):
+    title: str
+    description: Optional[str] = ""
+    total_steps: Optional[int] = 4
+
+
+class CheckpointCreateReq(BaseModel):
+    goal_id: str
+    step_title: str
+    state_data: dict
+    artifacts: Optional[list] = None
+
+
+class GoalStatusReq(BaseModel):
+    goal_id: str
+    status: str  # pending | running | paused | completed | failed
+
+
+@router.get("/api/v1/agents/active")
+async def get_active_agents(request: Request):
+    """Fetches list of active sub-agents and their thread statuses."""
+    ecosystem = getattr(request.app.state, "agent_ecosystem", None)
+    if not ecosystem:
+        return {"status": "success", "agents": []}
+    return {"status": "success", "agents": ecosystem.get_all_agents()}
+
+
+@router.post("/api/v1/agents/spawn")
+async def spawn_subagent(req: SubAgentSpawnReq, request: Request):
+    """Spawns an isolated sub-agent thread (CodeAgent, ResearchAgent, SecurityAgent)."""
+    ecosystem = getattr(request.app.state, "agent_ecosystem", None)
+    if not ecosystem:
+        return {"status": "error", "message": "AgentEcosystemService not initialized"}
+    result = ecosystem.spawn_subagent(req.role, req.task_goal)
+    return {"status": "success", "agent": result}
+
+
+@router.post("/api/v1/agents/ipc/send")
+async def send_agent_ipc_message(req: IPCMessageReq, request: Request):
+    """Sends an agent-to-agent IPC message across the message bus."""
+    ecosystem = getattr(request.app.state, "agent_ecosystem", None)
+    if not ecosystem:
+        return {"status": "error", "message": "AgentEcosystemService not initialized"}
+    msg = await ecosystem.send_ipc_message(
+        sender=req.sender,
+        recipient=req.recipient,
+        content=req.content,
+        message_type=req.message_type or "request",
+        payload=req.payload
+    )
+    return {"status": "success", "message": msg}
+
+
+@router.get("/api/v1/agents/ipc/history")
+async def get_ipc_history(request: Request):
+    """Fetches real-time agent-to-agent IPC message log."""
+    ecosystem = getattr(request.app.state, "agent_ecosystem", None)
+    if not ecosystem:
+        return {"status": "success", "history": []}
+    return {"status": "success", "history": ecosystem.get_ipc_history()}
+
+
+@router.get("/api/v1/agents/goals")
+async def get_goal_queue(request: Request):
+    """Fetches long-horizon persistent goal queue."""
+    checkpoint_svc = getattr(request.app.state, "checkpoint_service", None)
+    if not checkpoint_svc:
+        return {"status": "success", "goals": []}
+    goals = await checkpoint_svc.get_goal_queue()
+    return {"status": "success", "goals": goals}
+
+
+@router.post("/api/v1/agents/goals")
+async def create_long_horizon_goal(req: GoalCreateReq, request: Request):
+    """Creates a new long-horizon persistent goal."""
+    checkpoint_svc = getattr(request.app.state, "checkpoint_service", None)
+    if not checkpoint_svc:
+        return {"status": "error", "message": "LongHorizonCheckpointService not initialized"}
+    goal = await checkpoint_svc.create_goal(req.title, req.description or "", req.total_steps or 4)
+    return {"status": "success", "goal": goal}
+
+
+@router.post("/api/v1/agents/goals/checkpoint")
+async def create_goal_checkpoint(req: CheckpointCreateReq, request: Request):
+    """Saves a multi-day checkpoint for a goal."""
+    checkpoint_svc = getattr(request.app.state, "checkpoint_service", None)
+    if not checkpoint_svc:
+        return {"status": "error", "message": "LongHorizonCheckpointService not initialized"}
+    chk = await checkpoint_svc.create_checkpoint(
+        goal_id=req.goal_id,
+        step_title=req.step_title,
+        state_data=req.state_data,
+        artifacts=req.artifacts
+    )
+    return {"status": "success", "checkpoint": chk}
+
+
+@router.get("/api/v1/agents/goals/{goal_id}/checkpoints")
+async def get_goal_checkpoints(goal_id: str, request: Request):
+    """Fetches all checkpoints for a specific goal."""
+    checkpoint_svc = getattr(request.app.state, "checkpoint_service", None)
+    if not checkpoint_svc:
+        return {"status": "success", "checkpoints": []}
+    checkpoints = await checkpoint_svc.get_checkpoints_for_goal(goal_id)
+    return {"status": "success", "checkpoints": checkpoints}
+
+
+@router.post("/api/v1/agents/goals/status")
+async def update_goal_status(req: GoalStatusReq, request: Request):
+    """Updates status of a goal (e.g. pause, resume)."""
+    checkpoint_svc = getattr(request.app.state, "checkpoint_service", None)
+    if not checkpoint_svc:
+        return {"status": "error", "message": "LongHorizonCheckpointService not initialized"}
+    ok = await checkpoint_svc.set_goal_status(req.goal_id, req.status)
+    return {"status": "success" if ok else "error"}
+
+
+@router.get("/api/v1/agents/kv_cache")
+async def get_kv_cache_metrics(request: Request):
+    """Fetches KV-Cache compression & pruning metrics."""
+    pruner = getattr(request.app.state, "kv_pruner", None)
+    if not pruner:
+        return {
+            "status": "success",
+            "metrics": {
+                "max_context_tokens": 8192,
+                "total_prune_events": 0,
+                "raw_tokens_processed": 0,
+                "pruned_tokens_saved": 0,
+                "savings_percent": 0.0,
+                "last_prune_time": None
+            }
+        }
+    return {"status": "success", "metrics": pruner.get_metrics()}
+
+
+# ── Face Biometrics & Security Lock Screen Endpoints ─────────────────────────
+
+class FaceFrameVerificationReq(BaseModel):
+    frame_base64: str
+
+class FaceEnrollmentReq(BaseModel):
+    frames_base64: list[str]
+    owner_name: Optional[str] = "Primary Owner"
+    pin: Optional[str] = "1234"
+
+class PinVerificationReq(BaseModel):
+    pin: str
+
+@router.get("/api/biometrics/face/status")
+async def get_face_biometrics_status():
+    from backend.services.face_biometrics import FaceBiometricsService
+    face_bio = FaceBiometricsService()
+    return {"status": "success", **face_bio.get_status()}
+
+@router.post("/api/biometrics/face/verify")
+async def verify_face_frame(req: FaceFrameVerificationReq):
+    import base64
+    from backend.services.face_biometrics import FaceBiometricsService
+    face_bio = FaceBiometricsService()
+    
+    try:
+        raw_b64 = req.frame_base64.split(",")[-1]
+        frame_bytes = base64.b64decode(raw_b64)
+        result = face_bio.verify_face_identity(frame_bytes)
+        return {"status": "success", **result}
+    except Exception as e:
+        return {"status": "error", "verified": False, "reason": str(e)}
+
+@router.post("/api/biometrics/face/enroll")
+async def enroll_face_owner(req: FaceEnrollmentReq):
+    import base64
+    from backend.services.face_biometrics import FaceBiometricsService
+    face_bio = FaceBiometricsService()
+    
+    try:
+        bytes_list = []
+        for f64 in req.frames_base64:
+            raw_b64 = f64.split(",")[-1]
+            bytes_list.append(base64.b64decode(raw_b64))
+        result = face_bio.enroll_owner(bytes_list, owner_name=req.owner_name or "Primary Owner", pin=req.pin or "1234")
+        return {"status": "success" if result.get("success") else "error", **result}
+    except Exception as e:
+        return {"status": "error", "success": False, "error": str(e)}
+
+@router.post("/api/biometrics/face/verify_pin")
+async def verify_face_lock_pin(req: PinVerificationReq):
+    from backend.services.face_biometrics import FaceBiometricsService
+    face_bio = FaceBiometricsService()
+    result = face_bio.verify_pin(req.pin)
+    return {"status": "success" if result.get("verified") else "error", **result}

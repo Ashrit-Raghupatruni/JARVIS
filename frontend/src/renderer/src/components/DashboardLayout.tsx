@@ -22,6 +22,7 @@ import LiveModeCard from './LiveModeCard'
 import { MobileCompanionCard } from './MobileCompanionCard'
 import { LiveDebugInspector } from './LiveDebugInspector'
 import { LivePerceptionVisualizer } from './LivePerceptionVisualizer'
+import { AutonomousAgentStudio } from './AutonomousAgentStudio'
 import {
   Command,
   ChevronDown,
@@ -39,7 +40,8 @@ import {
   X,
   Eye,
   Terminal,
-  GripVertical
+  GripVertical,
+  Cpu
 } from 'lucide-react'
 
 interface DashboardLayoutProps {
@@ -47,17 +49,18 @@ interface DashboardLayoutProps {
   onOrbClick: () => void
 }
 
-type NavTab = 'command' | 'history' | 'workflows' | 'queue' | 'telemetry' | 'live' | 'automation' | 'debug'
+type NavTab = 'command' | 'agents' | 'history' | 'workflows' | 'queue' | 'telemetry' | 'live' | 'automation' | 'debug'
 
 const NAV_ITEMS: { id: NavTab; label: string; icon: React.ReactNode }[] = [
-  { id: 'command', label: 'Command Center', icon: <Bot className="w-4 h-4 text-cyan-400" /> },
-  { id: 'history', label: 'Chat History', icon: <MessageSquare className="w-4 h-4 text-cyan-400" /> },
-  { id: 'workflows', label: 'Workflow Studio', icon: <LayoutGrid className="w-4 h-4 text-cyan-400" /> },
-  { id: 'queue', label: 'Task Queue', icon: <ListOrdered className="w-4 h-4 text-cyan-400" /> },
-  { id: 'telemetry', label: 'Telemetry', icon: <Activity className="w-4 h-4 text-cyan-400" /> },
-  { id: 'live', label: 'Live Mode', icon: <Eye className="w-4 h-4 text-cyan-400" /> },
-  { id: 'automation', label: 'Automation', icon: <Globe className="w-4 h-4 text-cyan-400" /> },
-  { id: 'debug', label: 'Debug Inspector', icon: <Terminal className="w-4 h-4 text-cyan-400" /> }
+  { id: 'command', label: 'Command Center', icon: <Bot className="w-4 h-4 text-emerald-400" /> },
+  { id: 'agents', label: 'Agent Studio', icon: <Cpu className="w-4 h-4 text-emerald-400" /> },
+  { id: 'history', label: 'Chat History', icon: <MessageSquare className="w-4 h-4 text-emerald-400" /> },
+  { id: 'workflows', label: 'Workflow Studio', icon: <LayoutGrid className="w-4 h-4 text-emerald-400" /> },
+  { id: 'queue', label: 'Task Queue', icon: <ListOrdered className="w-4 h-4 text-emerald-400" /> },
+  { id: 'telemetry', label: 'Telemetry', icon: <Activity className="w-4 h-4 text-emerald-400" /> },
+  { id: 'live', label: 'Live Mode', icon: <Eye className="w-4 h-4 text-emerald-400" /> },
+  { id: 'automation', label: 'Automation', icon: <Globe className="w-4 h-4 text-emerald-400" /> },
+  { id: 'debug', label: 'Debug Inspector', icon: <Terminal className="w-4 h-4 text-emerald-400" /> }
 ]
 
 export default function DashboardLayout({ onSendMessage, onOrbClick }: DashboardLayoutProps) {
@@ -339,7 +342,10 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
           </div>
         )}
 
-        {/* VIEW 2: CHAT HISTORY */}
+        {/* VIEW 2: AUTONOMOUS AGENT STUDIO */}
+        {activeTab === 'agents' && <AutonomousAgentStudio />}
+
+        {/* VIEW 3: CHAT HISTORY */}
         {activeTab === 'history' && (
           <div className="h-full rounded-xl border border-cyan-500/20 bg-slate-900/40 backdrop-blur-xl p-4 overflow-y-auto custom-scrollbar">
             <h2 className="text-sm font-bold text-cyan-400 tracking-widest uppercase mb-3 flex items-center gap-2">

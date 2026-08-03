@@ -30,17 +30,20 @@ export interface MobileApprovalItem {
 export class JarvisMobileClient {
   private serverHost: string;
   private serverPort: number;
+  private useSsl: boolean;
   private token: string | null = null;
   private ws: WebSocket | null = null;
 
-  constructor(serverHost = "192.168.1.100", serverPort = 8000) {
+  constructor(serverHost = "192.168.1.100", serverPort = 8000, useSsl = false) {
     this.serverHost = serverHost;
     this.serverPort = serverPort;
+    this.useSsl = useSsl;
   }
 
-  setServerAddress(host: string, port: number = 8000) {
+  setServerAddress(host: string, port: number = 8000, useSsl: boolean = false) {
     this.serverHost = host;
     this.serverPort = port;
+    this.useSsl = useSsl;
   }
 
   setAuthToken(token: string) {
@@ -48,14 +51,16 @@ export class JarvisMobileClient {
   }
 
   get baseUrl() {
-    return `http://${this.serverHost}:${this.serverPort}`;
+    const scheme = this.useSsl ? "https" : "http";
+    return `${scheme}://${this.serverHost}:${this.serverPort}`;
   }
 
   get wsUrl() {
-    return `ws://${this.serverHost}:${this.serverPort}/api/v1/mobile/ws/stream`;
+    const scheme = this.useSsl ? "wss" : "ws";
+    return `${scheme}://${this.serverHost}:${this.serverPort}/api/v1/mobile/ws/stream`;
   }
 
-  async pairDevice(deviceName: string, deviceId: string, pairingCode: str, session_id: str) {
+  async pairDevice(deviceName: string, deviceId: string, pairingCode: string, session_id: string) {
     const res = await fetch(`${this.baseUrl}/api/v1/mobile/pair/confirm`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

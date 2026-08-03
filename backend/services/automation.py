@@ -960,3 +960,102 @@ class AutomationService:
         except Exception as e:
             logger.error("Error minimizing window: {}", e)
             return f"Error minimizing window: {e}"
+
+    def resize_window(
+        self,
+        title: str,
+        position: str = "left",
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+        x: Optional[int] = None,
+        y: Optional[int] = None
+    ) -> str:
+        """
+        Resize and reposition an open desktop window matching title using Win32 SetWindowPos.
+        Supports presets ('left', 'right', 'top', 'bottom', 'maximize', 'center') or custom dimensions.
+        """
+        title_lower = title.lower().strip()
+        logger.info("Resizing window matching title: '{}' to position='{}'", title, position)
+
+        try:
+            import win32gui
+            import win32con
+            from backend.services.perception.spatial_engine import SpatialEngine
+
+            spatial = SpatialEngine()
+            monitors = spatial.get_monitors()
+            if monitors:
+                m = monitors[0]
+                screen_w = getattr(m, "width", 1920)
+                screen_h = getattr(m, "height", 1080)
+                screen_x = getattr(m, "x", 0)
+                screen_y = getattr(m, "y", 0)
+            else:
+                sw, sh = pyautogui.size()
+                screen_w, screen_h, screen_x, screen_y = sw, sh, 0, 0
+
+            matching_hwnds = []
+            def enum_windows_callback(hwnd, extra):
+                if win32gui.IsWindowVisible(hwnd):
+                    txt = win32gui.GetWindowText(hwnd)
+                    if txt and title_lower in txt.lower():
+                        matching_hwnds.append((hwnd, txt))
+
+            win32gui.EnumWindows(enum_windows_callback, None)
+
+            if not matching_hwnds:
+                if title_lower in ["current", "active", "active window", "this window", "this"]:
+                    hwnd = win32gui.GetForegroundWindow()
+                    txt = win32gui.GetWindowText(hwnd) or "active window"
+                    matching_hwnds.append((hwnd, txt))
+
+            if not matching_hwnds:
+                return f"No visible window found matching title: '{title}'"
+
+            target_hwnd, win_text = matching_hwnds[0]
+
+            pos_lower = position.lower().strip()
+            if pos_lower in ["left", "left_half", "left side"]:
+                target_x = screen_x
+                target_y = screen_y
+                target_w = screen_w // 2
+                target_h = screen_h
+            elif pos_lower in ["right", "right_half", "right side"]:
+                target_x = screen_x + (screen_w // 2)
+                target_y = screen_y
+                target_w = screen_w // 2
+                target_h = screen_h
+            elif pos_lower == "maximize":
+                win32gui.ShowWindow(target_hwnd, win32con.SW_MAXIMIZE)
+                return f"Maximized window '{win_text}' successfully."
+            elif pos_lower == "center":
+                target_w = width or int(screen_w * 0.7)
+                target_h = height or int(screen_h * 0.8)
+                target_x = screen_x + (screen_w - target_w) // 2
+                target_y = screen_y + (screen_h - target_h) // 2
+            else:
+                target_w = width or (screen_w // 2)
+                target_h = height or screen_h
+                target_x = x if x is not None else screen_x
+                target_y = y if y is not None else screen_y
+
+            try:
+                win32gui.ShowWindow(target_hwnd, win32con.SW_RESTORE)
+                win32gui.SetForegroundWindow(target_hwnd)
+            except Exception as e:
+                logger.debug("SetForegroundWindow notice: {}", e)
+
+            win32gui.SetWindowPos(
+                target_hwnd,
+                win32con.HWND_TOP,
+                target_x,
+                target_y,
+                target_w,
+                target_h,
+                win32con.SWP_SHOWWINDOW
+            )
+            logger.info("✓ Resized window '{}' to ({}, {}, {}x{})", win_text, target_x, target_y, target_w, target_h)
+            return f"Resized and moved window '{win_text}' to position '{position}' ({target_w}x{target_h})."
+        except Exception as e:
+            logger.error("Error resizing window: {}", e)
+            return f"Error resizing window: {e}"

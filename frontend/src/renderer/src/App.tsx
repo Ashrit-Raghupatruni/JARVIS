@@ -4,6 +4,7 @@ import { useWebSocket } from './hooks/useWebSocket'
 import { useAudio } from './hooks/useAudio'
 import DashboardLayout from './components/DashboardLayout'
 import SiriWidget from './components/SiriWidget'
+import { FaceLockScreen } from './components/FaceLockScreen'
 
 export default function App() {
   const {
@@ -133,6 +134,8 @@ export default function App() {
 
   const isSerious = Boolean(settings?.voice?.seriousMode)
 
+  const [isLocked, setIsLocked] = useState(true)
+
   // If this window is the Siri widget overlay, render ONLY the Siri visualizer
   if (isSiriWidget) {
     return (
@@ -140,6 +143,11 @@ export default function App() {
         <SiriWidget />
       </div>
     )
+  }
+
+  // Intercept application mount with Cybernetic Face Identity Lock Screen
+  if (isLocked) {
+    return <FaceLockScreen onUnlock={() => setIsLocked(false)} />
   }
 
   return (

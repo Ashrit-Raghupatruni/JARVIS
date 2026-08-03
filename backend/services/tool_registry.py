@@ -212,6 +212,26 @@ class ToolRegistry:
             parameters={"type": "object", "properties": {}},
             handler=_auto_fill_form_handler
         )
+        async def _resize_window_handler(title: str, position: str = "left"):
+            from backend.services.automation import AutomationService
+            auto = AutomationService()
+            return auto.resize_window(title=title, position=position)
+
+        self.register(
+            name="resize_window",
+            description="Resizes and repositions a desktop window to presets ('left', 'right', 'maximize', 'center').",
+            category="automation",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Title or app name of the window (e.g. 'chrome', 'vscode', 'notepad', 'active')"},
+                    "position": {"type": "string", "description": "Target position preset: 'left', 'right', 'maximize', 'center'"}
+                },
+                "required": ["title", "position"]
+            },
+            handler=_resize_window_handler
+        )
         self.register(
             name="open_application",
             description="Launches or brings a desktop application to the foreground (e.g. 'chrome', 'vscode', 'notepad').",
@@ -274,14 +294,17 @@ class ToolRegistry:
         async def _toggle_live_handler(enable: bool = True):
             from backend.services.manager import ServiceManager
             live_engine = ServiceManager.get_instance("live_mode_engine")
-            if live_engine:
-                if enable:
-                    live_engine.start()
-                    return "Live Mode enabled and continuously observing desktop context."
-                else:
-                    live_engine.stop()
-                    return "Live Mode disabled."
-            return f"Live Mode status updated to {enable}."
+            if not live_engine:
+                from backend.services.live_mode.live_engine import LiveModeEngine
+                live_engine = LiveModeEngine()
+                ServiceManager.register_instance("live_mode_engine", live_engine)
+
+            if enable:
+                live_engine.start()
+                return "Live Mode enabled and continuously observing desktop context."
+            else:
+                live_engine.stop()
+                return "Live Mode disabled."
 
         async def _explain_concept_handler(concept: str, depth: str = "intermediate"):
             from backend.services.skills.learning_skill import LearningSkill

@@ -45,12 +45,47 @@ class WorldModel:
     Acts as the single source of truth across all perception, planning, and execution modules.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, event_bus: Optional[Any] = None) -> None:
+        self.event_bus = event_bus
         self.spatial_engine = SpatialEngine()
         self.scene_graph_engine = UIASceneGraph()
         self._state = WorldModelState()
         self.refresh()
+        if self.event_bus:
+            import asyncio
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(self._subscribe_event_bus())
+            except RuntimeError:
+                pass
         logger.info("WorldModel initialized (Central Desktop State Aggregator Ready).")
+
+    async def _subscribe_event_bus(self) -> None:
+        if not self.event_bus:
+            return
+        await self.event_bus.subscribe("task.*", self._handle_task_event)
+        await self.event_bus.subscribe("config_reloaded", self._handle_config_event)
+        await self.event_bus.subscribe("security.approval_required", self._handle_security_event)
+        await self.event_bus.subscribe("context.updated.*", self._handle_context_event)
+        logger.info("✓ [EventBus Subscriber] WorldModel bound to topics: task.*, config_reloaded, security.approval_required, context.updated.*")
+
+    async def _handle_task_event(self, event) -> None:
+        logger.info(f"⚡ [EventBus Subscriber -> WorldModel] Received '{event.topic}': task='{event.data.get('name')}' (ID: {event.data.get('task_id')})")
+        if event.topic == "task.started":
+            self._state.current_workflow = f"Executing Task: {event.data.get('name', 'Async Goal')}"
+        elif event.topic in ["task.completed", "task.failed"]:
+            self._state.current_workflow = "Idle Desktop Observation"
+
+    async def _handle_config_event(self, event) -> None:
+        logger.info(f"⚡ [EventBus Subscriber -> WorldModel] Received '{event.topic}': config changes={event.data.get('changes')}")
+        self.refresh()
+
+    async def _handle_security_event(self, event) -> None:
+        logger.warning(f"⚡ [EventBus Subscriber -> WorldModel] Received '{event.topic}': Security approval required for action '{event.data.get('action')}'")
+        self._state.current_workflow = f"Awaiting Security Approval: {event.data.get('action')}"
+
+    async def _handle_context_event(self, event) -> None:
+        logger.info(f"⚡ [EventBus Subscriber -> WorldModel] Received '{event.topic}': key='{event.data.get('key')}', new_value='{event.data.get('new_value')}'")
 
     @property
     def state(self) -> WorldModelState:

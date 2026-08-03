@@ -52,7 +52,7 @@ export class FaceRenderer {
     // Load real facecap.glb 3D Head Asset
     const targetUrl = customAssetUrl || headModelAssetUrl
     GltfHeadLoader.load(targetUrl).then((asset) => {
-      if (asset && asset.headMesh) {
+      if (asset && asset.model) {
         loadedAsset = asset
         rootGroup.add(asset.model)
       }

@@ -25,7 +25,22 @@ active_mobile_connections = set()
 
 
 async def handle_mobile_ws(websocket: WebSocket):
-    """Real-time Mobile Companion WebSocket Handler."""
+    """Real-time Mobile Companion WebSocket Handler with fail-closed token verification."""
+    token = websocket.query_params.get("token") or websocket.headers.get("authorization")
+    auth_svc = ServiceManager.get_instance("mobile_auth_service")
+
+    # Fail closed: If auth service is unavailable OR token verification fails, reject connection
+    if not auth_svc or not hasattr(auth_svc, "verify_token"):
+        logger.error("Mobile WS connection rejected: MobileAuthService is unavailable.")
+        await websocket.close(code=4003, reason="Authentication service unavailable")
+        return
+
+    payload = auth_svc.verify_token(token)
+    if not payload:
+        logger.warning("Mobile WS connection rejected: Invalid or unauthenticated token.")
+        await websocket.close(code=4001, reason="Unauthorized companion token")
+        return
+
     await websocket.accept()
     active_mobile_connections.add(websocket)
     gw_svc = ServiceManager.get_instance("mobile_gateway_service")

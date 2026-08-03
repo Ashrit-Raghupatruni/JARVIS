@@ -1,52 +1,46 @@
-# 📜 Development Rules & Architectural Guidelines
+# 📜 Development Rules & Architectural Standards
 
-This document outlines the coding standards, safety guards, asset-based 3D face rules, mobile approval gatekeepers, and architectural rules for maintaining the JARVIS personal AI OS. **Last Updated:** July 29, 2026
-
----
-
-## 1. Core Directives & Operating Constraints
-
-> [!IMPORTANT]
-> **Personal AI OS Scope**: Designed exclusively for **1 Windows PC + 1 Dedicated Android Phone**. Do NOT add cloud multi-tenancy, enterprise SaaS wrappers, microservices, or complex distributed databases. Keep local-first, fast, and maintainable.
-
-> [!CAUTION]
-> **No Unrequested Git Push**: Never run `git push` unless explicitly ordered by the user. All code modifications, builds, and documentation updates MUST remain local.
+This document establishes the mandatory engineering rules, safety constraints, coding standards, and architectural directives for JARVIS. **Last Updated:** July 31, 2026
 
 ---
 
-## 2. 3D Face Graphics & Renderer Rules
+## 1. Safety & Security Directives (FAIL CLOSED)
 
-1. **Strict Asset-Based 3D Modeling (Zero Procedural Primitives)**:
-   - All 3D head face geometry MUST be loaded from pre-modeled `.glb` / `.gltf` / `.vrm` assets via Three.js `GLTFLoader`.
-   - Never procedurally approximate human face anatomy using primitive box, sphere, cylinder, or extrude meshes (`BoxGeometry`, `SphereGeometry`).
-2. **Synchronous Frame-0 Head Asset Mount**:
-   - The 3D renderer MUST mount an immediate head model synchronously on frame 0 so the canvas is **100% non-blank** on initial mount.
-3. **Viseme Speech Lip-Sync & ARKit Morph Target Mapping**:
-   - Audio volume levels MUST drive standard speech visemes (`viseme_aa`, `viseme_E`, `viseme_O`, `jawOpen`) and ARKit blendshapes (`eyeBlinkLeft`, `eyeBlinkRight`).
-4. **Interactive 3D Rotation Toggle**:
-   - The renderer MUST respect `is3DRotationEnabled` state from Zustand `appStore`: continuous smooth 360° Y-axis rotation when ON, frozen in position when OFF.
+1. **Fail-Closed Security Default**: Security endpoints and token verification MUST fail closed.
+   - `mobile_auth.py` (`verify_token()`): On any JWT decode failure, expired token, or missing claim, MUST return `None` (401 Unauthorized). Zero default trusted identity fallbacks.
+   - `DEV_TOKEN_` prefixes MUST be gated behind `settings.DEBUG == True`.
+   - Security approvals and biometric verifications MUST return `verified: False` or `approved: False` when services or reference embeddings are missing.
+2. **Sanitize Terminal Commands**: All shell commands MUST pass through `SafetyService.sanitize_command()` before execution.
+3. **No Unconfirmed Destructive Actions**: Disk formatting, file deletion, registry modifications, or process termination require user approval.
 
 ---
 
-## 3. Safety & Security Gatekeeper Rules
+## 2. 3D Rendering & Visual Asset Directives
 
-1. **Mobile Security Gatekeeper**:
-   - Dangerous operations (file deletion, terminal commands, system shutdown/restart, registry edits, software installs) MUST pause execution and request mobile security approval via `MobileGatewayService`.
-   - Gatekeeper decisions: `approve`, `deny`, `always_allow`, `always_deny`. Expiration: 30-second timeout auto-denies for safety.
-2. **Strict Identity Enforcement**:
-   - The AI must ALWAYS identify as **J.A.R.V.I.S.** created by Ashrit Raghupatruni. Under NO circumstances should it state it is Qwen, Alibaba Cloud, ChatGPT, OpenAI, Llama, or Claude.
-3. **Content Safety Guardrails**:
-   - Background topic monitoring must block financial, day-trading, cryptocurrency, and gambling topics at the code level.
-4. **Database Concurrency Rules**:
-   - All SQLite connections MUST enforce `PRAGMA journal_mode=WAL;` to eliminate database write lock contention across asynchronous background threads.
+1. **Strict Asset-Based 3D Geometry**:
+   - DO NOT create face geometry using procedural primitive math (`BoxGeometry`, `SphereGeometry`, `CylinderGeometry`).
+   - Use verified `facecap.glb` asset loaded via `GLTFLoader` with `MeshoptDecoder`.
+   - `createImmediateHead()` is **100% DELETED** and forbidden from returning to the codebase.
+2. **Green Hacker Aesthetic**:
+   - Maintain `--color-jarvis-accent: #00ff66` and `--color-jarvis-bg: #050d08` across CSS tokens, Three.js PBR materials, and dashboard UI components.
 
 ---
 
-## 4. Backend & Frontend Coding Standards (Python & TypeScript)
+## 3. Autonomous Agent Ecosystem Directives
 
-* **Asynchronous Execution (`async`/`await`)**:
-  - Use `async` definitions for all I/O-bound operations (REST API handlers, WebSockets, database calls, subprocesses).
-* **Type Safety & Pydantic Validation**:
-  - All mobile API requests, REST endpoints, and WebSocket frames MUST use Pydantic v2 schemas (`backend/models/mobile_schemas.py`).
-* **Clean Design Token Usage**:
-  - CSS variables defined in `@theme` in `index.css` (`--color-jarvis-accent`, `--color-jarvis-bg`) MUST be used across components instead of ad-hoc custom values.
+1. **Real Sub-Agent Execution**:
+   - Sub-agent instances (`SubAgentInstance`) MUST execute real `PlannerAgent` LLM tool loops.
+   - DO NOT use mock timer loops (`asyncio.sleep(0.5)`) or canned log strings in production sub-agent runners.
+2. **Persistent Goal Checkpointing**:
+   - Step progress MUST be recorded to SQLite WAL (`data/jarvis.db`) via `LongHorizonCheckpointService`.
+3. **Active KV-Cache Pruning**:
+   - `LLMService` MUST evaluate `KVCachePruner.evaluate_and_prune()` on conversation history before calling LLM providers when token budget is exceeded.
+
+---
+
+## 4. Source Control & Archive Directives
+
+1. **No GitHub Push Without Explicit Permission**:
+   - NEVER run `git push origin feature` or push commits to remote repositories without explicit user instruction.
+2. **Keep `jarvis.zip` Up-to-Date**:
+   - Re-generate `jarvis.zip` incorporating modified code and `.glb` model assets locally.

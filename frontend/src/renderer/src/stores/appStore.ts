@@ -23,6 +23,12 @@ interface AppState {
   pushToTalkActive: boolean
   is3DRotationEnabled: boolean
 
+  /* ----- Autonomous Agent Ecosystem State ----- */
+  activeSubAgents: any[]
+  ipcMessages: any[]
+  goalQueue: any[]
+  kvCacheMetrics: any
+
   /* ----- UI State ----- */
   showSettings: boolean
   showChat: boolean
@@ -48,6 +54,12 @@ interface AppState {
   setScreenPreview: (preview: string | null) => void
   setPushToTalkActive: (active: boolean) => void
   setThinkingText: (text: string) => void
+
+  /* ----- Agent Ecosystem Actions ----- */
+  setActiveSubAgents: (agents: any[]) => void
+  addIPCMessage: (msg: any) => void
+  setGoalQueue: (goals: any[]) => void
+  setKVCacheMetrics: (metrics: any) => void
 
   /* ----- UI Actions ----- */
   toggle3DRotation: () => void
@@ -106,6 +118,17 @@ export const useAppStore = create<AppState>((set) => ({
   screenPreview: null,
   pushToTalkActive: false,
   is3DRotationEnabled: true,
+  activeSubAgents: [],
+  ipcMessages: [],
+  goalQueue: [],
+  kvCacheMetrics: {
+    max_context_tokens: 8192,
+    total_prune_events: 0,
+    raw_tokens_processed: 0,
+    pruned_tokens_saved: 0,
+    savings_percent: 0,
+    last_prune_time: null
+  },
   showSettings: false,
   showChat: true,
   showCommandHistory: false,
@@ -164,6 +187,18 @@ export const useAppStore = create<AppState>((set) => ({
   setPushToTalkActive: (pushToTalkActive) => set({ pushToTalkActive }),
 
   setThinkingText: (thinkingText) => set({ thinkingText }),
+
+  /* ----- Agent Ecosystem Actions ----- */
+  setActiveSubAgents: (activeSubAgents) => set({ activeSubAgents }),
+
+  addIPCMessage: (msg) =>
+    set((state) => ({
+      ipcMessages: [...state.ipcMessages.slice(-50), msg]
+    })),
+
+  setGoalQueue: (goalQueue) => set({ goalQueue }),
+
+  setKVCacheMetrics: (kvCacheMetrics) => set({ kvCacheMetrics }),
 
   /* ----- UI Actions ----- */
   toggle3DRotation: () => set((state) => ({ is3DRotationEnabled: !state.is3DRotationEnabled })),

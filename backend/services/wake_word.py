@@ -181,6 +181,55 @@ class WakeWordService:
 
     # ── State Management ─────────────────────────────────────────────────
 
+    def start_standalone_listener(self, event_bus=None, on_wake_word_callback=None) -> None:
+        """
+        Starts a dedicated background hardware microphone capture thread via sounddevice.
+        Runs continuous openwakeword inference even when the frontend browser is minimized or idle.
+        """
+        if getattr(self, "_listener_running", False):
+            return
+
+        import threading
+        self._listener_running = True
+        self.event_bus = event_bus
+        self.on_wake_word_callback = on_wake_word_callback
+
+        def _bg_audio_loop():
+            try:
+                import sounddevice as sd
+                chunk_samples = 1280
+                logger.info("🎙️ Standalone Wake Word Background Microphone Listener Started (16kHz PCM).")
+
+                def _callback(indata, frames, time_info, status):
+                    if not self._listener_running:
+                        return
+                    pcm_bytes = indata.tobytes()
+                    detected = self.process_audio(pcm_bytes)
+                    if detected:
+                        logger.info("🔥 [WakeWord Listener] Wake word 'Hey Jarvis' detected in background audio stream!")
+                        if self.event_bus:
+                            import asyncio
+                            try:
+                                loop = asyncio.get_event_loop()
+                                loop.create_task(self.event_bus.publish("wake_word.detected", {"threshold": self.threshold}))
+                            except Exception:
+                                pass
+                        if self.on_wake_word_callback:
+                            try:
+                                self.on_wake_word_callback()
+                            except Exception as e:
+                                logger.error("Error in wake word callback: {}", e)
+
+                with sd.InputStream(samplerate=16000, channels=1, dtype='int16', blocksize=chunk_samples, callback=_callback):
+                    while self._listener_running:
+                        time.sleep(0.2)
+            except Exception as e:
+                logger.error("Standalone Wake Word listener encountered error: {}", e)
+                self._listener_running = False
+
+        thread = threading.Thread(target=_bg_audio_loop, daemon=True, name="WakeWordBackgroundThread")
+        thread.start()
+
     def reset(self) -> None:
         """
         Reset the internal detection state.
@@ -216,4 +265,5 @@ class WakeWordService:
             "loaded": self._is_loaded,
             "threshold": self.threshold,
             "cooldown_seconds": self._cooldown_seconds,
+            "background_listener_active": getattr(self, "_listener_running", False)
         }

@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**A production-grade, voice-controlled AI desktop assistant for Windows**
+**A voice-controlled AI desktop assistant for Windows**
 
 *Inspired by Iron Man's JARVIS*
 
@@ -17,7 +17,7 @@
 ## ✨ Features
 
 ### 🎤 Voice Control, Mobile Companion & Live Mode AI Co-Pilot
-- **Dedicated Live Mode (AI Screen Assistant)** — Real-time continuous desktop observation operating mode. Extracts sub-30ms structured Win32 UIA Scene Graphs, offers step-by-step next logical guidance, smart form auto-fill with pre-submission validation, and multi-monitor workspace layout restorer (**Coding** & **Research** layouts).
+- **Dedicated Live Mode (AI Screen Assistant)** — Real-time continuous desktop observation operating mode. Extracts structured Win32 UIA Scene Graphs (~15ms Win32 UIA tree capture), offers step-by-step next logical guidance, smart form auto-fill with pre-submission validation, and multi-monitor workspace layout restorer (**Coding** & **Research** layouts).
 - **Persistent Chat History (Claude/GPT-Style)** — Browsable, persistent conversation sessions stored in SQLite (`jarvis.db`) with automatic first-message title generation, session sidebar (`ConversationSidebar.tsx`), inline renaming, deletion, and transcript restoration.
 - **Live Mode Browser Automation Engine** — Native multi-step perceive-decide-act-observe agent loop (`run_browser_agent` in `BrowserService`) and `browser_agent_task` tool for autonomous web research.
 - **Proactive Desktop Intelligence Suite** — Instant TTS interrupt barge-in (`cancel_playback`), exponential backoff retry decorator, 3.0s vision rate-limiter, Windows Registry boot auto-start (`system_autostart.py`), Clipboard Quick-Action Intelligence (`clipboard_intelligence.py`), session memory continuity (`session_memory.json`), background topic monitoring with content safety filters, and Proactive 2.0 with a 20-minute interjection cooldown timer.
@@ -511,7 +511,7 @@ WAKE_WORD_THRESHOLD=0.5       # Wake word sensitivity
 
 ### 🧠 Prash + Ollama + Multi-Cloud Failover Setup
 
-JARVIS uses a production-grade, highly resilient multi-provider AI system designed to ensure 100% availability:
+JARVIS uses a resilient multi-provider AI system with dynamic fallback routing designed for high availability:
 
 1. **Primary AI Decider (Prash — Local)**
    - Custom transformer language model running locally on PyTorch CPU/GPU.

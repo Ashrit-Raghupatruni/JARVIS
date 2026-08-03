@@ -46,6 +46,10 @@ gantt
     Proactive Desktop Intelligence Suite :done, t7_3, 2026-07-29, 1d
     High-Precision Structured Layout & Table OCR Engine :done, t7_4, 2026-07-29, 1d
     3D Face Asset Loader & Viseme Lip-Sync :done, t7_5, 2026-07-29, 1d
+    section MCU J.A.R.V.I.S. Core
+    Real 128-d Face Identity Lock Screen :done, t8_1, 2026-08-03, 1d
+    Full 21 Micro-Agent Ecosystem Architecture :done, t8_2, 2026-08-03, 1d
+    Marvel J.A.R.V.I.S. Situational Personality Engine :done, t8_3, 2026-08-03, 1d
 ```
 
 ---
@@ -73,5 +77,8 @@ The architecture is split into a **React + Electron** desktop client (frontend),
 
 - **3D Face Engine Test Suite**: `npx vitest run frontend/src/renderer/src/lib/face-engine/tests/faceEngine.test.ts` → **`0 errors, PASSED`**.
 - **Backend Python Diagnostic Audit**: `python scratch/test_ocr_and_all_systems.py` → **`PASSED 100%`**.
+- **EventBus Subscriber Test**: `python scratch/test_event_bus_subscriber.py` → **`PASSED`**.
+- **Wake Word Detection Hardware Listener**: `python scratch/test_wake_word_fix.py` → **`PASSED`**.
+- **Live Mode Full Suite (Phases 0-3)**: `python scratch/test_live_mode_full_suite.py` → **`PASSED`**.
 - **Vite HMR & Electron Build**: Clean compilation without import path errors.
-- **GitHub Status**: All updates saved locally — **not pushed to GitHub** per user directive.
+- **GitHub Status**: All commits pushed to remote GitHub repository per explicit user instruction.

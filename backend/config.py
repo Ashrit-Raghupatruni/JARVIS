@@ -225,6 +225,20 @@ class Settings(BaseSettings):
         description="Enable Serious Mode (authoritative tone, tactical UI, mission-focused responses).",
     )
 
+    # ── SSL / TLS Security Settings ──────────────────────────────────────
+    ENABLE_HTTPS: bool = Field(
+        default=False,
+        description="Enable HTTPS / WSS encrypted transport for local network communications.",
+    )
+    SSL_KEYFILE: Optional[str] = Field(
+        default=None,
+        description="Path to SSL private key file (.key) for local HTTPS / WSS encryption.",
+    )
+    SSL_CERTFILE: Optional[str] = Field(
+        default=None,
+        description="Path to SSL certificate file (.crt / .pem) for local HTTPS / WSS encryption.",
+    )
+
     # ── Clap Listener Settings ───────────────────────────────────────────
     CLAP_ENABLED: bool = Field(
         default=True,

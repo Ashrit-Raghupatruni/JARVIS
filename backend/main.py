@@ -102,15 +102,31 @@ async def lifespan(app: FastAPI):
     from backend.agents.multi_agent.orchestrator import HierarchicalOrchestrator
     orchestrator = HierarchicalOrchestrator(event_bus, ServiceManager)
     
-    app.state.orchestrator = orchestrator
-    ServiceManager.register_instance("orchestrator", orchestrator)
+    # ── Initialize Autonomous Agent Ecosystem ──────────────────────────────
+    from backend.services.agent_ecosystem import AgentEcosystemService
+    from backend.services.long_horizon_checkpoint import LongHorizonCheckpointService
+    from backend.services.kv_cache_pruner import KVCachePruner
+    from backend.api.websocket import manager as connection_manager
 
-    # ── Initialize Hybrid Memory System ─────────────────────────────────────
-    from backend.services.hybrid_memory_system import HybridMemorySystem
-    hybrid_memory = HybridMemorySystem()
-    
-    app.state.hybrid_memory = hybrid_memory
-    ServiceManager.register_instance("hybrid_memory", hybrid_memory)
+    app.state.connection_manager = connection_manager
+    agent_ecosystem = AgentEcosystemService(event_bus=event_bus, connection_manager=connection_manager)
+    checkpoint_service = LongHorizonCheckpointService()
+    asyncio.create_task(checkpoint_service.initialize())
+    kv_pruner = KVCachePruner()
+
+    app.state.agent_ecosystem = agent_ecosystem
+    app.state.checkpoint_service = checkpoint_service
+    app.state.kv_pruner = kv_pruner
+
+    from backend.services.world_model import WorldModel
+    world_model = WorldModel(event_bus=event_bus)
+    app.state.world_model = world_model
+
+    ServiceManager.register_instance("agent_ecosystem", agent_ecosystem)
+    ServiceManager.register_instance("checkpoint_service", checkpoint_service)
+    ServiceManager.register_instance("kv_pruner", kv_pruner)
+    ServiceManager.register_instance("world_model", world_model)
+    logger.info("✓ Autonomous Agent Ecosystem, WorldModel (EventBus Subscribed), Checkpoints & KV-Cache Pruner initialized")
 
     app.loop = asyncio.get_running_loop()
 
@@ -185,10 +201,15 @@ async def lifespan(app: FastAPI):
     try:
         from backend.services.wake_word import WakeWordService
         wake_word_service = WakeWordService()
-        asyncio.create_task(wake_word_service.load_model())
+        
+        async def _init_wake_word_background():
+            await wake_word_service.load_model()
+            wake_word_service.start_standalone_listener(event_bus=event_bus)
+
+        asyncio.create_task(_init_wake_word_background())
         app.state.wake_word_service = wake_word_service
         ServiceManager.register_instance("wake_word_service", wake_word_service)
-        logger.info("✓ Wake word service initialized (model loading in background)")
+        logger.info("✓ Wake word service initialized (model loading & background microphone listener starting)")
     except Exception as e:
         logger.warning(f"✗ Wake word service unavailable: {e}")
         app.state.wake_word_service = None

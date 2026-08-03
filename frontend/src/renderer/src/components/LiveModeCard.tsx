@@ -52,7 +52,8 @@ export default function LiveModeCard() {
   const toggleLiveMode = async (enable: boolean) => {
     setLoading(true)
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/mobile/live_mode/toggle?enable=${enable}`, {
+      const host = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.hostname : '127.0.0.1'
+      const res = await fetch(`http://${host}:8000/api/v1/mobile/live_mode/toggle?enable=${enable}`, {
         method: 'POST'
       })
       const data = await res.json()
@@ -67,7 +68,8 @@ export default function LiveModeCard() {
 
   const restoreWorkspace = async (preset: string) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/mobile/workspaces/restore?preset=${preset}`, {
+      const host = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.hostname : '127.0.0.1'
+      const res = await fetch(`http://${host}:8000/api/v1/mobile/workspaces/restore?preset=${preset}`, {
         method: 'POST'
       })
       const data = await res.json()

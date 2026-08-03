@@ -34,7 +34,7 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
   // Determine active visual component
   const isSpeaking = assistantState === 'speaking'
   const activeVisual =
-    viewMode === 'face' || (viewMode === 'auto' && isSpeaking)
+    viewMode === 'face' || viewMode === 'auto'
       ? 'face'
       : viewMode === 'reactor'
       ? 'reactor'

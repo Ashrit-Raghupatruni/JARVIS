@@ -1,65 +1,43 @@
-# 🎨 Design System & Visual Guidelines
+# 🎨 Design System, Styling Tokens & Visual Architecture
 
-JARVIS features an iconic sci-fi Heads-Up Display (HUD) interface inspired by Iron Man's home terminal. The interface prioritizes deep space navy backgrounds, semi-transparent glassmorphic panels, neon cyan glowing states, an asset-based 3D face visualizer, and a dedicated **Android Mobile Companion** Material 3 dark aesthetic. **Last Updated:** July 29, 2026
-
----
-
-## 1. Color Palette & Typography
-
-The theme values are configured globally in [index.css](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/index.css) and mirrored in the Android companion app ([`mobile_app/src/screens/`](file:///c:/Users/ashri/JARVIS/mobile_app/src/screens/)):
-
-### 1.1. Core Colors & Materials
-* **Core Background (`--color-jarvis-bg`)**: `#070b13` — Deep space black-blue.
-* **Alternative Background (`--color-jarvis-bg-alt`)**: `#0a1120` — Slightly lighter navy for panel separation.
-* **Surface (`--color-jarvis-surface`)**: `rgba(10, 20, 38, 0.75)` — Glassmorphic background with alpha opacity.
-* **Solid Surface (`--color-jarvis-surface-solid`)**: `#0c162b` — Non-translucent panel backing.
-* **Hover Surface (`--color-jarvis-surface-hover`)**: `rgba(15, 30, 56, 0.95)` — Highlight backing for interactive items.
-
-### 1.2. Accent & Neon Indicators
-* **Primary Accent (`--color-jarvis-accent`)**: `#00e5ff` — High-intensity neon cyan (used for active states, lines, and primary button text).
-* **Secondary Accent (`--color-jarvis-accent-2`)**: `#00aeff` — Electric blue (used for secondary status rings and badges).
-* **Warning Accent (`--color-jarvis-accent-3`)**: `#ffaa00` — Neon orange/yellow (used for execution and security warning logs).
-* **Glow Dim (`--color-jarvis-accent-dim`)**: `rgba(0, 229, 255, 0.15)` — Faded neon halo backing.
-* **Glow Bright (`--color-jarvis-accent-glow`)**: `rgba(0, 229, 255, 0.35)` — Mid-intensity glow.
-* **Success Indicator (`--color-jarvis-success`)**: `#00e676` — Neon green.
-* **Danger/Error Indicator (`--color-jarvis-danger`)**: `#ff3d00` — Vivid neon red-orange.
-
-### 1.3. Typography
-* **Primary Font**: `Inter` (-apple-system, BlinkMacSystemFont, Segoe UI).
-* **Monospace Font**: `JetBrains Mono` (used for code blocks, terminal outputs, and HUD badges).
+This document defines the visual identity, styling tokens, glassmorphism UI components, Three.js 3D rendering pipeline, and green hacker aesthetic system for JARVIS. **Last Updated:** July 31, 2026
 
 ---
 
-## 2. 3D Face & HUD Visualizer Design Architecture
+## 1. Green Hacker Design System (`#00ff66`)
 
-1. **Idle Circular Tech HUD (`IdleHUD.tsx` & `idleHudScene.ts`)**:
-   - Digital HH:MM:SS clock with superscript seconds display.
-   - J.A.R.V.I.S. wordmark with tagline (*"JUST A RATHER VERY INTELLIGENT SYSTEM"*).
-   - Live date display and 80-notched rotating gear ring with ticking dot matrix LEDs.
+The entire JARVIS frontend uses a sleek, high-contrast **Green Hacker Terminal Aesthetic** with dark emerald backgrounds, neon emerald accents, glassmorphic panels, and glowing Three.js PBR materials.
 
-2. **Asset-Based 3D Face Engine (`TalkingFace3D.tsx` & `FaceRenderer.ts`)**:
-   - Pre-modeled 3D humanoid head asset loaded via `GLTFLoader`.
-   - Metallic-roughness PBR skin shading with smooth organic cranium curves and sculpted 3D ears.
-   - **3D ROTATION TOGGLE**: Interactive HUD button (`ROTATE: ON` / `ROTATE: OFF`) allowing users to freeze or resume continuous 360-degree rotation.
-   - Real-time TTS audio amplitude viseme lip-sync and procedural double-blinking.
-
----
-
-## 3. Resizable Panel Splitter & Header Dropdown Navigation
-
-- **Header Command Dropdown (`☰ Command Center ▾`)**:
-  - Consolidates 8 workspace sections into a single header dropdown button.
-  - Includes **Chat History** session conversation log option.
-- **70/30 Resizable Panel Splitter**:
-  - Draggable vertical divider bar between the ~70% Left Visualizer Panel and ~30% Right Chat Panel.
-  - `localStorage` split ratio persistence (`jarvis_split_ratio`).
+### Core Color Tokens (`index.css`)
+- **Primary Accent**: `#00ff66` (Neon Green / Hacker Emerald)
+- **Secondary Accent**: `#00cc55` (Subdued Emerald)
+- **Deep Background**: `#050d08` (Dark Emerald Navy)
+- **Glass Panel Surface**: `rgba(5, 13, 8, 0.85)` with `backdrop-filter: blur(12px)`
+- **Border Overlay**: `rgba(0, 255, 102, 0.25)` with inner glow `0 0 15px rgba(0,255,102,0.15)`
+- **Text Primary**: `#00ff66`
+- **Text Muted**: `#00b347`
 
 ---
 
-## 4. Desktop Responsive Window Modes
+## 2. 3D Face Model Rendering Pipeline (`facecap.glb`)
 
-1. **Fullscreen / Maximized Mode**:
-   - Displays full OS Command Center dashboard (TitleBar, Command Dock, 3D Visualizer, ChatPanel, TaskProgress timeline, Visual Workflow Studio, Task Queue, Telemetry, and Automation cards).
-2. **Resized / Compact Floating HUD Mode**:
-   - Automatically activates when window is unmaximized or resized (`width < 900px` or `height < 600px`).
-   - Auto-hides panels and displays **ONLY the central 3D Orb** with a minimal draggable header and **EXPAND** toggle button.
+### Asset Specification
+- **Model File**: `facecap.glb` (332.8 KB) sourced from official Three.js dev examples (`mrdoob/three.js`). Located at `frontend/src/renderer/src/assets/models/head.glb` and `public/models/head.glb`.
+- **Loader Engine**: [`GltfHeadLoader.ts`](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/lib/face-engine/loaders/GltfHeadLoader.ts) using `three/examples/jsm/loaders/GLTFLoader.js` with `MeshoptDecoder` (`three/examples/jsm/libs/meshopt_decoder.module.js`).
+- **Zero Procedural Fallbacks**: `createImmediateHead()` has been **100% DELETED** from the codebase.
+- **PBR Material Styling**: Applied `MeshStandardMaterial` (`color: 0x00ff66`, `roughness: 0.25`, `metalness: 0.8`, `emissive: 0x003311`) to all head mesh geometries.
+
+### Morph Target Viseme & Animation Mapping
+- **Speech Lip-Sync**: Web Audio API `audioLevel` (0.0 to 1.0) maps to morph target `blendShape1.jawOpen` in [`VisemeLipSync.ts`](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/lib/face-engine/animation/VisemeLipSync.ts).
+- **Natural Eye Blinking**: Randomized double-blinking targets `blendShape1.eyeBlink_L` and `blendShape1.eyeBlink_R` in [`NaturalIdleAnimator.ts`](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/lib/face-engine/animation/NaturalIdleAnimator.ts).
+- **Smooth 360-Degree Continuous Y-Axis Rotation**: Managed by `NaturalIdleAnimator` when 3D Rotation Toggle is enabled.
+
+---
+
+## 3. Autonomous Agent Studio Dashboard UI
+
+The `AutonomousAgentStudio.tsx` component is accessible under `☰ Command Center ▾` dropdown and provides a 4-quadrant layout:
+1. **Sub-Agent Active Cards**: Displays role tags (`CodeAgent`, `ResearchAgent`, `SecurityAgent`), real-time progress bars, token counts, and current step descriptions.
+2. **IPC Message Stream**: Live log of inter-agent IPC requests, security audit approvals, and CEO responses.
+3. **Multi-Day Goal Checkpoints**: Timeline view of SQLite WAL goal states (`data/jarvis.db`) with step titles and progress tags.
+4. **KV-Cache Token Pruning Meter**: Real-time context compression statistics showing token savings, compression ratios, and total prune events.

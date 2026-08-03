@@ -167,26 +167,40 @@ class MobileAuthService:
         return f"DEV_TOKEN_{device_id}_{int(time.time())}"
 
     def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
-        """Verify JWT token and return authenticated payload."""
+        """Verify JWT token and return authenticated payload. Fails closed on any decode error."""
         if not token:
             return None
-            
+
         clean_token = token.replace("Bearer ", "").strip()
-        if HAS_JWT and not clean_token.startswith("DEV_TOKEN_"):
+        if not clean_token:
+            return None
+
+        settings = get_settings()
+
+        # Development token prefix is strictly disabled in production (requires settings.DEBUG == True)
+        if clean_token.startswith("DEV_TOKEN_"):
+            if not getattr(settings, "DEBUG", False):
+                logger.warning("DEV_TOKEN_ rejected because settings.DEBUG is False")
+                return None
+            dev_id = clean_token.replace("DEV_TOKEN_", "").strip() or "dev-device"
+            return {"sub": dev_id, "friendly_name": f"Dev Device ({dev_id})", "is_dev": True}
+
+        if HAS_JWT:
             try:
                 payload = jwt.decode(clean_token, self._jwt_secret, algorithms=["HS256"])
-                dev_id = payload.get("sub", "android-companion-1")
+                dev_id = payload.get("sub")
+                if not dev_id:
+                    logger.warning("JWT decode succeeded but missing 'sub' claim")
+                    return None
                 if dev_id in self._trusted_devices:
                     self._trusted_devices[dev_id]["last_active"] = time.time()
                 return payload
             except Exception as e:
-                logger.warning(f"JWT decode failed: {e}")
-        
-        # Development / single-user companion token fallback
-        dev_id = "android-companion-1"
-        if dev_id in self._trusted_devices:
-            self._trusted_devices[dev_id]["last_active"] = time.time()
-        return {"sub": dev_id, "friendly_name": "Android Companion"}
+                logger.warning(f"JWT decode failed: {e}. Token rejected.")
+                return None
+
+        logger.warning("JWT library unavailable and DEV_TOKEN_ rejected. Token verification failed.")
+        return None
 
     def get_trusted_devices(self) -> List[DeviceInfo]:
         """Return list of all registered trusted mobile devices."""

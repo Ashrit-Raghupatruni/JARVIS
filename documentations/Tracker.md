@@ -53,6 +53,12 @@ This document outlines the capabilities, completed features, active work, and up
 - [x] Offline GGML Speech Recognition & Low-Latency 4-Bit GGUF Quantization
 - [x] Multi-Device Peer-to-Peer Mesh Syncing (`SyncService`)
 - [x] Biometric Face & Voice Speaker Verification Engine
+- [x] Real 128-d Face-Identity Security Lock Screen (`FaceBiometricsService` & `FaceLockScreen.tsx`)
+- [x] Full MCU J.A.R.V.I.S. 21 Micro-Agent Ecosystem Architecture (`BaseMicroAgent` & `mcu_agents.py`)
+- [x] Marvel J.A.R.V.I.S. Situational Personality Engine (`PersonalityEngine`)
+- [x] Real EventBus Subscriber Integration (`WorldModel` bound to `task.*`, `config_reloaded`, `security.approval_required`)
+- [x] Standalone Background Hardware Microphone Listener for Wake Word Detection (`WakeWordService`)
+- [x] Full Live Mode AI Assistant Experience (Phases 0 - 3: Toggle Fix, Goal Persistence, Spotlight Overlay, Win32 `SetWindowPos` `resize_window`)
 
 ---
 

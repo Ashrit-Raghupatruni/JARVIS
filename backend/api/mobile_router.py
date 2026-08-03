@@ -169,7 +169,7 @@ async def submit_approval_decision(req: MobileApprovalDecision, gateway_svc=Depe
 async def request_shutdown_approval(gateway_svc=Depends(get_mobile_gateway_service)):
     """Request mobile security approval before allowing laptop app exit / shutdown."""
     if not gateway_svc:
-        return {"approved": True, "decision": "approve", "message": "Gateway service unavailable"}
+        return {"approved": False, "decision": "deny", "message": "Gateway service unavailable"}
     
     logger.info("🛡️ Mobile Security Gatekeeper: Desktop exit/shutdown requested. Awaiting mobile approval...")
     decision = await gateway_svc.request_approval(

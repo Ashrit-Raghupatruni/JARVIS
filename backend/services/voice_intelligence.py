@@ -48,7 +48,7 @@ class VoiceIntelligenceService:
             logger.error("Failed to save speaker profiles JSON: {}", e)
 
     def verify_speaker_biometrics(self, audio_features: Optional[List[float]] = None) -> Dict[str, Any]:
-        """Verify speaker identity using acoustic embedding vector cosine similarity."""
+        """Verify speaker identity using acoustic embedding vector cosine similarity. Fails closed by default."""
         if not audio_features or not isinstance(audio_features, list) or len(audio_features) == 0:
             return {
                 "verified": False,
@@ -59,9 +59,17 @@ class VoiceIntelligenceService:
                 "reason": "No audio feature vector supplied for verification."
             }
 
-        ref_vector = self._profiles.get("primary_user", {}).get("reference_embedding", [0.1] * len(audio_features))
-        if len(ref_vector) != len(audio_features):
-            ref_vector = [0.1] * len(audio_features)
+        ref_vector = self._profiles.get("primary_user", {}).get("reference_embedding")
+        if not ref_vector or not isinstance(ref_vector, list) or len(ref_vector) != len(audio_features):
+            logger.warning("Speaker verification failed: No valid enrolled reference embedding found for primary_user.")
+            return {
+                "verified": False,
+                "speaker_name": "Unknown",
+                "confidence": 0.0,
+                "biometric_match": False,
+                "method": "Acoustic Embedding Cosine Distance",
+                "reason": "No enrolled reference speaker embedding configured."
+            }
 
         # Compute dot product and norms for cosine similarity
         dot_prod = sum(a * b for a, b in zip(audio_features, ref_vector))
@@ -73,7 +81,7 @@ class VoiceIntelligenceService:
         else:
             similarity = dot_prod / (norm_a * norm_b)
 
-        is_verified = similarity >= 0.65
+        is_verified = similarity >= 0.85  # Strict biometric threshold
         return {
             "verified": is_verified,
             "speaker_name": "Ashrit (Primary Owner)" if is_verified else "Unknown / Unverified Speaker",
@@ -82,16 +90,20 @@ class VoiceIntelligenceService:
             "method": "Acoustic Embedding Cosine Distance"
         }
 
-    def verify_face_biometrics(self, frame_bytes: Optional[bytes] = None) -> Dict[str, Any]:
-        """Perform facial verification using OpenCV Haar Cascade on camera frame."""
+    def detect_face_presence(self, frame_bytes: Optional[bytes] = None) -> Dict[str, Any]:
+        """
+        Detect face presence in camera frame using OpenCV Haar Cascade.
+        NOTE: Haar Cascade detects face presence/location only, NOT identity recognition.
+        Returns presence status and face count without claiming owner identity verification.
+        """
         if not frame_bytes:
             return {
+                "detected": False,
                 "verified": False,
-                "user": "Unknown",
                 "confidence": 0.0,
                 "faces_detected": 0,
-                "method": "OpenCV Face Cascade Verification",
-                "reason": "No video frame provided for facial analysis."
+                "method": "OpenCV Haar Cascade Presence Detection",
+                "reason": "No video frame provided for analysis."
             }
 
         try:
@@ -101,11 +113,11 @@ class VoiceIntelligenceService:
             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             if img is None:
                 return {
+                    "detected": False,
                     "verified": False,
-                    "user": "Unknown",
                     "confidence": 0.0,
                     "faces_detected": 0,
-                    "method": "OpenCV Face Cascade Verification",
+                    "method": "OpenCV Haar Cascade Presence Detection",
                     "reason": "Failed to decode camera frame bytes."
                 }
 
@@ -115,26 +127,36 @@ class VoiceIntelligenceService:
             faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
 
             num_faces = len(faces)
-            is_verified = num_faces >= 1
-            conf = min(0.98, 0.85 + (num_faces * 0.05)) if is_verified else 0.0
+            has_face = num_faces >= 1
+            conf = min(0.98, 0.75 + (num_faces * 0.05)) if has_face else 0.0
 
             return {
-                "verified": is_verified,
-                "user": "Ashrit (Primary Owner)" if is_verified else "Unknown / No Face Detected",
+                "detected": has_face,
+                "verified": False,  # Explicitly False: Haar Cascade does not verify identity
                 "confidence": round(conf, 2),
                 "faces_detected": num_faces,
-                "method": "OpenCV Face Cascade Verification"
+                "method": "OpenCV Haar Cascade Presence Detection",
+                "note": "Presence detection only. Facial identity verification requires DeepFace/dlib enrollment."
             }
         except Exception as e:
-            logger.error("Facial verification failed: {}", e)
+            logger.error("Facial presence detection failed: {}", e)
             return {
+                "detected": False,
                 "verified": False,
-                "user": "Unknown",
                 "confidence": 0.0,
                 "faces_detected": 0,
-                "method": "OpenCV Face Cascade Verification",
+                "method": "OpenCV Haar Cascade Presence Detection",
                 "error": str(e)
             }
+
+    def verify_face_biometrics(self, frame_bytes: Optional[bytes] = None) -> Dict[str, Any]:
+        """Delegate face biometric verification to FaceBiometricsService 128-d embedding engine."""
+        try:
+            from backend.services.face_biometrics import FaceBiometricsService
+            face_bio = FaceBiometricsService()
+            return face_bio.verify_face_identity(frame_bytes)
+        except Exception as e:
+            return self.detect_face_presence(frame_bytes)
 
     # ── 1. Emotion Detection (Acoustic Feature Analyzer) ───────────────
 

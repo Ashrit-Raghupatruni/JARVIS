@@ -1035,6 +1035,18 @@ class LLMService:
         """
         fallback_count = 0
 
+        # ── Active KV-Cache Context Pruning ───────────────────────────
+        if conversation_history:
+            try:
+                from backend.utils.service_manager import ServiceManager
+                pruner = ServiceManager.get_sync("kv_pruner")
+                if pruner and hasattr(pruner, "evaluate_and_prune"):
+                    pruned_res = pruner.evaluate_and_prune(conversation_history)
+                    if pruned_res.get("pruned"):
+                        conversation_history = pruned_res.get("pruned_messages", conversation_history)
+            except Exception:
+                pass
+
         # ── Enforce OS Orchestration Context Injection ─────────────────
         # Ensures raw user messages are NEVER sent alone to LLMs without Desktop World Model & OS Tool context
         try:
