@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../stores/appStore'
 import { createOrbScene, type OrbSceneApi } from '../lib/orbScene'
-import { HandTracker, type TrackerStatus } from '../lib/handTracker'
 import { IdleHUD } from './IdleHUD'
-import { TalkingFace3D } from './TalkingFace3D'
 import { RotateCw, Pause } from 'lucide-react'
 
 type CameraState = 'off' | 'starting' | 'on' | 'error'
@@ -21,21 +19,18 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
   const toggle3DRotation = useAppStore((s) => s.toggle3DRotation)
 
   const containerRef = useRef<HTMLDivElement>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const overlayRef = useRef<HTMLCanvasElement>(null)
   const sceneRef = useRef<OrbSceneApi | null>(null)
-  const trackerRef = useRef<HandTracker | null>(null)
 
   const [camera, setCamera] = useState<CameraState>('off')
   const [status, setStatus] = useState<TrackerStatus>({ hands: 0, mode: 'idle' })
   const [error, setError] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'auto' | 'hud' | 'face' | 'reactor'>('auto')
+  const [viewMode, setViewMode] = useState<'auto' | 'hud' | 'reactor'>('auto')
 
   // Determine active visual component
-  const isSpeaking = assistantState === 'speaking'
+  const isSpeaking = assistantState === 'speaking' || assistantState === 'listening' || assistantState === 'processing'
   const activeVisual =
-    viewMode === 'face' || viewMode === 'auto'
-      ? 'face'
+    viewMode === 'auto'
+      ? (isSpeaking ? 'reactor' : 'hud')
       : viewMode === 'reactor'
       ? 'reactor'
       : 'hud'
@@ -68,17 +63,12 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
     <div className="w-full h-full flex flex-col items-center justify-between relative overflow-hidden select-none p-2">
       {/* ── Active Visual Container (Fills Hero Area) ────────────────────────── */}
       <div className="w-full flex-1 flex items-center justify-center relative overflow-hidden">
-        {/* State 1: 3D Talking Face (Active Speech) */}
-        {activeVisual === 'face' && (
-          <TalkingFace3D onOrbClick={onOrbClick} />
-        )}
-
-        {/* State 2: Idle Circular Tech HUD (Ambient / Passive Display) */}
+        {/* State 1: Idle Circular Tech HUD (Ambient / Passive Display) */}
         {activeVisual === 'hud' && (
           <IdleHUD onOrbClick={onOrbClick} />
         )}
 
-        {/* State 3: Classic 3D Arc Reactor Orb */}
+        {/* State 2: Classic 3D Arc Reactor Orb */}
         {activeVisual === 'reactor' && (
           <div
             onClick={onOrbClick}
@@ -99,7 +89,7 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
               ? 'bg-emerald-500/20 border-emerald-400 text-emerald-200 shadow-[0_0_10px_rgba(0,255,102,0.3)]'
               : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
           }`}
-          title="Auto-switch between Idle HUD and 3D Talking Face during speech"
+          title="Auto-switch between Idle HUD and 3D Arc Reactor during speech"
         >
           AUTO DISPLAY
         </button>
@@ -119,15 +109,15 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
 
         <button
           type="button"
-          onClick={() => setViewMode('face')}
+          onClick={() => setViewMode('reactor')}
           className={`px-3 py-1 border rounded text-[10px] font-mono font-bold tracking-wider cursor-pointer transition-all ${
-            viewMode === 'face'
+            viewMode === 'reactor'
               ? 'bg-emerald-500/20 border-emerald-400 text-emerald-200 shadow-[0_0_10px_rgba(0,255,102,0.3)]'
               : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
           }`}
-          title="Lock display to 3D Talking Face"
+          title="Lock display to 3D Arc Reactor"
         >
-          3D FACE
+          ARC REACTOR
         </button>
 
         {/* 3D ROTATION TOGGLE BUTTON */}
@@ -139,7 +129,7 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
               ? 'bg-emerald-500/20 border-emerald-400 text-emerald-200 shadow-[0_0_10px_rgba(0,255,102,0.4)]'
               : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
           }`}
-          title="Toggle 3D Head 360-Degree Rotation ON / OFF"
+          title="Toggle Arc Reactor 3D 360-Degree Rotation ON / OFF"
         >
           {is3DRotationEnabled ? (
             <>

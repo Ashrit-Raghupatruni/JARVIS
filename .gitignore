@@ -31,30 +31,26 @@ desktop.ini
 # Electron
 release/
 
-# Data
+# Data & Runtime State Directories
+data/
+backend/data/
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
+*.bin
+*.key
 jarvis_memory/
 chroma_data/
-
-# Logs
-*.log
-logs/
-
-# Audio temp files
-*.wav
-*.mp3
-*.ogg
-!frontend/src/assets/*.mp3
-
-# Whisper models
-models/
-
-# Tesseract
-tesseract/
-
-# Data directory
-data/
+trusted_devices.json
+episodic_memory.json
+face_owner_profile.json
+monitored_topics.json
+user_habits.json
+strategy_memory.json
+agent_memory.json
+vault.key
+vault.bin
 scratch/
 prash_export/
 *.zip

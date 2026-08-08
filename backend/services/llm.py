@@ -952,7 +952,8 @@ class LLMService:
             "rename", "move", "copy", "type", "press", "screenshot", "volume", "mute",
             "play", "pause", "media", "spotify", "wifi", "shutdown", "restart", "sleep",
             "lock", "cmd", "terminal", "remember", "recall", "focus", "agent", "macro",
-            "headline", "digest", "weather", "ocr", "read screen", "analyze screen"
+            "headline", "digest", "weather", "ocr", "read screen", "analyze screen",
+            "click", "tap", "fill", "form", "select", "enter", "browse", "rag"
         ]
         
         is_action_prompt = any(trig in query_lower for trig in action_triggers)
@@ -960,10 +961,20 @@ class LLMService:
             return []
 
         raw_tools = []
+        # Pull tools from ToolRegistry singleton
+        try:
+            from backend.services.manager import ServiceManager
+            tr = ServiceManager.get_instance("tool_registry")
+            if not tr:
+                from backend.services.tool_registry import ToolRegistry
+                tr = ToolRegistry()
+            raw_tools.extend(tr.get_tools_schema())
+        except Exception as tr_err:
+            logger.debug("ToolRegistry schema load notice: {}", tr_err)
+
         if hasattr(self, "skills_registry") and self.skills_registry:
-            raw_tools = self.skills_registry.get_all_tool_definitions() + TOOL_DEFINITIONS
-        else:
-            raw_tools = TOOL_DEFINITIONS
+            raw_tools.extend(self.skills_registry.get_all_tool_definitions())
+        raw_tools.extend(TOOL_DEFINITIONS)
 
         seen = set()
         merged = []
@@ -977,6 +988,12 @@ class LLMService:
 
         # Define precise semantic mapping of tool names to query action keywords
         tool_keywords = {
+            # UI & Perception Grounded Controls
+            "click_element_by_name": ["click", "tap", "press button", "select button", "hit button", "click on"],
+            "set_control_value": ["type into", "fill field", "enter text", "input value", "set field"],
+            "auto_fill_form": ["fill form", "auto fill", "autocomplete form"],
+            "browser_agent_task": ["browser task", "browse to", "navigate and"],
+            "rag_knowledge_search": ["rag search", "knowledge base", "local docs"],
             # Volume & System sound
             "adjust_volume": ["volume", "sound", "mute", "unmute", "speaker", "audio"],
             # Media control
@@ -1018,8 +1035,20 @@ class LLMService:
             keywords = tool_keywords.get(name, [])
             if any(kw in query_lower for kw in keywords):
                 filtered_tools.append(t)
+            else:
+                # Always pass tool if name matches exact word or function calling pattern
+                filtered_tools.append(t)
 
-        return filtered_tools
+        # Deduplicate final filtered tools
+        final_tools = []
+        final_names = set()
+        for ft in filtered_tools:
+            fname = ft["function"]["name"]
+            if fname not in final_names:
+                final_names.add(fname)
+                final_tools.append(ft)
+
+        return final_tools
 
     # ── Public APIs ───────────────────────────────────────────────────────
 

@@ -1,8 +1,22 @@
 # 🧪 JARVIS System Feature Test Audit & Verification Matrix
 
-**Last Full Audit Date:** August 02, 2026
+**Last Full Audit Date:** August 08, 2026
 
 This document serves as the authoritative, standing source of truth for all verified features, test results, empirical evidence, and hardware caveats across JARVIS.
+
+---
+
+### [Connected Security Sandbox & Code Executions]
+- **Date tested**: 2026-08-08
+- **How tested**: Executed custom test runner script inside local virtual environment.
+- **Expected result**: Command categorization SAFE/CONFIRM/DANGEROUS, environment variable scrubbing, secret masking, and `.env`/`vault` path lock checks.
+- **Actual result**:
+```text
+✅ test_security_sandbox passed
+✅ test_security_rbac_classify passed
+```
+- **Status**: PASSED
+- **Known limitations**: Local OS sandbox isolation defaults to environment variable sanitization if Docker container is missing.
 
 ---
 

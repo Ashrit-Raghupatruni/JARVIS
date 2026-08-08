@@ -67,53 +67,66 @@ class FaceBiometricsService:
 
     def _detect_faces(self, img: np.ndarray) -> List[Tuple[int, int, int, int]]:
         """
-        Detect face bounding boxes in frame using OpenCV FaceDetectorYN or contour analysis.
+        Detect face bounding boxes in frame using Haar Cascades, FaceDetectorYN, or skin analysis,
+        returning the single primary (largest) face bounding box.
         """
         h, w = img.shape[:2]
-        
-        # 1. Try OpenCV FaceDetectorYN
-        if hasattr(cv2, 'FaceDetectorYN_create'):
+        faces = []
+
+        # 1. Try OpenCV Haar Cascade Frontal Face Detector
+        try:
+            cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+            if os.path.exists(cascade_path):
+                face_cascade = cv2.CascadeClassifier(cascade_path)
+                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                detected = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(30, 30))
+                if len(detected) > 0:
+                    for (x, y, fw, fh) in detected:
+                        faces.append((int(x), int(y), int(fw), int(fh)))
+        except Exception:
+            pass
+
+        # 2. Try OpenCV FaceDetectorYN
+        if len(faces) == 0 and hasattr(cv2, 'FaceDetectorYN_create'):
             try:
                 detector = cv2.FaceDetectorYN_create("", "", (w, h))
                 if detector is not None:
-                    _, faces = detector.detect(img)
-                    if faces is not None and len(faces) > 0:
-                        res = []
-                        for f in faces:
+                    _, det = detector.detect(img)
+                    if det is not None and len(det) > 0:
+                        for f in det:
                             box = f[:4].astype(int)
-                            res.append((int(box[0]), int(box[1]), int(box[2]), int(box[3])))
-                        return res
+                            faces.append((int(box[0]), int(box[1]), int(box[2]), int(box[3])))
             except Exception:
                 pass
 
-        # 2. Skin tone & aspect ratio contour face detection
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-        
-        lower_skin = np.array([0, 20, 70], dtype=np.uint8)
-        upper_skin = np.array([20, 255, 255], dtype=np.uint8)
-        mask = cv2.inRange(hsv, lower_skin, upper_skin)
-        
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-        mask = cv2.erode(mask, kernel, iterations=2)
-        mask = cv2.dilate(mask, kernel, iterations=2)
-        
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        faces = []
-        min_area = (h * w) * 0.02
-        for c in contours:
-            area = cv2.contourArea(c)
-            if area > min_area:
-                x, y, fw, fh = cv2.boundingRect(c)
-                aspect = float(fw) / max(1, fh)
-                if 0.4 <= aspect <= 1.6:
-                    faces.append((x, y, fw, fh))
-                    
-        # 3. Fallback for cropped/synthetic face frames
+        # 3. Skin tone & aspect ratio contour face detection fallback
         if len(faces) == 0:
-            faces = [(0, 0, w, h)]
-                    
-        return faces
+            hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+            lower_skin = np.array([0, 20, 70], dtype=np.uint8)
+            upper_skin = np.array([20, 255, 255], dtype=np.uint8)
+            mask = cv2.inRange(hsv, lower_skin, upper_skin)
+            
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+            mask = cv2.erode(mask, kernel, iterations=2)
+            mask = cv2.dilate(mask, kernel, iterations=2)
+            
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            min_area = (h * w) * 0.03
+            for c in contours:
+                area = cv2.contourArea(c)
+                if area > min_area:
+                    x, y, fw, fh = cv2.boundingRect(c)
+                    aspect = float(fw) / max(1, fh)
+                    if 0.4 <= aspect <= 1.6:
+                        faces.append((int(x), int(y), int(fw), int(fh)))
+
+        # 4. If candidates found, select the largest primary face
+        if len(faces) > 0:
+            primary_face = max(faces, key=lambda f: f[2] * f[3])
+            return [primary_face]
+
+        # 5. Default full frame fallback
+        return [(0, 0, w, h)]
 
     def _extract_face_embedding(self, img: np.ndarray) -> Optional[np.ndarray]:
         """
@@ -291,7 +304,7 @@ class FaceBiometricsService:
                     "reason": "Failed to decode camera frame bytes."
                 }
 
-            # 4. Count faces in frame
+            # 4. Count faces in frame & Liveness Micro-Movement Verification
             faces = self._detect_faces(img)
             num_faces = len(faces)
 
@@ -312,6 +325,23 @@ class FaceBiometricsService:
                     "method": "128-d Face Embedding Biometric Verification",
                     "reason": "Multiple faces detected in frame. Only single enrolled owner permitted."
                 }
+
+            # Liveness Verification: Check frame-to-frame pixel variance
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            last_gray = getattr(self, "_last_frame_gray", None)
+            self._last_frame_gray = gray
+
+            if last_gray is not None and last_gray.shape == gray.shape:
+                frame_diff = cv2.absdiff(gray, last_gray)
+                var = float(np.var(frame_diff))
+                if var < 0.02:
+                    return {
+                        "verified": False,
+                        "confidence": 0.0,
+                        "faces_detected": 1,
+                        "method": "128-d Face Embedding Biometric Verification",
+                        "reason": "Liveness check failed: Static photo or motionless frame detected."
+                    }
 
             # 5. Extract Feature Embedding
             frame_emb = self._extract_face_embedding(img)

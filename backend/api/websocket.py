@@ -94,9 +94,6 @@ async def websocket_endpoint(websocket: WebSocket):
     # Store manager on app state for other routes to access
     app.state.connection_manager = manager
 
-    # Get voice agent
-    voice_agent = getattr(app.state, "voice_agent", None)
-
     # Send initial status
     await manager.send_message(
         websocket,
@@ -110,21 +107,37 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             try:
                 action_type, payload = await voice_queue.get()
-                if not voice_agent:
+                v_agent = getattr(app.state, "voice_agent", None)
+                
+                # Wait for voice agent to initialize (poll up to 60s)
+                retry_count = 0
+                while not v_agent and retry_count < 120:
+                    await asyncio.sleep(0.5)
+                    v_agent = getattr(app.state, "voice_agent", None)
+                    retry_count += 1
+
+                if not v_agent:
+                    planner = getattr(app.state, "planner", None)
+                    if planner and action_type == "text_command":
+                        logger.info("Voice agent initializing — executing text_command via direct Planner fallback")
+                        async for msg in planner.plan_and_execute(payload):
+                            await manager.send_message(websocket, msg)
+                    else:
+                        logger.warning(f"Voice agent and planner unavailable, dropping action: {action_type}")
                     voice_queue.task_done()
                     continue
 
                 if action_type == "audio":
-                    async for response_msg in voice_agent.handle_audio_chunk(payload):
+                    async for response_msg in v_agent.handle_audio_chunk(payload):
                         await manager.send_message(websocket, response_msg)
                 elif action_type == "ptt_start":
-                    async for response_msg in voice_agent.handle_push_to_talk_start():
+                    async for response_msg in v_agent.handle_push_to_talk_start():
                         await manager.send_message(websocket, response_msg)
                 elif action_type == "ptt_stop":
-                    async for response_msg in voice_agent.handle_push_to_talk_stop():
+                    async for response_msg in v_agent.handle_push_to_talk_stop():
                         await manager.send_message(websocket, response_msg)
                 elif action_type == "text_command":
-                    async for response_msg in voice_agent.handle_text_command(payload):
+                    async for response_msg in v_agent.handle_text_command(payload):
                         await manager.send_message(websocket, response_msg)
 
                 voice_queue.task_done()
@@ -190,8 +203,9 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     elif msg_type == "interrupt":
                         # Process interrupt IMMEDIATELY to stop speaking instantly
-                        if voice_agent:
-                            async for msg in voice_agent.handle_interrupt():
+                        v_agent = getattr(app.state, "voice_agent", None)
+                        if v_agent:
+                            async for msg in v_agent.handle_interrupt():
                                 await manager.send_message(websocket, msg)
                         # Drain the queue
                         while not voice_queue.empty():
@@ -243,6 +257,28 @@ async def websocket_endpoint(websocket: WebSocket):
                         if t_q:
                             await t_q.add_task(title, cmd, pri)
                             await manager.send_message(websocket, WSMessage(type="status", data={"task_queue": t_q.get_queue_summary()}))
+
+                    elif msg_type == "hand_action":
+                        action = msg_data.get("action", "")
+                        hc_service = getattr(app.state, "hand_control_service", None)
+                        if hc_service:
+                            if action == "move":
+                                x = msg_data.get("x")
+                                y = msg_data.get("y")
+                                if x is not None and y is not None:
+                                    hc_service.move_cursor(int(x), int(y))
+                            elif action == "click":
+                                btn = msg_data.get("button", "left")
+                                act = msg_data.get("click_action") or msg_data.get("action_type") or "click"
+                                hc_service.click_mouse(button=btn, action=act)
+                            elif action == "scroll":
+                                direction = msg_data.get("direction", "down")
+                                amt = msg_data.get("amount", 1)
+                                hc_service.scroll(direction=direction, amount=amt)
+                            elif action == "key":
+                                key = msg_data.get("key", "")
+                                if key:
+                                    hc_service.execute_keyboard_action(key)
 
                     elif msg_type == "settings":
                         # Handle settings update immediately

@@ -99,17 +99,25 @@ class ClapService:
 
     def _is_sharp_clap_impulse(self, block: np.ndarray, level: float) -> bool:
         """Filter out speech, background noise, and music. Returns True ONLY for sharp acoustic clap impulses."""
-        if block is None or block.size <= 1 or level < 0.035:  # Minimum energy gate
+        if block is None or block.size <= 2 or level < 0.035:  # Minimum energy and sample gate
             return False
         
+        flat = block.flatten()
+        if flat.size <= 2:
+            return False
+
         # Peak-to-Average Power Ratio (PAPR) check
-        peak = float(np.max(np.abs(block)))
+        peak = float(np.max(np.abs(flat)))
         papr = peak / (level + 1e-6)
         if papr < 3.2:  # Speech vowels have PAPR < 3.0, sharp claps have PAPR > 3.2
             return False
 
         # Transient step height check (max first derivative spike)
-        max_diff = float(np.max(np.abs(np.diff(block.astype(np.float64)))))
+        diff = np.diff(flat.astype(np.float64))
+        if diff.size == 0:
+            return False
+
+        max_diff = float(np.max(np.abs(diff)))
         if max_diff < peak * 0.5:
             return False
 

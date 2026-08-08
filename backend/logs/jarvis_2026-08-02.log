@@ -1,0 +1,1640 @@
+2026-08-02 22:23:35.100 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 22:23:35.102 | INFO     | wake_word:__init__:39 | WakeWordService created — threshold=0.35
+2026-08-02 22:23:35.153 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:23:35.158 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:23:37.102 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:23:37.103 | WARNING  | voice_intelligence:verify_speaker_biometrics:64 | Speaker verification failed: No valid enrolled reference embedding found for primary_user.
+2026-08-02 22:23:49.102 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-02 22:23:49.103 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-02 22:23:49.104 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 0.0ms (0 controls).
+2026-08-02 22:23:49.293 | INFO     | world_model:__init__:53 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-02 22:23:51.796 | INFO     | proactive_engine:__init__:50 | ProactiveEngine initialized (Proactive 2.0 with 20-min Cooldown & Session Memory Active).
+2026-08-02 22:24:30.044 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 22:24:30.045 | INFO     | wake_word:__init__:39 | WakeWordService created — threshold=0.35
+2026-08-02 22:24:30.048 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:24:30.049 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:24:30.099 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:24:30.099 | WARNING  | voice_intelligence:verify_speaker_biometrics:64 | Speaker verification failed: No valid enrolled reference embedding found for primary_user.
+2026-08-02 22:24:30.745 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-02 22:24:30.745 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-02 22:24:30.746 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 0.0ms (0 controls).
+2026-08-02 22:24:30.848 | INFO     | world_model:__init__:53 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-02 22:24:31.087 | INFO     | proactive_engine:__init__:50 | ProactiveEngine initialized (Proactive 2.0 with 20-min Cooldown & Session Memory Active).
+2026-08-02 22:25:15.671 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 22:25:15.672 | INFO     | wake_word:__init__:39 | WakeWordService created — threshold=0.35
+2026-08-02 22:25:15.675 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:25:15.677 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:25:15.746 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:25:15.746 | WARNING  | voice_intelligence:verify_speaker_biometrics:64 | Speaker verification failed: No valid enrolled reference embedding found for primary_user.
+2026-08-02 22:25:16.520 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-02 22:25:16.520 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-02 22:25:16.521 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 0.0ms (0 controls).
+2026-08-02 22:25:16.621 | INFO     | world_model:__init__:53 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-02 22:25:16.811 | INFO     | proactive_engine:__init__:50 | ProactiveEngine initialized (Proactive 2.0 with 20-min Cooldown & Session Memory Active).
+2026-08-02 22:25:32.427 | INFO     | self_healing:__init__:26 | SelfHealingEngine initialized.
+2026-08-02 22:25:32.629 | INFO     | experience_engine:__init__:25 | ExperienceEngineService initialized at data\experiences.db
+2026-08-02 22:25:32.632 | INFO     | strategy_memory:__init__:29 | StrategyMemoryService initialized. File: data\strategy_memory.json
+2026-08-02 22:25:33.325 | INFO     | mobile_auth:__init__:44 | MobileAuthService initialized (Loaded 1 trusted devices)
+2026-08-02 22:25:33.326 | INFO     | mobile_auth:initiate_pairing:78 | Generated pairing code 900949 for device 'Ashrit Android Phone'
+2026-08-02 22:25:33.862 | INFO     | mobile_gateway:__init__:43 | MobileGatewayService initialized (Mobile Gateway Active)
+2026-08-02 22:25:40.799 | INFO     | skill_library:__init__:28 | SkillLibraryService initialized.
+2026-08-02 22:26:27.144 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 22:26:27.144 | INFO     | wake_word:__init__:39 | WakeWordService created — threshold=0.35
+2026-08-02 22:26:27.148 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:26:27.149 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:26:27.149 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:26:27.150 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:26:27.205 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:26:27.205 | WARNING  | voice_intelligence:verify_speaker_biometrics:64 | Speaker verification failed: No valid enrolled reference embedding found for primary_user.
+2026-08-02 22:26:27.791 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-02 22:26:27.792 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-02 22:26:27.792 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 0.0ms (0 controls).
+2026-08-02 22:26:27.903 | INFO     | world_model:__init__:53 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-02 22:26:28.071 | INFO     | safety:__init__:250 | SafetyService initialised — confirm_dangerous=True, allow_terminal=True
+2026-08-02 22:26:28.072 | INFO     | automation:__init__:191 | AutomationService initialised
+2026-08-02 22:26:57.150 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-02 22:26:57.166 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-02 22:26:57.181 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-02 22:26:57.193 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-02 22:27:24.552 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-02 22:27:24.553 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-02 22:27:25.091 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-02 22:27:25.091 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-02 22:27:25.117 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-02 22:27:25.132 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-02 22:27:25.146 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-02 22:27:25.159 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-02 22:27:25.210 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-02 22:27:25.210 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-02 22:27:25.287 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-02 22:27:25.288 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-02 22:27:25.317 | INFO     | self_healing:__init__:26 | SelfHealingEngine initialized.
+2026-08-02 22:27:25.338 | INFO     | experience_engine:__init__:25 | ExperienceEngineService initialized at data\experiences.db
+2026-08-02 22:27:25.339 | INFO     | strategy_memory:__init__:29 | StrategyMemoryService initialized. File: data\strategy_memory.json
+2026-08-02 22:27:25.383 | INFO     | mobile_auth:__init__:44 | MobileAuthService initialized (Loaded 1 trusted devices)
+2026-08-02 22:27:25.384 | INFO     | mobile_auth:initiate_pairing:78 | Generated pairing code 731490 for device 'Ashrit Android Phone'
+2026-08-02 22:27:25.386 | INFO     | mobile_gateway:__init__:43 | MobileGatewayService initialized (Mobile Gateway Active)
+2026-08-02 22:27:25.773 | INFO     | skill_library:__init__:28 | SkillLibraryService initialized.
+2026-08-02 22:29:25.590 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 22:29:25.591 | INFO     | wake_word:__init__:39 | WakeWordService created — threshold=0.35
+2026-08-02 22:29:25.594 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:29:25.595 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:29:25.595 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:29:25.596 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:29:25.637 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:29:25.638 | WARNING  | voice_intelligence:verify_speaker_biometrics:64 | Speaker verification failed: No valid enrolled reference embedding found for primary_user.
+2026-08-02 22:29:26.164 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-02 22:29:26.165 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-02 22:29:26.165 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 0.0ms (0 controls).
+2026-08-02 22:29:26.201 | INFO     | world_model:__init__:53 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-02 22:29:26.201 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-02 22:29:26.201 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 0.0ms (0 controls).
+2026-08-02 22:29:26.371 | INFO     | safety:__init__:250 | SafetyService initialised — confirm_dangerous=True, allow_terminal=True
+2026-08-02 22:29:26.372 | INFO     | automation:__init__:191 | AutomationService initialised
+2026-08-02 22:29:31.094 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-02 22:29:31.107 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-02 22:29:31.121 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-02 22:29:31.136 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-02 22:29:33.996 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-02 22:29:33.997 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-02 22:29:34.656 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-02 22:29:34.657 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-02 22:29:34.682 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-02 22:29:34.694 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-02 22:29:34.709 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-02 22:29:34.722 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-02 22:29:34.756 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-02 22:29:34.756 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-02 22:29:34.825 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-02 22:29:34.826 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-02 22:29:34.854 | INFO     | self_healing:__init__:26 | SelfHealingEngine initialized.
+2026-08-02 22:29:34.864 | INFO     | experience_engine:__init__:25 | ExperienceEngineService initialized at data\experiences.db
+2026-08-02 22:29:34.865 | INFO     | strategy_memory:__init__:29 | StrategyMemoryService initialized. File: data\strategy_memory.json
+2026-08-02 22:29:34.914 | INFO     | mobile_auth:__init__:44 | MobileAuthService initialized (Loaded 1 trusted devices)
+2026-08-02 22:29:34.915 | INFO     | mobile_auth:initiate_pairing:78 | Generated pairing code 631763 for device 'Ashrit Android Phone'
+2026-08-02 22:29:34.918 | INFO     | mobile_gateway:__init__:43 | MobileGatewayService initialized (Mobile Gateway Active)
+2026-08-02 22:29:35.352 | INFO     | skill_library:__init__:28 | SkillLibraryService initialized.
+2026-08-02 22:29:55.249 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 22:29:55.250 | INFO     | wake_word:__init__:39 | WakeWordService created — threshold=0.35
+2026-08-02 22:29:55.253 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:29:55.253 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:29:55.254 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:29:55.254 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:29:55.302 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:29:55.303 | WARNING  | voice_intelligence:verify_speaker_biometrics:64 | Speaker verification failed: No valid enrolled reference embedding found for primary_user.
+2026-08-02 22:29:55.924 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-02 22:29:55.925 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-02 22:29:55.925 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 0.0ms (0 controls).
+2026-08-02 22:29:56.090 | INFO     | world_model:__init__:53 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-02 22:29:56.090 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-02 22:29:56.091 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 0.0ms (0 controls).
+2026-08-02 22:29:56.303 | INFO     | safety:__init__:250 | SafetyService initialised — confirm_dangerous=True, allow_terminal=True
+2026-08-02 22:29:56.303 | INFO     | automation:__init__:191 | AutomationService initialised
+2026-08-02 22:30:01.754 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-02 22:30:01.790 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-02 22:30:01.869 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-02 22:30:01.913 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-02 22:30:09.161 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-02 22:30:09.164 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-02 22:30:11.103 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-02 22:30:11.105 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-02 22:30:11.188 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-02 22:30:11.222 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-02 22:30:11.257 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-02 22:30:11.294 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-02 22:30:11.396 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-02 22:30:11.397 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-02 22:30:11.622 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-02 22:30:11.623 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-02 22:30:11.705 | INFO     | self_healing:__init__:26 | SelfHealingEngine initialized.
+2026-08-02 22:30:11.725 | INFO     | experience_engine:__init__:25 | ExperienceEngineService initialized at data\experiences.db
+2026-08-02 22:30:11.728 | INFO     | strategy_memory:__init__:29 | StrategyMemoryService initialized. File: data\strategy_memory.json
+2026-08-02 22:30:11.878 | INFO     | mobile_auth:__init__:44 | MobileAuthService initialized (Loaded 1 trusted devices)
+2026-08-02 22:30:11.879 | INFO     | mobile_auth:initiate_pairing:78 | Generated pairing code 746957 for device 'Ashrit Android Phone'
+2026-08-02 22:30:11.888 | INFO     | mobile_gateway:__init__:43 | MobileGatewayService initialized (Mobile Gateway Active)
+2026-08-02 22:30:12.993 | INFO     | skill_library:__init__:28 | SkillLibraryService initialized.
+2026-08-02 22:30:58.359 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 22:30:58.359 | INFO     | wake_word:__init__:39 | WakeWordService created — threshold=0.35
+2026-08-02 22:30:58.362 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:30:58.362 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:30:58.363 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:30:58.363 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:30:58.405 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:30:58.405 | WARNING  | voice_intelligence:verify_speaker_biometrics:64 | Speaker verification failed: No valid enrolled reference embedding found for primary_user.
+2026-08-02 22:30:59.000 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-02 22:30:59.000 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-02 22:30:59.000 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 0.0ms (0 controls).
+2026-08-02 22:30:59.157 | INFO     | world_model:__init__:53 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-02 22:30:59.157 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-02 22:30:59.157 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 0.0ms (0 controls).
+2026-08-02 22:30:59.348 | INFO     | safety:__init__:250 | SafetyService initialised — confirm_dangerous=True, allow_terminal=True
+2026-08-02 22:30:59.349 | INFO     | automation:__init__:191 | AutomationService initialised
+2026-08-02 22:31:03.997 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-02 22:31:04.015 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-02 22:31:04.033 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-02 22:31:04.052 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-02 22:31:06.815 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-02 22:31:06.816 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-02 22:31:07.600 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-02 22:31:07.601 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-02 22:31:07.630 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-02 22:31:07.644 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-02 22:31:07.655 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-02 22:31:07.667 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-02 22:31:07.702 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-02 22:31:07.703 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-02 22:31:07.792 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-02 22:31:07.792 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-02 22:31:07.823 | INFO     | self_healing:__init__:26 | SelfHealingEngine initialized.
+2026-08-02 22:31:07.830 | INFO     | experience_engine:__init__:25 | ExperienceEngineService initialized at data\experiences.db
+2026-08-02 22:31:07.830 | INFO     | strategy_memory:__init__:29 | StrategyMemoryService initialized. File: data\strategy_memory.json
+2026-08-02 22:31:07.882 | INFO     | mobile_auth:__init__:44 | MobileAuthService initialized (Loaded 1 trusted devices)
+2026-08-02 22:31:07.883 | INFO     | mobile_auth:initiate_pairing:78 | Generated pairing code 622297 for device 'Ashrit Android Phone'
+2026-08-02 22:31:07.891 | INFO     | mobile_auth:confirm_pairing:118 | ✓ Successfully paired device 'Ashrit Android Phone' (android-phone-001)
+2026-08-02 22:31:07.893 | INFO     | mobile_gateway:__init__:43 | MobileGatewayService initialized (Mobile Gateway Active)
+2026-08-02 22:31:08.350 | INFO     | skill_library:__init__:28 | SkillLibraryService initialized.
+2026-08-02 22:31:43.739 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 22:31:43.740 | INFO     | wake_word:__init__:39 | WakeWordService created — threshold=0.35
+2026-08-02 22:31:43.742 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:31:43.743 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:31:43.744 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:31:43.744 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:31:43.790 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:31:43.790 | WARNING  | voice_intelligence:verify_speaker_biometrics:64 | Speaker verification failed: No valid enrolled reference embedding found for primary_user.
+2026-08-02 22:31:44.432 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-02 22:31:44.432 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-02 22:31:44.432 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 0.0ms (0 controls).
+2026-08-02 22:31:44.534 | INFO     | world_model:__init__:53 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-02 22:31:44.534 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-02 22:31:44.535 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 0.0ms (0 controls).
+2026-08-02 22:31:44.766 | INFO     | safety:__init__:250 | SafetyService initialised — confirm_dangerous=True, allow_terminal=True
+2026-08-02 22:31:44.766 | INFO     | automation:__init__:191 | AutomationService initialised
+2026-08-02 22:31:49.532 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-02 22:31:49.549 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-02 22:31:49.562 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-02 22:31:49.586 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-02 22:31:52.078 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-02 22:31:52.078 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-02 22:31:52.709 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-02 22:31:52.709 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-02 22:31:52.736 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-02 22:31:52.754 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-02 22:31:52.768 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-02 22:31:52.787 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-02 22:31:52.837 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-02 22:31:52.837 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-02 22:31:52.940 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-02 22:31:52.941 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-02 22:31:52.984 | INFO     | self_healing:__init__:26 | SelfHealingEngine initialized.
+2026-08-02 22:31:52.997 | INFO     | experience_engine:__init__:25 | ExperienceEngineService initialized at data\experiences.db
+2026-08-02 22:31:53.000 | INFO     | strategy_memory:__init__:29 | StrategyMemoryService initialized. File: data\strategy_memory.json
+2026-08-02 22:31:53.142 | INFO     | mobile_auth:__init__:44 | MobileAuthService initialized (Loaded 2 trusted devices)
+2026-08-02 22:31:53.143 | INFO     | mobile_auth:initiate_pairing:78 | Generated pairing code 399431 for device 'Ashrit Android Phone'
+2026-08-02 22:31:53.145 | INFO     | mobile_auth:confirm_pairing:118 | ✓ Successfully paired device 'Ashrit Android Phone' (android-phone-001)
+2026-08-02 22:31:53.149 | INFO     | mobile_gateway:__init__:43 | MobileGatewayService initialized (Mobile Gateway Active)
+2026-08-02 22:31:53.559 | INFO     | skill_library:__init__:28 | SkillLibraryService initialized.
+2026-08-02 22:32:21.710 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 22:32:21.710 | INFO     | wake_word:__init__:39 | WakeWordService created — threshold=0.35
+2026-08-02 22:32:21.713 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:32:21.713 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:32:21.714 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:32:21.714 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:32:21.754 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 22:32:21.755 | WARNING  | voice_intelligence:verify_speaker_biometrics:64 | Speaker verification failed: No valid enrolled reference embedding found for primary_user.
+2026-08-02 22:32:22.276 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-02 22:32:22.277 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-02 22:32:22.278 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 0.0ms (0 controls).
+2026-08-02 22:32:22.398 | INFO     | world_model:__init__:53 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-02 22:32:22.398 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-02 22:32:22.399 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 0.0ms (0 controls).
+2026-08-02 22:32:22.592 | INFO     | safety:__init__:250 | SafetyService initialised — confirm_dangerous=True, allow_terminal=True
+2026-08-02 22:32:22.593 | INFO     | automation:__init__:191 | AutomationService initialised
+2026-08-02 22:32:26.595 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-02 22:32:26.608 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-02 22:32:26.620 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-02 22:32:26.631 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-02 22:32:29.102 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-02 22:32:29.103 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-02 22:32:29.699 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-02 22:32:29.700 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-02 22:32:29.737 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-02 22:32:29.755 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-02 22:32:29.770 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-02 22:32:29.783 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-02 22:32:29.816 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-02 22:32:29.817 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-02 22:32:29.886 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-02 22:32:29.886 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-02 22:32:29.905 | INFO     | subagent:start:54 | Sub-Agent [ag_codeagent_2a18cb] (CodeAgent) spawned for task: '[CodeAgent] Run ecosystem audit test'
+2026-08-02 22:32:29.905 | INFO     | agent_ecosystem:spawn_subagent:97 | [AgentEcosystem] Spawned real sub-agent 'ag_codeagent_2a18cb' (CodeAgent) for goal: 'Run ecosystem audit test'
+2026-08-02 22:32:29.908 | INFO     | self_healing:__init__:26 | SelfHealingEngine initialized.
+2026-08-02 22:32:29.918 | INFO     | experience_engine:__init__:25 | ExperienceEngineService initialized at data\experiences.db
+2026-08-02 22:32:29.920 | INFO     | strategy_memory:__init__:29 | StrategyMemoryService initialized. File: data\strategy_memory.json
+2026-08-02 22:32:29.996 | INFO     | mobile_auth:__init__:44 | MobileAuthService initialized (Loaded 2 trusted devices)
+2026-08-02 22:32:29.997 | INFO     | mobile_auth:initiate_pairing:78 | Generated pairing code 753568 for device 'Ashrit Android Phone'
+2026-08-02 22:32:29.999 | INFO     | mobile_auth:confirm_pairing:118 | ✓ Successfully paired device 'Ashrit Android Phone' (android-phone-001)
+2026-08-02 22:32:30.031 | WARNING  | mobile_auth:verify_token:199 | JWT decode failed: Not enough segments. Token rejected.
+2026-08-02 22:32:30.033 | INFO     | mobile_gateway:__init__:43 | MobileGatewayService initialized (Mobile Gateway Active)
+2026-08-02 22:32:30.422 | INFO     | skill_library:__init__:28 | SkillLibraryService initialized.
+2026-08-02 22:32:30.499 | INFO     | agent_ecosystem:send_ipc_message:121 | [IPC Message Bus] CodeAgent ➔ SecurityAgent (request): 'Requesting safety policy audit for: '[CodeAgent] Run ecosyst'
+2026-08-02 23:16:14.065 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 23:16:16.140 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 23:16:16.141 | INFO     | main:lifespan:45 | ============================================================
+2026-08-02 23:16:16.141 | INFO     | main:lifespan:46 |   JARVIS AI Desktop Assistant — Starting Up
+2026-08-02 23:16:16.141 | INFO     | main:lifespan:47 | ============================================================
+2026-08-02 23:16:16.142 | INFO     | task_queue:start:31 | ✓ Async task queue worker started
+2026-08-02 23:16:16.298 | INFO     | manager:register_instance:21 | Service instance 'credential_vault' registered
+2026-08-02 23:16:16.299 | INFO     | manager:register_instance:21 | Service instance 'security_sandbox' registered
+2026-08-02 23:16:16.299 | INFO     | manager:register_instance:21 | Service instance 'security_orchestrator' registered
+2026-08-02 23:16:16.367 | INFO     | manager:register_instance:21 | Service instance 'mcp_client_manager' registered
+2026-08-02 23:16:58.919 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 23:16:59.798 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 23:16:59.798 | INFO     | main:lifespan:45 | ============================================================
+2026-08-02 23:16:59.798 | INFO     | main:lifespan:46 |   JARVIS AI Desktop Assistant — Starting Up
+2026-08-02 23:16:59.799 | INFO     | main:lifespan:47 | ============================================================
+2026-08-02 23:16:59.801 | INFO     | task_queue:start:31 | ✓ Async task queue worker started
+2026-08-02 23:16:59.882 | INFO     | manager:register_instance:21 | Service instance 'credential_vault' registered
+2026-08-02 23:16:59.882 | INFO     | manager:register_instance:21 | Service instance 'security_sandbox' registered
+2026-08-02 23:16:59.882 | INFO     | manager:register_instance:21 | Service instance 'security_orchestrator' registered
+2026-08-02 23:16:59.889 | INFO     | manager:register_instance:21 | Service instance 'mcp_client_manager' registered
+2026-08-02 23:17:10.495 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 23:17:11.472 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 23:17:11.472 | INFO     | main:lifespan:45 | ============================================================
+2026-08-02 23:17:11.473 | INFO     | main:lifespan:46 |   JARVIS AI Desktop Assistant — Starting Up
+2026-08-02 23:17:11.473 | INFO     | main:lifespan:47 | ============================================================
+2026-08-02 23:17:11.474 | INFO     | task_queue:start:31 | ✓ Async task queue worker started
+2026-08-02 23:17:11.497 | INFO     | manager:register_instance:21 | Service instance 'credential_vault' registered
+2026-08-02 23:17:11.497 | INFO     | manager:register_instance:21 | Service instance 'security_sandbox' registered
+2026-08-02 23:17:11.497 | INFO     | manager:register_instance:21 | Service instance 'security_orchestrator' registered
+2026-08-02 23:17:11.504 | INFO     | manager:register_instance:21 | Service instance 'mcp_client_manager' registered
+2026-08-02 23:18:10.123 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 23:18:19.191 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 23:18:28.910 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 23:18:29.505 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 23:18:29.506 | INFO     | main:lifespan:45 | ============================================================
+2026-08-02 23:18:29.506 | INFO     | main:lifespan:46 |   JARVIS AI Desktop Assistant — Starting Up
+2026-08-02 23:18:29.506 | INFO     | main:lifespan:47 | ============================================================
+2026-08-02 23:18:29.508 | INFO     | task_queue:start:31 | ✓ Async task queue worker started
+2026-08-02 23:18:29.581 | INFO     | manager:register_instance:21 | Service instance 'credential_vault' registered
+2026-08-02 23:18:29.582 | INFO     | manager:register_instance:21 | Service instance 'security_sandbox' registered
+2026-08-02 23:18:29.583 | INFO     | manager:register_instance:21 | Service instance 'security_orchestrator' registered
+2026-08-02 23:18:29.596 | INFO     | manager:register_instance:21 | Service instance 'mcp_client_manager' registered
+2026-08-02 23:18:48.533 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 23:18:49.008 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 23:18:49.008 | INFO     | main:lifespan:45 | ============================================================
+2026-08-02 23:18:49.009 | INFO     | main:lifespan:46 |   JARVIS AI Desktop Assistant — Starting Up
+2026-08-02 23:18:49.009 | INFO     | main:lifespan:47 | ============================================================
+2026-08-02 23:18:49.010 | INFO     | task_queue:start:31 | ✓ Async task queue worker started
+2026-08-02 23:18:49.025 | INFO     | manager:register_instance:21 | Service instance 'credential_vault' registered
+2026-08-02 23:18:49.025 | INFO     | manager:register_instance:21 | Service instance 'security_sandbox' registered
+2026-08-02 23:18:49.025 | INFO     | manager:register_instance:21 | Service instance 'security_orchestrator' registered
+2026-08-02 23:18:49.028 | INFO     | manager:register_instance:21 | Service instance 'mcp_client_manager' registered
+2026-08-02 23:18:49.060 | INFO     | manager:register_instance:21 | Service instance 'agent_ecosystem' registered
+2026-08-02 23:18:49.061 | INFO     | manager:register_instance:21 | Service instance 'checkpoint_service' registered
+2026-08-02 23:18:49.061 | INFO     | manager:register_instance:21 | Service instance 'kv_pruner' registered
+2026-08-02 23:18:49.061 | INFO     | main:lifespan:124 | ✓ Autonomous Agent Ecosystem, Checkpoints & KV-Cache Pruner initialized
+2026-08-02 23:18:49.081 | INFO     | safety:__init__:250 | SafetyService initialised — confirm_dangerous=True, allow_terminal=True
+2026-08-02 23:18:49.082 | INFO     | manager:register_instance:21 | Service instance 'safety_service' registered
+2026-08-02 23:18:49.082 | INFO     | main:lifespan:133 | ✓ Safety service initialized
+2026-08-02 23:19:19.510 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 23:19:20.013 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-02 23:19:20.014 | INFO     | main:lifespan:45 | ============================================================
+2026-08-02 23:19:20.014 | INFO     | main:lifespan:46 |   JARVIS AI Desktop Assistant — Starting Up
+2026-08-02 23:19:20.014 | INFO     | main:lifespan:47 | ============================================================
+2026-08-02 23:19:20.015 | INFO     | task_queue:start:31 | ✓ Async task queue worker started
+2026-08-02 23:19:20.288 | INFO     | manager:register_instance:21 | Service instance 'credential_vault' registered
+2026-08-02 23:19:20.293 | INFO     | manager:register_instance:21 | Service instance 'security_sandbox' registered
+2026-08-02 23:19:20.293 | INFO     | manager:register_instance:21 | Service instance 'security_orchestrator' registered
+2026-08-02 23:19:20.300 | INFO     | manager:register_instance:21 | Service instance 'mcp_client_manager' registered
+2026-08-02 23:19:20.334 | INFO     | manager:register_instance:21 | Service instance 'agent_ecosystem' registered
+2026-08-02 23:19:20.335 | INFO     | manager:register_instance:21 | Service instance 'checkpoint_service' registered
+2026-08-02 23:19:20.335 | INFO     | manager:register_instance:21 | Service instance 'kv_pruner' registered
+2026-08-02 23:19:20.336 | INFO     | main:lifespan:124 | ✓ Autonomous Agent Ecosystem, Checkpoints & KV-Cache Pruner initialized
+2026-08-02 23:19:20.337 | INFO     | safety:__init__:250 | SafetyService initialised — confirm_dangerous=True, allow_terminal=True
+2026-08-02 23:19:20.338 | INFO     | manager:register_instance:21 | Service instance 'safety_service' registered
+2026-08-02 23:19:20.338 | INFO     | main:lifespan:133 | ✓ Safety service initialized
+2026-08-02 23:19:26.118 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-02 23:19:26.129 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-02 23:19:26.142 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-02 23:19:26.155 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-02 23:19:30.152 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-02 23:19:30.153 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-02 23:19:31.218 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-02 23:19:31.218 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-02 23:19:31.219 | INFO     | manager:register_instance:21 | Service instance 'llm_service' registered
+2026-08-02 23:19:31.219 | INFO     | main:lifespan:156 | ✓ LLM service initialized (provider: ollama, model: qwen2.5-coder:3b)
+2026-08-02 23:19:31.599 | INFO     | long_horizon_checkpoint:initialize:63 | [LongHorizonCheckpoint] Initialized SQLite WAL goal queue & checkpoint tables.
+2026-08-02 23:19:31.607 | INFO     | llm_router:init:150 | ✓ LLM Router Engine fully initialized and background poller active
+2026-08-02 23:19:31.609 | INFO     | main:lifespan:162 | ✓ Dynamic LLM Router initialized and registered in App state
+2026-08-02 23:19:31.634 | INFO     | stt:__init__:81 | STTService created — model=small, device=auto, compute=int8
+2026-08-02 23:19:31.636 | INFO     | manager:register_instance:21 | Service instance 'stt_service' registered
+2026-08-02 23:19:31.637 | INFO     | main:lifespan:177 | ✓ STT service initialized (model: base)
+2026-08-02 23:19:31.661 | INFO     | tts:__init__:36 | TTSService initialised — voice=en-US-GuyNeural, rate=+0%
+2026-08-02 23:19:31.662 | INFO     | manager:register_instance:21 | Service instance 'tts_service' registered
+2026-08-02 23:19:31.664 | INFO     | main:lifespan:189 | ✓ TTS service initialized (voice: en-GB-RyanNeural)
+2026-08-02 23:19:31.666 | INFO     | wake_word:__init__:39 | WakeWordService created — threshold=0.35
+2026-08-02 23:19:31.666 | INFO     | manager:register_instance:21 | Service instance 'wake_word_service' registered
+2026-08-02 23:19:31.666 | INFO     | main:lifespan:202 | ✓ Wake word service initialized (model loading in background)
+2026-08-02 23:19:34.693 | INFO     | clap:_run_loop:140 | Clap listener active (mode=double, spike_ratio=11.40, gap=0.08–0.35s).
+2026-08-02 23:19:34.697 | INFO     | clap:start:68 | ✓ Clap listener background thread started (mode=double).
+2026-08-02 23:19:34.697 | INFO     | manager:register_instance:21 | Service instance 'clap_service' registered
+2026-08-02 23:19:34.699 | INFO     | main:lifespan:225 | ✓ Clap service initialized and listening (with window restore callback)
+2026-08-02 23:19:35.310 | INFO     | safety:__init__:250 | SafetyService initialised — confirm_dangerous=True, allow_terminal=True
+2026-08-02 23:19:35.311 | INFO     | automation:__init__:191 | AutomationService initialised
+2026-08-02 23:19:35.311 | INFO     | manager:register_instance:21 | Service instance 'automation_service' registered
+2026-08-02 23:19:35.311 | INFO     | manager:register_instance:21 | Service instance 'automation' registered
+2026-08-02 23:19:35.311 | INFO     | main:lifespan:238 | ✓ Automation service initialized
+2026-08-02 23:19:35.333 | INFO     | uia_engine:__init__:27 | UIAEngine initialized (Win32 Accessibility Core Ready)
+2026-08-02 23:19:35.333 | INFO     | manager:register_instance:21 | Service instance 'uia_engine' registered
+2026-08-02 23:19:35.333 | INFO     | main:lifespan:249 | ✓ Win32 UIAEngine initialized and registered in ServiceManager
+2026-08-02 23:19:35.382 | INFO     | workspace_intelligence:__init__:46 | WorkspaceIntelligenceService initialized (Habit Store: user_habits.json)
+2026-08-02 23:19:35.384 | INFO     | manager:register_instance:21 | Service instance 'workspace_intelligence' registered
+2026-08-02 23:19:35.385 | INFO     | main:lifespan:259 | ✓ WorkspaceIntelligenceService initialized (Project, Goal & Habit Engine Active)
+2026-08-02 23:19:35.542 | WARNING  | screen:__init__:42 | Tesseract OCR not available: tesseract is not installed or it's not in your PATH. See README file for more information.. OCR features will be limited.
+2026-08-02 23:19:35.543 | WARNING  | screen:__init__:51 | OpenAI client not available for vision: The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable
+2026-08-02 23:19:35.543 | INFO     | manager:register_instance:21 | Service instance 'screen_service' registered
+2026-08-02 23:19:35.543 | INFO     | main:lifespan:270 | ✓ Screen service initialized
+2026-08-02 23:19:35.617 | INFO     | vision_service:__init__:32 | VisionService initialized (Vision Cooldown Rate-Limiter Active)
+2026-08-02 23:19:35.618 | INFO     | manager:register_instance:21 | Service instance 'vision_service' registered
+2026-08-02 23:19:35.618 | INFO     | main:lifespan:280 | ✓ Vision service initialized
+2026-08-02 23:19:35.679 | INFO     | desktop_automation:__init__:36 | DesktopAutomationService initialized. Workflows directory: data\workflows
+2026-08-02 23:19:35.679 | INFO     | manager:register_instance:21 | Service instance 'desktop_automation_service' registered
+2026-08-02 23:19:35.680 | INFO     | main:lifespan:292 | ✓ Desktop automation service initialized
+2026-08-02 23:19:35.703 | INFO     | developer_assistant:__init__:21 | DeveloperAssistantService initialized
+2026-08-02 23:19:35.703 | INFO     | manager:register_instance:21 | Service instance 'developer_assistant_service' registered
+2026-08-02 23:19:35.703 | INFO     | main:lifespan:304 | ✓ Developer assistant service initialized
+2026-08-02 23:19:35.736 | INFO     | research_agent:__init__:25 | ResearchAgentService initialized. Profile directory: data\browser_profile
+2026-08-02 23:19:35.737 | INFO     | manager:register_instance:21 | Service instance 'research_service' registered
+2026-08-02 23:19:35.737 | INFO     | main:lifespan:314 | ✓ Research agent service initialized
+2026-08-02 23:19:35.741 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-02 23:19:35.742 | INFO     | manager:register_instance:21 | Service instance 'voice_intelligence_service' registered
+2026-08-02 23:19:35.742 | INFO     | main:lifespan:326 | ✓ Voice intelligence service initialized
+2026-08-02 23:19:35.785 | INFO     | productivity_service:__init__:34 | ProductivityService initialized. Data directory: data
+2026-08-02 23:19:35.786 | INFO     | manager:register_instance:21 | Service instance 'productivity_service' registered
+2026-08-02 23:19:35.786 | INFO     | main:lifespan:338 | ✓ Productivity service initialized
+2026-08-02 23:19:35.792 | INFO     | manager:register_instance:21 | Service instance 'browser_service' registered
+2026-08-02 23:19:35.792 | INFO     | main:lifespan:350 | ✓ Browser service initialized (lazy start)
+2026-08-02 23:19:35.813 | INFO     | task_queue:__init__:60 | TaskQueueService initialized (max_concurrent=3)
+2026-08-02 23:19:35.814 | INFO     | manager:register_instance:21 | Service instance 'task_queue_service' registered
+2026-08-02 23:19:35.815 | INFO     | main:lifespan:362 | ✓ Task queue service initialized
+2026-08-02 23:19:35.913 | INFO     | uia_engine:__init__:27 | UIAEngine initialized (Win32 Accessibility Core Ready)
+2026-08-02 23:19:35.933 | INFO     | file_indexer:_init_fts5_db:43 | ✓ SQLite FTS5 File Indexer initialized at data\file_index.db
+2026-08-02 23:19:35.949 | INFO     | mobile_bridge:__init__:27 | MobileBridgeService initialized (Push Gatekeeper Ready)
+2026-08-02 23:19:35.980 | INFO     | mobile_auth:__init__:44 | MobileAuthService initialized (Loaded 1 trusted devices)
+2026-08-02 23:19:35.980 | INFO     | mobile_gateway:__init__:43 | MobileGatewayService initialized (Mobile Gateway Active)
+2026-08-02 23:19:35.980 | INFO     | manager:register_instance:21 | Service instance 'uia_engine' registered
+2026-08-02 23:19:35.980 | INFO     | manager:register_instance:21 | Service instance 'file_indexer' registered
+2026-08-02 23:19:35.981 | INFO     | manager:register_instance:21 | Service instance 'mobile_bridge' registered
+2026-08-02 23:19:35.982 | INFO     | manager:register_instance:21 | Service instance 'mobile_auth_service' registered
+2026-08-02 23:19:35.984 | INFO     | manager:register_instance:21 | Service instance 'mobile_gateway_service' registered
+2026-08-02 23:19:36.033 | INFO     | experience_engine:__init__:25 | ExperienceEngineService initialized at data\experiences.db
+2026-08-02 23:19:36.034 | INFO     | reflection_engine:__init__:24 | ReflectionEngineService initialized.
+2026-08-02 23:19:36.037 | INFO     | self_healing:__init__:26 | SelfHealingEngine initialized.
+2026-08-02 23:19:36.038 | INFO     | strategy_memory:__init__:29 | StrategyMemoryService initialized. File: data\strategy_memory.json
+2026-08-02 23:19:36.039 | INFO     | skill_library:__init__:28 | SkillLibraryService initialized.
+2026-08-02 23:19:36.039 | INFO     | manager:register_instance:21 | Service instance 'experience_engine' registered
+2026-08-02 23:19:36.039 | INFO     | manager:register_instance:21 | Service instance 'reflection_engine' registered
+2026-08-02 23:19:36.040 | INFO     | manager:register_instance:21 | Service instance 'self_healing' registered
+2026-08-02 23:19:36.040 | INFO     | manager:register_instance:21 | Service instance 'strategy_memory' registered
+2026-08-02 23:19:36.040 | INFO     | manager:register_instance:21 | Service instance 'skill_library' registered
+2026-08-02 23:19:36.125 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-02 23:19:36.129 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-02 23:19:36.199 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-02 23:19:36.200 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-02 23:19:36.364 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 158.2ms (0 controls).
+2026-08-02 23:19:36.456 | INFO     | world_model:__init__:53 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-02 23:19:36.458 | INFO     | proactive_engine:__init__:50 | ProactiveEngine initialized (Proactive 2.0 with 20-min Cooldown & Session Memory Active).
+2026-08-02 23:19:36.459 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-02 23:19:36.459 | INFO     | spatial_ref_parser:__init__:25 | SpatialRefParser initialized (Deictic Spatial Resolver Ready).
+2026-08-02 23:19:36.460 | INFO     | workspace_memory:__init__:45 | WorkspaceMemory initialized at 'workspaces.json'.
+2026-08-02 23:19:36.460 | INFO     | manager:register_instance:21 | Service instance 'live_mode_engine' registered
+2026-08-02 23:19:36.461 | INFO     | main:lifespan:424 | ✓ Self-Improving Engines & Live Mode AI Assistant initialized
+2026-08-02 23:20:53.253 | WARNING  | memory:init:64 | SentenceTransformer not available, using default embeddings
+2026-08-02 23:20:54.209 | ERROR    | clap:_run_loop:232 | Error in clap listener loop: zero-size array to reduction operation maximum which has no identity
+2026-08-02 23:20:56.835 | INFO     | stt:_load_model_sync:136 | Whisper model loaded in 2.78s — size=small, device=cpu, compute=int8
+2026-08-02 23:21:50.539 | INFO     | memory:init:88 | ChromaDB initialized at C:\Users\ashri\JARVIS\data\chroma_data
+2026-08-02 23:21:50.562 | INFO     | client:start:36 | ✓ Started MCP server 'file_server' subprocess (attempt 1)
+2026-08-02 23:21:50.599 | INFO     | memory:init:108 | SQLite database initialized with WAL mode at C:\Users\ashri\JARVIS\data\jarvis.db
+2026-08-02 23:21:50.599 | INFO     | memory:init:113 | Memory service fully initialized with Self-Improving Brain capacity
+2026-08-02 23:21:50.600 | INFO     | manager:register_instance:21 | Service instance 'memory_service' registered
+2026-08-02 23:21:50.600 | INFO     | main:lifespan:436 | ✓ Memory service initialized
+2026-08-02 23:21:50.637 | INFO     | rag_service:_init_vector_db:73 | ✓ ChromaDB collection 'rag_documents' ready for RAG
+2026-08-02 23:21:50.638 | INFO     | manager:register_instance:21 | Service instance 'rag_service' registered
+2026-08-02 23:21:50.638 | INFO     | main:lifespan:449 | ✓ RAG service initialized
+2026-08-02 23:21:53.530 | INFO     | wake_word:_load_model_sync:80 | Wake word model loaded successfully — model=hey_jarvis
+2026-08-02 23:22:04.347 | INFO     | registry:load_skills:20 | Initializing skill registry...
+2026-08-02 23:22:04.963 | DEBUG    | registry:register_skill:213 | Registered skill: FileSkill
+2026-08-02 23:22:09.994 | DEBUG    | registry:register_skill:213 | Registered skill: CommunicationSkill
+2026-08-02 23:22:10.022 | DEBUG    | registry:register_skill:213 | Registered skill: SystemSkill
+2026-08-02 23:22:10.280 | DEBUG    | registry:register_skill:213 | Registered skill: AppControlSkill
+2026-08-02 23:22:10.336 | DEBUG    | registry:register_skill:213 | Registered skill: ContextSkill
+2026-08-02 23:22:10.355 | DEBUG    | registry:register_skill:213 | Registered skill: AgentSkill
+2026-08-02 23:22:10.392 | DEBUG    | registry:register_skill:213 | Registered skill: NewsSkill
+2026-08-02 23:22:10.411 | DEBUG    | registry:register_skill:213 | Registered skill: VisionSkill
+2026-08-02 23:22:10.431 | DEBUG    | registry:register_skill:213 | Registered skill: AutomationSkill
+2026-08-02 23:22:10.467 | DEBUG    | registry:register_skill:213 | Registered skill: DeveloperSkill
+2026-08-02 23:22:10.488 | DEBUG    | registry:register_skill:213 | Registered skill: ResearchSkill
+2026-08-02 23:22:10.513 | DEBUG    | registry:register_skill:213 | Registered skill: VoiceSkill
+2026-08-02 23:22:10.533 | DEBUG    | registry:register_skill:213 | Registered skill: ProductivitySkill
+2026-08-02 23:22:10.636 | INFO     | plugin_manager:__init__:26 | PluginManager initialized. Plugins directory: data\plugins\installed
+2026-08-02 23:22:10.636 | DEBUG    | registry:register_skill:213 | Registered skill: PluginSkill
+2026-08-02 23:22:10.658 | DEBUG    | registry:register_skill:213 | Registered skill: UISkill
+2026-08-02 23:22:10.753 | INFO     | redis_cache:__init__:23 | RedisCacheService initialized (In-Memory + Redis hybrid cache).
+2026-08-02 23:22:10.753 | INFO     | gpu_scheduler:__init__:20 | GPUSchedulerService initialized (Limit: 8.0 GB VRAM).
+2026-08-02 23:22:10.753 | INFO     | observability:__init__:21 | ObservabilityService initialized (Trace correlation ID engine active).
+2026-08-02 23:22:10.753 | DEBUG    | registry:register_skill:213 | Registered skill: ObservabilitySkill
+2026-08-02 23:22:10.806 | INFO     | cross_platform:__init__:27 | CrossPlatformService initialized on OS: Windows
+2026-08-02 23:22:10.806 | DEBUG    | registry:register_skill:213 | Registered skill: CrossPlatformSkill
+2026-08-02 23:22:10.886 | INFO     | test_runner:__init__:24 | TestRunnerService initialized. Backups directory: data\backups
+2026-08-02 23:22:10.887 | DEBUG    | registry:register_skill:213 | Registered skill: DeploymentSkill
+2026-08-02 23:22:10.948 | INFO     | autonomous_engine:__init__:36 | AutonomousEngineService initialized.
+2026-08-02 23:22:10.949 | DEBUG    | registry:register_skill:213 | Registered skill: AutonomousSkill
+2026-08-02 23:22:10.949 | INFO     | registry:load_skills:208 | ✓ Skill registry initialization complete. Registered skills: ['FileSkill', 'CommunicationSkill', 'SystemSkill', 'AppControlSkill', 'ContextSkill', 'AgentSkill', 'NewsSkill', 'VisionSkill', 'AutomationSkill', 'DeveloperSkill', 'ResearchSkill', 'VoiceSkill', 'ProductivitySkill', 'PluginSkill', 'UISkill', 'ObservabilitySkill', 'CrossPlatformSkill', 'DeploymentSkill', 'AutonomousSkill']
+2026-08-02 23:22:10.985 | INFO     | agent:__init__:118 | LangGraph agent StateMachine compiled successfully.
+2026-08-02 23:22:10.986 | INFO     | planner:__init__:99 | ✓ PrashLangGraphAgent successfully integrated into PlannerAgent
+2026-08-02 23:22:11.064 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-02 23:22:11.064 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-02 23:22:11.180 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 115.1ms (0 controls).
+2026-08-02 23:22:11.267 | INFO     | world_model:__init__:53 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-02 23:22:11.268 | DEBUG    | tool_registry:register:60 | Registered tool 'click_element_by_name' (risk=low)
+2026-08-02 23:22:11.268 | DEBUG    | tool_registry:register:60 | Registered tool 'set_control_value' (risk=low)
+2026-08-02 23:22:11.269 | DEBUG    | tool_registry:register:60 | Registered tool 'auto_fill_form' (risk=low)
+2026-08-02 23:22:11.269 | DEBUG    | tool_registry:register:60 | Registered tool 'open_application' (risk=low)
+2026-08-02 23:22:11.269 | DEBUG    | tool_registry:register:60 | Registered tool 'web_search' (risk=low)
+2026-08-02 23:22:11.270 | DEBUG    | tool_registry:register:60 | Registered tool 'play_youtube_video' (risk=low)
+2026-08-02 23:22:11.270 | DEBUG    | tool_registry:register:60 | Registered tool 'browser_agent_task' (risk=medium)
+2026-08-02 23:22:11.270 | DEBUG    | tool_registry:register:60 | Registered tool 'rag_knowledge_search' (risk=low)
+2026-08-02 23:22:11.272 | DEBUG    | tool_registry:register:60 | Registered tool 'toggle_live_mode' (risk=low)
+2026-08-02 23:22:11.273 | DEBUG    | tool_registry:register:60 | Registered tool 'explain_concept' (risk=low)
+2026-08-02 23:22:11.275 | DEBUG    | tool_registry:register:60 | Registered tool 'generate_quiz' (risk=low)
+2026-08-02 23:22:11.276 | INFO     | tool_registry:__init__:35 | ToolRegistry initialized with 11 registered tool(s).
+2026-08-02 23:22:11.298 | INFO     | experience_engine:__init__:25 | ExperienceEngineService initialized at data\experiences.db
+2026-08-02 23:22:11.299 | INFO     | reflection_engine:__init__:24 | ReflectionEngineService initialized.
+2026-08-02 23:22:11.302 | INFO     | strategy_memory:__init__:29 | StrategyMemoryService initialized. File: data\strategy_memory.json
+2026-08-02 23:22:11.302 | INFO     | unified_pipeline:__init__:61 | UnifiedPipeline initialized (10-Step Self-Improving OS Lifecycle Active).
+2026-08-02 23:22:11.302 | INFO     | planner:__init__:116 | ✓ UnifiedPipeline and WorldModel initialized in PlannerAgent
+2026-08-02 23:22:11.303 | INFO     | main:lifespan:477 | ✓ Planner agent initialized
+2026-08-02 23:22:11.353 | INFO     | main:lifespan:495 | ✓ Voice agent initialized
+2026-08-02 23:22:11.418 | DEBUG    | registry:register_skill:213 | Registered skill: ProactiveSkill
+2026-08-02 23:22:11.419 | INFO     | main:lifespan:546 | ✓ Proactive background checks initialized
+2026-08-02 23:22:11.419 | INFO     | main:lifespan:585 | ✓ Context background scanner initialized
+2026-08-02 23:22:11.481 | DEBUG    | sync_service:_run_listener:138 | UDP Broadcast listener bound to port 18270
+2026-08-02 23:22:11.483 | INFO     | sync_service:start:77 | ✓ SyncService peer discovery threads started.
+2026-08-02 23:22:11.484 | INFO     | main:lifespan:600 | ============================================================
+2026-08-02 23:22:11.484 | DEBUG    | sync_service:_run_broadcaster:98 | Starting UDP Broadcast heartbeat on port 18270
+2026-08-02 23:22:11.485 | INFO     | main:lifespan:601 |   JARVIS is online! (startup: 171.5s)
+2026-08-02 23:22:11.486 | INFO     | main:lifespan:602 |   Server: http://127.0.0.1:8000
+2026-08-02 23:22:11.487 | INFO     | main:lifespan:603 |   WebSocket: ws://127.0.0.1:8000/ws
+2026-08-02 23:22:11.487 | INFO     | main:lifespan:604 | ============================================================
+2026-08-02 23:22:11.489 | INFO     | main:proactive_worker:536 | ✓ Proactive background worker started
+2026-08-02 23:22:11.534 | INFO     | main:context_worker:557 | ✓ Context background worker started
+2026-08-02 23:22:11.548 | INFO     | context_skill:update_active_window:88 | Context → npm run dev [WindowsTerminal.exe] :: Software Development
+2026-08-02 23:22:11.557 | INFO     | sync_service:_run_listener:165 | ✓ Discovered new JARVIS peer: JARVIS Windows at 127.0.0.1:8000
+2026-08-02 23:22:19.688 | INFO     | client:start:53 | ✓ MCP Server 'file_server' initialized. Discovered 5 tools.
+2026-08-02 23:22:20.142 | INFO     | websocket:connect:32 | WebSocket connected. Active connections: 1
+2026-08-02 23:22:21.564 | INFO     | sync_service:_run_listener:165 | ✓ Discovered new JARVIS peer: JARVIS Windows at 192.168.56.1:8000
+2026-08-02 23:22:22.857 | WARNING  | llm_router:record_metric:281 | !!! CIRCUIT BREAKER TRIPPED FOR gemini !!! (Skipping provider until recovery)
+2026-08-02 23:22:23.456 | WARNING  | llm_router:record_metric:281 | !!! CIRCUIT BREAKER TRIPPED FOR openrouter !!! (Skipping provider until recovery)
+2026-08-02 23:22:24.170 | WARNING  | llm_router:record_metric:281 | !!! CIRCUIT BREAKER TRIPPED FOR nvidia !!! (Skipping provider until recovery)
+2026-08-02 23:22:41.530 | INFO     | context_skill:update_active_window:88 | Context → Quick settings [ShellHost.exe] :: General Workspace
+2026-08-02 23:22:49.003 | INFO     | websocket:connect:32 | WebSocket connected. Active connections: 2
+2026-08-02 23:22:51.868 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:51.978 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 110.8ms
+2026-08-02 23:22:51.981 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:51.981 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:52.209 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 228.4ms
+2026-08-02 23:22:52.211 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:52.212 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 231.9ms
+2026-08-02 23:22:52.214 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:52.215 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:52.216 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:52.600 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:52.600 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:52.748 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 537.6ms
+2026-08-02 23:22:52.749 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 534.5ms
+2026-08-02 23:22:52.750 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 534.1ms
+2026-08-02 23:22:52.751 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 534.8ms
+2026-08-02 23:22:53.005 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 404.2ms
+2026-08-02 23:22:53.006 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:53.007 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:53.007 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:53.009 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:53.010 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 409.8ms
+2026-08-02 23:22:53.526 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 517.1ms
+2026-08-02 23:22:53.528 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 520.6ms
+2026-08-02 23:22:53.529 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 523.2ms
+2026-08-02 23:22:53.530 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 522.7ms
+2026-08-02 23:22:53.531 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:53.532 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:53.806 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 274.0ms
+2026-08-02 23:22:53.808 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:53.809 | DEBUG    | middleware:log_requests:38 | → POST /api/v1/mobile/pair
+2026-08-02 23:22:53.810 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:53.810 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:53.838 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 306.4ms
+2026-08-02 23:22:54.198 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 387.9ms
+2026-08-02 23:22:54.199 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 390.9ms
+2026-08-02 23:22:54.201 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 390.9ms
+2026-08-02 23:22:54.202 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:54.203 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:54.231 | INFO     | mobile_auth:easy_pair:154 | Instant paired device 'Android Phone' (android-companion-1)
+2026-08-02 23:22:54.260 | INFO     | middleware:log_requests:43 | ← POST /api/v1/mobile/pair [200] 450.1ms
+2026-08-02 23:22:54.501 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 298.0ms
+2026-08-02 23:22:54.502 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 300.0ms
+2026-08-02 23:22:54.503 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:54.504 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:54.505 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:54.506 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:54.559 | INFO     | mobile_ws:handle_mobile_ws:49 | 📱 Mobile companion WebSocket connected: Address(host='10.102.57.245', port=42888)
+2026-08-02 23:22:55.347 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:55.348 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:55.349 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 845.3ms
+2026-08-02 23:22:55.350 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 844.3ms
+2026-08-02 23:22:55.351 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 843.3ms
+2026-08-02 23:22:55.351 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 846.3ms
+2026-08-02 23:22:55.632 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 283.9ms
+2026-08-02 23:22:55.633 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:55.634 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:55.634 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:55.635 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:55.635 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 287.4ms
+2026-08-02 23:22:56.141 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 508.7ms
+2026-08-02 23:22:56.142 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 508.8ms
+2026-08-02 23:22:56.143 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 508.8ms
+2026-08-02 23:22:56.145 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 511.3ms
+2026-08-02 23:22:56.146 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:56.146 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:56.412 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 266.3ms
+2026-08-02 23:22:56.414 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 268.4ms
+2026-08-02 23:22:56.416 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:56.417 | DEBUG    | middleware:log_requests:38 | → POST /api/v1/mobile/pair
+2026-08-02 23:22:56.417 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:56.418 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:56.813 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 395.0ms
+2026-08-02 23:22:56.815 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 399.1ms
+2026-08-02 23:22:56.816 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 398.5ms
+2026-08-02 23:22:56.816 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:56.817 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:56.922 | INFO     | mobile_auth:easy_pair:154 | Instant paired device 'Android Phone' (android-companion-1)
+2026-08-02 23:22:56.945 | INFO     | middleware:log_requests:43 | ← POST /api/v1/mobile/pair [200] 527.3ms
+2026-08-02 23:22:57.188 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 371.2ms
+2026-08-02 23:22:57.189 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 373.7ms
+2026-08-02 23:22:57.191 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:57.191 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:57.191 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:57.193 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:57.230 | INFO     | mobile_ws:handle_mobile_ws:49 | 📱 Mobile companion WebSocket connected: Address(host='10.102.57.245', port=42896)
+2026-08-02 23:22:57.795 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:57.796 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:57.821 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 630.0ms
+2026-08-02 23:22:57.822 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 631.4ms
+2026-08-02 23:22:57.824 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 630.8ms
+2026-08-02 23:22:57.824 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 633.3ms
+2026-08-02 23:22:58.085 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 290.1ms
+2026-08-02 23:22:58.087 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 291.1ms
+2026-08-02 23:22:58.089 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:58.089 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:58.090 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:58.090 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:58.572 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 483.4ms
+2026-08-02 23:22:58.573 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 483.4ms
+2026-08-02 23:22:58.574 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 485.4ms
+2026-08-02 23:22:58.576 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 485.4ms
+2026-08-02 23:22:58.602 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:58.602 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:58.633 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:58.634 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:58.879 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 276.6ms
+2026-08-02 23:22:58.882 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 279.6ms
+2026-08-02 23:22:59.255 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 621.0ms
+2026-08-02 23:22:59.256 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 623.0ms
+2026-08-02 23:22:59.283 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:22:59.460 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 177.1ms
+2026-08-02 23:22:59.694 | INFO     | mobile_ws:handle_mobile_ws:133 | 📱 Mobile action received: 'system_status'
+2026-08-02 23:22:59.694 | INFO     | mobile_ws:handle_mobile_ws:178 | 📊 Gathering system status metrics...
+2026-08-02 23:23:01.332 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:01.480 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 148.1ms
+2026-08-02 23:23:02.469 | INFO     | mobile_ws:handle_mobile_ws:133 | 📱 Mobile action received: 'screenshot'
+2026-08-02 23:23:02.469 | INFO     | mobile_ws:handle_mobile_ws:148 | 📸 Capturing desktop screenshot for mobile UI...
+2026-08-02 23:23:03.230 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:03.343 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 113.7ms
+2026-08-02 23:23:05.174 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:05.286 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 111.3ms
+2026-08-02 23:23:07.190 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:07.306 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 116.1ms
+2026-08-02 23:23:09.175 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:09.296 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 120.3ms
+2026-08-02 23:23:11.351 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:11.464 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 113.5ms
+2026-08-02 23:23:11.539 | INFO     | context_skill:update_active_window:88 | Context → Program Manager [explorer.exe] :: General Workspace
+2026-08-02 23:23:11.903 | INFO     | mobile_ws:handle_mobile_ws:133 | 📱 Mobile action received: 'screenshot'
+2026-08-02 23:23:11.903 | INFO     | mobile_ws:handle_mobile_ws:148 | 📸 Capturing desktop screenshot for mobile UI...
+2026-08-02 23:23:13.194 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:13.301 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 106.5ms
+2026-08-02 23:23:14.037 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/apps/running
+2026-08-02 23:23:17.504 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/apps/running [200] 3467.4ms
+2026-08-02 23:23:17.739 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:17.771 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:18.081 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 341.2ms
+2026-08-02 23:23:18.120 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 348.8ms
+2026-08-02 23:23:19.206 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:19.466 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 260.8ms
+2026-08-02 23:23:19.556 | INFO     | mobile_ws:handle_mobile_ws:133 | 📱 Mobile action received: 'lock_pc'
+2026-08-02 23:23:19.557 | INFO     | mobile_ws:handle_mobile_ws:136 | 🔒 Locking Windows workstation from mobile command...
+2026-08-02 23:23:21.410 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:21.593 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 182.5ms
+2026-08-02 23:23:23.209 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:23.547 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 338.2ms
+2026-08-02 23:23:25.406 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:25.803 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 399.8ms
+2026-08-02 23:23:27.427 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:28.165 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 739.8ms
+2026-08-02 23:23:29.190 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:29.412 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 221.3ms
+2026-08-02 23:23:31.220 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:31.532 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 311.7ms
+2026-08-02 23:23:33.176 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:33.299 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 123.4ms
+2026-08-02 23:23:35.242 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:35.358 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 116.5ms
+2026-08-02 23:23:37.177 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:37.390 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 213.7ms
+2026-08-02 23:23:39.219 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:39.357 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 138.4ms
+2026-08-02 23:23:41.170 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:41.335 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 165.8ms
+2026-08-02 23:23:43.262 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:43.460 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 198.1ms
+2026-08-02 23:23:45.243 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:45.358 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 114.9ms
+2026-08-02 23:23:46.238 | INFO     | mobile_ws:handle_mobile_ws:219 | 💬 Mobile AI prompt received: 'Hi'
+2026-08-02 23:23:46.239 | INFO     | message_router:classify_request:53 | ⚡ MessageRouter classified: KNOWLEDGE_REQUEST for prompt 'Hi'
+2026-08-02 23:23:46.239 | INFO     | planner:plan_and_execute:162 | Orchestration Router category: knowledge_request for prompt: 'Hi'
+2026-08-02 23:23:46.239 | DEBUG    | planner:plan_and_execute:168 | UnifiedPipeline 10-step lifecycle triggered for query: 'Hi'
+2026-08-02 23:23:46.240 | INFO     | planner:plan_and_execute:176 | Executing Knowledge Retrieval Workflow
+2026-08-02 23:23:47.242 | INFO     | unified_pipeline:run:70 | 🚀 UnifiedPipeline starting request 'Hi' (pipe_1785693227242)
+2026-08-02 23:23:47.323 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 79.2ms (0 controls).
+2026-08-02 23:23:47.427 | INFO     | reflection_engine:reflect_on_task:70 | 🔮 Reflection completed for 'Hi': Preferred=True
+2026-08-02 23:23:47.456 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:47.785 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 328.7ms
+2026-08-02 23:23:47.978 | INFO     | planner:plan_and_execute:1063 | Executing Prash LangGraph Agent flow...
+2026-08-02 23:23:47.978 | INFO     | agent:run_stream:184 | Executing PrashLangGraphAgent in streaming mode...
+2026-08-02 23:23:47.978 | INFO     | agent:run_stream:211 | Starting fresh execution run of the graph (streaming).
+2026-08-02 23:23:48.180 | INFO     | nodes:prash_node:93 | Entering prash_node...
+2026-08-02 23:23:48.180 | INFO     | nodes:prash_node:125 | Lazy-initializing PrashEngine in prash_node...
+2026-08-02 23:23:48.182 | INFO     | engine:init:92 | Initialising Prash engine …
+2026-08-02 23:23:48.474 | INFO     | engine:init:117 | Model config loaded from model_config.json
+2026-08-02 23:23:48.492 | INFO     | tokenizer:load:369 | Tokenizer loaded from C:\Users\ashri\JARVIS\data\prash\tokenizer.json (vocab_size=523)
+2026-08-02 23:23:48.492 | INFO     | engine:init:136 | Tokenizer loaded — vocab_size=523
+2026-08-02 23:23:48.594 | INFO     | model:__init__:531 | PrashTransformer initialised — 723,456 total parameters (723,456 trainable)
+2026-08-02 23:23:48.596 | INFO     | engine:init:167 | Model created — 0.72M params, 4 layers, d_model=128
+2026-08-02 23:23:48.761 | INFO     | engine:init:191 | Weights loaded from checkpoint_latest.pt (epoch=10, loss=1.3703697179925853)
+2026-08-02 23:23:48.763 | INFO     | inference:__init__:68 | PrashInference ready — device=cpu, vocab=523, max_seq_len=128
+2026-08-02 23:23:48.764 | DEBUG    | memory:__init__:42 | PrashMemory initialised — max_turns=10, max_tokens=64
+2026-08-02 23:23:48.787 | INFO     | engine:init:239 | Loaded 133 unique valid vocabulary words from training data
+2026-08-02 23:23:48.788 | INFO     | engine:init:244 | ✓ Prash engine initialised successfully
+2026-08-02 23:23:49.033 | DEBUG    | inference:generate:262 | Generated 14 tokens, avg_entropy=2.564
+2026-08-02 23:23:49.046 | INFO     | engine:validate_response:301 | Prash validation failed: generated word 'jarvis�at' is not in training vocabulary
+2026-08-02 23:23:49.051 | INFO     | engine:generate:454 | Prash generate — entropy=2.564, confident=False, tokens=14
+2026-08-02 23:23:49.224 | INFO     | planner:plan_and_execute:1086 | [LangGraph Log] Querying PrashEngine with query: 'Hi'
+2026-08-02 23:23:49.224 | INFO     | planner:plan_and_execute:1086 | [LangGraph Log] PrashEngine confidence: False (entropy: 2.5642)
+2026-08-02 23:23:49.225 | INFO     | planner:plan_and_execute:1086 | [LangGraph Log] Prash is not confident. Routing to fallback.
+2026-08-02 23:23:49.225 | INFO     | planner:plan_and_execute:1160 | Prash LangGraph Agent requested fallback. Exiting graph and running cloud cascade...
+2026-08-02 23:23:49.226 | INFO     | engine:init:92 | Initialising Prash engine …
+2026-08-02 23:23:49.228 | INFO     | engine:init:117 | Model config loaded from model_config.json
+2026-08-02 23:23:49.230 | INFO     | tokenizer:load:369 | Tokenizer loaded from C:\Users\ashri\JARVIS\data\prash\tokenizer.json (vocab_size=523)
+2026-08-02 23:23:49.230 | INFO     | engine:init:136 | Tokenizer loaded — vocab_size=523
+2026-08-02 23:23:49.268 | INFO     | model:__init__:531 | PrashTransformer initialised — 723,456 total parameters (723,456 trainable)
+2026-08-02 23:23:49.270 | INFO     | engine:init:167 | Model created — 0.72M params, 4 layers, d_model=128
+2026-08-02 23:23:49.306 | INFO     | engine:init:191 | Weights loaded from checkpoint_latest.pt (epoch=10, loss=1.3703697179925853)
+2026-08-02 23:23:49.310 | INFO     | inference:__init__:68 | PrashInference ready — device=cpu, vocab=523, max_seq_len=128
+2026-08-02 23:23:49.310 | DEBUG    | memory:__init__:42 | PrashMemory initialised — max_turns=10, max_tokens=64
+2026-08-02 23:23:49.314 | INFO     | engine:init:239 | Loaded 133 unique valid vocabulary words from training data
+2026-08-02 23:23:49.316 | INFO     | engine:init:244 | ✓ Prash engine initialised successfully
+2026-08-02 23:23:49.317 | INFO     | llm:generate_response:1088 | Attempting Prash inference (primary local AI engine)...
+2026-08-02 23:23:49.454 | DEBUG    | inference:generate:262 | Generated 12 tokens, avg_entropy=2.508
+2026-08-02 23:23:49.455 | INFO     | engine:validate_response:301 | Prash validation failed: generated word 'enter�pressing' is not in training vocabulary
+2026-08-02 23:23:49.460 | INFO     | engine:generate:454 | Prash generate — entropy=2.508, confident=False, tokens=12
+2026-08-02 23:23:49.461 | INFO     | llm:generate_response:1158 | Prash response not confident enough (entropy=2.51). Falling back to cloud providers.
+2026-08-02 23:23:49.500 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:49.739 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 239.0ms
+2026-08-02 23:23:50.111 | DEBUG    | llm_router:get_ranked_providers:214 | LLM Provider Rankings: {'ollama': 165.51, 'groq': 119.76}
+2026-08-02 23:23:50.111 | INFO     | llm:generate_response:1195 | Attempting model execution with provider: ollama
+2026-08-02 23:23:51.200 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:51.421 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 221.2ms
+2026-08-02 23:23:53.170 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:53.275 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 105.2ms
+2026-08-02 23:23:55.290 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:55.450 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 160.1ms
+2026-08-02 23:23:56.015 | INFO     | memory:analyze_and_learn:427 | Brain analyzing conversation to extract corrections and preferences...
+2026-08-02 23:23:56.057 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-02 23:23:56.072 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-02 23:23:56.089 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-02 23:23:56.106 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-02 23:23:56.154 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-02 23:23:56.154 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-02 23:23:56.287 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-02 23:23:56.288 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-02 23:23:56.289 | DEBUG    | llm_router:get_ranked_providers:214 | LLM Provider Rankings: {'ollama': 178.0, 'groq': 122.48, 'openrouter': 78.0, 'nvidia': 78.0, 'gemini': 76.8}
+2026-08-02 23:23:56.289 | INFO     | llm:simple_completion:1386 | Attempting simple completion with: ollama
+2026-08-02 23:23:57.226 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:57.338 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 112.0ms
+2026-08-02 23:23:59.272 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:23:59.383 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 110.9ms
+2026-08-02 23:24:01.235 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:01.369 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 132.8ms
+2026-08-02 23:24:03.320 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:03.428 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 108.2ms
+2026-08-02 23:24:05.185 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:05.295 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 109.9ms
+2026-08-02 23:24:07.398 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:07.503 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 105.0ms
+2026-08-02 23:24:09.325 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:09.567 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 241.9ms
+2026-08-02 23:24:09.874 | INFO     | memory:analyze_and_learn:530 | Saved successful workflow for: Assist user...
+2026-08-02 23:24:11.442 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:11.588 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 145.8ms
+2026-08-02 23:24:11.608 | INFO     | context_skill:update_active_window:88 | Context → JARVIS [electron.exe] :: General Workspace
+2026-08-02 23:24:13.339 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:13.488 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 148.7ms
+2026-08-02 23:24:15.248 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:15.366 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 117.7ms
+2026-08-02 23:24:17.254 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:17.372 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 117.9ms
+2026-08-02 23:24:19.288 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:19.398 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 110.0ms
+2026-08-02 23:24:21.259 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:21.363 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 103.2ms
+2026-08-02 23:24:22.312 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/live_mode/status
+2026-08-02 23:24:22.315 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/live_mode/status [200] 2.5ms
+2026-08-02 23:24:23.180 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:23.295 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 114.7ms
+2026-08-02 23:24:25.209 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:25.358 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 148.6ms
+2026-08-02 23:24:27.222 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:27.331 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 109.6ms
+2026-08-02 23:24:29.277 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:29.383 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 105.9ms
+2026-08-02 23:24:31.220 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:31.327 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 107.4ms
+2026-08-02 23:24:33.356 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:33.460 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 103.7ms
+2026-08-02 23:24:35.178 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:35.296 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 118.5ms
+2026-08-02 23:24:37.267 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:37.389 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 122.6ms
+2026-08-02 23:24:39.016 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/diagnostics
+2026-08-02 23:24:39.022 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/diagnostics [200] 5.5ms
+2026-08-02 23:24:39.207 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:39.325 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 117.8ms
+2026-08-02 23:24:41.315 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:41.430 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 115.1ms
+2026-08-02 23:24:43.213 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:43.374 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 162.0ms
+2026-08-02 23:24:45.311 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:45.445 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 133.0ms
+2026-08-02 23:24:47.195 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:47.301 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 106.0ms
+2026-08-02 23:24:49.319 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:49.425 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 106.2ms
+2026-08-02 23:24:51.327 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:51.436 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 109.7ms
+2026-08-02 23:24:53.216 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:53.217 | INFO     | mobile_ws:handle_mobile_ws:219 | 💬 Mobile AI prompt received: 'Fuck you'
+2026-08-02 23:24:53.217 | INFO     | message_router:classify_request:53 | ⚡ MessageRouter classified: KNOWLEDGE_REQUEST for prompt 'Fuck you'
+2026-08-02 23:24:53.218 | INFO     | planner:plan_and_execute:162 | Orchestration Router category: knowledge_request for prompt: 'Fuck you'
+2026-08-02 23:24:53.218 | DEBUG    | planner:plan_and_execute:168 | UnifiedPipeline 10-step lifecycle triggered for query: 'Fuck you'
+2026-08-02 23:24:53.218 | INFO     | planner:plan_and_execute:176 | Executing Knowledge Retrieval Workflow
+2026-08-02 23:24:53.314 | INFO     | unified_pipeline:run:70 | 🚀 UnifiedPipeline starting request 'Fuck you' (pipe_1785693293314)
+2026-08-02 23:24:53.404 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 88.4ms (0 controls).
+2026-08-02 23:24:53.615 | INFO     | reflection_engine:reflect_on_task:70 | 🔮 Reflection completed for 'Fuck you': Preferred=True
+2026-08-02 23:24:53.946 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 730.6ms
+2026-08-02 23:24:54.038 | INFO     | planner:plan_and_execute:1063 | Executing Prash LangGraph Agent flow...
+2026-08-02 23:24:54.039 | INFO     | agent:run_stream:184 | Executing PrashLangGraphAgent in streaming mode...
+2026-08-02 23:24:54.040 | INFO     | agent:run_stream:211 | Starting fresh execution run of the graph (streaming).
+2026-08-02 23:24:54.044 | INFO     | nodes:prash_node:93 | Entering prash_node...
+2026-08-02 23:24:54.113 | DEBUG    | inference:generate:262 | Generated 10 tokens, avg_entropy=3.177
+2026-08-02 23:24:54.113 | INFO     | engine:validate_response:296 | Prash validation failed: prompt word 'fuck' is not in Prash vocabulary — switching to primary LLM
+2026-08-02 23:24:54.117 | INFO     | engine:generate:454 | Prash generate — entropy=3.177, confident=False, tokens=10
+2026-08-02 23:24:54.188 | INFO     | planner:plan_and_execute:1086 | [LangGraph Log] Querying PrashEngine with query: 'Fuck you'
+2026-08-02 23:24:54.189 | INFO     | planner:plan_and_execute:1086 | [LangGraph Log] PrashEngine confidence: False (entropy: 3.1766)
+2026-08-02 23:24:54.189 | INFO     | planner:plan_and_execute:1086 | [LangGraph Log] Prash is not confident. Routing to fallback.
+2026-08-02 23:24:54.189 | INFO     | planner:plan_and_execute:1160 | Prash LangGraph Agent requested fallback. Exiting graph and running cloud cascade...
+2026-08-02 23:24:54.189 | INFO     | llm:generate_response:1088 | Attempting Prash inference (primary local AI engine)...
+2026-08-02 23:24:54.234 | DEBUG    | inference:generate:262 | Generated 12 tokens, avg_entropy=2.505
+2026-08-02 23:24:54.234 | INFO     | engine:validate_response:296 | Prash validation failed: prompt word 'fuck' is not in Prash vocabulary — switching to primary LLM
+2026-08-02 23:24:54.238 | INFO     | engine:generate:454 | Prash generate — entropy=2.505, confident=False, tokens=12
+2026-08-02 23:24:54.239 | INFO     | llm:generate_response:1158 | Prash response not confident enough (entropy=2.50). Falling back to cloud providers.
+2026-08-02 23:24:54.239 | WARNING  | llm_router:record_metric:281 | !!! CIRCUIT BREAKER TRIPPED FOR prash !!! (Skipping provider until recovery)
+2026-08-02 23:24:54.327 | DEBUG    | llm_router:get_ranked_providers:214 | LLM Provider Rankings: {'ollama': 165.64, 'groq': 117.07}
+2026-08-02 23:24:54.328 | INFO     | llm:generate_response:1195 | Attempting model execution with provider: ollama
+2026-08-02 23:24:55.289 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:55.399 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 110.1ms
+2026-08-02 23:24:57.240 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:57.366 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 126.2ms
+2026-08-02 23:24:59.178 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:24:59.290 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 111.8ms
+2026-08-02 23:25:01.224 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:01.339 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 114.5ms
+2026-08-02 23:25:02.468 | INFO     | memory:analyze_and_learn:427 | Brain analyzing conversation to extract corrections and preferences...
+2026-08-02 23:25:02.490 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-02 23:25:02.499 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-02 23:25:02.508 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-02 23:25:02.518 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-02 23:25:02.548 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-02 23:25:02.549 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-02 23:25:02.618 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-02 23:25:02.619 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-02 23:25:02.619 | DEBUG    | llm_router:get_ranked_providers:214 | LLM Provider Rankings: {'ollama': 178.0, 'groq': 122.48, 'openrouter': 78.0, 'nvidia': 78.0, 'gemini': 76.8}
+2026-08-02 23:25:02.619 | INFO     | llm:simple_completion:1386 | Attempting simple completion with: ollama
+2026-08-02 23:25:03.272 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:03.387 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 113.4ms
+2026-08-02 23:25:05.184 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:05.309 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 125.6ms
+2026-08-02 23:25:07.277 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:07.421 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 143.9ms
+2026-08-02 23:25:09.211 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:09.323 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 112.3ms
+2026-08-02 23:25:09.888 | INFO     | memory:analyze_and_learn:500 | Learned a new lesson: Please use respectful and appropriate language....
+2026-08-02 23:25:11.260 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:11.382 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 121.4ms
+2026-08-02 23:25:11.607 | INFO     | context_skill:update_active_window:88 | Context → Building The Prash AI Eng... [Antigravity.exe] :: General Workspace
+2026-08-02 23:25:13.221 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:13.343 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 121.8ms
+2026-08-02 23:25:15.190 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:15.367 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 178.1ms
+2026-08-02 23:25:17.240 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:17.420 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 180.3ms
+2026-08-02 23:25:19.326 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:19.559 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 232.4ms
+2026-08-02 23:25:21.233 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:21.396 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 162.9ms
+2026-08-02 23:25:23.329 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:23.488 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 158.6ms
+2026-08-02 23:25:25.194 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:25.376 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 182.1ms
+2026-08-02 23:25:27.333 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:27.448 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 115.2ms
+2026-08-02 23:25:29.317 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:29.459 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 141.8ms
+2026-08-02 23:25:31.227 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:31.348 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 121.0ms
+2026-08-02 23:25:33.211 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:33.318 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 106.6ms
+2026-08-02 23:25:34.748 | INFO     | mobile_ws:handle_mobile_ws:219 | 💬 Mobile AI prompt received: 'Open youtube'
+2026-08-02 23:25:34.750 | INFO     | message_router:classify_request:49 | ⚡ MessageRouter classified: ACTION_REQUEST for prompt 'Open youtube'
+2026-08-02 23:25:34.751 | INFO     | planner:plan_and_execute:162 | Orchestration Router category: action_request for prompt: 'Open youtube'
+2026-08-02 23:25:34.751 | DEBUG    | planner:plan_and_execute:168 | UnifiedPipeline 10-step lifecycle triggered for query: 'Open youtube'
+2026-08-02 23:25:34.752 | INFO     | planner:plan_and_execute:178 | Executing Desktop Action Workflow
+2026-08-02 23:25:35.237 | INFO     | unified_pipeline:run:70 | 🚀 UnifiedPipeline starting request 'Open youtube' (pipe_1785693335237)
+2026-08-02 23:25:35.344 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 106.3ms (0 controls).
+2026-08-02 23:25:35.559 | INFO     | tool_registry:execute_tool:92 | 🔧 ToolRegistry executing tool 'play_youtube_video' with args: {'query': 'Open youtube'}
+2026-08-02 23:25:35.635 | INFO     | reflection_engine:reflect_on_task:70 | 🔮 Reflection completed for 'Open youtube': Preferred=True
+2026-08-02 23:25:35.640 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:35.849 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 207.3ms
+2026-08-02 23:25:37.252 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:37.390 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 137.5ms
+2026-08-02 23:25:39.179 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:39.288 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 108.8ms
+2026-08-02 23:25:41.173 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:41.281 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 108.9ms
+2026-08-02 23:25:41.604 | INFO     | context_skill:update_active_window:88 | Context → Open youtube - YouTube - Google Chrome [chrome.exe] :: Entertainment / Media
+2026-08-02 23:25:43.191 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:43.307 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 116.1ms
+2026-08-02 23:25:45.274 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:45.387 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 113.7ms
+2026-08-02 23:25:47.276 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:47.389 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 112.2ms
+2026-08-02 23:25:49.249 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:49.367 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 118.4ms
+2026-08-02 23:25:51.173 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:51.293 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 120.2ms
+2026-08-02 23:25:53.285 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:53.410 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 124.7ms
+2026-08-02 23:25:54.932 | INFO     | mobile_ws:handle_mobile_ws:219 | 💬 Mobile AI prompt received: 'Open pornhub'
+2026-08-02 23:25:54.933 | INFO     | message_router:classify_request:49 | ⚡ MessageRouter classified: ACTION_REQUEST for prompt 'Open pornhub'
+2026-08-02 23:25:54.934 | INFO     | planner:plan_and_execute:162 | Orchestration Router category: action_request for prompt: 'Open pornhub'
+2026-08-02 23:25:54.934 | DEBUG    | planner:plan_and_execute:168 | UnifiedPipeline 10-step lifecycle triggered for query: 'Open pornhub'
+2026-08-02 23:25:54.935 | INFO     | planner:plan_and_execute:178 | Executing Desktop Action Workflow
+2026-08-02 23:25:55.091 | INFO     | unified_pipeline:run:70 | 🚀 UnifiedPipeline starting request 'Open pornhub' (pipe_1785693355091)
+2026-08-02 23:25:56.034 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 942.5ms (0 controls).
+2026-08-02 23:25:56.253 | INFO     | reflection_engine:reflect_on_task:70 | 🔮 Reflection completed for 'Open pornhub': Preferred=True
+2026-08-02 23:25:56.413 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:56.727 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 313.8ms
+2026-08-02 23:25:56.839 | INFO     | planner:plan_and_execute:1063 | Executing Prash LangGraph Agent flow...
+2026-08-02 23:25:56.840 | INFO     | agent:run_stream:184 | Executing PrashLangGraphAgent in streaming mode...
+2026-08-02 23:25:56.840 | INFO     | agent:run_stream:211 | Starting fresh execution run of the graph (streaming).
+2026-08-02 23:25:56.845 | INFO     | nodes:prash_node:93 | Entering prash_node...
+2026-08-02 23:25:57.131 | DEBUG    | inference:generate:262 | Generated 14 tokens, avg_entropy=3.079
+2026-08-02 23:25:57.131 | INFO     | engine:validate_response:296 | Prash validation failed: prompt word 'pornhub' is not in Prash vocabulary — switching to primary LLM
+2026-08-02 23:25:57.137 | INFO     | engine:generate:454 | Prash generate — entropy=3.079, confident=False, tokens=14
+2026-08-02 23:25:57.216 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:57.406 | INFO     | planner:plan_and_execute:1086 | [LangGraph Log] Querying PrashEngine with query: 'Open pornhub'
+2026-08-02 23:25:57.413 | INFO     | planner:plan_and_execute:1086 | [LangGraph Log] PrashEngine confidence: False (entropy: 3.0791)
+2026-08-02 23:25:57.414 | INFO     | planner:plan_and_execute:1086 | [LangGraph Log] Prash is not confident. Routing to fallback.
+2026-08-02 23:25:57.414 | INFO     | planner:plan_and_execute:1160 | Prash LangGraph Agent requested fallback. Exiting graph and running cloud cascade...
+2026-08-02 23:25:57.415 | INFO     | llm:generate_response:1088 | Attempting Prash inference (primary local AI engine)...
+2026-08-02 23:25:57.739 | DEBUG    | inference:generate:262 | Generated 29 tokens, avg_entropy=2.704
+2026-08-02 23:25:57.740 | INFO     | engine:validate_response:287 | Prash validation failed: unique word ratio 0.69 is too low
+2026-08-02 23:25:57.749 | INFO     | engine:generate:454 | Prash generate — entropy=2.704, confident=False, tokens=29
+2026-08-02 23:25:57.750 | INFO     | llm:generate_response:1158 | Prash response not confident enough (entropy=2.70). Falling back to cloud providers.
+2026-08-02 23:25:57.769 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 553.0ms
+2026-08-02 23:25:57.984 | DEBUG    | llm_router:get_ranked_providers:214 | LLM Provider Rankings: {'ollama': 165.08, 'groq': 116.31}
+2026-08-02 23:25:57.984 | INFO     | llm:generate_response:1195 | Attempting model execution with provider: ollama
+2026-08-02 23:25:59.207 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:25:59.463 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 255.5ms
+2026-08-02 23:26:01.180 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:01.285 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 105.4ms
+2026-08-02 23:26:03.181 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:03.304 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 122.7ms
+2026-08-02 23:26:05.212 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:05.343 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 131.8ms
+2026-08-02 23:26:05.735 | INFO     | memory:analyze_and_learn:427 | Brain analyzing conversation to extract corrections and preferences...
+2026-08-02 23:26:05.776 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-02 23:26:05.795 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-02 23:26:05.816 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-02 23:26:05.843 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-02 23:26:05.897 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-02 23:26:05.898 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-02 23:26:06.002 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-02 23:26:06.002 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-02 23:26:06.004 | DEBUG    | llm_router:get_ranked_providers:214 | LLM Provider Rankings: {'ollama': 178.0, 'groq': 122.48, 'openrouter': 78.0, 'nvidia': 78.0, 'gemini': 76.8}
+2026-08-02 23:26:06.004 | INFO     | llm:simple_completion:1386 | Attempting simple completion with: ollama
+2026-08-02 23:26:07.174 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:07.381 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 206.9ms
+2026-08-02 23:26:09.261 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:09.453 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 191.4ms
+2026-08-02 23:26:11.240 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:11.514 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 274.3ms
+2026-08-02 23:26:11.631 | INFO     | context_skill:update_active_window:88 | Context → Building The Prash AI Eng... [Antigravity.exe] :: General Workspace
+2026-08-02 23:26:12.317 | INFO     | memory:analyze_and_learn:500 | Learned a new lesson: Please use appropriate language....
+2026-08-02 23:26:13.181 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:13.300 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 118.9ms
+2026-08-02 23:26:15.286 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:15.399 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 113.8ms
+2026-08-02 23:26:17.179 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:17.332 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 152.7ms
+2026-08-02 23:26:19.176 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:19.284 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 108.1ms
+2026-08-02 23:26:21.282 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:21.459 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 177.3ms
+2026-08-02 23:26:23.262 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:23.445 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 183.5ms
+2026-08-02 23:26:25.267 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:25.374 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 106.9ms
+2026-08-02 23:26:27.198 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:27.306 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 107.5ms
+2026-08-02 23:26:29.192 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:29.374 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 182.0ms
+2026-08-02 23:26:31.200 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:31.385 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 185.2ms
+2026-08-02 23:26:33.239 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:33.401 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 162.3ms
+2026-08-02 23:26:35.214 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:35.332 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 118.2ms
+2026-08-02 23:26:37.210 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:37.315 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 104.3ms
+2026-08-02 23:26:39.201 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:26:39.420 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 218.9ms
+2026-08-02 23:26:40.763 | INFO     | mobile_ws:handle_mobile_ws:296 | 📱 Mobile companion WebSocket disconnected cleanly
+2026-08-02 23:26:40.763 | INFO     | mobile_ws:handle_mobile_ws:296 | 📱 Mobile companion WebSocket disconnected cleanly
+2026-08-02 23:26:41.644 | INFO     | context_skill:update_active_window:88 | Context → jarvis.db - JARVIS - Visual Studio Code [Code.exe] :: Software Development
+2026-08-02 23:26:54.341 | INFO     | voice:handle_push_to_talk_start:322 | Session ID incremented to 1 on PTT start.
+2026-08-02 23:26:54.342 | INFO     | voice:state:179 | Voice state: sleeping → listening
+2026-08-02 23:26:54.763 | INFO     | voice:handle_audio_chunk:274 | Speech detected, listening...
+2026-08-02 23:26:55.374 | INFO     | voice:state:179 | Voice state: listening → processing
+2026-08-02 23:26:55.484 | INFO     | stt:transcribe:183 | Transcribing speech via Google Gemini API (gemini-2.0-flash)...
+2026-08-02 23:27:00.421 | INFO     | stt:transcribe:199 | Switching to alternative Gemini API key for STT...
+2026-08-02 23:27:05.050 | ERROR    | stt:transcribe:228 | Gemini API speech-to-text failed: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': "Quota exceeded for quota metric 'Generate Content API requests per minute' and limit 'GenerateContent request limit per minute for a region' of service 'generativelanguage.googleapis.com' for consumer 'project_number:243200063290'.", 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'RATE_LIMIT_EXCEEDED', 'domain': 'googleapis.com', 'metadata': {'quota_limit': 'GenerateContentRequestsPerMinutePerProjectPerRegion', 'consumer': 'projects/243200063290', 'service': 'generativelanguage.googleapis.com', 'quota_metric': 'generativelanguage.googleapis.com/generate_content_requests', 'quota_unit': '1/min/{project}/{region}', 'quota_location': 'asia-southeast1', 'quota_limit_value': '0'}}, {'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Request a higher quota limit.', 'url': 'https://cloud.google.com/docs/quotas/help/request_increase'}]}]}}. Falling back...
+2026-08-02 23:27:08.624 | INFO     | stt:_transcribe_sync:328 | Transcription completed in 3.57s — language=en, text='RUN RUN RUN RUN RUN RUN RUN'
+2026-08-02 23:27:08.624 | WARNING  | stt:clean_whisper_hallucinations:32 | Detected word repetition hallucination: 'RUN RUN RUN RUN RUN RUN RUN'
+2026-08-02 23:27:08.625 | INFO     | voice:_process_speech:455 | Transcript: 'Run'
+2026-08-02 23:27:08.627 | INFO     | message_router:classify_request:49 | ⚡ MessageRouter classified: ACTION_REQUEST for prompt 'Run'
+2026-08-02 23:27:08.627 | INFO     | planner:plan_and_execute:162 | Orchestration Router category: action_request for prompt: 'Run'
+2026-08-02 23:27:08.628 | DEBUG    | planner:plan_and_execute:168 | UnifiedPipeline 10-step lifecycle triggered for query: 'Run'
+2026-08-02 23:27:08.628 | INFO     | planner:plan_and_execute:178 | Executing Desktop Action Workflow
+2026-08-02 23:27:08.700 | INFO     | unified_pipeline:run:70 | 🚀 UnifiedPipeline starting request 'Run' (pipe_1785693428700)
+2026-08-02 23:27:09.015 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 313.9ms (0 controls).
+2026-08-02 23:27:09.232 | INFO     | reflection_engine:reflect_on_task:70 | 🔮 Reflection completed for 'Run': Preferred=True
+2026-08-02 23:27:09.304 | INFO     | planner:plan_and_execute:1063 | Executing Prash LangGraph Agent flow...
+2026-08-02 23:27:09.305 | INFO     | agent:run_stream:184 | Executing PrashLangGraphAgent in streaming mode...
+2026-08-02 23:27:09.305 | INFO     | agent:run_stream:211 | Starting fresh execution run of the graph (streaming).
+2026-08-02 23:27:09.308 | INFO     | nodes:prash_node:93 | Entering prash_node...
+2026-08-02 23:27:09.451 | DEBUG    | inference:generate:262 | Generated 10 tokens, avg_entropy=2.979
+2026-08-02 23:27:09.452 | INFO     | engine:validate_response:296 | Prash validation failed: prompt word 'run' is not in Prash vocabulary — switching to primary LLM
+2026-08-02 23:27:09.456 | INFO     | engine:generate:454 | Prash generate — entropy=2.979, confident=False, tokens=10
+2026-08-02 23:27:09.493 | INFO     | planner:plan_and_execute:1086 | [LangGraph Log] Querying PrashEngine with query: 'Run'
+2026-08-02 23:27:09.494 | INFO     | planner:plan_and_execute:1086 | [LangGraph Log] PrashEngine confidence: False (entropy: 2.9787)
+2026-08-02 23:27:09.494 | INFO     | planner:plan_and_execute:1086 | [LangGraph Log] Prash is not confident. Routing to fallback.
+2026-08-02 23:27:09.495 | INFO     | planner:plan_and_execute:1160 | Prash LangGraph Agent requested fallback. Exiting graph and running cloud cascade...
+2026-08-02 23:27:09.515 | INFO     | llm:generate_response:1088 | Attempting Prash inference (primary local AI engine)...
+2026-08-02 23:27:09.590 | DEBUG    | inference:generate:262 | Generated 15 tokens, avg_entropy=2.840
+2026-08-02 23:27:09.591 | INFO     | engine:validate_response:296 | Prash validation failed: prompt word 'run' is not in Prash vocabulary — switching to primary LLM
+2026-08-02 23:27:09.596 | INFO     | engine:generate:454 | Prash generate — entropy=2.840, confident=False, tokens=15
+2026-08-02 23:27:09.597 | INFO     | llm:generate_response:1158 | Prash response not confident enough (entropy=2.84). Falling back to cloud providers.
+2026-08-02 23:27:09.667 | DEBUG    | llm_router:get_ranked_providers:214 | LLM Provider Rankings: {'ollama': 164.81, 'groq': 114.2}
+2026-08-02 23:27:09.667 | INFO     | llm:generate_response:1195 | Attempting model execution with provider: ollama
+2026-08-02 23:27:11.660 | INFO     | context_skill:update_active_window:88 | Context → JARVIS [electron.exe] :: General Workspace
+2026-08-02 23:27:15.679 | DEBUG    | middleware:log_requests:38 | → GET /monitors
+2026-08-02 23:27:15.690 | INFO     | middleware:log_requests:43 | ← GET /monitors [200] 12.1ms
+2026-08-02 23:27:15.696 | DEBUG    | middleware:log_requests:38 | → GET /monitors
+2026-08-02 23:27:15.697 | INFO     | middleware:log_requests:43 | ← GET /monitors [200] 1.5ms
+2026-08-02 23:27:22.983 | INFO     | voice:state:179 | Voice state: processing → speaking
+2026-08-02 23:27:22.984 | INFO     | voice:_speak:551 | Synthesizing full TTS: 'You've requested to run something, but you haven't specified...'
+2026-08-02 23:27:22.984 | INFO     | tts:stream_speech:61 | TTS streaming — voice=en-US-GuyNeural, rate=+0%, text='You've requested to run something, but you haven't specified'
+2026-08-02 23:27:22.987 | INFO     | memory:analyze_and_learn:427 | Brain analyzing conversation to extract corrections and preferences...
+2026-08-02 23:27:23.030 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-02 23:27:23.046 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-02 23:27:23.061 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-02 23:27:23.075 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-02 23:27:23.112 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-02 23:27:23.113 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-02 23:27:23.183 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-02 23:27:23.184 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-02 23:27:23.184 | DEBUG    | llm_router:get_ranked_providers:214 | LLM Provider Rankings: {'ollama': 178.0, 'groq': 122.48, 'openrouter': 78.0, 'nvidia': 78.0, 'gemini': 76.8}
+2026-08-02 23:27:23.184 | INFO     | llm:simple_completion:1386 | Attempting simple completion with: ollama
+2026-08-02 23:27:23.193 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 2812.7 > threshold 1170.0
+2026-08-02 23:27:23.194 | INFO     | voice:state:179 | Voice state: speaking → interrupted
+2026-08-02 23:27:23.288 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:23.290 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 2812.7 > threshold 1170.0
+2026-08-02 23:27:23.290 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:23.411 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:23.412 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 2780.7 > threshold 1170.0
+2026-08-02 23:27:23.413 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:23.520 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:23.521 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 2976.5 > threshold 1170.0
+2026-08-02 23:27:23.521 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:23.645 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:23.646 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 2976.5 > threshold 1170.0
+2026-08-02 23:27:23.647 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:23.749 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:23.751 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 2980.5 > threshold 1170.0
+2026-08-02 23:27:23.752 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:23.876 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:24.423 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1204.8 > threshold 1170.0
+2026-08-02 23:27:24.424 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:24.533 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:24.535 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1204.8 > threshold 1170.0
+2026-08-02 23:27:24.536 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:24.641 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:24.645 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1244.3 > threshold 1170.0
+2026-08-02 23:27:24.646 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:24.770 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:24.772 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1388.1 > threshold 1170.0
+2026-08-02 23:27:24.773 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:24.894 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:24.897 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1388.1 > threshold 1170.0
+2026-08-02 23:27:24.898 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:25.003 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:25.005 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1336.1 > threshold 1170.0
+2026-08-02 23:27:25.005 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:25.111 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:25.466 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1687.9 > threshold 1170.0
+2026-08-02 23:27:25.466 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:25.562 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:25.564 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1687.9 > threshold 1170.0
+2026-08-02 23:27:25.564 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:25.674 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:25.676 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1701.4 > threshold 1170.0
+2026-08-02 23:27:25.677 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:25.782 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:25.783 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1609.9 > threshold 1170.0
+2026-08-02 23:27:25.784 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:25.893 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:25.895 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1609.9 > threshold 1170.0
+2026-08-02 23:27:25.896 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:26.017 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:26.018 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1601.1 > threshold 1170.0
+2026-08-02 23:27:26.019 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:26.126 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:26.128 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1741.2 > threshold 1170.0
+2026-08-02 23:27:26.129 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:26.235 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:26.236 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1741.2 > threshold 1170.0
+2026-08-02 23:27:26.236 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:26.340 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:26.342 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1738.5 > threshold 1170.0
+2026-08-02 23:27:26.342 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:26.439 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:26.984 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 3122.3 > threshold 1170.0
+2026-08-02 23:27:26.984 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:27.079 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:27.081 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 3122.3 > threshold 1170.0
+2026-08-02 23:27:27.082 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:27.203 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:27.204 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 3137.2 > threshold 1170.0
+2026-08-02 23:27:27.205 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:27.328 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:27.330 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1731.9 > threshold 1170.0
+2026-08-02 23:27:27.330 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:27.439 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:27.440 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1731.9 > threshold 1170.0
+2026-08-02 23:27:27.441 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:27.549 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:27.550 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1741.2 > threshold 1170.0
+2026-08-02 23:27:27.552 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:27.643 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:27.645 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 3239.4 > threshold 1170.0
+2026-08-02 23:27:27.646 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:27.740 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:27.741 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 3239.4 > threshold 1170.0
+2026-08-02 23:27:27.742 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:27.832 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:27.833 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 3427.1 > threshold 1170.0
+2026-08-02 23:27:27.834 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:27.937 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:27.939 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 3519.0 > threshold 1170.0
+2026-08-02 23:27:27.939 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:28.045 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:28.047 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 3519.0 > threshold 1170.0
+2026-08-02 23:27:28.048 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:28.155 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:28.156 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 3323.6 > threshold 1170.0
+2026-08-02 23:27:28.157 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:28.239 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:28.241 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1516.5 > threshold 1170.0
+2026-08-02 23:27:28.241 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:28.357 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:28.360 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1516.5 > threshold 1170.0
+2026-08-02 23:27:28.360 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:28.465 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:28.466 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1514.8 > threshold 1170.0
+2026-08-02 23:27:28.467 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:28.550 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:29.534 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1352.3 > threshold 1170.0
+2026-08-02 23:27:29.534 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:29.636 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:29.638 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1352.3 > threshold 1170.0
+2026-08-02 23:27:29.638 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:29.744 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:29.746 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1554.4 > threshold 1170.0
+2026-08-02 23:27:29.748 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:29.853 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:29.854 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 2971.7 > threshold 1170.0
+2026-08-02 23:27:29.855 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:29.955 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:29.958 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 2971.7 > threshold 1170.0
+2026-08-02 23:27:29.958 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:30.050 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:30.051 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 2870.0 > threshold 1170.0
+2026-08-02 23:27:30.052 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:30.167 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:30.318 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 2004.5 > threshold 1170.0
+2026-08-02 23:27:30.319 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:30.435 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:30.438 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 2004.5 > threshold 1170.0
+2026-08-02 23:27:30.439 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:30.545 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:30.546 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1959.4 > threshold 1170.0
+2026-08-02 23:27:30.548 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:30.692 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:30.695 | DEBUG    | middleware:log_requests:38 | → POST /api/v1/mobile/shutdown_approval/request
+2026-08-02 23:27:30.699 | INFO     | mobile_router:request_shutdown_approval:174 | 🛡️ Mobile Security Gatekeeper: Desktop exit/shutdown requested. Awaiting mobile approval...
+2026-08-02 23:27:30.700 | INFO     | mobile_gateway:request_approval:184 | Mobile Security Gatekeeper: Pausing execution for mobile approval 'system_shutdown' (JARVIS Desktop OS Exit / Shutdown requested from laptop.)
+2026-08-02 23:27:30.700 | INFO     | mobile_gateway:request_approval:197 | 🛡️ Gatekeeper broadcasting approval request 'appr_1785693450699' to 0 connected mobile client(s)...
+2026-08-02 23:27:30.710 | INFO     | memory:analyze_and_learn:500 | Learned a new lesson: Please use respectful and appropriate language....
+2026-08-02 23:27:31.348 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1184.7 > threshold 1170.0
+2026-08-02 23:27:31.350 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:31.444 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:31.445 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1184.7 > threshold 1170.0
+2026-08-02 23:27:31.445 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:31.554 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:31.556 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1256.5 > threshold 1170.0
+2026-08-02 23:27:31.558 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:31.662 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:31.663 | INFO     | voice:handle_audio_chunk:203 | Intelligent Barge-In detected! Energy 1808.3 > threshold 1170.0
+2026-08-02 23:27:31.664 | INFO     | voice:state:179 | Voice state: listening → interrupted
+2026-08-02 23:27:31.716 | DEBUG    | tts:stream_speech:78 | TTS stream completed for text: 'You've requested to run something, but y'
+2026-08-02 23:27:31.772 | INFO     | voice:state:179 | Voice state: interrupted → listening
+2026-08-02 23:27:36.355 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:27:36.465 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 110.2ms
+2026-08-02 23:27:36.791 | INFO     | voice:handle_audio_chunk:283 | Silence detected after speech — processing speech...
+2026-08-02 23:27:36.792 | INFO     | voice:state:179 | Voice state: listening → processing
+2026-08-02 23:27:36.835 | INFO     | stt:transcribe:183 | Transcribing speech via Google Gemini API (gemini-2.0-flash)...
+2026-08-02 23:27:37.524 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:27:37.642 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 117.7ms
+2026-08-02 23:27:39.482 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:27:39.602 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 119.9ms
+2026-08-02 23:27:41.165 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:27:41.272 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 106.8ms
+2026-08-02 23:27:42.281 | INFO     | stt:transcribe:199 | Switching to alternative Gemini API key for STT...
+2026-08-02 23:27:43.384 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:27:43.513 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 128.4ms
+2026-08-02 23:27:43.755 | DEBUG    | middleware:log_requests:38 | → POST /api/v1/mobile/shutdown_approval/request
+2026-08-02 23:27:43.757 | INFO     | mobile_router:request_shutdown_approval:174 | 🛡️ Mobile Security Gatekeeper: Desktop exit/shutdown requested. Awaiting mobile approval...
+2026-08-02 23:27:43.757 | INFO     | mobile_gateway:request_approval:184 | Mobile Security Gatekeeper: Pausing execution for mobile approval 'system_shutdown' (JARVIS Desktop OS Exit / Shutdown requested from laptop.)
+2026-08-02 23:27:43.759 | INFO     | mobile_gateway:request_approval:197 | 🛡️ Gatekeeper broadcasting approval request 'appr_1785693463757' to 0 connected mobile client(s)...
+2026-08-02 23:27:45.220 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:27:45.326 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 105.4ms
+2026-08-02 23:27:45.753 | DEBUG    | middleware:log_requests:38 | → POST /api/v1/mobile/shutdown_approval/request
+2026-08-02 23:27:45.755 | INFO     | mobile_router:request_shutdown_approval:174 | 🛡️ Mobile Security Gatekeeper: Desktop exit/shutdown requested. Awaiting mobile approval...
+2026-08-02 23:27:45.755 | INFO     | mobile_gateway:request_approval:184 | Mobile Security Gatekeeper: Pausing execution for mobile approval 'system_shutdown' (JARVIS Desktop OS Exit / Shutdown requested from laptop.)
+2026-08-02 23:27:45.755 | INFO     | mobile_gateway:request_approval:197 | 🛡️ Gatekeeper broadcasting approval request 'appr_1785693465755' to 0 connected mobile client(s)...
+2026-08-02 23:27:47.164 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:27:47.276 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 111.1ms
+2026-08-02 23:27:47.920 | ERROR    | stt:transcribe:228 | Gemini API speech-to-text failed: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': "Quota exceeded for quota metric 'API requests' and limit 'Request limit per minute for a region' of service 'generativelanguage.googleapis.com' for consumer 'project_number:243200063290'.", 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'RATE_LIMIT_EXCEEDED', 'domain': 'googleapis.com', 'metadata': {'quota_location': 'asia-southeast1', 'quota_unit': '1/min/{project}/{region}', 'service': 'generativelanguage.googleapis.com', 'quota_limit': 'ApiRequestsPerMinutePerProjectPerRegion', 'quota_limit_value': '0', 'consumer': 'projects/243200063290', 'quota_metric': 'generativelanguage.googleapis.com/api_requests'}}, {'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Request a higher quota limit.', 'url': 'https://cloud.google.com/docs/quotas/help/request_increase'}]}]}}. Falling back...
+2026-08-02 23:27:49.167 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:27:49.285 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 117.9ms
+2026-08-02 23:27:51.206 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:27:51.280 | DEBUG    | stt:_transcribe_sync:333 | Transcription returned empty result in 3.36s
+2026-08-02 23:27:51.314 | DEBUG    | voice:_process_speech:408 | Empty or noise transcript: ''
+2026-08-02 23:27:51.314 | INFO     | voice:state:179 | Voice state: processing → sleeping
+2026-08-02 23:27:53.688 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 2482.3ms
+2026-08-02 23:27:53.697 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:27:53.874 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 176.3ms
+2026-08-02 23:27:55.175 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:27:55.293 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 118.0ms
+2026-08-02 23:27:57.172 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:27:57.289 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 115.7ms
+2026-08-02 23:27:59.210 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:27:59.328 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 118.0ms
+2026-08-02 23:28:00.149 | INFO     | websocket:websocket_endpoint:419 | WebSocket connection closed cleanly: Cannot call "receive" once a disconnect message has been received.
+2026-08-02 23:28:00.149 | INFO     | websocket:websocket_endpoint:419 | WebSocket connection closed cleanly: Cannot call "receive" once a disconnect message has been received.
+2026-08-02 23:28:00.150 | INFO     | websocket:disconnect:37 | WebSocket disconnected. Active connections: 1
+2026-08-02 23:28:00.150 | INFO     | websocket:disconnect:37 | WebSocket disconnected. Active connections: 0
+2026-08-02 23:28:00.731 | WARNING  | mobile_gateway:request_approval:214 | Mobile approval request 'appr_1785693450699' timed out after 30.0s. Defaulting to DENY.
+2026-08-02 23:28:00.731 | INFO     | mobile_router:request_shutdown_approval:183 | 🛡️ Mobile Gatekeeper Shutdown Decision: deny (approved=False)
+2026-08-02 23:28:00.732 | INFO     | middleware:log_requests:43 | ← POST /api/v1/mobile/shutdown_approval/request [200] 30037.5ms
+2026-08-02 23:28:01.169 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:28:01.277 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 108.5ms
+2026-08-02 23:28:03.170 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:28:03.285 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 114.6ms
+2026-08-02 23:28:05.235 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:28:05.348 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 112.7ms
+2026-08-02 23:28:07.169 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:28:07.276 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 106.8ms
+2026-08-02 23:28:09.243 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:28:09.353 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 109.9ms
+2026-08-02 23:28:11.559 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:28:11.669 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 110.3ms
+2026-08-02 23:28:11.674 | INFO     | context_skill:update_active_window:88 | Context → SBI Asha Scholarship Help - Google Chrome [chrome.exe] :: General Workspace
+2026-08-02 23:28:13.541 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:28:13.668 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 126.8ms
+2026-08-02 23:28:13.774 | WARNING  | mobile_gateway:request_approval:214 | Mobile approval request 'appr_1785693463757' timed out after 30.0s. Defaulting to DENY.
+2026-08-02 23:28:13.775 | INFO     | mobile_router:request_shutdown_approval:183 | 🛡️ Mobile Gatekeeper Shutdown Decision: deny (approved=False)
+2026-08-02 23:28:13.776 | INFO     | middleware:log_requests:43 | ← POST /api/v1/mobile/shutdown_approval/request [200] 30021.0ms
+2026-08-02 23:28:15.535 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:28:15.652 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 117.4ms
+2026-08-02 23:28:15.758 | WARNING  | mobile_gateway:request_approval:214 | Mobile approval request 'appr_1785693465755' timed out after 30.0s. Defaulting to DENY.
+2026-08-02 23:28:15.759 | INFO     | mobile_router:request_shutdown_approval:183 | 🛡️ Mobile Gatekeeper Shutdown Decision: deny (approved=False)
+2026-08-02 23:28:15.761 | INFO     | middleware:log_requests:43 | ← POST /api/v1/mobile/shutdown_approval/request [200] 30005.8ms
+2026-08-02 23:28:17.526 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:28:17.632 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 106.4ms
+2026-08-02 23:28:19.530 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:28:19.642 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 112.2ms
+2026-08-02 23:28:21.544 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:28:21.652 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 109.7ms
+2026-08-02 23:28:41.706 | INFO     | context_skill:update_active_window:88 | Context → JARVIS - Visual Studio Code [Code.exe] :: Software Development
+2026-08-02 23:29:41.747 | INFO     | context_skill:update_active_window:88 | Context → Tracker.md - JARVIS - Visual Studio Code [Code.exe] :: Software Development
+2026-08-02 23:30:11.752 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - Vikram Adhitya - Google Chrome [chrome.exe] :: General Workspace
+2026-08-02 23:31:11.797 | INFO     | context_skill:update_active_window:88 | Context → Vikram Adhitya - PERSONAL 1 - Google Chrome [chrome.exe] :: General Workspace
+2026-08-02 23:32:07.681 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:32:07.797 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 115.5ms
+2026-08-02 23:32:09.034 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:32:09.145 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 110.7ms
+2026-08-02 23:32:10.068 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:32:10.178 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 110.6ms
+2026-08-02 23:32:12.116 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:32:12.334 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 218.3ms
+2026-08-02 23:32:14.025 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:32:14.143 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 117.2ms
+2026-08-02 23:32:16.183 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:32:16.301 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 118.0ms
+2026-08-02 23:41:07.044 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:41:07.157 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 113.5ms
+2026-08-02 23:41:08.049 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:41:08.167 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 118.1ms
+2026-08-02 23:41:10.215 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:41:10.332 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 117.6ms
+2026-08-02 23:41:12.052 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:41:12.161 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 109.4ms
+2026-08-02 23:41:14.161 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:41:14.273 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 112.1ms
+2026-08-02 23:41:16.025 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:41:16.242 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 216.8ms
+2026-08-02 23:43:07.829 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:43:07.940 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 111.5ms
+2026-08-02 23:43:10.021 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:43:10.129 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 108.2ms
+2026-08-02 23:43:11.725 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:43:11.837 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 111.6ms
+2026-08-02 23:43:13.739 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:43:13.850 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 111.3ms
+2026-08-02 23:43:15.702 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:43:15.808 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 105.6ms
+2026-08-02 23:43:16.680 | DEBUG    | middleware:log_requests:38 | → POST /api/v1/mobile/pair
+2026-08-02 23:43:16.685 | INFO     | mobile_auth:easy_pair:154 | Instant paired device 'Android Phone' (android-companion-1)
+2026-08-02 23:43:16.687 | INFO     | middleware:log_requests:43 | ← POST /api/v1/mobile/pair [200] 6.7ms
+2026-08-02 23:43:16.924 | INFO     | mobile_ws:handle_mobile_ws:49 | 📱 Mobile companion WebSocket connected: Address(host='10.102.57.245', port=39324)
+2026-08-02 23:43:17.705 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:43:17.823 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 118.7ms
+2026-08-02 23:43:19.753 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:43:19.862 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 109.5ms
+2026-08-02 23:43:22.210 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:43:22.317 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 106.3ms
+2026-08-02 23:43:24.360 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:43:24.471 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 110.5ms
+2026-08-02 23:43:27.228 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:43:27.347 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 119.0ms
+2026-08-02 23:43:28.150 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:43:28.378 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 228.1ms
+2026-08-02 23:43:30.095 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-02 23:43:30.203 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 107.8ms
+2026-08-02 23:43:30.856 | INFO     | mobile_ws:handle_mobile_ws:296 | 📱 Mobile companion WebSocket disconnected cleanly
+2026-08-02 23:53:42.234 | INFO     | context_skill:update_active_window:88 | Context → Linear Regression Error Calculation - Google  [chrome.exe] :: Data Analysis & Spreadsheets
+2026-08-02 23:54:12.240 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - Google Chrome [chrome.exe] :: General Workspace
+2026-08-02 23:54:42.253 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - ganesh - Google Chrome [chrome.exe] :: General Workspace
+2026-08-02 23:55:12.282 | INFO     | context_skill:update_active_window:88 | Context → Vikram Adhitya - PERSONAL 1 - Google Chrome [chrome.exe] :: General Workspace
+2026-08-02 23:55:42.273 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - ganesh - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 00:02:42.311 | INFO     | context_skill:update_active_window:88 | Context → ganesh - Astrology Birth Details - Google Chr [chrome.exe] :: General Workspace
+2026-08-03 00:04:12.319 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - Vikram Adhitya - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 00:04:42.331 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 00:05:12.346 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - pardhu - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 07:55:19.150 | DEBUG    | sync_service:_run_broadcaster:117 | Sync broadcast error: [WinError 10051] A socket operation was attempted to an unreachable network
+2026-08-03 07:55:19.173 | WARNING  | proactive_skill:check_triggers:213 | System has been idle for 27795.3s. Triggering LockWorkStation.
+2026-08-03 07:55:48.507 | INFO     | context_skill:update_active_window:88 | Context → New Tab - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 07:56:16.150 | INFO     | context_skill:update_active_window:88 | Context → Shpota/github-activity-generator: A script th [chrome.exe] :: General Workspace
+2026-08-03 07:57:16.195 | INFO     | context_skill:update_active_window:88 | Context → Downloads - File Explorer [explorer.exe] :: General Workspace
+2026-08-03 07:58:16.246 | INFO     | context_skill:update_active_window:88 | Context → Welcome - github-activity - Visual Studio Cod [Code.exe] :: Software Development
+2026-08-03 08:02:16.338 | INFO     | context_skill:update_active_window:88 | Context → contribute.py - github-activity - Visual Stud [Code.exe] :: Software Development
+2026-08-03 08:03:46.379 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 08:04:16.376 | INFO     | context_skill:update_active_window:88 | Context → contribute.py - github-activity - Visual Stud [Code.exe] :: Software Development
+2026-08-03 08:04:46.383 | INFO     | context_skill:update_active_window:88 | Context → Ashrit-Raghupatruni - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 08:05:16.398 | INFO     | context_skill:update_active_window:88 | Context → contribute.py - github-activity - Visual Stud [Code.exe] :: Software Development
+2026-08-03 08:07:46.455 | INFO     | context_skill:update_active_window:88 | Context → Your profile - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 08:08:46.470 | INFO     | context_skill:update_active_window:88 | Context → contribute.py - github-activity - Visual Stud [Code.exe] :: Software Development
+2026-08-03 08:09:16.488 | INFO     | context_skill:update_active_window:88 | Context → Your profile - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 08:09:46.489 | INFO     | context_skill:update_active_window:88 | Context → contribute.py - github-activity - Visual Stud [Code.exe] :: Software Development
+2026-08-03 08:11:46.540 | INFO     | context_skill:update_active_window:88 | Context → New Tab - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 08:12:16.557 | INFO     | context_skill:update_active_window:88 | Context → contribute.py - github-activity - Visual Stud [Code.exe] :: Software Development
+2026-08-03 08:12:46.577 | INFO     | context_skill:update_active_window:88 | Context → awesome free llm api - Google Search - Google [chrome.exe] :: General Workspace
+2026-08-03 08:13:16.585 | INFO     | context_skill:update_active_window:88 | Context → Ashrit-Raghupatruni - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 09:11:58.484 | WARNING  | proactive_skill:check_triggers:213 | System has been idle for 3435.6s. Triggering LockWorkStation.
+2026-08-03 09:12:28.483 | INFO     | context_skill:update_active_window:88 | Context → New Tab - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 09:13:28.496 | INFO     | context_skill:update_active_window:88 | Context → Quick settings [ShellHost.exe] :: General Workspace
+2026-08-03 09:13:58.510 | INFO     | context_skill:update_active_window:88 | Context → Home - Classroom - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 09:15:28.550 | INFO     | context_skill:update_active_window:88 | Context → Ashrit-Raghupatruni - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 09:15:58.587 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 09:17:28.638 | INFO     | context_skill:update_active_window:88 | Context → CSE305-COA-G G - Classroom - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 09:18:28.679 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - COA - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 09:20:28.708 | INFO     | context_skill:update_active_window:88 | Context → Administrator: Windows PowerShell [powershell.exe] :: General Workspace
+2026-08-03 09:20:58.725 | INFO     | context_skill:update_active_window:88 | Context → ashrit@ASHRIT: ~ [WindowsTerminal.exe] :: Software Development
+2026-08-03 09:24:28.792 | INFO     | context_skill:update_active_window:88 | Context → Building The Prash AI Eng... [Antigravity.exe] :: General Workspace
+2026-08-03 09:24:58.810 | INFO     | context_skill:update_active_window:88 | Context → ashrit@ASHRIT: ~ [WindowsTerminal.exe] :: Software Development
+2026-08-03 09:27:28.839 | INFO     | context_skill:update_active_window:88 | Context → OS (C:) Properties [explorer.exe] :: General Workspace
+2026-08-03 09:27:58.867 | INFO     | context_skill:update_active_window:88 | Context → This PC - File Explorer [explorer.exe] :: General Workspace
+2026-08-03 09:28:58.888 | INFO     | context_skill:update_active_window:88 | Context → ashrit@ASHRIT: ~ [WindowsTerminal.exe] :: Software Development
+2026-08-03 09:31:58.946 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 09:35:59.016 | INFO     | context_skill:update_active_window:88 | Context → ashrit@ASHRIT: ~ [WindowsTerminal.exe] :: Software Development
+2026-08-03 09:36:29.040 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 09:36:59.043 | INFO     | context_skill:update_active_window:88 | Context → ashrit@ASHRIT: ~ [WindowsTerminal.exe] :: Software Development
+2026-08-03 09:37:29.065 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 09:38:29.060 | INFO     | context_skill:update_active_window:88 | Context → ashrit@ASHRIT: ~ [WindowsTerminal.exe] :: Software Development
+2026-08-03 09:43:29.241 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 09:43:59.247 | INFO     | context_skill:update_active_window:88 | Context → ashrit@ASHRIT: ~ [WindowsTerminal.exe] :: Software Development
+2026-08-03 09:44:59.284 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - COA - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 09:45:29.293 | INFO     | context_skill:update_active_window:88 | Context → ashrit@ASHRIT: ~ [WindowsTerminal.exe] :: Software Development
+2026-08-03 09:56:59.507 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 09:57:59.515 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - COA - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 09:58:29.530 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 09:59:59.558 | INFO     | context_skill:update_active_window:88 | Context → ashrit@ASHRIT: ~ [WindowsTerminal.exe] :: Software Development
+2026-08-03 10:10:29.744 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 10:11:59.733 | INFO     | context_skill:update_active_window:88 | Context → ashrit@ASHRIT: ~ [WindowsTerminal.exe] :: Software Development
+2026-08-03 10:15:29.794 | INFO     | context_skill:update_active_window:88 | Context → ashrit@ASHRIT: ~/gem5 [WindowsTerminal.exe] :: Software Development
+2026-08-03 10:16:29.832 | INFO     | context_skill:update_active_window:88 | Context → ChatGPT - COA - Google Chrome [chrome.exe] :: General Workspace
+2026-08-03 10:16:59.836 | INFO     | context_skill:update_active_window:88 | Context → ashrit@ASHRIT: ~/gem5 [WindowsTerminal.exe] :: Software Development
+2026-08-03 10:26:53.567 | INFO     | mobile_ws:handle_mobile_ws:49 | 📱 Mobile companion WebSocket connected: Address(host='10.102.57.245', port=56910)
+2026-08-03 10:26:53.591 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:26:53.762 | INFO     | mobile_ws:telemetry_loop:102 | 🔋 Laptop Battery Warning (28.0%)! Triggering mobile alert...
+2026-08-03 10:26:53.905 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 315.1ms
+2026-08-03 10:26:55.048 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:26:55.158 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 110.3ms
+2026-08-03 10:26:57.040 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:26:57.157 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 117.6ms
+2026-08-03 10:26:59.042 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:26:59.174 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 132.0ms
+2026-08-03 10:27:01.089 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:01.207 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 117.3ms
+2026-08-03 10:27:03.036 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:03.150 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 114.1ms
+2026-08-03 10:27:05.084 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:05.199 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 115.0ms
+2026-08-03 10:27:05.226 | INFO     | mobile_ws:handle_mobile_ws:133 | 📱 Mobile action received: 'system_status'
+2026-08-03 10:27:05.227 | INFO     | mobile_ws:handle_mobile_ws:178 | 📊 Gathering system status metrics...
+2026-08-03 10:27:07.029 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:07.147 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 117.0ms
+2026-08-03 10:27:09.077 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:09.187 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 109.7ms
+2026-08-03 10:27:11.023 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:11.135 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 112.1ms
+2026-08-03 10:27:13.071 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:13.188 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 117.0ms
+2026-08-03 10:27:15.031 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:15.177 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 145.9ms
+2026-08-03 10:27:17.162 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:17.293 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 131.3ms
+2026-08-03 10:27:19.113 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:19.224 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 111.1ms
+2026-08-03 10:27:20.397 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/live_mode/status
+2026-08-03 10:27:20.425 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/live_mode/status [200] 28.6ms
+2026-08-03 10:27:21.067 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:21.184 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 117.2ms
+2026-08-03 10:27:22.082 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/live_mode/status
+2026-08-03 10:27:22.084 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/live_mode/status [200] 1.5ms
+2026-08-03 10:27:22.798 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/live_mode/status
+2026-08-03 10:27:22.803 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/live_mode/status [200] 3.6ms
+2026-08-03 10:27:23.106 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:23.246 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 139.6ms
+2026-08-03 10:27:23.249 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/live_mode/status
+2026-08-03 10:27:23.251 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/live_mode/status [200] 2.0ms
+2026-08-03 10:27:23.594 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/live_mode/status
+2026-08-03 10:27:23.596 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/live_mode/status [200] 2.0ms
+2026-08-03 10:27:24.031 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/live_mode/status
+2026-08-03 10:27:24.034 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/live_mode/status [200] 3.1ms
+2026-08-03 10:27:24.232 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/live_mode/status
+2026-08-03 10:27:24.259 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/live_mode/status [200] 26.2ms
+2026-08-03 10:27:25.078 | DEBUG    | middleware:log_requests:38 | → POST /api/v1/mobile/live_mode/toggle
+2026-08-03 10:27:25.079 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:25.099 | INFO     | live_engine:start:71 | ✓ Live Mode AI Assistant started (1.0 FPS perception loop active).
+2026-08-03 10:27:25.122 | INFO     | middleware:log_requests:43 | ← POST /api/v1/mobile/live_mode/toggle [200] 70.1ms
+2026-08-03 10:27:25.265 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/live_mode/status
+2026-08-03 10:27:25.270 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 190.8ms
+2026-08-03 10:27:25.277 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/live_mode/status [200] 12.7ms
+2026-08-03 10:27:25.505 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 365.8ms (0 controls).
+2026-08-03 10:27:26.291 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 148.9ms (0 controls).
+2026-08-03 10:27:27.101 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:27.101 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/live_mode/status
+2026-08-03 10:27:27.109 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/live_mode/status [200] 8.1ms
+2026-08-03 10:27:27.231 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 130.6ms
+2026-08-03 10:27:27.250 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 136.5ms (0 controls).
+2026-08-03 10:27:28.252 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 132.8ms (0 controls).
+2026-08-03 10:27:29.046 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:29.163 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 118.4ms
+2026-08-03 10:27:29.304 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 137.1ms (0 controls).
+2026-08-03 10:27:29.455 | DEBUG    | middleware:log_requests:38 | → POST /api/v1/mobile/live_mode/toggle
+2026-08-03 10:27:29.458 | INFO     | middleware:log_requests:43 | ← POST /api/v1/mobile/live_mode/toggle [200] 2.5ms
+2026-08-03 10:27:29.473 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/live_mode/status
+2026-08-03 10:27:29.474 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/live_mode/status [200] 2.0ms
+2026-08-03 10:27:30.296 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 121.0ms (0 controls).
+2026-08-03 10:27:30.310 | DEBUG    | middleware:log_requests:38 | → POST /api/v1/mobile/live_mode/toggle
+2026-08-03 10:27:30.312 | INFO     | live_engine:stop:79 | Live Mode AI Assistant stopped.
+2026-08-03 10:27:30.313 | INFO     | middleware:log_requests:43 | ← POST /api/v1/mobile/live_mode/toggle [200] 3.5ms
+2026-08-03 10:27:30.324 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/live_mode/status
+2026-08-03 10:27:30.325 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/live_mode/status [200] 1.5ms
+2026-08-03 10:27:31.015 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:31.126 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 110.6ms
+2026-08-03 10:27:33.038 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:33.147 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 108.4ms
+2026-08-03 10:27:35.011 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:35.142 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 131.1ms
+2026-08-03 10:27:36.007 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/apps/running
+2026-08-03 10:27:39.190 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/apps/running [200] 3182.9ms
+2026-08-03 10:27:39.308 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:39.310 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:39.564 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 256.4ms
+2026-08-03 10:27:39.569 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 259.7ms
+2026-08-03 10:27:41.026 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:41.136 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 110.1ms
+2026-08-03 10:27:43.073 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:43.196 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 122.7ms
+2026-08-03 10:27:45.125 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:45.251 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 125.6ms
+2026-08-03 10:27:47.067 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:47.188 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 120.7ms
+2026-08-03 10:27:49.016 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:49.129 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 114.8ms
+2026-08-03 10:27:51.060 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:51.180 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 119.8ms
+2026-08-03 10:27:52.029 | INFO     | mobile_ws:handle_mobile_ws:133 | 📱 Mobile action received: 'screenshot'
+2026-08-03 10:27:52.029 | INFO     | mobile_ws:handle_mobile_ws:148 | 📸 Capturing desktop screenshot for mobile UI...
+2026-08-03 10:27:53.015 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:53.142 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 126.2ms
+2026-08-03 10:27:55.157 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:55.266 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 108.2ms
+2026-08-03 10:27:56.461 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/tasks/queue
+2026-08-03 10:27:56.470 | ERROR    | middleware:log_requests:50 | ✗ GET /api/v1/mobile/tasks/queue [500] 8.6ms — 'str' object has no attribute 'get'
+2026-08-03 10:27:56.481 | ERROR    | middleware:global_exception_handler:59 | Unhandled exception on /api/v1/mobile/tasks/queue: 'str' object has no attribute 'get'
+2026-08-03 10:27:57.241 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:57.357 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 115.8ms
+2026-08-03 10:27:59.047 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:27:59.154 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 106.3ms
+2026-08-03 10:28:01.096 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:01.225 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 129.7ms
+2026-08-03 10:28:03.143 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:03.277 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 133.7ms
+2026-08-03 10:28:05.090 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:05.201 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 110.7ms
+2026-08-03 10:28:07.034 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:07.143 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 108.4ms
+2026-08-03 10:28:09.082 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:09.191 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 109.0ms
+2026-08-03 10:28:11.046 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:11.156 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 109.9ms
+2026-08-03 10:28:13.198 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:13.321 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 122.8ms
+2026-08-03 10:28:15.022 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:15.143 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 121.0ms
+2026-08-03 10:28:17.131 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:17.255 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 124.2ms
+2026-08-03 10:28:19.111 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:19.228 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 116.5ms
+2026-08-03 10:28:21.041 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:21.272 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 230.9ms
+2026-08-03 10:28:23.009 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:23.126 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 117.4ms
+2026-08-03 10:28:25.057 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:25.166 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 109.3ms
+2026-08-03 10:28:27.114 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:27.231 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 117.0ms
+2026-08-03 10:28:29.050 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:29.172 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 122.7ms
+2026-08-03 10:28:29.930 | INFO     | context_skill:update_active_window:88 | Context → Program Manager [explorer.exe] :: General Workspace
+2026-08-03 10:28:31.099 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:31.213 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 115.2ms
+2026-08-03 10:28:33.556 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:33.676 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 119.9ms
+2026-08-03 10:28:35.296 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:35.416 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 120.2ms
+2026-08-03 10:28:37.345 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:37.453 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 108.5ms
+2026-08-03 10:28:39.290 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:39.395 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 105.1ms
+2026-08-03 10:28:41.031 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:41.137 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 106.1ms
+2026-08-03 10:28:43.144 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:43.252 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 107.7ms
+2026-08-03 10:28:44.411 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/files/search
+2026-08-03 10:28:44.466 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/files/search [200] 55.1ms
+2026-08-03 10:28:45.024 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:45.145 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 120.3ms
+2026-08-03 10:28:47.072 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:47.180 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 108.1ms
+2026-08-03 10:28:49.018 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:49.166 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 148.2ms
+2026-08-03 10:28:49.837 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/brain/graph
+2026-08-03 10:28:49.865 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/brain/graph [200] 28.9ms
+2026-08-03 10:28:51.066 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:51.179 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 113.1ms
+2026-08-03 10:28:51.620 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/brain/memory
+2026-08-03 10:28:51.625 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/brain/memory [200] 5.1ms
+2026-08-03 10:28:53.114 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:53.226 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 112.3ms
+2026-08-03 10:28:55.059 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:55.170 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 110.7ms
+2026-08-03 10:28:57.003 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:57.126 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 122.3ms
+2026-08-03 10:28:59.052 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:28:59.164 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 111.5ms
+2026-08-03 10:28:59.957 | INFO     | context_skill:update_active_window:88 | Context → ashrit@ASHRIT: ~/gem5 [WindowsTerminal.exe] :: Software Development
+2026-08-03 10:29:01.101 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:29:01.214 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 113.1ms
+2026-08-03 10:29:03.004 | DEBUG    | middleware:log_requests:38 | → GET /api/v1/mobile/telemetry
+2026-08-03 10:29:03.166 | INFO     | middleware:log_requests:43 | ← GET /api/v1/mobile/telemetry [200] 162.4ms
+2026-08-03 10:29:05.427 | INFO     | mobile_ws:handle_mobile_ws:296 | 📱 Mobile companion WebSocket disconnected cleanly
+2026-08-03 10:32:34.214 | INFO     | voice:state:179 | Voice state: sleeping → speaking
+2026-08-03 10:32:34.288 | INFO     | voice:_speak:551 | Synthesizing full TTS: 'Sir, your computer battery is at 20 percent and discharging....'
+2026-08-03 10:32:34.302 | INFO     | tts:stream_speech:61 | TTS streaming — voice=en-US-GuyNeural, rate=+0%, text='Sir, your computer battery is at 20 percent and discharging.'
+2026-08-03 10:32:35.860 | DEBUG    | tts:stream_speech:78 | TTS stream completed for text: 'Sir, your computer battery is at 20 perc'
+2026-08-03 10:36:00.224 | INFO     | context_skill:update_active_window:88 | Context → Task Manager [Taskmgr.exe] :: General Workspace
+2026-08-03 10:39:00.298 | INFO     | context_skill:update_active_window:88 | Context → Your battery is running low. [PickerHost.exe] :: General Workspace
+2026-08-03 10:39:30.293 | INFO     | context_skill:update_active_window:88 | Context → Task Manager [Taskmgr.exe] :: General Workspace

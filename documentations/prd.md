@@ -3,13 +3,13 @@
 **Project Name:** J.A.R.V.I.S. (Just A Rather Very Intelligent System)  
 **Author:** Ashrit Raghupatruni  
 **Version:** 3.5.0  
-**Last Updated:** July 31, 2026
+**Last Updated:** August 8, 2026
 
 ---
 
 ## 1. Product Overview & Vision
 
-JARVIS is a production-grade, local-first Personal AI Operating System designed to function as an autonomous technical co-pilot. It combines local LLMs (Ollama, Prash) with cloud fallback providers (Gemini, OpenRouter, Groq, NVIDIA NIM), real-time desktop UI perception, full terminal and browser automation, asset-based 3D face avatar visualization (`facecap.glb`), an Autonomous Agent Ecosystem with multi-day SQLite WAL goal checkpointing, and fail-closed security gatekeeping.
+JARVIS is a production-grade, local-first Personal AI Operating System designed to function as an autonomous technical co-pilot. It combines local LLMs (Ollama, Prash) with cloud fallback providers (Gemini, OpenRouter, Groq, NVIDIA NIM), real-time desktop UI perception, full terminal and browser automation, cybernetic HUD/Arc Reactor visuals, an Autonomous Agent Ecosystem with multi-day SQLite WAL goal checkpointing, and fail-closed security gatekeeping.
 
 ---
 

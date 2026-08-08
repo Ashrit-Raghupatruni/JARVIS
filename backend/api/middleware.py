@@ -16,13 +16,21 @@ from loguru import logger
 def setup_middleware(app: FastAPI) -> None:
     """Configure all middleware for the FastAPI application."""
 
-    # CORS middleware with multi-desktop LAN support
+    # Tightened CORS middleware: restricted to local loopback, electron schemes, and private LAN subnets
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:8000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "app://."
+    ]
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_origin_regex=r"https?://.*",
+        allow_origins=allowed_origins,
+        allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})(:\d+)?",
         allow_credentials=True,
-        allow_methods=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
 

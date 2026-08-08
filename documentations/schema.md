@@ -1,6 +1,6 @@
 # 🗄️ Database Schemas & Data Structures
 
-This document outlines the SQLite WAL database schemas, IPC message structures, goal checkpoint tables, and JSON schema definitions used across JARVIS. **Last Updated:** July 31, 2026
+This document outlines the SQLite WAL database schemas, IPC message structures, goal checkpoint tables, and JSON schema definitions used across JARVIS. **Last Updated:** August 8, 2026
 
 ---
 

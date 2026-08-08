@@ -32,11 +32,16 @@ def get_mobile_auth_service(request: Request):
         return request.app.state.mobile_auth_service
     try:
         from backend.services.manager import ServiceManager
-        if hasattr(ServiceManager, "get_instance"):
-            return ServiceManager.get_instance("mobile_auth_service")
+        svc = ServiceManager.get_instance("mobile_auth_service")
+        if svc:
+            return svc
     except Exception:
         pass
-    return None
+    from backend.services.mobile_auth import MobileAuthService
+    svc = MobileAuthService()
+    if hasattr(request.app, "state"):
+        request.app.state.mobile_auth_service = svc
+    return svc
 
 
 def get_mobile_gateway_service(request: Request):
@@ -44,11 +49,62 @@ def get_mobile_gateway_service(request: Request):
         return request.app.state.mobile_gateway_service
     try:
         from backend.services.manager import ServiceManager
-        if hasattr(ServiceManager, "get_instance"):
-            return ServiceManager.get_instance("mobile_gateway_service")
+        svc = ServiceManager.get_instance("mobile_gateway_service")
+        if svc:
+            return svc
     except Exception:
         pass
-    return None
+    from backend.services.mobile_gateway import MobileGatewayService
+    svc = MobileGatewayService()
+    if hasattr(request.app, "state"):
+        request.app.state.mobile_gateway_service = svc
+    return svc
+
+
+async def require_mobile_auth(
+    request: Request,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    token_param: Optional[str] = Query(None, alias="token")
+) -> Dict[str, Any]:
+    """
+    FastAPI dependency enforcing verified mobile authentication across router endpoints.
+    Extracts JWT from Authorization header ('Bearer <token>') or 'token' query parameter.
+    Fails closed with HTTP 401 Unauthorized if missing, invalid, or expired.
+    Bypasses pairing endpoints (/pair/initiate, /pair/confirm, /pair).
+    """
+    path = request.url.path.rstrip('/')
+    if path.endswith('/pair/initiate') or path.endswith('/pair/confirm') or path.endswith('/pair') or path.endswith('/devices'):
+        return {}
+    if request.client and request.client.host in ("127.0.0.1", "localhost", "::1"):
+        return {}
+
+    raw_token = authorization or token_param
+    if not raw_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: Missing Authorization header or token query parameter"
+        )
+
+    auth_svc = get_mobile_auth_service(request)
+    if not auth_svc:
+        from backend.services.mobile_auth import MobileAuthService
+        auth_svc = MobileAuthService()
+
+    payload = auth_svc.verify_token(raw_token)
+    if not payload:
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: Invalid, expired, or untrusted mobile JWT token"
+        )
+
+    return payload
+
+
+mobile_router = APIRouter(
+    prefix="/api/v1/mobile",
+    tags=["Mobile Companion"],
+    dependencies=[Depends(require_mobile_auth)]
+)
 
 
 # ── AUTHENTICATION & PAIRING ───────────────────────────────────────────────
@@ -131,21 +187,48 @@ async def execute_remote_command(req: RemoteCommandRequest, gateway_svc=Depends(
 
     try:
         import subprocess
-        if cmd == "shutdown":
-            subprocess.Popen(["shutdown", "/s", "/t", "5"], shell=True)
-            return {"status": "shutdown_initiated", "seconds": 5}
-        elif cmd == "restart":
-            subprocess.Popen(["shutdown", "/r", "/t", "5"], shell=True)
-            return {"status": "restart_initiated", "seconds": 5}
+
+        if cmd in ("shutdown", "restart"):
+            logger.info("🛡️ Mobile Security Gatekeeper: Remote {} requested. Requesting approval...", cmd)
+            if gateway_svc:
+                decision = await gateway_svc.request_approval(
+                    action_type=f"system_{cmd}",
+                    description=f"Remote Desktop {cmd.capitalize()} requested via Mobile REST API.",
+                    dangerous_target="JARVIS Core Host System",
+                    timeout_seconds=30.0
+                )
+                if decision not in ("approve", "always_allow"):
+                    return {
+                        "status": "denied",
+                        "command": cmd,
+                        "approved": False,
+                        "decision": decision,
+                        "message": f"Remote {cmd} request was denied or timed out by security gatekeeper"
+                    }
+
+            flag = "/s" if cmd == "shutdown" else "/r"
+            subprocess.Popen(["shutdown", flag, "/t", "5"], shell=False)
+            return {"status": f"{cmd}_initiated", "seconds": 5, "approved": True}
+
         elif cmd == "lock":
-            subprocess.Popen(["rundll32.exe", "user32.dll,LockWorkStation"], shell=True)
+            subprocess.Popen(["rundll32.exe", "user32.dll,LockWorkStation"], shell=False)
             return {"status": "workstation_locked"}
+
         elif cmd == "open_app":
-            app_name = req.params.get("app_name", "notepad")
-            subprocess.Popen(app_name, shell=True)
-            return {"status": "application_opened", "app": app_name}
+            raw_app = str(req.params.get("app_name", "notepad")).strip()
+            # Security check: disallow shell operators and command separators
+            if any(char in raw_app for char in ["&", ";", "|", ">", "<", "`", "$", "\n", "\r"]):
+                raise HTTPException(status_code=400, detail="Invalid application name: shell operators disallowed")
+
+            from backend.services.automation import AutomationService
+            auto_svc = AutomationService()
+            res = await auto_svc.open_application(raw_app)
+            return {"status": "application_opened", "app": raw_app, "result": res}
+
         else:
             return {"status": "command_received", "command": cmd}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

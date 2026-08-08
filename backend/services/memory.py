@@ -45,15 +45,22 @@ class MemoryService:
 
         # Initialize ChromaDB
         try:
+            import os
+            os.environ["ANONYMIZED_TELEMETRY"] = "False"
+            os.environ["CHROMA_TELEMETRY"] = "False"
             import chromadb
             from chromadb.config import Settings
             from chromadb.utils import embedding_functions
 
             chroma_path = str(data_dir / "chroma_data")
-            self._chroma_client = chromadb.PersistentClient(
-                path=chroma_path,
-                settings=Settings(anonymized_telemetry=False)
-            )
+            try:
+                self._chroma_client = chromadb.PersistentClient(
+                    path=chroma_path,
+                    settings=Settings(anonymized_telemetry=False)
+                )
+            except Exception as c_err:
+                logger.debug("ChromaDB Settings notice: {}, creating default PersistentClient", c_err)
+                self._chroma_client = chromadb.PersistentClient(path=chroma_path)
 
             # Use sentence-transformers for embeddings
             try:

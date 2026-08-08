@@ -198,6 +198,18 @@ async def planner_node(state: AgentState, config: RunnableConfig) -> AgentState:
         "Example output:\n"
         '["create folder test", "run terminal command pip install pandas", "web search weather in Paris"]'
     )
+    
+    # Load strategy metrics to guide planning dynamically
+    try:
+        from backend.services.manager import ServiceManager
+        strat_svc = ServiceManager.get_instance("strategy_memory")
+        if strat_svc:
+            ranked_strats = strat_svc.get_ranked_strategies("ui_automation")
+            strats_desc = "\n".join([f"- {s['name']} (strategy: '{s['strategy']}', confidence: {s['confidence']:.2f})" for s in ranked_strats])
+            system_prompt += f"\n\nPreferred Strategy Confidence Rankings:\n{strats_desc}\nAlways formulate plans preferring high-confidence strategies."
+    except Exception as e:
+        logger.warning(f"Could not load strategy rankings context: {e}")
+
     prompt = f"User Query: {query}\nExpected Response: {prash_response}"
     
     try:
@@ -262,6 +274,17 @@ async def tool_selection_node(state: AgentState, config: RunnableConfig) -> Agen
         "Example Output:\n"
         '{"name": "file_system_tool", "args": {"action": "create_file", "path": "C:\\\\test\\\\file.txt", "content": "hello"}}\n'
     )
+    
+    # Inject strategy memory confidence rules to steer tool selection
+    try:
+        from backend.services.manager import ServiceManager
+        strat_svc = ServiceManager.get_instance("strategy_memory")
+        if strat_svc:
+            ranked_strats = strat_svc.get_ranked_strategies("ui_automation")
+            strats_desc = "\n".join([f"- {s['name']} (strategy: '{s['strategy']}', confidence: {s['confidence']:.2f})" for s in ranked_strats])
+            system_prompt += f"\n\nStrategy Confidence Rankings:\n{strats_desc}\nAlways select tools representing high confidence strategy modes."
+    except Exception as e:
+        logger.warning(f"Could not load strategy rankings: {e}")
     
     history_str = json.dumps(state.get("tool_results", []), indent=2)
     prompt = (
@@ -422,6 +445,32 @@ async def result_validation_node(state: AgentState, config: RunnableConfig) -> A
                 is_failed = True
         except Exception:
             pass
+
+    # Update dynamic strategy reward score outcomes based on result success
+    try:
+        from backend.services.manager import ServiceManager
+        strat_svc = ServiceManager.get_instance("strategy_memory")
+        if strat_svc:
+            tool_name = last_result.get("tool", "")
+            # Map tools to categories
+            tool_strategy_map = {
+                "cmd_tool": ("ui_automation", "win32_uia"),
+                "python_tool": ("app_launch", "shutil_which"),
+                "file_system_tool": ("file_search", "python_os_walk"),
+                "web_search_tool": ("ui_automation", "browser_playwright")
+            }
+            mapping = tool_strategy_map.get(tool_name)
+            if mapping:
+                category, strategy_id = mapping
+                if is_failed:
+                    # Check repeated failure
+                    past_fails = [r for r in results[:-1] if r.get("tool") == tool_name and ("error" in str(r.get("result")).lower() or "failed" in str(r.get("result")).lower())]
+                    reward = -3.0 if past_fails else -2.0
+                else:
+                    reward = 1.0
+                strat_svc.update_strategy_outcome(category, strategy_id, reward)
+    except Exception as e:
+        logger.warning(f"Failed to record learning feedback: {e}")
 
     if is_failed:
         state["logs"].append(f"Potential execution failure detected for step: '{last_result.get('step')}'")

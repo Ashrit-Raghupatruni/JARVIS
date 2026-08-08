@@ -12,6 +12,8 @@ interface AppState {
   /* ----- Core State ----- */
   assistantState: AssistantState
   isConnected: boolean
+  connectionState: 'connecting' | 'connected' | 'reconnecting' | 'disconnected'
+  queuedMessageCount: number
   messages: ConversationMessage[]
   currentTranscript: string
   isListening: boolean
@@ -42,6 +44,8 @@ interface AppState {
   /* ----- Core Actions ----- */
   setAssistantState: (state: AssistantState) => void
   setConnected: (connected: boolean) => void
+  setConnectionState: (state: 'connecting' | 'connected' | 'reconnecting' | 'disconnected') => void
+  setQueuedMessageCount: (count: number) => void
   addMessage: (message: ConversationMessage) => void
   clearMessages: () => void
   setCurrentTranscript: (transcript: string) => void
@@ -74,6 +78,7 @@ interface AppState {
   updateVoiceSettings: (voice: Partial<Settings['voice']>) => void
   updateAISettings: (ai: Partial<Settings['ai']>) => void
   updateDisplaySettings: (display: Partial<Settings['display']>) => void
+  updateHandControlSettings: (handControl: Partial<Settings['handControl']>) => void
 }
 
 const defaultSettings: Settings = {
@@ -101,6 +106,15 @@ const defaultSettings: Settings = {
     alwaysOnTop: false,
     theme: 'dark',
     selectedMonitor: 'all'
+  },
+  handControl: {
+    enabled: false,
+    sensitivity: 1.6,
+    smoothing: 0.45,
+    pinchThreshold: 0.32,
+    scrollSpeed: 40.0,
+    fps: 30,
+    cameraDevice: ''
   }
 }
 
@@ -108,6 +122,8 @@ export const useAppStore = create<AppState>((set) => ({
   /* ----- Initial State ----- */
   assistantState: 'idle',
   isConnected: false,
+  connectionState: 'connecting',
+  queuedMessageCount: 0,
   messages: [],
   currentTranscript: '',
   isListening: false,
@@ -139,7 +155,11 @@ export const useAppStore = create<AppState>((set) => ({
   /* ----- Core Actions ----- */
   setAssistantState: (assistantState) => set({ assistantState }),
 
-  setConnected: (isConnected) => set({ isConnected }),
+  setConnected: (isConnected) => set({ isConnected, connectionState: isConnected ? 'connected' : 'disconnected' }),
+
+  setConnectionState: (connectionState) => set({ connectionState, isConnected: connectionState === 'connected' }),
+
+  setQueuedMessageCount: (queuedMessageCount) => set({ queuedMessageCount }),
 
   addMessage: (message) =>
     set((state) => ({
@@ -240,6 +260,14 @@ export const useAppStore = create<AppState>((set) => ({
       settings: {
         ...state.settings,
         display: { ...state.settings.display, ...display }
+      }
+    })),
+
+  updateHandControlSettings: (handControl) =>
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        handControl: { ...state.settings.handControl, ...handControl }
       }
     }))
 }))

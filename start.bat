@@ -25,30 +25,38 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":8000.*LISTENING" 2^>nul') d
 )
 echo [OK] Port 8000 is free
 
-:: Check if Ollama is running and the model is available
+:: Check Python Virtual Environment
+if not exist "%PROJECT_ROOT%\backend\venv\Scripts\python.exe" (
+    echo [ERROR] Virtual environment missing at backend\venv. Run setup.bat first.
+    pause
+    exit /b 1
+)
+
+:: Check AI Engine Status
 echo.
-echo [1/2] Checking Ollama status...
+echo [1/2] Checking AI Engine status...
+echo   - Primary Local Engine: Prash Engine - Embedded in Python backend
 curl -s http://localhost:11434/api/tags >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [WARNING] Ollama is not running!
-    echo   Please start Ollama first: ollama serve
-    echo   Then pull the model: ollama pull qwen2.5-coder:3b
-    echo.
-    echo   JARVIS will still launch but will fall back to Gemini/OpenAI.
+    echo   - Secondary Local Fallback Ollama: Offline - Optional
+    echo     JARVIS uses Prash natively. Cloud providers active.
     echo.
 ) else (
-    echo [OK] Ollama is running
-    echo   Starting qwen2.5-coder:3b model...
-    start /b ollama run qwen2.5-coder:3b >nul 2>&1
-    echo [OK] Ollama model ready
+    echo   - Secondary Local Fallback Ollama: Online - qwen2.5-coder:3b ready
+    echo.
 )
 
 :: Clear ELECTRON_RUN_AS_NODE to prevent Electron from running as plain Node.js
 :: (This variable is often set by VS Code and other Electron-based IDEs)
 set ELECTRON_RUN_AS_NODE=
-:: Start JARVIS (Electron handles backend lifecycle automatically)
+:: Start Python AI Engine
 echo.
-echo [2/2] Launching JARVIS...
+echo [2/3] Launching Python AI Engine (FastAPI backend on port 8000)...
+start "JARVIS Backend" /B /D "%PROJECT_ROOT%\backend" "%PROJECT_ROOT%\backend\venv\Scripts\python.exe" -m uvicorn main:app --host 0.0.0.0 --port 8000
+
+:: Launch Electron Frontend
+echo.
+echo [3/3] Launching JARVIS Desktop UI...
 cd /d "%PROJECT_ROOT%\frontend"
 call npm run dev
 if %errorlevel% neq 0 (

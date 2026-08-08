@@ -10,6 +10,7 @@ import asyncio
 import time
 import json
 import re
+import random
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
@@ -156,10 +157,38 @@ class PlannerAgent:
             except Exception as e:
                 logger.warning("Failed to record self-improving experience trace: {}", e)
 
-        # ── Code-Level Intent Classification & Orchestration Routing ─────────
+        # ── 6-Pillar Architecture Control Gate ────────────────────────────────
+        from backend.models.envelope import RequestEnvelope, RequestSource, RequestModality, RequestPriority
+        from backend.agents.router import RequestRouter, HierarchicalCategory
+        from backend.services.safety_gatekeeper import SafetyGatekeeper, ActionRiskLevel
+        from backend.services.observability import SessionTraceLogger
+
+        # 1. Normalize Request Envelope
+        session_id = f"sess_{int(time.time())}"
+        envelope = RequestEnvelope(
+            session_id=session_id,
+            source=RequestSource.DESKTOP_UI,
+            modality=RequestModality.TEXT,
+            priority=RequestPriority.INTERACTIVE,
+            payload={"type": "text_command", "data": {"text": user_message}}
+        )
+
+        # 2. Trace Logger Init
+        tracer = SessionTraceLogger(session_id=session_id)
+        tracer.log_event("session_started", {"user_message": user_message, "envelope": envelope.model_dump()})
+
+        # 3. Hierarchical Intent & Model Routing
+        router = RequestRouter()
+        hier_category, model_assign = router.classify_and_route(envelope)
+        tracer.log_event("intent_routed", {"category": hier_category.value, "model_assignment": model_assign.model_dump()})
+        
+        # 4. Out-of-Model Safety Gatekeeper Instance
+        gatekeeper = SafetyGatekeeper()
+
+        # Legacy compatibility mapping
         from backend.agents.message_router import classify_request, RequestCategory
         request_cat = classify_request(user_message)
-        logger.info(f"Orchestration Router category: {request_cat.value} for prompt: '{user_message[:50]}'")
+        logger.info(f"Orchestration Router category: {request_cat.value} (Hierarchical: {hier_category.value}) for prompt: '{user_message[:50]}'")
 
         # Execute 10-Step Self-Improving OS Lifecycle Pipeline asynchronously for background trace tracking
         if hasattr(self, "pipeline") and self.pipeline:
@@ -171,7 +200,27 @@ class PlannerAgent:
 
         # Branch on RequestCategory
         if request_cat == RequestCategory.LIVE_MODE_REQUEST:
-            logger.info("Executing Live Mode Perception Workflow")
+            logger.info("Executing Live Mode Perception Workflow for prompt: '{}'", user_message[:50])
+            try:
+                from backend.utils.service_manager import ServiceManager
+                wm = ServiceManager.get_instance("world_model")
+                if not wm:
+                    from backend.services.world_model import WorldModel
+                    wm = WorldModel()
+                wm.refresh()
+                summary = wm.get_summary()
+                scene = wm.state.scene_graph or {}
+                controls = scene.get("controls", [])
+                ctrl_names = [c.get("name") for c in controls[:15] if c.get("name")]
+                ctrl_str = ", ".join(ctrl_names) if ctrl_names else "Standard UI Controls"
+                
+                live_mode_sys_msg = {
+                    "role": "system",
+                    "content": f"[LIVE MODE PERCEPTION CONTEXT]: Foreground Window='{summary.get('active_window')}', Indexed Controls=[{ctrl_str}]. You MUST call `click_element_by_name` or `set_control_value` tool functions to interact with visible elements on screen."
+                }
+                history.append(live_mode_sys_msg)
+            except Exception as lm_err:
+                logger.warning("Live Mode perception context setup notice: {}", lm_err)
         elif request_cat == RequestCategory.KNOWLEDGE_REQUEST:
             logger.info("Executing Knowledge Retrieval Workflow")
         elif request_cat == RequestCategory.ACTION_REQUEST:
@@ -208,7 +257,24 @@ class PlannerAgent:
                 yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
                 return
 
-        # Fast-path 0: Date and Time Intent Intercept
+        # Fast-Path 0: Conversational Greetings Intercept
+        if lower_msg in ("hi", "hello", "hey", "hey jarvis", "hi jarvis", "hello jarvis", "greetings", "good morning", "good afternoon", "good evening"):
+            greetings = [
+                "Hello sir! How can I assist you today?",
+                "Greetings, sir. I am online and at your service.",
+                "At your service, sir. What can I do for you?",
+                "Hello sir! All systems operational. Ready for your command.",
+                "Hey there, sir! Standing by to assist you."
+            ]
+            response_text = random.choice(greetings)
+            yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
+            history.append({"role": "assistant", "content": response_text})
+            if conversation_history is None:
+                self._conversation_history = history
+            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
+            return
+
+        # Fast-path 0A: Date and Time Intent Intercept
         if any(p in lower_msg for p in ["what is today's date", "what is the date", "today's date", "current date", "what time is it", "current time"]):
             now = datetime.now()
             date_str = now.strftime("%A, %B %d, %Y")

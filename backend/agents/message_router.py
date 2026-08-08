@@ -25,14 +25,14 @@ def classify_request(user_message: str) -> RequestCategory:
     """
     msg_lower = user_message.lower().strip()
 
-    # 1. Live Mode / Screen-Aware Perception Triggers
+    # 1. Live Mode / Screen-Aware Perception & UI Interaction Triggers
     live_mode_keywords = [
         "what am i seeing", "what's on my screen", "what is on my screen",
-        "read screen", "see screen", "click button", "click that", "click the",
-        "fill form", "fill this form", "describe screen", "screen context",
-        "what should i do next", "active window", "on screen"
+        "read screen", "see screen", "click button", "click that", "click the", "click on", "click ",
+        "tap ", "press button", "hit button", "select button", "fill form", "fill this form",
+        "describe screen", "screen context", "what should i do next", "active window", "on screen"
     ]
-    if any(kw in msg_lower for kw in live_mode_keywords):
+    if any(kw in msg_lower for kw in live_mode_keywords) or msg_lower.startswith(("click", "tap", "fill", "press button")):
         logger.info("⚡ MessageRouter classified: LIVE_MODE_REQUEST for prompt '{}'", user_message[:60])
         return RequestCategory.LIVE_MODE_REQUEST
 

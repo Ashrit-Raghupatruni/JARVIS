@@ -74,11 +74,29 @@ function createTrayIcon(): nativeImage {
   return nativeImage.createFromBuffer(canvas, { width: size, height: size })
 }
 
+function getLogPath(): string {
+  const logDir = join(__dirname, '..', '..', '..', 'logs')
+  if (!existsSync(logDir)) {
+    try { mkdirSync(logDir, { recursive: true }) } catch (e) { /* ignore */ }
+  }
+  return join(logDir, 'backend_startup.log')
+}
+
+function writeBackendLog(message: string): void {
+  const timestamp = new Date().toISOString()
+  const line = `[${timestamp}] ${message}\n`
+  try {
+    appendFileSync(getLogPath(), line, 'utf8')
+  } catch (err) {
+    // Ignore logging write failures
+  }
+}
+
 function startBackendProcess(): void {
   const backendPath = join(__dirname, '..', '..', '..', 'backend')
   const port = getBackendPort()
 
-  // Clean up any orphan processes holding the port before starting uvicorn
+  writeBackendLog(`[Backend] Initializing backend process on port ${port}...`)
   console.log(`[Backend] Checking and freeing port ${port}...`)
   killPortOwner(port)
 
@@ -87,24 +105,38 @@ function startBackendProcess(): void {
     ? join(backendPath, 'venv', 'Scripts', 'python.exe')
     : join(backendPath, 'venv', 'bin', 'python')
 
+  if (!existsSync(venvPython)) {
+    const errorMsg = `[Backend Error] Virtual environment Python not found at: ${venvPython}. Run setup.bat to create venv.`
+    console.error(errorMsg)
+    writeBackendLog(errorMsg)
+    return
+  }
+
+  writeBackendLog(`[Backend] Spawning Python venv interpreter: ${venvPython}`)
+
   try {
     backendProcess = spawn(venvPython, ['-m', 'uvicorn', 'main:app', '--host', '0.0.0.0', '--port', String(port)], {
       cwd: backendPath,
       stdio: 'pipe',
-      shell: true,
       env: { ...process.env, SPAWNED_BY_ELECTRON: 'true' }
     })
 
     backendProcess.stdout?.on('data', (data: Buffer) => {
-      console.log(`[Backend] ${data.toString().trim()}`)
+      const text = data.toString().trim()
+      console.log(`[Backend] ${text}`)
+      writeBackendLog(`[STDOUT] ${text}`)
     })
 
     backendProcess.stderr?.on('data', (data: Buffer) => {
-      console.error(`[Backend Error] ${data.toString().trim()}`)
+      const text = data.toString().trim()
+      console.error(`[Backend Error] ${text}`)
+      writeBackendLog(`[STDERR] ${text}`)
     })
 
     backendProcess.on('close', (code: number | null) => {
-      console.log(`[Backend] Process exited with code ${code}`)
+      const exitMsg = `[Backend] Process exited with code ${code}`
+      console.log(exitMsg)
+      writeBackendLog(exitMsg)
       if (!isQuitting) {
         console.log('[Backend] Restarting in 3 seconds...')
         setTimeout(startBackendProcess, 3000)
@@ -112,12 +144,17 @@ function startBackendProcess(): void {
     })
 
     backendProcess.on('error', (err: Error) => {
-      console.error('[Backend] Failed to start:', err.message)
+      const errStr = `[Backend Error] Failed to start process: ${err.message}`
+      console.error(errStr)
+      writeBackendLog(errStr)
     })
 
     console.log('[Backend] Started with PID:', backendProcess.pid)
+    writeBackendLog(`[Backend] Spawned successfully with PID: ${backendProcess.pid}`)
   } catch (err) {
-    console.error('[Backend] Failed to spawn process:', err)
+    const catchErr = `[Backend Exception] Failed to spawn process: ${err}`
+    console.error(catchErr)
+    writeBackendLog(catchErr)
   }
 }
 
@@ -466,6 +503,21 @@ function setupIPC(): void {
     }
   })
 
+  // Live Mode System-Wide Screen-Dimming Spotlight Overlay IPC Handlers
+  ipcMain.handle('live-mode:toggle-overlay', (_event, enable: boolean) => {
+    if (enable) {
+      createOverlayWindow()
+    } else {
+      destroyOverlayWindow()
+    }
+  })
+
+  ipcMain.handle('live-mode:update-spotlight', (_event, bounds: { x: number; y: number; w: number; h: number }) => {
+    if (overlayWindow && !overlayWindow.isDestroyed()) {
+      overlayWindow.webContents.executeJavaScript(`window.updateSpotlight && window.updateSpotlight(${JSON.stringify(bounds)})`)
+    }
+  })
+
   // Sync state between renderer and Siri overlay window
   ipcMain.on('renderer-state-update', (_event, data: { state: string; audioLevel: number }) => {
     if (siriWindow && !siriWindow.isDestroyed()) {
@@ -481,6 +533,137 @@ function setupIPC(): void {
       mainWindow.focus()
     }
   })
+}
+
+let overlayWindow: BrowserWindow | null = null
+
+function createOverlayWindow(): void {
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    overlayWindow.showInactive()
+    return
+  }
+
+  const { screen } = require('electron')
+  const displays = screen.getAllDisplays()
+
+  let minX = 0, minY = 0, maxX = 0, maxY = 0
+  for (const d of displays) {
+    minX = Math.min(minX, d.bounds.x)
+    minY = Math.min(minY, d.bounds.y)
+    maxX = Math.max(maxX, d.bounds.x + d.bounds.width)
+    maxY = Math.max(maxY, d.bounds.y + d.bounds.height)
+  }
+
+  overlayWindow = new BrowserWindow({
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+    transparent: true,
+    frame: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    hasShadow: false,
+    resizable: false,
+    focusable: false,
+    show: false,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: false
+    }
+  })
+
+  overlayWindow.setAlwaysOnTop(true, 'screen-saver')
+  overlayWindow.setIgnoreMouseEvents(true, { forward: true })
+
+  const overlayHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+      </style>
+    </head>
+    <body>
+      <canvas id="spotlightCanvas"></canvas>
+      <script>
+        const canvas = document.getElementById('spotlightCanvas');
+        const ctx = canvas.getContext('2d');
+        let currentSpotlight = null;
+
+        function resize() {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+          draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function draw() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          if (currentSpotlight && currentSpotlight.w > 0 && currentSpotlight.h > 0) {
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.fillStyle = 'rgba(0, 0, 0, 1)';
+
+            const r = 12;
+            const x = currentSpotlight.x;
+            const y = currentSpotlight.y;
+            const w = currentSpotlight.w;
+            const h = currentSpotlight.h;
+
+            ctx.beginPath();
+            if (ctx.roundRect) {
+              ctx.roundRect(x, y, w, h, r);
+            } else {
+              ctx.rect(x, y, w, h);
+            }
+            ctx.fill();
+
+            ctx.globalCompositeOperation = 'source-over';
+
+            ctx.strokeStyle = '#00e5ff';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = '#00e5ff';
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            if (ctx.roundRect) {
+              ctx.roundRect(x, y, w, h, r);
+            } else {
+              ctx.rect(x, y, w, h);
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+          }
+        }
+
+        resize();
+
+        window.updateSpotlight = (bounds) => {
+          currentSpotlight = bounds;
+          draw();
+        };
+      </script>
+    </body>
+    </html>
+  `
+
+  overlayWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(overlayHtml)}`)
+  overlayWindow.showInactive()
+
+  overlayWindow.on('closed', () => {
+    overlayWindow = null
+  })
+}
+
+function destroyOverlayWindow(): void {
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    overlayWindow.destroy()
+    overlayWindow = null
+  }
 }
 
 // Single instance lock

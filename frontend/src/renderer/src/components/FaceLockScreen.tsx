@@ -29,10 +29,11 @@ export const FaceLockScreen: React.FC<FaceLockScreenProps> = ({ onUnlock }) => {
   const [enrollStatusText, setEnrollStatusText] = useState('Position face in center frame...')
   const [isEnrolling, setIsEnrolling] = useState(false)
 
-  // 1. Query initial face biometrics status
-  const checkStatus = async () => {
-    try:
+  // 1. Query initial face biometrics status with backend boot retry
+  const checkStatus = async (retryCount = 0) => {
+    try {
       const res = await fetch('/api/biometrics/face/status')
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       if (data.status === 'success') {
         if (!data.enrolled) {
@@ -48,8 +49,9 @@ export const FaceLockScreen: React.FC<FaceLockScreenProps> = ({ onUnlock }) => {
           setStatusText('SCANNING FACE BIOMETRICS...')
         }
       }
-    catch (e) {
-      console.error('Failed to query face biometrics status:', e)
+    } catch (e) {
+      setStatusText('CONNECTING TO BIOMETRIC SECURITY CORE...')
+      setTimeout(() => checkStatus(retryCount + 1), 1500)
     }
   }
 

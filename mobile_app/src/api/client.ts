@@ -60,6 +60,14 @@ export class JarvisMobileClient {
     return `${scheme}://${this.serverHost}:${this.serverPort}/api/v1/mobile/ws/stream`;
   }
 
+  private getHeaders() {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (this.token) {
+      headers["Authorization"] = `Bearer ${this.token}`;
+    }
+    return headers;
+  }
+
   async pairDevice(deviceName: string, deviceId: string, pairingCode: string, session_id: string) {
     const res = await fetch(`${this.baseUrl}/api/v1/mobile/pair/confirm`, {
       method: "POST",
@@ -70,21 +78,44 @@ export class JarvisMobileClient {
         device_id: deviceId
       })
     });
+    const data = await res.json();
+    if (data.access_token || data.token) {
+      this.setAuthToken(data.access_token || data.token);
+    }
+    return data;
+  }
+
+  async easyPair(pin: string, deviceName: string = "Android Phone", deviceId: string = "android-companion-1") {
+    const res = await fetch(`${this.baseUrl}/api/v1/mobile/pair`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin, device_name: deviceName, device_id: deviceId })
+    });
+    const data = await res.json();
+    if (data.token) {
+      this.setAuthToken(data.token);
+    }
+    return data;
+  }
+
+  async fetchTrustedDevices() {
+    const res = await fetch(`${this.baseUrl}/api/v1/mobile/devices`, {
+      headers: this.getHeaders()
+    });
     return res.json();
   }
 
   async fetchTelemetry(): Promise<SystemTelemetryData> {
-    const res = await fetch(`${this.baseUrl}/api/v1/mobile/telemetry`);
+    const res = await fetch(`${this.baseUrl}/api/v1/mobile/telemetry`, {
+      headers: this.getHeaders()
+    });
     return res.json();
   }
 
   async sendRemoteCommand(command: string, params: Record<string, any> = {}) {
     const res = await fetch(`${this.baseUrl}/api/v1/mobile/system/command`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${this.token}`
-      },
+      headers: this.getHeaders(),
       body: JSON.stringify({ command, params })
     });
     return res.json();
@@ -93,22 +124,68 @@ export class JarvisMobileClient {
   async submitApprovalDecision(approvalId: string, decision: 'approve' | 'deny' | 'always_allow' | 'always_deny') {
     const res = await fetch(`${this.baseUrl}/api/v1/mobile/approvals/respond`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${this.token}`
-      },
+      headers: this.getHeaders(),
       body: JSON.stringify({ approval_id: approvalId, decision })
     });
     return res.json();
   }
 
   async getScreenPreview() {
-    const res = await fetch(`${this.baseUrl}/api/v1/mobile/screen/preview`);
+    const res = await fetch(`${this.baseUrl}/api/v1/mobile/screen/preview`, {
+      headers: this.getHeaders()
+    });
     return res.json();
   }
 
   async searchFiles(query: string) {
-    const res = await fetch(`${this.baseUrl}/api/v1/mobile/files/search?query=${encodeURIComponent(query)}`);
+    const res = await fetch(`${this.baseUrl}/api/v1/mobile/files/search?query=${encodeURIComponent(query)}`, {
+      headers: this.getHeaders()
+    });
+    return res.json();
+  }
+
+  async toggleLiveMode(enable: boolean) {
+    const res = await fetch(`${this.baseUrl}/api/v1/mobile/live_mode/toggle?enable=${enable}`, {
+      method: "POST",
+      headers: this.getHeaders()
+    });
+    return res.json();
+  }
+
+  async fetchLiveModeStatus() {
+    const res = await fetch(`${this.baseUrl}/api/v1/mobile/live_mode/status`, {
+      headers: this.getHeaders()
+    });
+    return res.json();
+  }
+
+  async fetchChatHistory() {
+    const res = await fetch(`${this.baseUrl}/api/v1/chat/history`, {
+      headers: this.getHeaders()
+    });
+    return res.json();
+  }
+
+  async sendNaturalLanguageCommand(prompt: string) {
+    const res = await fetch(`${this.baseUrl}/api/v1/chat`, {
+      method: "POST",
+      headers: this.getHeaders(),
+      body: JSON.stringify({ message: prompt })
+    });
+    return res.json();
+  }
+
+  async fetchDiagnostics() {
+    const res = await fetch(`${this.baseUrl}/api/v1/mobile/diagnostics`, {
+      headers: this.getHeaders()
+    });
+    return res.json();
+  }
+
+  async fetchBrainMemories() {
+    const res = await fetch(`${this.baseUrl}/api/v1/mobile/brain/memory`, {
+      headers: this.getHeaders()
+    });
     return res.json();
   }
 

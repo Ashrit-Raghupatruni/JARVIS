@@ -1,20 +1,16 @@
 # 🏗️ Implementation Details & Architectural Specifications
 
-This document outlines the concrete code modules, service integration patterns, virtual environment dependencies, and security implementations in JARVIS. **Last Updated:** July 31, 2026
+This document outlines the concrete code modules, service integration patterns, virtual environment dependencies, and security implementations in JARVIS. **Last Updated:** August 8, 2026
 
 ---
 
-## 1. Real 3D Face Model Engine
+## 1. Connected Security Sandbox & Code Executions
 
-### File System Paths
-- `frontend/src/renderer/src/assets/models/head.glb` (332.8 KB)
-- `frontend/src/renderer/public/models/head.glb`
-- `frontend/src/renderer/src/assets/models/facecap.glb`
-- `frontend/src/renderer/public/models/facecap.glb`
-
-### Loader Architecture ([`GltfHeadLoader.ts`](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/lib/face-engine/loaders/GltfHeadLoader.ts))
-- Configured Three.js `GLTFLoader` with `MeshoptDecoder` from `three/examples/jsm/libs/meshopt_decoder.module.js`.
-- Completely removed `createImmediateHead()`. If an asset fails to load, the loader throws a standard asset error rather than silently substituting procedural shapes.
+### Implementation Design ([`sandbox.py`](file:///c:/Users/ashri/JARVIS/backend/services/security/sandbox.py))
+- Integrates `SecuritySandbox` for python and shell executions inside standard tools pipelines with zero bypass paths.
+- Scrubs API keys and environment variables on subprocess initialization to block leakage.
+- Enforces secrets masking inside `rbac.py` on tool outputs.
+- Restricts tool permissions and locks reading/writing sensitive files (`.env`, `vault.bin`).
 
 ---
 

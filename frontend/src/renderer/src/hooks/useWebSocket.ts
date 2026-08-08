@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useCallback } from 'react'
 import { useAppStore } from '../stores/appStore'
 import type {
   WSMessage,
@@ -18,6 +18,40 @@ const HEARTBEAT_INTERVAL = 30000
 const MAX_RECONNECT_DELAY = 30000
 const INITIAL_RECONNECT_DELAY = 1000
 
+function playWakeChime() {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+    if (!AudioCtx) return
+    const ctx = new AudioCtx()
+    
+    // Tone 1: 880Hz (A5)
+    const osc1 = ctx.createOscillator()
+    const gain1 = ctx.createGain()
+    osc1.type = 'sine'
+    osc1.frequency.setValueAtTime(880, ctx.currentTime)
+    gain1.gain.setValueAtTime(0.12, ctx.currentTime)
+    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1)
+    osc1.connect(gain1)
+    gain1.connect(ctx.destination)
+    osc1.start(ctx.currentTime)
+    osc1.stop(ctx.currentTime + 0.1)
+
+    // Tone 2: 1320Hz (E6) - 50ms offset
+    const osc2 = ctx.createOscillator()
+    const gain2 = ctx.createGain()
+    osc2.type = 'sine'
+    osc2.frequency.setValueAtTime(1320, ctx.currentTime + 0.05)
+    gain2.gain.setValueAtTime(0.15, ctx.currentTime + 0.05)
+    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18)
+    osc2.connect(gain2)
+    gain2.connect(ctx.destination)
+    osc2.start(ctx.currentTime + 0.05)
+    osc2.stop(ctx.currentTime + 0.18)
+  } catch {
+    // Audio Context blocked or unavailable
+  }
+}
+
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 9)
 }
@@ -29,7 +63,10 @@ interface UseWebSocketReturn {
   disconnect: () => void
 }
 
-// Shared global WebSocket connection state
+// Outbound message queue for delivering messages during disconnect / reconnect windows
+let outgoingQueue: Array<{ type: string; data: Record<string, unknown>; timestamp: string }> = []
+
+// Shared global WebSocket connection singletons
 let globalWs: WebSocket | null = null
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null
@@ -38,20 +75,20 @@ let isIntentionalClose = false
 let activeHookCount = 0
 let globalOnTtsAudio: ((data: ArrayBuffer) => void) | null = null
 
-export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSocketReturn {
-  const {
-    setConnected,
-    setAssistantState,
-    addMessage,
-    setCurrentTranscript,
-    setListening,
-    setSpeaking,
-    setCurrentTask,
-    updateTaskStep,
-    addCommandEntry,
-    setThinkingText
-  } = useAppStore.getState()
+async function waitForBackendHealth(httpUrl: string, maxAttempts = 12): Promise<boolean> {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const res = await fetch(`${httpUrl}/health`, { signal: AbortSignal.timeout(1000) })
+      if (res.ok) return true
+    } catch {
+      // Backend is starting up, wait before creating WebSocket connection
+    }
+    await new Promise((r) => setTimeout(r, 400))
+  }
+  return false
+}
 
+export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSocketReturn {
   // Track the most recent ttsAudio listener callback
   useEffect(() => {
     if (onTtsAudio) {
@@ -132,6 +169,13 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
           break
         }
 
+        case 'hand_control_changed': {
+          const enabled = Boolean((message.data as any)?.enabled)
+          const store = useAppStore.getState()
+          store.updateHandControlSettings({ enabled })
+          break
+        }
+
         case 'clap_detected': {
           const store = useAppStore.getState()
           store.setAssistantState('wake_word_detected')
@@ -197,7 +241,7 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
         }
 
         case 'wake_word': {
-          const _wakeWord = message as WakeWordMessage
+          playWakeChime()
           useAppStore.getState().setAssistantState('wake_word_detected')
           setTimeout(() => {
             const store = useAppStore.getState()
@@ -270,8 +314,8 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
           break
         }
 
+        case 'pong':
         case 'heartbeat': {
-          // Server heartbeat response, no action needed
           break
         }
 
@@ -288,8 +332,12 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
       return
     }
 
+    const store = useAppStore.getState()
+    store.setConnectionState('connecting')
+
     try {
       let wsUrl: string
+      let httpUrl: string
       const api = (window as any).electronAPI
 
       if (api?.getSystemInfo) {
@@ -304,21 +352,44 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
           console.error('[WS] Failed to get system info for backend port:', err)
         }
         wsUrl = `ws://127.0.0.1:${port}/ws`
+        httpUrl = `http://127.0.0.1:${port}`
       } else {
-        // Running in a browser — use same host (Vite dev server proxies /ws → backend)
+        // Running in browser — proxy /ws → backend
         const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+        const httpProto = window.location.protocol === 'https:' ? 'https:' : 'http:'
         wsUrl = `${proto}//${window.location.host}/ws`
+        httpUrl = `${httpProto}//${window.location.host}`
       }
+
+      // Poll backend health check to avoid cold-start race conditions
+      await waitForBackendHealth(httpUrl, 10)
 
       console.log(`[WS] Connecting to ${wsUrl}`)
       const ws = new WebSocket(wsUrl)
       globalWs = ws
 
       ws.onopen = () => {
-        console.log('[WS] Connected')
-        useAppStore.getState().setConnected(true)
+        console.log('[WS] Connected successfully')
+        const currentStore = useAppStore.getState()
+        currentStore.setConnectionState('connected')
         reconnectDelay = INITIAL_RECONNECT_DELAY
         startHeartbeat()
+
+        // Flush outbound message queue upon connection
+        if (outgoingQueue.length > 0) {
+          console.log(`[WS] Connection established — flushing ${outgoingQueue.length} queued outbound message(s)...`)
+          const itemsToSend = [...outgoingQueue]
+          outgoingQueue = []
+          currentStore.setQueuedMessageCount(0)
+
+          for (const item of itemsToSend) {
+            try {
+              ws.send(JSON.stringify(item))
+            } catch (err) {
+              console.error('[WS] Error flushing queued message:', err)
+            }
+          }
+        }
 
         const api = (window as any).electronAPI
         if (api?.websocketConnected) {
@@ -330,19 +401,21 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
 
       ws.onclose = (event) => {
         console.log('[WS] Disconnected:', event.code, event.reason)
-        useAppStore.getState().setConnected(false)
-        clearHeartbeat()
-
+        const currentStore = useAppStore.getState()
+        
         if (!isIntentionalClose) {
+          currentStore.setConnectionState('reconnecting')
+          clearHeartbeat()
+
           const delay = reconnectDelay
           console.log(`[WS] Reconnecting in ${delay}ms...`)
           reconnectTimeout = setTimeout(() => {
-            reconnectDelay = Math.min(
-              reconnectDelay * 2,
-              MAX_RECONNECT_DELAY
-            )
+            reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY)
             connect()
           }, delay)
+        } else {
+          currentStore.setConnectionState('disconnected')
+          clearHeartbeat()
         }
       }
 
@@ -351,6 +424,8 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
       }
     } catch (err) {
       console.error('[WS] Connection failed:', err)
+      const currentStore = useAppStore.getState()
+      currentStore.setConnectionState('disconnected')
     }
   }, [handleMessage, startHeartbeat, clearHeartbeat])
 
@@ -365,6 +440,7 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
       globalWs.close()
       globalWs = null
     }
+    useAppStore.getState().setConnectionState('disconnected')
   }, [clearHeartbeat])
 
   const reconnect = useCallback(() => {
@@ -375,14 +451,29 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
   }, [connect, disconnect])
 
   const sendMessage = useCallback((type: string, data: Record<string, unknown>) => {
+    const payload = {
+      type,
+      data,
+      timestamp: new Date().toISOString()
+    }
+
     if (globalWs?.readyState === WebSocket.OPEN) {
-      globalWs.send(
-        JSON.stringify({
-          type,
-          data,
-          timestamp: new Date().toISOString()
-        })
-      )
+      globalWs.send(JSON.stringify(payload))
+    } else {
+      outgoingQueue.push(payload)
+      const store = useAppStore.getState()
+      store.setQueuedMessageCount(outgoingQueue.length)
+      console.log(`[WS] WebSocket not OPEN. Message queued (${outgoingQueue.length} pending):`, payload)
+
+      if (type === 'text_command' && data.text) {
+        const queueNotice: ConversationMessage = {
+          id: generateId(),
+          role: 'system',
+          content: `[WS Queue] Connection re-establishing — your message "${data.text}" is queued and will send automatically upon connection.`,
+          timestamp: payload.timestamp
+        }
+        store.addMessage(queueNotice)
+      }
     }
   }, [])
 

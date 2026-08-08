@@ -56,18 +56,34 @@ class SecurityOrchestrator:
             return req_level == ToolLevel.READ_ONLY
             
         return False
+
+    def classify_command(self, command: str) -> str:
+        """Classify a shell command into SAFE, CONFIRM, or DANGEROUS categories."""
+        cmd_lower = command.lower().strip()
+        
+        dangerous_patterns = [
+            "del ", "rm ", "rmdir ", "rd ", "format ", "erase ", 
+            "mkfs", "shutdown", "reboot", "reg ", "net user", "net localgroup"
+        ]
+        if any(pat in cmd_lower for pat in dangerous_patterns):
+            return "DANGEROUS"
+            
+        confirm_patterns = [
+            "install", "pip ", "npm ", "docker", "git commit", "git push", 
+            "git checkout", "setup", "build"
+        ]
+        if any(pat in cmd_lower for pat in confirm_patterns):
+            return "CONFIRM"
+            
+        return "SAFE"
         
     async def request_approval(self, action_description: str) -> bool:
         """Pause caller and broadcast a safety approval check on the Event Bus."""
         logger.warning(f"Security Alert: Approval required for action: '{action_description}'")
-        # In a real assistant, this pauses the state machine.
-        # We publish to let the system UI catch the interrupt.
         await self.event_bus.publish("security.approval_required", {
             "action": action_description,
             "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
         })
-        # Default behavior for test environments/autonomous mode:
-        # Returns True if Admin role, else False (unless explicitly resolved)
         return self._current_role == UserRole.ADMIN
 
     def log_audit(self, agent_name: str, tool_name: str, args: Dict[str, Any], status: str) -> None:
@@ -80,10 +96,24 @@ class SecurityOrchestrator:
         except Exception as e:
             logger.error(f"Failed to write to security audit log: {e}")
             
-    def mask_secrets(self, text: str, sensitive_words: List[str]) -> str:
+    def mask_secrets(self, text: str, sensitive_words: List[str] = None) -> str:
         """Mask secrets and passwords in any output text."""
+        import os
         masked_text = text
-        for word in sensitive_words:
-            if word and len(word) > 4:
-                masked_text = masked_text.replace(word, "[REDACTED]")
+        
+        # Always mask known environment credentials
+        secrets_to_mask = sensitive_words or []
+        env_keys = [
+            "GEMINI_API_KEY", "OPENAI_API_KEY", "GROQ_API_KEY", "NVIDIA_API_KEY",
+            "OPENROUTER_API_KEY", "AZURE_OPENAI_API_KEY", "GITHUB_TOKEN"
+        ]
+        for key in env_keys:
+            val = os.getenv(key)
+            if val and len(val) > 4:
+                secrets_to_mask.append(val)
+                
+        for word in set(secrets_to_mask):
+            masked_text = masked_text.replace(word, "[REDACTED]")
+            
         return masked_text
+

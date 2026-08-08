@@ -64,20 +64,20 @@ export default function ApprovalsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#050811', padding: 16 },
-  headerTitle: { color: '#00e5ff', fontSize: 16, fontWeight: 'bold', fontFamily: 'monospace', marginBottom: 20 },
-  approvalBox: { backgroundColor: '#0e1726', padding: 20, borderRadius: 16, borderWidth: 1, borderColor: '#ff9900' },
+  container: { flex: 1, backgroundColor: '#050d08', padding: 16 },
+  headerTitle: { color: '#00ff66', fontSize: 16, fontWeight: 'bold', fontFamily: 'monospace', marginBottom: 20 },
+  approvalBox: { backgroundColor: '#0a1a0f', padding: 20, borderRadius: 16, borderWidth: 1, borderColor: '#ff9900' },
   warningBadge: { color: '#ff9900', fontSize: 12, fontWeight: 'bold', fontFamily: 'monospace', marginBottom: 8 },
-  actionType: { color: '#ffffff', fontSize: 18, fontWeight: 'black', marginBottom: 8 },
-  description: { color: '#e1f5fe', fontSize: 14, marginBottom: 12 },
-  target: { color: '#88a0c0', fontSize: 11, fontFamily: 'monospace', marginBottom: 20 },
+  actionType: { color: '#ffffff', fontSize: 18, fontWeight: 'bold', marginBottom: 8, fontFamily: 'monospace' },
+  description: { color: '#d0f5df', fontSize: 14, marginBottom: 12 },
+  target: { color: '#668877', fontSize: 11, fontFamily: 'monospace', marginBottom: 20 },
   btnRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  approveBtn: { flex: 1, backgroundColor: '#00cc66', padding: 14, borderRadius: 10, alignItems: 'center' },
+  approveBtn: { flex: 1, backgroundColor: '#00cc52', padding: 14, borderRadius: 10, alignItems: 'center' },
   denyBtn: { flex: 1, backgroundColor: '#ff0055', padding: 14, borderRadius: 10, alignItems: 'center' },
-  alwaysAllowBtn: { flex: 1, backgroundColor: 'rgba(0, 204, 102, 0.2)', borderWidth: 1, borderColor: '#00cc66', padding: 10, borderRadius: 8, alignItems: 'center' },
+  alwaysAllowBtn: { flex: 1, backgroundColor: 'rgba(0, 204, 82, 0.2)', borderWidth: 1, borderColor: '#00cc52', padding: 10, borderRadius: 8, alignItems: 'center' },
   alwaysDenyBtn: { flex: 1, backgroundColor: 'rgba(255, 0, 85, 0.2)', borderWidth: 1, borderColor: '#ff0055', padding: 10, borderRadius: 8, alignItems: 'center' },
-  btnText: { color: '#ffffff', fontSize: 14, fontWeight: 'bold' },
-  btnSubText: { color: '#ffffff', fontSize: 11, fontWeight: 'bold' },
+  btnText: { color: '#ffffff', fontSize: 14, fontWeight: 'bold', fontFamily: 'monospace' },
+  btnSubText: { color: '#ffffff', fontSize: 11, fontWeight: 'bold', fontFamily: 'monospace' },
   emptyBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyText: { color: '#00e5ff', fontSize: 14, fontWeight: 'bold', fontFamily: 'monospace' }
+  emptyText: { color: '#00ff66', fontSize: 14, fontWeight: 'bold', fontFamily: 'monospace' }
 });

@@ -121,6 +121,51 @@ async def system_status(request: Request):
     }
 
 
+@router.post("/live_mode/toggle")
+@router.post("/api/v1/live_mode/toggle")
+async def toggle_live_mode_public(request: Request, enable: bool = True):
+    """Public Desktop API endpoint for toggling Live Mode perception loop."""
+    from backend.services.manager import ServiceManager
+    live_engine = ServiceManager.get_instance("live_mode_engine")
+    if not live_engine and hasattr(request.app.state, "live_mode_engine"):
+        live_engine = request.app.state.live_mode_engine
+    if not live_engine:
+        from backend.services.live_mode.live_engine import LiveModeEngine
+        live_engine = LiveModeEngine()
+        request.app.state.live_mode_engine = live_engine
+        ServiceManager.register_instance("live_mode_engine", live_engine)
+
+    if enable:
+        live_engine.start()
+    else:
+        live_engine.stop()
+
+    return {
+        "status": "ok",
+        "live_mode_enabled": live_engine.is_enabled,
+        "message": f"Live Mode {'enabled' if enable else 'disabled'}"
+    }
+
+
+@router.get("/live_mode/status")
+@router.get("/api/v1/live_mode/status")
+async def get_live_mode_status_public(request: Request):
+    """Public Desktop API endpoint for fetching Live Mode status & latest perception frame."""
+    from backend.services.manager import ServiceManager
+    live_engine = ServiceManager.get_instance("live_mode_engine")
+    if not live_engine and hasattr(request.app.state, "live_mode_engine"):
+        live_engine = request.app.state.live_mode_engine
+    if not live_engine or not live_engine.is_enabled:
+        return {"status": "inactive", "live_mode_enabled": live_engine.is_enabled if live_engine else False}
+
+    frame = live_engine.latest_frame
+    return {
+        "status": "active",
+        "live_mode_enabled": True,
+        "frame": frame.model_dump() if frame else None
+    }
+
+
 @router.post("/command")
 @router.post("/api/v1/command")
 async def process_command(cmd: CommandRequest, request: Request):
@@ -713,17 +758,20 @@ class FaceEnrollmentReq(BaseModel):
 class PinVerificationReq(BaseModel):
     pin: str
 
+def _get_face_biometrics_service():
+    from backend.services.manager import ServiceManager
+    from backend.services.face_biometrics import FaceBiometricsService
+    return ServiceManager.get_instance("face_biometrics_service") or FaceBiometricsService()
+
 @router.get("/api/biometrics/face/status")
 async def get_face_biometrics_status():
-    from backend.services.face_biometrics import FaceBiometricsService
-    face_bio = FaceBiometricsService()
+    face_bio = _get_face_biometrics_service()
     return {"status": "success", **face_bio.get_status()}
 
 @router.post("/api/biometrics/face/verify")
 async def verify_face_frame(req: FaceFrameVerificationReq):
     import base64
-    from backend.services.face_biometrics import FaceBiometricsService
-    face_bio = FaceBiometricsService()
+    face_bio = _get_face_biometrics_service()
     
     try:
         raw_b64 = req.frame_base64.split(",")[-1]
@@ -736,8 +784,7 @@ async def verify_face_frame(req: FaceFrameVerificationReq):
 @router.post("/api/biometrics/face/enroll")
 async def enroll_face_owner(req: FaceEnrollmentReq):
     import base64
-    from backend.services.face_biometrics import FaceBiometricsService
-    face_bio = FaceBiometricsService()
+    face_bio = _get_face_biometrics_service()
     
     try:
         bytes_list = []
@@ -751,7 +798,62 @@ async def enroll_face_owner(req: FaceEnrollmentReq):
 
 @router.post("/api/biometrics/face/verify_pin")
 async def verify_face_lock_pin(req: PinVerificationReq):
-    from backend.services.face_biometrics import FaceBiometricsService
-    face_bio = FaceBiometricsService()
+    face_bio = _get_face_biometrics_service()
     result = face_bio.verify_pin(req.pin)
     return {"status": "success" if result.get("verified") else "error", **result}
+
+
+# ── Developer Self-Development REST APIs ──────────────────────────────
+
+def _get_self_development_service():
+    from backend.services.manager import ServiceManager
+    return ServiceManager.get_instance("self_development_service")
+
+@router.get("/api/v1/developer/diagnostic")
+async def get_developer_diagnostic():
+    dev_service = _get_self_development_service()
+    if not dev_service:
+        return {"status": "error", "message": "Self development service offline."}
+    return dev_service.run_system_diagnostic()
+
+@router.get("/api/v1/developer/capabilities")
+async def get_capability_registry():
+    import json
+    from pathlib import Path
+    registry_path = Path("backend/CapabilityRegistry.json")
+    if not registry_path.exists():
+        return {"status": "error", "message": "Capability map registry not found."}
+    try:
+        with open(registry_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        return {"status": "error", "message": f"Corrupted capability registry: {e}"}
+
+@router.get("/api/v1/developer/memory")
+async def get_developer_memory():
+    dev_service = _get_self_development_service()
+    if not dev_service:
+        return {"status": "error", "message": "Self development service offline."}
+    return dev_service.memory
+
+@router.get("/api/v1/developer/approvals")
+async def get_pending_approvals():
+    dev_service = _get_self_development_service()
+    if not dev_service:
+        return {"status": "error", "message": "Self development service offline."}
+    return dev_service.pending_approvals
+
+@router.post("/api/v1/developer/approve/{approval_id}")
+async def approve_developer_approval(approval_id: str):
+    dev_service = _get_self_development_service()
+    if not dev_service:
+        return {"status": "error", "message": "Self development service offline."}
+    return dev_service.approve_modification(approval_id)
+
+@router.post("/api/v1/developer/reject/{approval_id}")
+async def reject_developer_approval(approval_id: str):
+    dev_service = _get_self_development_service()
+    if not dev_service:
+        return {"status": "error", "message": "Self development service offline."}
+    return dev_service.reject_modification(approval_id)
+

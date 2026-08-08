@@ -1,0 +1,124 @@
+{
+  "project_name": "JARVIS Personal AI Operating System",
+  "version": "1.0.0",
+  "capabilities": {
+    "rag_memory": {
+      "name": "RAG & Memory Context Engine",
+      "status": "IMPLEMENTED",
+      "description": "ChromaDB-based vector store and SQLAlchemy WAL persistent SQLite database. Ingests docx, pptx, pdf with TF-IDF fallback.",
+      "implementation_files": [
+        "backend/services/rag_service.py",
+        "backend/services/memory.py"
+      ],
+      "test_files": [
+        "backend/tests/test_rag.py",
+        "backend/tests/test_memory.py"
+      ],
+      "dependencies": ["chromadb", "sentence-transformers", "sqlalchemy"]
+    },
+    "local_ai_reasoner": {
+      "name": "Prash Local AI Engine",
+      "status": "IMPLEMENTED",
+      "description": "Decoder-only GPT-style transformer built from scratch in PyTorch, loaded dynamically for offline reasoning tasks.",
+      "implementation_files": [
+        "backend/prash/model.py",
+        "backend/prash/engine.py"
+      ],
+      "test_files": [
+        "backend/tests/test_prash.py"
+      ],
+      "dependencies": ["torch", "numpy"]
+    },
+    "live_mode_perception": {
+      "name": "Live Mode Screen Perception",
+      "status": "IMPLEMENTED",
+      "description": "Continuous background desktop UIA scene graph observer, sending focus overlays and proactive suggestions.",
+      "implementation_files": [
+        "backend/services/live_mode/live_engine.py",
+        "frontend/src/renderer/src/components/LivePerceptionVisualizer.tsx"
+      ],
+      "test_files": [
+        "backend/tests/test_live_mode.py"
+      ],
+      "dependencies": ["pywin32", "pywinauto"]
+    },
+    "speech_voice_pipeline": {
+      "name": "Speech Recognition & Wake Word",
+      "status": "IMPLEMENTED",
+      "description": "Bidirectional voice processing with faster-whisper STT, openwakeword wake word detector, and edge-tts text-to-speech.",
+      "implementation_files": [
+        "backend/agents/voice.py",
+        "backend/services/speech.py"
+      ],
+      "test_files": [
+        "backend/tests/test_speech.py"
+      ],
+      "dependencies": ["faster-whisper", "openwakeword", "edge-tts"]
+    },
+    "desktop_automation": {
+      "name": "Desktop & Browser Automation",
+      "status": "IMPLEMENTED",
+      "description": "Simulates keyboard strokes, hotkeys, mouse clicks, and Playwright browser orchestration.",
+      "implementation_files": [
+        "backend/services/automation.py",
+        "backend/services/browser.py"
+      ],
+      "test_files": [
+        "backend/tests/test_automation.py"
+      ],
+      "dependencies": ["pyautogui", "playwright"]
+    },
+    "hand_gesture_control": {
+      "name": "Hand Gesture Cursor & Desktop Control",
+      "status": "IMPLEMENTED",
+      "description": "Camera perception cursor controls using MediaPipe landmarker, tracking clicks, scrolling, and dragging.",
+      "implementation_files": [
+        "frontend/src/renderer/src/lib/handTracker.ts",
+        "backend/services/hand_control_service.py"
+      ],
+      "test_files": [
+        "backend/tests/test_hand_control.py"
+      ],
+      "dependencies": ["@mediapipe/tasks-vision", "pywin32", "pyautogui"]
+    },
+    "self_development_agent": {
+      "name": "Self-Development Developer Agent",
+      "status": "IMPLEMENTED",
+      "description": "Backend engine capable of scanning codebases, detecting lint/build errors, applying AST patches, and executing repairs.",
+      "implementation_files": [
+        "backend/services/self_development_service.py",
+        "backend/services/developer_assistant.py"
+      ],
+      "test_files": [
+        "backend/tests/test_self_development.py"
+      ],
+      "dependencies": ["ast", "subprocess"]
+    },
+    "self_healing_pipeline": {
+      "name": "Self-Healing Runtime Recovery",
+      "status": "IMPLEMENTED",
+      "description": "Intercepts runtime execution faults, diagnoses root cause, executes recovery scripts, and stores experience lessons.",
+      "implementation_files": [
+        "backend/services/self_healing.py",
+        "backend/services/experience.py"
+      ],
+      "test_files": [
+        "backend/tests/test_self_healing.py"
+      ],
+      "dependencies": ["shutil", "os"]
+    },
+    "mobile_companion_sync": {
+      "name": "Mobile Companion Gateway & Lockscreen",
+      "status": "IMPLEMENTED",
+      "description": "FastAPI WebSockets sync with secure Lockscreen face authentication and mobile remote shutdowns.",
+      "implementation_files": [
+        "frontend/src/renderer/src/components/FaceLockScreen.tsx",
+        "backend/services/mobile_bridge.py"
+      ],
+      "test_files": [
+        "backend/tests/test_mobile_bridge.py"
+      ],
+      "dependencies": ["cryptography", "pyjwt"]
+    }
+  }
+}

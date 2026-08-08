@@ -179,6 +179,15 @@ export interface Settings {
     theme: 'dark' | 'light'
     selectedMonitor?: string | number
   }
+  handControl: {
+    enabled: boolean
+    sensitivity: number
+    smoothing: number
+    pinchThreshold: number
+    scrollSpeed: number
+    fps: number
+    cameraDevice?: string
+  }
 }
 
 /* ===== Electron API (preload bridge) ===== */

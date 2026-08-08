@@ -18,110 +18,81 @@ except ImportError:
 
 
 async def execute_command(command: str, bypass_safety: bool = False) -> str:
-    """Execute a command in the Windows shell asynchronously.
-    
-    Checks for potentially destructive patterns and requests confirmation if found.
-    """
-    destructive_patterns = ["del ", "rm ", "rmdir ", "rd ", "format ", "erase ", "mkfs", "shutdown", "reboot"]
+    """Execute a command inside the SecuritySandbox with strict permission levels."""
+    # Prevent reading sensitive files directly
     command_lower = command.lower()
+    blocked_files = [".env", "vault.bin", "vault.key", "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519", "credentials"]
+    if any(bf in command_lower for bf in blocked_files):
+        return "Error: Access to protected security files or keys is strictly forbidden."
+
+    from backend.services.manager import ServiceManager
+    sandbox = ServiceManager.get_instance("security_sandbox")
+    security_orch = ServiceManager.get_instance("security_orchestrator")
     
-    if not bypass_safety and any(pattern in command_lower for pattern in destructive_patterns):
-        logger.warning(f"Destructive pattern matched in command: {command}")
-        return f"__CONFIRMATION_REQUIRED__: The command contains potentially destructive actions: '{command}'. Do you confirm execution?"
+    if security_orch:
+        classification = security_orch.classify_command(command)
+        if classification == "DANGEROUS" and not bypass_safety:
+            logger.warning(f"Dangerous command blocked: {command}")
+            return f"__CONFIRMATION_REQUIRED__: This is a DANGEROUS command: '{command}'. Do you confirm execution?"
+        elif classification == "CONFIRM" and not bypass_safety:
+            logger.warning(f"Confirmation required for command: {command}")
+            return f"__CONFIRMATION_REQUIRED__: Please confirm command execution: '{command}'"
+
+    if not sandbox:
+        # Fallback to local subprocess shell if sandbox service is missing
+        from backend.services.security.sandbox import SecuritySandbox
+        sandbox = SecuritySandbox()
+
+    res = await sandbox.execute_shell(command)
     
-    try:
-        logger.info(f"Executing shell command: {command}")
-        process = await asyncio.create_subprocess_shell(
-            command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout_bytes, stderr_bytes = await process.communicate()
-        
-        # Safe decoding with cp1252 fallback for Windows environments
-        try:
-            stdout = stdout_bytes.decode("utf-8")
-        except UnicodeDecodeError:
-            stdout = stdout_bytes.decode("cp1252", errors="replace")
-            
-        try:
-            stderr = stderr_bytes.decode("utf-8")
-        except UnicodeDecodeError:
-            stderr = stderr_bytes.decode("cp1252", errors="replace")
-            
-        logger.info(f"Command execution completed. Exit code: {process.returncode}")
-        return f"STDOUT:\n{stdout}\nSTDERR:\n{stderr}\nEXIT CODE: {process.returncode}"
-    except Exception as e:
-        logger.error(f"Failed to execute command '{command}': {e}")
-        return f"Error executing command: {str(e)}"
+    # Mask secrets in stdout/stderr
+    stdout = res.stdout
+    stderr = res.stderr
+    if security_orch:
+        stdout = security_orch.mask_secrets(stdout)
+        stderr = security_orch.mask_secrets(stderr)
+
+    return f"STDOUT:\n{stdout}\nSTDERR:\n{stderr}\nEXIT CODE: {res.exit_code}"
 
 
 async def execute_python(code: str) -> str:
-    """Write python code to a temporary script and execute it using the virtual environment's python.
+    """Write python code to a temporary script and execute it inside the SecuritySandbox."""
+    code_lower = code.lower()
     
-    Tracks and returns any new files created in the data/prash directory during the run.
-    """
-    temp_dir = PROJECT_ROOT / "data" / "prash"
-    temp_dir.mkdir(parents=True, exist_ok=True)
-    temp_script = temp_dir / "temp_script.py"
-    
-    # Track files before execution
-    files_before = set(os.listdir(temp_dir))
-    
-    try:
-        # Write the python script
-        with open(temp_script, "w", encoding="utf-8") as f:
-            f.write(code)
-            
-        python_exe = PROJECT_ROOT / "backend" / "venv" / "Scripts" / "python.exe"
-        if not python_exe.exists():
-            python_exe = Path(sys.executable)
-            logger.warning(f"Python interpreter at '{python_exe}' not found, falling back to '{sys.executable}'")
-            
-        logger.info(f"Executing Python script at {temp_script} using {python_exe}")
-        
-        process = await asyncio.create_subprocess_exec(
-            str(python_exe),
-            str(temp_script),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=str(temp_dir)
-        )
-        
-        stdout_bytes, stderr_bytes = await process.communicate()
-        
-        try:
-            stdout = stdout_bytes.decode("utf-8")
-        except UnicodeDecodeError:
-            stdout = stdout_bytes.decode("cp1252", errors="replace")
-            
-        try:
-            stderr = stderr_bytes.decode("utf-8")
-        except UnicodeDecodeError:
-            stderr = stderr_bytes.decode("cp1252", errors="replace")
-            
-        exit_code = process.returncode
-        
-        # Track files after execution
-        files_after = set(os.listdir(temp_dir))
-        new_files = list(files_after - files_before - {"temp_script.py"})
-        
-        result = {
-            "stdout": stdout,
-            "stderr": stderr,
-            "exit_code": exit_code,
-            "new_files": new_files
-        }
-        logger.info(f"Python script execution completed. Exit code: {exit_code}")
-        return json.dumps(result, indent=2)
-    except Exception as e:
-        logger.error(f"Error during Python tool execution: {e}")
+    # Block protected files from being accessed in python scripts
+    blocked_files = [".env", "vault.bin", "vault.key", "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519", "credentials"]
+    if any(bf in code_lower for bf in blocked_files):
         return json.dumps({
             "stdout": "",
-            "stderr": f"Error running script: {str(e)}",
+            "stderr": "Error: Access to protected security files or keys is strictly forbidden.",
             "exit_code": -1,
             "new_files": []
         }, indent=2)
+
+    from backend.services.manager import ServiceManager
+    sandbox = ServiceManager.get_instance("security_sandbox")
+    security_orch = ServiceManager.get_instance("security_orchestrator")
+    
+    if not sandbox:
+        from backend.services.security.sandbox import SecuritySandbox
+        sandbox = SecuritySandbox()
+
+    res = await sandbox.execute_python(code)
+    
+    # Mask secrets in output
+    stdout = res.stdout
+    stderr = res.stderr
+    if security_orch:
+        stdout = security_orch.mask_secrets(stdout)
+        stderr = security_orch.mask_secrets(stderr)
+
+    result = {
+        "stdout": stdout,
+        "stderr": stderr,
+        "exit_code": res.exit_code,
+        "new_files": []
+    }
+    return json.dumps(result, indent=2)
 
 
 def execute_file_system(
@@ -131,7 +102,14 @@ def execute_file_system(
     destination: Optional[str] = None,
     query: Optional[str] = None
 ) -> str:
-    """Standardizes file operations using python's os and shutil."""
+    """Standardizes file operations using python's os and shutil, protecting sensitive keys."""
+    # Prevent reading or writing sensitive files
+    path_lower = path.lower()
+    dest_lower = (destination or "").lower()
+    blocked_files = [".env", "vault.bin", "vault.key", "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519", "credentials"]
+    if any(bf in path_lower or bf in dest_lower for bf in blocked_files):
+        return "Error: Access to protected security files or keys is strictly forbidden."
+
     action_lower = action.lower()
     path_obj = Path(path)
     

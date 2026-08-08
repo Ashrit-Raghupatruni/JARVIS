@@ -1,17 +1,15 @@
 # 📋 Project Capability Directory & System Roadmap
 
-This document outlines the capabilities, completed features, active work, and upcoming roadmap of the **JARVIS Personal AI Operating System**. **Last Updated:** July 29, 2026
+This document outlines the capabilities, completed features, active work, and upcoming roadmap of the **JARVIS Personal AI Operating System**. **Last Updated:** August 8, 2026
 
 ---
 
 ## 1. Complete Capability Directory
 
-### 1.1. Production Asset-Based 3D Face Avatar Engine & UI Architecture
-* **Asset-Based 3D Head Engine**: Pre-modeled 3D humanoid head asset loaded via Three.js `GLTFLoader` (`GltfHeadLoader.ts`) with metallic-roughness PBR skin shading, smooth organic cranium curves, and sculpted 3D ears. Zero primitive box/sphere shapes.
-* **Viseme Speech Lip-Sync**: Real-time TTS audio amplitude viseme mapping (`viseme_aa`, `viseme_E`, `viseme_O`, `jawOpen`) driven by Web Audio API `AnalyserNode`.
-* **Natural 60 FPS Idle Motion & Double-Blinking**: 60 FPS chest/neck breathing sway, micro eye gaze shifts, and randomized double-blinking (`NaturalIdleAnimator.ts`).
-* **Interactive 3D Rotation Toggle**: Interactive HUD button (`ROTATE: ON` / `ROTATE: OFF`) allowing users to freeze or resume continuous 360-degree rotation instantly.
+### 1.1. Sleek HUD Visualizer & UI Architecture
+* **Ambient HUD & 3D Arc Reactor**: Ambient cybernetic digital HUD and 3D Arc Reactor visuals displaying active status indicators. Restored the classic Cyan Blue theme (`#00e5ff`) with custom micro-animations.
 * **Header Dropdown & 70/30 Resizable Splitter**: Consolidated header navigation dropdown (`☰ Command Center ▾`) with **Chat History** session log, and draggable vertical divider bar with `localStorage` split ratio persistence (`jarvis_split_ratio`).
+* **Developer Diagnostics Portal**: Active tabs showcasing JARVIS system health diagnostic readouts, self-repair histories, and Level 2/3 confirmation gateways.
 
 ### 1.2. Unified AI OS Architecture & Central Desktop World Model
 * **Unified Execution Pipeline (`UnifiedPipeline`)**: Enforces a single 10-step lifecycle for every request across all entry points: `User Request → Intent → Planner → Tool Selection → Execute → Observe → Reflection → Learning → Strategy Update → Save Experience`.
@@ -59,19 +57,22 @@ This document outlines the capabilities, completed features, active work, and up
 - [x] Real EventBus Subscriber Integration (`WorldModel` bound to `task.*`, `config_reloaded`, `security.approval_required`)
 - [x] Standalone Background Hardware Microphone Listener for Wake Word Detection (`WakeWordService`)
 - [x] Full Live Mode AI Assistant Experience (Phases 0 - 3: Toggle Fix, Goal Persistence, Spotlight Overlay, Win32 `SetWindowPos` `resize_window`)
+- [x] Connected **SecuritySandbox** for python and cmd tools in `tools.py` with environment variable scrubbing.
+- [x] SAFE / CONFIRM / DANGEROUS Command Categories check.
+- [x] Strategy learning reinforcement confidence loops.
+- [x] Specialized Active MCU micro-agents (Coding, Vision, Research).
+- [x] Git stashing checkpoints and rollbacks.
+- [x] Holt-Linear double exponential cursor smoothing.
+- [x] Proactive psutil CPU/RAM resource monitoring.
 
 ---
 
 ## 3. Future TODO Roadmap (7–13)
 
-### 7: Autonomous Agent Ecosystem
-- [ ] **Multi-Agent Orchestration & Delegation**: Sub-agent spawning (`CodeAgent`, `ResearchAgent`, `SecurityAgent`) in isolated threads with IPC message bus.
-- [ ] **Long-Horizon Task Continuity**: Persistent goal queue with multi-day checkpointing and KV-cache pruning.
-
-### 8: Predictive & Proactive Intelligence
+### 7: Predictive & Proactive Intelligence
 - [ ] **Habit Learning & Predictive Automation**: Behavioral pattern mining to pre-stage workspaces before user commands.
 - [ ] **Ambient Multi-Modal Presence**: Bluetooth RSSI proximity lock/unlock and eye gaze tracking.
 
-### 9: External Ecosystem Integration
+### 8: External Ecosystem Integration
 - [ ] **Universal API Connector Vault**: OAuth2 refresh token manager for 100+ services.
 - [ ] **Smart Home & IoT Bridge**: Matter/Thread protocol local device control and Home Assistant MQTT sync.

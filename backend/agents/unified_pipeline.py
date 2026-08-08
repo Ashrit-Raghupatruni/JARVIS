@@ -60,6 +60,53 @@ class UnifiedPipeline:
 
         logger.info("UnifiedPipeline initialized (10-Step Self-Improving OS Lifecycle Active).")
 
+    async def _generate_plan_steps(self, user_request: str) -> List[str]:
+        """
+        Decompose user request into genuine multi-step subtasks using LLM
+        or rule-based decomposition for multi-part requests.
+        """
+        llm = self.llm_service
+        if not llm:
+            try:
+                from backend.services.manager import ServiceManager
+                llm = ServiceManager.get_instance("llm_service")
+            except Exception:
+                llm = None
+
+        if llm and hasattr(llm, "simple_completion"):
+            try:
+                prompt = (
+                    f"Decompose the following request into 2 to 5 clear, ordered execution steps.\n"
+                    f"Request: '{user_request}'\n\n"
+                    f"Respond ONLY with a JSON array of strings, e.g. [\"Step 1: ...\", \"Step 2: ...\"]."
+                )
+                raw_resp = await llm.simple_completion(prompt=prompt, max_tokens=256, temperature=0.2)
+                if raw_resp:
+                    text = raw_resp.strip()
+                    import json, re
+                    match = re.search(r'\[.*\]', text, re.DOTALL)
+                    if match:
+                        try:
+                            parsed = json.loads(match.group(0))
+                            if isinstance(parsed, list) and len(parsed) > 0:
+                                return [str(item).strip() for item in parsed if str(item).strip()]
+                        except Exception:
+                            pass
+                    lines = [re.sub(r'^\d+[\.\)]\s*|^[-*]\s*', '', line).strip() for line in text.split("\n") if line.strip()]
+                    if len(lines) > 1:
+                        return [f"Step {i+1}: {line}" if not line.lower().startswith("step") else line for i, line in enumerate(lines)]
+            except Exception as ex:
+                logger.warning("LLM step decomposition warning: {}", ex)
+
+        # Rule-based fallback for multi-part requests (e.g. "X and then Y", "X then Y", "X & Y")
+        import re
+        parts = re.split(r'\s+(?:and then|then|\b&|\band\b)\s+', user_request, flags=re.IGNORECASE)
+        parts = [p.strip() for p in parts if p.strip()]
+        if len(parts) > 1:
+            return [f"Step {i+1}: {part[0].upper() + part[1:]}" for i, part in enumerate(parts)]
+
+        return [f"Step 1: Understand and process request: '{user_request}'"]
+
     async def run(self, user_request: str) -> PipelineExecutionTrace:
         """
         Execute request through the single 10-step execution pipeline.
@@ -76,7 +123,7 @@ class UnifiedPipeline:
         # Step 2: Intent & Planning
         lower_req = user_request.lower().strip()
         intent = "general_command"
-        plan_steps = [f"Understand and process request: '{user_request}'"]
+        plan_steps = await self._generate_plan_steps(user_request)
         tools_used = []
         exec_results = []
         final_output = ""
@@ -132,9 +179,8 @@ class UnifiedPipeline:
             result=final_output[:300],
             success=success,
             execution_time_seconds=duration,
-            confidence=0.96 if success else 0.40,
-            failure_cause=failure_cause,
-            reflection=refl_res.get("summary")
+            confidence_score=0.96 if success else 0.40,
+            failure_reason=failure_cause
         )
 
         trace = PipelineExecutionTrace(

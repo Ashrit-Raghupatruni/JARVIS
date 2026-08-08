@@ -21,10 +21,63 @@ from backend.services.perception.spatial_engine import SpatialEngine, MonitorInf
 from backend.services.perception.uia_scene_graph import UIASceneGraph, SceneGraph
 
 
-class WorldModelState(BaseModel):
-    timestamp: float = Field(default_factory=time.time)
+class DesktopState(BaseModel):
+    active_window: str = "Desktop"
     monitors: List[Dict[str, Any]] = Field(default_factory=list)
     active_monitor_id: int = 1
+    cursor_position: List[int] = Field(default_factory=lambda: [0, 0])
+
+
+class ApplicationState(BaseModel):
+    app_name: str = "explorer.exe"
+    process_id: Optional[int] = None
+    window_title: str = "Desktop"
+    window_bounds: List[int] = Field(default_factory=list)
+    browser_url: Optional[str] = None
+
+
+class UIState(BaseModel):
+    control_count: int = 0
+    focused_element: Optional[str] = None
+    scene_graph: Optional[Dict[str, Any]] = None
+
+
+class VisualState(BaseModel):
+    screenshot_timestamp: Optional[float] = None
+    detected_ocr_blocks: int = 0
+    detected_forms: int = 0
+
+
+class SystemState(BaseModel):
+    cpu_percent: float = 0.0
+    ram_mb_free: float = 0.0
+    audio_playing: bool = False
+    internet_online: bool = True
+
+
+class UserContextState(BaseModel):
+    current_workflow: str = "Idle Desktop Observation"
+    active_goal: Optional[str] = None
+    recent_action: Optional[str] = None
+
+
+class WorldModelState(BaseModel):
+    timestamp: float = Field(default_factory=time.time)
+    world_model_version: int = 1
+    captured_at: str = Field(default_factory=lambda: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
+    source_versions: Dict[str, str] = Field(default_factory=lambda: {
+        "uia": "v2.1",
+        "spatial": "v1.4",
+        "world_model": "v2.0"
+    })
+    desktop: DesktopState = Field(default_factory=DesktopState)
+    application: ApplicationState = Field(default_factory=ApplicationState)
+    ui: UIState = Field(default_factory=UIState)
+    visual: VisualState = Field(default_factory=VisualState)
+    system: SystemState = Field(default_factory=SystemState)
+    user_context: UserContextState = Field(default_factory=UserContextState)
+
+    # Legacy flat compatibility fields
     active_app: str = "Desktop"
     window_title: str = "Desktop"
     window_bounds: List[int] = Field(default_factory=list)

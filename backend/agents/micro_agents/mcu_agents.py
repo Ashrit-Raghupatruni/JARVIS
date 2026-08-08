@@ -36,6 +36,20 @@ class VisionAgent(BaseMicroAgent):
     def __init__(self, event_bus=None):
         super().__init__("VisionAgent", "Multimodal perception, live screen OCR, spatial monitor topology, and webcam visual tracking.", event_bus)
 
+    async def process_message(self, message: MicroAgentMessage) -> Optional[MicroAgentMessage]:
+        from backend.services.manager import ServiceManager
+        vision_svc = ServiceManager.get_instance("vision_service")
+        if vision_svc:
+            try:
+                monitors = vision_svc.get_multi_monitor_layout()
+                windows = vision_svc.get_window_hierarchy()
+                content = f"Vision layout scanned: {len(monitors)} monitor(s) and {len(windows)} active window(s) detected."
+            except Exception as e:
+                content = f"Vision scan failed: {e}"
+        else:
+            content = "Vision Service unavailable."
+        return MicroAgentMessage(self.name, message.sender, content, "response")
+
 
 class DesktopControlAgent(BaseMicroAgent):
     def __init__(self, event_bus=None):
@@ -51,10 +65,42 @@ class CodingAgent(BaseMicroAgent):
     def __init__(self, event_bus=None):
         super().__init__("CodingAgent", "AST code analysis, refactoring, module generation, git/docker management, and sandbox execution.", event_bus)
 
+    async def process_message(self, message: MicroAgentMessage) -> Optional[MicroAgentMessage]:
+        from backend.services.manager import ServiceManager
+        dev_service = ServiceManager.get_instance("self_development_service")
+        if dev_service:
+            try:
+                scan = dev_service.scan_project_structure()
+                content = f"Project structure scanned: {scan.get('python_modules_scanned', 0)} python modules indexed."
+            except Exception as e:
+                content = f"Coding Agent error: {e}"
+        else:
+            content = "Self-Development Service unavailable."
+        return MicroAgentMessage(self.name, message.sender, content, "response")
+
 
 class ResearchAgent(BaseMicroAgent):
     def __init__(self, event_bus=None):
         super().__init__("ResearchAgent", "Web search orchestration, RAG document vector querying, and paper summarization.", event_bus)
+
+    async def process_message(self, message: MicroAgentMessage) -> Optional[MicroAgentMessage]:
+        from backend.services.manager import ServiceManager
+        research_svc = ServiceManager.get_instance("research_service")
+        if research_svc:
+            try:
+                query = message.payload.get("query", message.content)
+                res = await research_svc.search_and_summarize(query)
+                content = f"Research completed: {res}"
+            except Exception as e:
+                content = f"Research failed: {e}"
+        else:
+            from backend.agents.langgraph_agent.tools import fallback_ddg_search
+            try:
+                res = await fallback_ddg_search(message.content)
+                content = f"Research search result fallback:\n{res}"
+            except Exception as e:
+                content = f"Research fallback failed: {e}"
+        return MicroAgentMessage(self.name, message.sender, content, "response")
 
 
 class AutomationAgent(BaseMicroAgent):

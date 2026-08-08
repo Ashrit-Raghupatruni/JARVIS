@@ -129,6 +129,22 @@ class ProactiveEngine:
         """
         Analyzes desktop state and returns proactive guidance if an actionable event is detected.
         """
+        # 0A. Resource Anomaly Alert Check
+        try:
+            import psutil
+            cpu = psutil.cpu_percent()
+            ram = psutil.virtual_memory().percent
+            if cpu > 90.0 or ram > 90.0:
+                logger.warning(f"ProactiveEngine: Anomaly detected! CPU={cpu}%, RAM={ram}%")
+                return ProactiveGuidance(
+                    guidance_type="error_alert",
+                    title="High Resource Utilization Detected",
+                    message=f"System resource warning, sir. CPU usage is at {cpu}% and RAM memory load is at {ram}%.",
+                    action_suggestion="Should I clean temporary directories or list heavy background processes?"
+                )
+        except Exception:
+            pass
+
         title = state.window_title.lower()
         app = state.active_app.lower()
 

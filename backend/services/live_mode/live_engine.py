@@ -31,6 +31,7 @@ class LiveContextFrame(BaseModel):
     detected_form_fields: int = 0
     confidence_score: float = 0.95
     scene_graph: Optional[SceneGraph] = None
+    window_bounds: Optional[Dict[str, int]] = None
 
 
 class LiveModeEngine:
@@ -117,6 +118,16 @@ class LiveModeEngine:
                 except Exception as f_err:
                     logger.debug("Form field detection notice: {}", f_err)
 
+                # Capture active window screen bounds for Live Mode Spotlight Overlay
+                win_bounds = None
+                try:
+                    import pyautogui
+                    win = pyautogui.getActiveWindow()
+                    if win and win.width > 0 and win.height > 0:
+                        win_bounds = {"x": win.left, "y": win.top, "w": win.width, "h": win.height}
+                except Exception:
+                    pass
+
                 # Construct Frame off WorldModel state
                 frame = LiveContextFrame(
                     is_live_mode_enabled=self.is_enabled,
@@ -128,7 +139,8 @@ class LiveModeEngine:
                     proactive_suggestion=suggestion,
                     detected_form_fields=len(form_fields),
                     confidence_score=0.95,
-                    scene_graph=None
+                    scene_graph=None,
+                    window_bounds=win_bounds
                 )
 
                 self.latest_frame = frame

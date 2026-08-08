@@ -416,6 +416,47 @@ class VoiceAgent:
 
             # Serious Mode voice command toggle check
             clean_tr = transcript.lower().strip(".,!? ")
+            if clean_tr in ["enable hand control", "activate hand control", "hand control on", "enable gesture control", "activate gesture control"]:
+                yield WSMessage(type="transcript", data={"text": transcript, "is_final": True})
+                yield WSMessage(type="hand_control_changed", data={"enabled": True})
+                resp_text = "Hand gesture control enabled, sir."
+                async for tts_msg in self._speak(resp_text, session_id):
+                    yield tts_msg
+                next_state = AssistantState.SLEEPING if (self.wake_word and self.wake_word.is_loaded) else AssistantState.IDLE
+                self.state = next_state
+                yield WSMessage(type="status", data=StatusMessage(state=next_state).model_dump())
+                return
+            elif clean_tr in ["disable hand control", "deactivate hand control", "hand control off", "disable gesture control", "deactivate gesture control"]:
+                yield WSMessage(type="transcript", data={"text": transcript, "is_final": True})
+                yield WSMessage(type="hand_control_changed", data={"enabled": False})
+                resp_text = "Hand gesture control disabled."
+                async for tts_msg in self._speak(resp_text, session_id):
+                    yield tts_msg
+                next_state = AssistantState.SLEEPING if (self.wake_word and self.wake_word.is_loaded) else AssistantState.IDLE
+                self.state = next_state
+                yield WSMessage(type="status", data=StatusMessage(state=next_state).model_dump())
+                return
+            elif clean_tr in ["run system diagnostic", "run a system diagnostic", "run full system diagnostic", "run a full system diagnostic", "system diagnostic"]:
+                yield WSMessage(type="transcript", data={"text": transcript, "is_final": True})
+                from backend.services.manager import ServiceManager
+                dev_service = ServiceManager.get_instance("self_development_service")
+                if dev_service:
+                    diag = dev_service.run_system_diagnostic()
+                    issues_count = len(diag.get("discovered_issues", []))
+                    if issues_count == 0:
+                        resp_text = "All systems report nominal, sir. All core capabilities are functional."
+                    else:
+                        resp_text = f"Diagnostics complete, sir. I have detected {issues_count} potential issues. Please check the Developer Dashboard."
+                else:
+                    resp_text = "Diagnostic service is offline, sir."
+                
+                async for tts_msg in self._speak(resp_text, session_id):
+                    yield tts_msg
+                next_state = AssistantState.SLEEPING if (self.wake_word and self.wake_word.is_loaded) else AssistantState.IDLE
+                self.state = next_state
+                yield WSMessage(type="status", data=StatusMessage(state=next_state).model_dump())
+                return
+
             if clean_tr in ["enable serious mode", "activate serious mode", "serious mode on", "serious mode"]:
                 self.serious_mode = True
                 logger.info("Serious Mode ACTIVATED via voice command.")
@@ -572,10 +613,6 @@ class VoiceAgent:
 
     async def handle_text_command(self, text: str) -> AsyncGenerator[WSMessage, None]:
         """Handle a text command (typed, not spoken)."""
-        self._session_id += 1
-        session_id = self._session_id
-
-        # Skip wake word and STT — go directly to planner
         yield WSMessage(
             type="status",
             data=StatusMessage(state=AssistantState.PROCESSING).model_dump(),
@@ -583,21 +620,18 @@ class VoiceAgent:
 
         response_text = ""
         async for msg in self.planner.plan_and_execute(text):
-            if self._session_id != session_id:
-                return
             yield msg
             if msg.type == "response":
                 response_text = msg.data.get("text", "")
 
-        # TTS for the response
+        # TTS for the response if speech audio enabled
         if response_text:
-            if self._session_id != session_id:
-                return
-            async for tts_msg in self._speak(response_text, session_id):
-                yield tts_msg
+            try:
+                async for tts_msg in self._speak(response_text):
+                    yield tts_msg
+            except Exception as tts_err:
+                logger.warning(f"TTS audio notice in text command: {tts_err}")
 
-        if self._session_id != session_id:
-            return
         self.state = AssistantState.IDLE
         yield WSMessage(
             type="status",

@@ -1,6 +1,6 @@
 # JARVIS — Comprehensive Status, Tech Stack, & Features Overview
 
-This document serves as the single source of truth for JARVIS's current capabilities, system architecture, tech stack, and development status. **Last Updated:** July 29, 2026
+This document serves as the single source of truth for JARVIS's current capabilities, system architecture, tech stack, and development status. **Last Updated:** August 8, 2026
 
 ---
 
@@ -50,6 +50,7 @@ gantt
     Real 128-d Face Identity Lock Screen :done, t8_1, 2026-08-03, 1d
     Full 21 Micro-Agent Ecosystem Architecture :done, t8_2, 2026-08-03, 1d
     Marvel J.A.R.V.I.S. Situational Personality Engine :done, t8_3, 2026-08-03, 1d
+    Connected Security Sandbox & Strategy Learning Loops :done, t8_4, 2026-08-08, 1d
 ```
 
 ---
@@ -64,7 +65,7 @@ The architecture is split into a **React + Electron** desktop client (frontend),
 * **Build System:** `electron-vite` v3.1.0 + `electron-builder` v25.1.0
 * **Styling:** Tailwind CSS v4.1.0 + `@tailwindcss/vite`
 * **State Management:** Zustand v5.0.0
-* **3D Visuals & Face Engine:** Three.js v0.185.1 (Production asset-based 3D head loader with PBR skin shaders, viseme lip-sync, 60 FPS idle breathing/blinking animator, and 3D ROTATION ON/OFF toggle)
+* **3D Visuals & HUD:** Three.js v0.185.1 + Custom Canvas (Rendering ambient cybernetic HUD and 3D Arc Reactor system)
 
 ### Backend Engine (Python Service)
 * **Core Web Server:** FastAPI v0.115.9 + Uvicorn v0.34.2 (bound to `0.0.0.0:8000`).
@@ -75,10 +76,10 @@ The architecture is split into a **React + Electron** desktop client (frontend),
 
 ## 🎯 Verification & Build Confirmation
 
-- **3D Face Engine Test Suite**: `npx vitest run frontend/src/renderer/src/lib/face-engine/tests/faceEngine.test.ts` → **`0 errors, PASSED`**.
+- **Automated Sandbox & Agent Verification**: `backend/venv/Scripts/python.exe run_tests.py` → **`All test cases PASSED`**.
 - **Backend Python Diagnostic Audit**: `python scratch/test_ocr_and_all_systems.py` → **`PASSED 100%`**.
 - **EventBus Subscriber Test**: `python scratch/test_event_bus_subscriber.py` → **`PASSED`**.
 - **Wake Word Detection Hardware Listener**: `python scratch/test_wake_word_fix.py` → **`PASSED`**.
-- **Live Mode Full Suite (Phases 0-3)**: `python scratch/test_live_mode_full_suite.py` → **`PASSED`**.
+- **Live Mode Full Suite**: `python scratch/test_live_mode_full_suite.py` → **`PASSED`**.
 - **Vite HMR & Electron Build**: Clean compilation without import path errors.
 - **GitHub Status**: All commits pushed to remote GitHub repository per explicit user instruction.

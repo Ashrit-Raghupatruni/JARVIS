@@ -12,6 +12,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
   const assistantState = useAppStore((s) => s.assistantState)
   const thinkingText = useAppStore((s) => s.thinkingText)
   const showChat = useAppStore((s) => s.showChat)
+  const connectionState = useAppStore((s) => s.connectionState)
+  const queuedMessageCount = useAppStore((s) => s.queuedMessageCount)
 
   const [inputText, setInputText] = useState('')
   const [isMinimized, setIsMinimized] = useState(false)
@@ -120,8 +122,30 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-jarvis-accent animate-pulse" />
           <h2 className="text-sm font-semibold text-jarvis-text tracking-wide">AI CHAT</h2>
-          <span className="text-[9px] font-mono text-[#00e5ff] bg-[#00e5ff]/10 border border-[#00e5ff]/30 px-1.5 py-0.5 rounded tracking-wider">
-            WAKE WORD: HEY JARVIS
+          
+          {/* Connection Status Indicator Pill */}
+          <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded tracking-wider border flex items-center gap-1.5 transition-all ${
+            connectionState === 'connected'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+              : connectionState === 'reconnecting'
+              ? 'bg-amber-500/10 border-amber-500/30 text-amber-300 animate-pulse'
+              : connectionState === 'connecting'
+              ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300 animate-pulse'
+              : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${
+              connectionState === 'connected'
+                ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]'
+                : connectionState === 'reconnecting'
+                ? 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]'
+                : connectionState === 'connecting'
+                ? 'bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]'
+                : 'bg-rose-400'
+            }`} />
+            {connectionState === 'connected' && 'CONNECTED'}
+            {connectionState === 'reconnecting' && `RECONNECTING${queuedMessageCount > 0 ? ` (${queuedMessageCount} QUEUED)` : ''}`}
+            {connectionState === 'connecting' && 'CONNECTING...'}
+            {connectionState === 'disconnected' && 'OFFLINE'}
           </span>
         </div>
 
@@ -285,18 +309,32 @@ interface MessageBubbleProps {
   formatTime: (ts: string) => string
 }
 
+function cleanChatMessageText(text: string): string {
+  if (!text) return ''
+  let cleaned = text
+  // 1. Remove function call tags (<function=...>...</function>)
+  cleaned = cleaned.replace(/<function=[\s\S]*?<\/function>/gi, '')
+  cleaned = cleaned.replace(/<function=[\s\S]*?$/gi, '')
+  // 2. Remove internal system markers
+  cleaned = cleaned.replace(/\[SERIOUS MODE ACTIVE:[^\]]*\]/gi, '')
+  // 3. Remove excess empty lines
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n')
+  return cleaned.trim()
+}
+
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message, formatTime }) => {
   if (message.role === 'system') {
     return (
       <div className="animate-fade-in flex justify-center">
         <div className="px-3 py-1 rounded-full bg-white/5">
-          <span className="text-xs text-jarvis-text-muted">{message.content}</span>
+          <span className="text-xs text-jarvis-text-muted">{cleanChatMessageText(message.content)}</span>
         </div>
       </div>
     )
   }
 
   const isUser = message.role === 'user'
+  const displayContent = cleanChatMessageText(message.content)
 
   return (
     <div
@@ -345,7 +383,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, formatTime }) =>
             </div>
           )}
           <p className="text-sm text-jarvis-text leading-relaxed whitespace-pre-wrap break-words">
-            {message.content}
+            {displayContent}
           </p>
           <span
             className={`text-[10px] mt-1 block ${

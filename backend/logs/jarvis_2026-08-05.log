@@ -1,0 +1,876 @@
+2026-08-05 14:40:07.700 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-05 14:40:36.007 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-05 14:40:38.624 | INFO     | message_router:classify_request:53 | ⚡ MessageRouter classified: KNOWLEDGE_REQUEST for prompt 'please click on the Submit button'
+2026-08-05 14:40:57.375 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-05 14:41:00.137 | INFO     | message_router:classify_request:36 | ⚡ MessageRouter classified: LIVE_MODE_REQUEST for prompt 'please click on the Submit button'
+2026-08-05 14:41:00.138 | INFO     | message_router:classify_request:36 | ⚡ MessageRouter classified: LIVE_MODE_REQUEST for prompt 'what is on my screen right now?'
+2026-08-05 14:41:00.138 | INFO     | message_router:classify_request:49 | ⚡ MessageRouter classified: ACTION_REQUEST for prompt 'open chrome browser'
+2026-08-05 14:41:00.138 | INFO     | message_router:classify_request:53 | ⚡ MessageRouter classified: KNOWLEDGE_REQUEST for prompt 'what is quicksort algorithm?'
+2026-08-05 14:41:00.160 | DEBUG    | tool_registry:register:60 | Registered tool 'click_element_by_name' (risk=low)
+2026-08-05 14:41:00.161 | DEBUG    | tool_registry:register:60 | Registered tool 'set_control_value' (risk=low)
+2026-08-05 14:41:00.161 | DEBUG    | tool_registry:register:60 | Registered tool 'auto_fill_form' (risk=low)
+2026-08-05 14:41:00.161 | DEBUG    | tool_registry:register:60 | Registered tool 'resize_window' (risk=low)
+2026-08-05 14:41:00.161 | DEBUG    | tool_registry:register:60 | Registered tool 'open_application' (risk=low)
+2026-08-05 14:41:00.161 | DEBUG    | tool_registry:register:60 | Registered tool 'web_search' (risk=low)
+2026-08-05 14:41:00.162 | DEBUG    | tool_registry:register:60 | Registered tool 'play_youtube_video' (risk=low)
+2026-08-05 14:41:00.162 | DEBUG    | tool_registry:register:60 | Registered tool 'browser_agent_task' (risk=medium)
+2026-08-05 14:41:00.164 | DEBUG    | tool_registry:register:60 | Registered tool 'rag_knowledge_search' (risk=low)
+2026-08-05 14:41:00.165 | DEBUG    | tool_registry:register:60 | Registered tool 'toggle_live_mode' (risk=low)
+2026-08-05 14:41:00.166 | DEBUG    | tool_registry:register:60 | Registered tool 'explain_concept' (risk=low)
+2026-08-05 14:41:00.167 | DEBUG    | tool_registry:register:60 | Registered tool 'generate_quiz' (risk=low)
+2026-08-05 14:41:00.167 | INFO     | tool_registry:__init__:35 | ToolRegistry initialized with 12 registered tool(s).
+2026-08-05 14:41:00.168 | INFO     | manager:register_instance:21 | Service instance 'tool_registry' registered
+2026-08-05 14:41:00.691 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-05 14:41:00.703 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-05 14:41:00.714 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-05 14:41:00.731 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-05 14:41:04.852 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-05 14:41:04.853 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-05 14:41:05.968 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-05 14:41:05.968 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-05 14:41:05.968 | INFO     | tool_registry:execute_tool:92 | 🔧 ToolRegistry executing tool 'click_element_by_name' with args: {'element_name': 'Submit'}
+2026-08-05 14:41:06.240 | INFO     | uia_engine:__init__:27 | UIAEngine initialized (Win32 Accessibility Core Ready)
+2026-08-05 14:41:06.246 | ERROR    | uia_engine:inspect_active_window_controls:77 | UIA Inspection error: (1400, 'GetWindowRect', 'Invalid window handle.')
+2026-08-05 14:46:08.569 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-05 14:46:10.369 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-05 14:46:10.369 | INFO     | main:lifespan:45 | ============================================================
+2026-08-05 14:46:10.369 | INFO     | main:lifespan:46 |   JARVIS AI Desktop Assistant — Starting Up
+2026-08-05 14:46:10.369 | INFO     | main:lifespan:47 | ============================================================
+2026-08-05 14:46:10.370 | INFO     | task_queue:start:31 | ✓ Async task queue worker started
+2026-08-05 14:46:10.467 | INFO     | manager:register_instance:21 | Service instance 'credential_vault' registered
+2026-08-05 14:46:10.468 | INFO     | manager:register_instance:21 | Service instance 'security_sandbox' registered
+2026-08-05 14:46:10.469 | INFO     | manager:register_instance:21 | Service instance 'security_orchestrator' registered
+2026-08-05 14:46:10.478 | INFO     | manager:register_instance:21 | Service instance 'mcp_client_manager' registered
+2026-08-05 14:46:10.584 | INFO     | agent_ecosystem:_init_mcu_agents:88 | ✓ Initialized 21 MCU J.A.R.V.I.S. Micro-Agents: ['VoiceAgent', 'ConversationAgent', 'MemoryAgent', 'PlanningAgent', 'VisionAgent', 'DesktopControlAgent', 'BrowserAgent', 'CodingAgent', 'ResearchAgent', 'AutomationAgent', 'CalendarAgent', 'ReminderAgent', 'NotificationAgent', 'SecurityAgent', 'MobileAgent', 'DeviceAgent', 'LearningAgent', 'EmotionAgent', 'ContextAgent', 'HealthAgent', 'SelfDiagnosticAgent']
+2026-08-05 14:46:10.636 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:46:10.637 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-05 14:46:10.828 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 187.0ms (0 controls).
+2026-08-05 14:46:10.909 | INFO     | world_model:__init__:61 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-05 14:46:10.909 | INFO     | manager:register_instance:21 | Service instance 'agent_ecosystem' registered
+2026-08-05 14:46:10.910 | INFO     | manager:register_instance:21 | Service instance 'checkpoint_service' registered
+2026-08-05 14:46:10.910 | INFO     | manager:register_instance:21 | Service instance 'kv_pruner' registered
+2026-08-05 14:46:10.911 | INFO     | manager:register_instance:21 | Service instance 'world_model' registered
+2026-08-05 14:46:10.911 | INFO     | main:lifespan:125 | ✓ Autonomous Agent Ecosystem, WorldModel (EventBus Subscribed), Checkpoints & KV-Cache Pruner initialized
+2026-08-05 14:46:10.923 | INFO     | safety:__init__:250 | SafetyService initialised — confirm_dangerous=True, allow_terminal=True
+2026-08-05 14:46:10.924 | INFO     | manager:register_instance:21 | Service instance 'safety_service' registered
+2026-08-05 14:46:10.924 | INFO     | main:lifespan:134 | ✓ Safety service initialized
+2026-08-05 14:46:11.707 | INFO     | face_biometrics:__init__:40 | FaceBiometricsService initialized (Profile Enrolled: True)
+2026-08-05 14:46:11.708 | INFO     | manager:register_instance:21 | Service instance 'face_biometrics_service' registered
+2026-08-05 14:46:11.709 | INFO     | main:lifespan:141 | ✓ Face Biometrics service initialized
+2026-08-05 14:46:11.722 | INFO     | stt:__init__:81 | STTService created — model=small, device=auto, compute=int8
+2026-08-05 14:46:11.724 | INFO     | manager:register_instance:21 | Service instance 'stt_service' registered
+2026-08-05 14:46:11.725 | INFO     | main:lifespan:188 | ✓ STT service initialized (model: base)
+2026-08-05 14:46:11.733 | INFO     | tts:__init__:36 | TTSService initialised — voice=en-US-GuyNeural, rate=+0%
+2026-08-05 14:46:11.734 | INFO     | manager:register_instance:21 | Service instance 'tts_service' registered
+2026-08-05 14:46:11.735 | INFO     | main:lifespan:200 | ✓ TTS service initialized (voice: en-GB-RyanNeural)
+2026-08-05 14:46:11.742 | INFO     | wake_word:__init__:39 | WakeWordService created — threshold=0.35
+2026-08-05 14:46:11.744 | INFO     | manager:register_instance:21 | Service instance 'wake_word_service' registered
+2026-08-05 14:46:11.744 | INFO     | main:lifespan:218 | ✓ Wake word service initialized (model loading & background microphone listener starting)
+2026-08-05 14:46:15.736 | INFO     | clap:_run_loop:140 | Clap listener active (mode=double, spike_ratio=11.40, gap=0.08–0.35s).
+2026-08-05 14:46:15.736 | INFO     | clap:start:68 | ✓ Clap listener background thread started (mode=double).
+2026-08-05 14:46:15.739 | INFO     | manager:register_instance:21 | Service instance 'clap_service' registered
+2026-08-05 14:46:15.740 | INFO     | main:lifespan:241 | ✓ Clap service initialized and listening (with window restore callback)
+2026-08-05 14:46:16.183 | INFO     | safety:__init__:250 | SafetyService initialised — confirm_dangerous=True, allow_terminal=True
+2026-08-05 14:46:16.186 | INFO     | automation:__init__:191 | AutomationService initialised
+2026-08-05 14:46:16.188 | INFO     | manager:register_instance:21 | Service instance 'automation_service' registered
+2026-08-05 14:46:16.188 | INFO     | manager:register_instance:21 | Service instance 'automation' registered
+2026-08-05 14:46:16.188 | INFO     | main:lifespan:254 | ✓ Automation service initialized
+2026-08-05 14:46:16.194 | INFO     | uia_engine:__init__:27 | UIAEngine initialized (Win32 Accessibility Core Ready)
+2026-08-05 14:46:16.195 | INFO     | manager:register_instance:21 | Service instance 'uia_engine' registered
+2026-08-05 14:46:16.195 | INFO     | main:lifespan:265 | ✓ Win32 UIAEngine initialized and registered in ServiceManager
+2026-08-05 14:46:16.205 | INFO     | workspace_intelligence:__init__:46 | WorkspaceIntelligenceService initialized (Habit Store: user_habits.json)
+2026-08-05 14:46:16.205 | INFO     | manager:register_instance:21 | Service instance 'workspace_intelligence' registered
+2026-08-05 14:46:16.206 | INFO     | main:lifespan:275 | ✓ WorkspaceIntelligenceService initialized (Project, Goal & Habit Engine Active)
+2026-08-05 14:46:16.287 | WARNING  | screen:__init__:42 | Tesseract OCR not available: tesseract is not installed or it's not in your PATH. See README file for more information.. OCR features will be limited.
+2026-08-05 14:46:17.839 | WARNING  | screen:__init__:51 | OpenAI client not available for vision: The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable
+2026-08-05 14:46:17.840 | INFO     | manager:register_instance:21 | Service instance 'screen_service' registered
+2026-08-05 14:46:17.840 | INFO     | main:lifespan:286 | ✓ Screen service initialized
+2026-08-05 14:46:17.846 | INFO     | vision_service:__init__:32 | VisionService initialized (Vision Cooldown Rate-Limiter Active)
+2026-08-05 14:46:17.847 | INFO     | manager:register_instance:21 | Service instance 'vision_service' registered
+2026-08-05 14:46:17.848 | INFO     | main:lifespan:296 | ✓ Vision service initialized
+2026-08-05 14:46:17.853 | INFO     | desktop_automation:__init__:36 | DesktopAutomationService initialized. Workflows directory: data\workflows
+2026-08-05 14:46:17.854 | INFO     | manager:register_instance:21 | Service instance 'desktop_automation_service' registered
+2026-08-05 14:46:17.854 | INFO     | main:lifespan:308 | ✓ Desktop automation service initialized
+2026-08-05 14:46:17.857 | INFO     | developer_assistant:__init__:21 | DeveloperAssistantService initialized
+2026-08-05 14:46:17.857 | INFO     | manager:register_instance:21 | Service instance 'developer_assistant_service' registered
+2026-08-05 14:46:17.857 | INFO     | main:lifespan:320 | ✓ Developer assistant service initialized
+2026-08-05 14:46:17.860 | INFO     | research_agent:__init__:25 | ResearchAgentService initialized. Profile directory: data\browser_profile
+2026-08-05 14:46:17.861 | INFO     | manager:register_instance:21 | Service instance 'research_service' registered
+2026-08-05 14:46:17.861 | INFO     | main:lifespan:330 | ✓ Research agent service initialized
+2026-08-05 14:46:17.865 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-05 14:46:17.865 | INFO     | manager:register_instance:21 | Service instance 'voice_intelligence_service' registered
+2026-08-05 14:46:17.866 | INFO     | main:lifespan:342 | ✓ Voice intelligence service initialized
+2026-08-05 14:46:17.869 | INFO     | productivity_service:__init__:34 | ProductivityService initialized. Data directory: data
+2026-08-05 14:46:17.870 | INFO     | manager:register_instance:21 | Service instance 'productivity_service' registered
+2026-08-05 14:46:17.870 | INFO     | main:lifespan:354 | ✓ Productivity service initialized
+2026-08-05 14:46:17.872 | INFO     | manager:register_instance:21 | Service instance 'browser_service' registered
+2026-08-05 14:46:17.873 | INFO     | main:lifespan:366 | ✓ Browser service initialized (lazy start)
+2026-08-05 14:46:17.876 | INFO     | task_queue:__init__:60 | TaskQueueService initialized (max_concurrent=3)
+2026-08-05 14:46:17.876 | INFO     | manager:register_instance:21 | Service instance 'task_queue_service' registered
+2026-08-05 14:46:17.877 | INFO     | main:lifespan:378 | ✓ Task queue service initialized
+2026-08-05 14:46:18.030 | INFO     | uia_engine:__init__:27 | UIAEngine initialized (Win32 Accessibility Core Ready)
+2026-08-05 14:46:18.054 | INFO     | file_indexer:_init_fts5_db:43 | ✓ SQLite FTS5 File Indexer initialized at data\file_index.db
+2026-08-05 14:46:18.073 | INFO     | mobile_bridge:__init__:27 | MobileBridgeService initialized (Push Gatekeeper Ready)
+2026-08-05 14:46:18.090 | INFO     | mobile_auth:__init__:44 | MobileAuthService initialized (Loaded 1 trusted devices)
+2026-08-05 14:46:18.091 | INFO     | mobile_gateway:__init__:43 | MobileGatewayService initialized (Mobile Gateway Active)
+2026-08-05 14:46:18.091 | INFO     | manager:register_instance:21 | Service instance 'uia_engine' registered
+2026-08-05 14:46:18.091 | INFO     | manager:register_instance:21 | Service instance 'file_indexer' registered
+2026-08-05 14:46:18.093 | INFO     | manager:register_instance:21 | Service instance 'mobile_bridge' registered
+2026-08-05 14:46:18.093 | INFO     | manager:register_instance:21 | Service instance 'mobile_auth_service' registered
+2026-08-05 14:46:18.093 | INFO     | manager:register_instance:21 | Service instance 'mobile_gateway_service' registered
+2026-08-05 14:46:18.111 | INFO     | experience_engine:__init__:25 | ExperienceEngineService initialized at data\experiences.db
+2026-08-05 14:46:18.113 | INFO     | reflection_engine:__init__:24 | ReflectionEngineService initialized.
+2026-08-05 14:46:18.113 | INFO     | self_healing:__init__:26 | SelfHealingEngine initialized.
+2026-08-05 14:46:18.115 | INFO     | strategy_memory:__init__:29 | StrategyMemoryService initialized. File: data\strategy_memory.json
+2026-08-05 14:46:18.115 | INFO     | skill_library:__init__:28 | SkillLibraryService initialized.
+2026-08-05 14:46:18.117 | INFO     | manager:register_instance:21 | Service instance 'experience_engine' registered
+2026-08-05 14:46:18.117 | INFO     | manager:register_instance:21 | Service instance 'reflection_engine' registered
+2026-08-05 14:46:18.117 | INFO     | manager:register_instance:21 | Service instance 'self_healing' registered
+2026-08-05 14:46:18.117 | INFO     | manager:register_instance:21 | Service instance 'strategy_memory' registered
+2026-08-05 14:46:18.117 | INFO     | manager:register_instance:21 | Service instance 'skill_library' registered
+2026-08-05 14:46:18.128 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-05 14:46:18.145 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:46:18.159 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:46:18.160 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-05 14:46:18.317 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 156.6ms (0 controls).
+2026-08-05 14:46:18.369 | INFO     | world_model:__init__:61 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-05 14:46:18.369 | INFO     | proactive_engine:__init__:50 | ProactiveEngine initialized (Proactive 2.0 with 20-min Cooldown & Session Memory Active).
+2026-08-05 14:46:18.370 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:46:18.370 | INFO     | spatial_ref_parser:__init__:25 | SpatialRefParser initialized (Deictic Spatial Resolver Ready).
+2026-08-05 14:46:18.371 | INFO     | workspace_memory:__init__:45 | WorkspaceMemory initialized at 'workspaces.json'.
+2026-08-05 14:46:18.371 | INFO     | manager:register_instance:21 | Service instance 'live_mode_engine' registered
+2026-08-05 14:46:18.371 | INFO     | main:lifespan:440 | ✓ Self-Improving Engines & Live Mode AI Assistant initialized
+2026-08-05 14:47:39.369 | WARNING  | memory:init:71 | SentenceTransformer not available, using default embeddings
+2026-08-05 14:47:42.413 | INFO     | stt:_load_model_sync:136 | Whisper model loaded in 2.87s — size=small, device=cpu, compute=int8
+2026-08-05 14:47:48.695 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-05 14:47:49.400 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-05 14:47:49.401 | INFO     | main:lifespan:45 | ============================================================
+2026-08-05 14:47:49.401 | INFO     | main:lifespan:46 |   JARVIS AI Desktop Assistant — Starting Up
+2026-08-05 14:47:49.401 | INFO     | main:lifespan:47 | ============================================================
+2026-08-05 14:47:49.518 | INFO     | stt:__init__:81 | STTService created — model=small, device=auto, compute=int8
+2026-08-05 14:47:49.518 | INFO     | manager:register_instance:21 | Service instance 'stt_service' registered
+2026-08-05 14:47:49.519 | INFO     | main:lifespan:179 | ✓ STT service initialized (model: base)
+2026-08-05 14:47:49.522 | INFO     | tts:__init__:36 | TTSService initialised — voice=en-US-GuyNeural, rate=+0%
+2026-08-05 14:47:49.523 | INFO     | manager:register_instance:21 | Service instance 'tts_service' registered
+2026-08-05 14:47:49.523 | INFO     | main:lifespan:191 | ✓ TTS service initialized (voice: en-GB-RyanNeural)
+2026-08-05 14:47:49.526 | INFO     | wake_word:__init__:39 | WakeWordService created — threshold=0.35
+2026-08-05 14:47:49.526 | INFO     | manager:register_instance:21 | Service instance 'wake_word_service' registered
+2026-08-05 14:47:49.526 | INFO     | main:lifespan:209 | ✓ Wake word service initialized (model loading & background microphone listener starting)
+2026-08-05 14:47:50.272 | INFO     | clap:_run_loop:140 | Clap listener active (mode=double, spike_ratio=11.40, gap=0.08–0.35s).
+2026-08-05 14:47:50.273 | INFO     | clap:start:68 | ✓ Clap listener background thread started (mode=double).
+2026-08-05 14:47:50.274 | INFO     | manager:register_instance:21 | Service instance 'clap_service' registered
+2026-08-05 14:47:50.275 | INFO     | main:lifespan:232 | ✓ Clap service initialized and listening (with window restore callback)
+2026-08-05 14:47:50.538 | INFO     | safety:__init__:250 | SafetyService initialised — confirm_dangerous=True, allow_terminal=True
+2026-08-05 14:47:50.538 | INFO     | automation:__init__:191 | AutomationService initialised
+2026-08-05 14:47:50.538 | INFO     | manager:register_instance:21 | Service instance 'automation_service' registered
+2026-08-05 14:47:50.538 | INFO     | manager:register_instance:21 | Service instance 'automation' registered
+2026-08-05 14:47:50.539 | INFO     | main:lifespan:245 | ✓ Automation service initialized
+2026-08-05 14:47:50.542 | INFO     | uia_engine:__init__:27 | UIAEngine initialized (Win32 Accessibility Core Ready)
+2026-08-05 14:47:50.543 | INFO     | manager:register_instance:21 | Service instance 'uia_engine' registered
+2026-08-05 14:47:50.543 | INFO     | main:lifespan:256 | ✓ Win32 UIAEngine initialized and registered in ServiceManager
+2026-08-05 14:47:50.549 | INFO     | workspace_intelligence:__init__:46 | WorkspaceIntelligenceService initialized (Habit Store: user_habits.json)
+2026-08-05 14:47:50.549 | INFO     | manager:register_instance:21 | Service instance 'workspace_intelligence' registered
+2026-08-05 14:47:50.549 | INFO     | main:lifespan:266 | ✓ WorkspaceIntelligenceService initialized (Project, Goal & Habit Engine Active)
+2026-08-05 14:47:50.586 | WARNING  | screen:__init__:42 | Tesseract OCR not available: tesseract is not installed or it's not in your PATH. See README file for more information.. OCR features will be limited.
+2026-08-05 14:47:52.048 | WARNING  | screen:__init__:51 | OpenAI client not available for vision: The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable
+2026-08-05 14:47:52.048 | INFO     | manager:register_instance:21 | Service instance 'screen_service' registered
+2026-08-05 14:47:52.048 | INFO     | main:lifespan:277 | ✓ Screen service initialized
+2026-08-05 14:47:52.055 | INFO     | vision_service:__init__:32 | VisionService initialized (Vision Cooldown Rate-Limiter Active)
+2026-08-05 14:47:52.056 | INFO     | manager:register_instance:21 | Service instance 'vision_service' registered
+2026-08-05 14:47:52.056 | INFO     | main:lifespan:287 | ✓ Vision service initialized
+2026-08-05 14:47:52.059 | INFO     | desktop_automation:__init__:36 | DesktopAutomationService initialized. Workflows directory: data\workflows
+2026-08-05 14:47:52.059 | INFO     | manager:register_instance:21 | Service instance 'desktop_automation_service' registered
+2026-08-05 14:47:52.059 | INFO     | main:lifespan:299 | ✓ Desktop automation service initialized
+2026-08-05 14:47:52.065 | INFO     | developer_assistant:__init__:21 | DeveloperAssistantService initialized
+2026-08-05 14:47:52.065 | INFO     | manager:register_instance:21 | Service instance 'developer_assistant_service' registered
+2026-08-05 14:47:52.066 | INFO     | main:lifespan:311 | ✓ Developer assistant service initialized
+2026-08-05 14:47:52.072 | INFO     | research_agent:__init__:25 | ResearchAgentService initialized. Profile directory: data\browser_profile
+2026-08-05 14:47:52.073 | INFO     | manager:register_instance:21 | Service instance 'research_service' registered
+2026-08-05 14:47:52.073 | INFO     | main:lifespan:321 | ✓ Research agent service initialized
+2026-08-05 14:47:52.076 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-05 14:47:52.076 | INFO     | manager:register_instance:21 | Service instance 'voice_intelligence_service' registered
+2026-08-05 14:47:52.076 | INFO     | main:lifespan:333 | ✓ Voice intelligence service initialized
+2026-08-05 14:47:52.080 | INFO     | productivity_service:__init__:34 | ProductivityService initialized. Data directory: data
+2026-08-05 14:47:52.080 | INFO     | manager:register_instance:21 | Service instance 'productivity_service' registered
+2026-08-05 14:47:52.081 | INFO     | main:lifespan:345 | ✓ Productivity service initialized
+2026-08-05 14:47:52.084 | INFO     | manager:register_instance:21 | Service instance 'browser_service' registered
+2026-08-05 14:47:52.084 | INFO     | main:lifespan:357 | ✓ Browser service initialized (lazy start)
+2026-08-05 14:47:52.090 | INFO     | task_queue:__init__:60 | TaskQueueService initialized (max_concurrent=3)
+2026-08-05 14:47:52.091 | INFO     | manager:register_instance:21 | Service instance 'task_queue_service' registered
+2026-08-05 14:47:52.091 | INFO     | main:lifespan:369 | ✓ Task queue service initialized
+2026-08-05 14:47:52.169 | INFO     | uia_engine:__init__:27 | UIAEngine initialized (Win32 Accessibility Core Ready)
+2026-08-05 14:47:52.173 | INFO     | file_indexer:_init_fts5_db:43 | ✓ SQLite FTS5 File Indexer initialized at data\file_index.db
+2026-08-05 14:47:52.188 | INFO     | mobile_bridge:__init__:27 | MobileBridgeService initialized (Push Gatekeeper Ready)
+2026-08-05 14:47:52.200 | INFO     | mobile_auth:__init__:44 | MobileAuthService initialized (Loaded 1 trusted devices)
+2026-08-05 14:47:52.201 | INFO     | mobile_gateway:__init__:43 | MobileGatewayService initialized (Mobile Gateway Active)
+2026-08-05 14:47:52.201 | INFO     | manager:register_instance:21 | Service instance 'uia_engine' registered
+2026-08-05 14:47:52.201 | INFO     | manager:register_instance:21 | Service instance 'file_indexer' registered
+2026-08-05 14:47:52.202 | INFO     | manager:register_instance:21 | Service instance 'mobile_bridge' registered
+2026-08-05 14:47:52.202 | INFO     | manager:register_instance:21 | Service instance 'mobile_auth_service' registered
+2026-08-05 14:47:52.202 | INFO     | manager:register_instance:21 | Service instance 'mobile_gateway_service' registered
+2026-08-05 14:47:52.212 | INFO     | experience_engine:__init__:25 | ExperienceEngineService initialized at data\experiences.db
+2026-08-05 14:47:52.212 | INFO     | reflection_engine:__init__:24 | ReflectionEngineService initialized.
+2026-08-05 14:47:52.213 | INFO     | self_healing:__init__:26 | SelfHealingEngine initialized.
+2026-08-05 14:47:52.215 | INFO     | strategy_memory:__init__:29 | StrategyMemoryService initialized. File: data\strategy_memory.json
+2026-08-05 14:47:52.216 | INFO     | skill_library:__init__:28 | SkillLibraryService initialized.
+2026-08-05 14:47:52.216 | INFO     | manager:register_instance:21 | Service instance 'experience_engine' registered
+2026-08-05 14:47:52.217 | INFO     | manager:register_instance:21 | Service instance 'reflection_engine' registered
+2026-08-05 14:47:52.217 | INFO     | manager:register_instance:21 | Service instance 'self_healing' registered
+2026-08-05 14:47:52.217 | INFO     | manager:register_instance:21 | Service instance 'strategy_memory' registered
+2026-08-05 14:47:52.217 | INFO     | manager:register_instance:21 | Service instance 'skill_library' registered
+2026-08-05 14:47:52.226 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-05 14:47:52.226 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:47:52.235 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:47:52.236 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-05 14:47:52.236 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 0.0ms (0 controls).
+2026-08-05 14:47:52.296 | INFO     | world_model:__init__:61 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-05 14:47:52.298 | INFO     | proactive_engine:__init__:50 | ProactiveEngine initialized (Proactive 2.0 with 20-min Cooldown & Session Memory Active).
+2026-08-05 14:47:52.298 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:47:52.299 | INFO     | spatial_ref_parser:__init__:25 | SpatialRefParser initialized (Deictic Spatial Resolver Ready).
+2026-08-05 14:47:52.300 | INFO     | workspace_memory:__init__:45 | WorkspaceMemory initialized at 'workspaces.json'.
+2026-08-05 14:47:52.300 | INFO     | manager:register_instance:21 | Service instance 'live_mode_engine' registered
+2026-08-05 14:47:52.300 | INFO     | main:lifespan:431 | ✓ Self-Improving Engines & Live Mode AI Assistant initialized
+2026-08-05 14:47:57.647 | WARNING  | memory:init:71 | SentenceTransformer not available, using default embeddings
+2026-08-05 14:47:59.877 | INFO     | stt:_load_model_sync:136 | Whisper model loaded in 2.15s — size=small, device=cpu, compute=int8
+2026-08-05 14:48:01.165 | INFO     | memory:init:95 | ChromaDB initialized at C:\Users\ashri\JARVIS\data\chroma_data
+2026-08-05 14:48:01.192 | DEBUG    | event_bus:subscribe:24 | Subscribed callback to topic pattern 'task.*'
+2026-08-05 14:48:01.192 | DEBUG    | event_bus:subscribe:24 | Subscribed callback to topic pattern 'config_reloaded'
+2026-08-05 14:48:01.193 | DEBUG    | event_bus:subscribe:24 | Subscribed callback to topic pattern 'security.approval_required'
+2026-08-05 14:48:01.194 | DEBUG    | event_bus:subscribe:24 | Subscribed callback to topic pattern 'context.updated.*'
+2026-08-05 14:48:01.194 | INFO     | world_model:_subscribe_event_bus:70 | ✓ [EventBus Subscriber] WorldModel bound to topics: task.*, config_reloaded, security.approval_required, context.updated.*
+2026-08-05 14:48:01.226 | INFO     | long_horizon_checkpoint:initialize:63 | [LongHorizonCheckpoint] Initialized SQLite WAL goal queue & checkpoint tables.
+2026-08-05 14:48:01.245 | INFO     | memory:init:115 | SQLite database initialized with WAL mode at C:\Users\ashri\JARVIS\data\jarvis.db
+2026-08-05 14:48:01.246 | INFO     | memory:init:120 | Memory service fully initialized with Self-Improving Brain capacity
+2026-08-05 14:48:01.247 | INFO     | manager:register_instance:21 | Service instance 'memory_service' registered
+2026-08-05 14:48:01.247 | INFO     | main:lifespan:452 | ✓ Memory service initialized
+2026-08-05 14:48:01.436 | INFO     | rag_service:_init_vector_db:73 | ✓ ChromaDB collection 'rag_documents' ready for RAG
+2026-08-05 14:48:01.437 | INFO     | manager:register_instance:21 | Service instance 'rag_service' registered
+2026-08-05 14:48:01.437 | INFO     | main:lifespan:465 | ✓ RAG service initialized
+2026-08-05 14:48:02.312 | INFO     | wake_word:_load_model_sync:80 | Wake word model loaded successfully — model=hey_jarvis
+2026-08-05 14:48:03.279 | INFO     | memory:init:95 | ChromaDB initialized at C:\Users\ashri\JARVIS\data\chroma_data
+2026-08-05 14:48:03.416 | INFO     | memory:init:115 | SQLite database initialized with WAL mode at C:\Users\ashri\JARVIS\data\jarvis.db
+2026-08-05 14:48:03.417 | INFO     | memory:init:120 | Memory service fully initialized with Self-Improving Brain capacity
+2026-08-05 14:48:03.417 | INFO     | manager:register_instance:21 | Service instance 'memory_service' registered
+2026-08-05 14:48:03.417 | INFO     | main:lifespan:443 | ✓ Memory service initialized
+2026-08-05 14:48:03.438 | INFO     | rag_service:_init_vector_db:73 | ✓ ChromaDB collection 'rag_documents' ready for RAG
+2026-08-05 14:48:03.439 | INFO     | manager:register_instance:21 | Service instance 'rag_service' registered
+2026-08-05 14:48:03.439 | INFO     | main:lifespan:456 | ✓ RAG service initialized
+2026-08-05 14:48:03.680 | INFO     | wake_word:_load_model_sync:80 | Wake word model loaded successfully — model=hey_jarvis
+2026-08-05 14:48:42.350 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-05 14:48:42.350 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-05 14:48:43.073 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-05 14:48:43.074 | INFO     | main:lifespan:45 | ============================================================
+2026-08-05 14:48:43.074 | INFO     | main:lifespan:46 |   JARVIS AI Desktop Assistant — Starting Up
+2026-08-05 14:48:43.074 | INFO     | main:lifespan:47 | ============================================================
+2026-08-05 14:48:43.076 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-05 14:48:43.076 | INFO     | main:lifespan:45 | ============================================================
+2026-08-05 14:48:43.076 | INFO     | main:lifespan:46 |   JARVIS AI Desktop Assistant — Starting Up
+2026-08-05 14:48:43.076 | INFO     | main:lifespan:47 | ============================================================
+2026-08-05 14:48:43.281 | INFO     | stt:__init__:81 | STTService created — model=small, device=auto, compute=int8
+2026-08-05 14:48:43.283 | INFO     | manager:register_instance:21 | Service instance 'stt_service' registered
+2026-08-05 14:48:43.284 | INFO     | main:lifespan:179 | ✓ STT service initialized (model: base)
+2026-08-05 14:48:43.284 | INFO     | main:lifespan:179 | ✓ STT service initialized (model: base)
+2026-08-05 14:48:43.287 | INFO     | tts:__init__:36 | TTSService initialised — voice=en-US-GuyNeural, rate=+0%
+2026-08-05 14:48:43.288 | INFO     | tts:__init__:36 | TTSService initialised — voice=en-US-GuyNeural, rate=+0%
+2026-08-05 14:48:43.288 | INFO     | manager:register_instance:21 | Service instance 'tts_service' registered
+2026-08-05 14:48:43.288 | INFO     | manager:register_instance:21 | Service instance 'tts_service' registered
+
+2026-08-05 14:48:43.288 | INFO     | main:lifespan:191 | ✓ TTS service initialized (voice: en-GB-RyanNeural)
+2026-08-05 14:48:43.290 | INFO     | wake_word:__init__:39 | WakeWordService created — threshold=0.35
+2026-08-05 14:48:43.290 | INFO     | wake_word:__init__:39 | WakeWordService created — threshold=0.35
+2026-08-05 14:48:43.291 | INFO     | manager:register_instance:21 | Service instance 'wake_word_service' registered
+2026-08-05 14:48:43.291 | INFO     | manager:register_instance:21 | Service instance 'wake_word_service' registered
+2026-08-05 14:48:43.292 | INFO     | main:lifespan:209 | ✓ Wake word service initialized (model loading & background microphone listener starting)
+2026-08-05 14:48:43.535 | INFO     | clap:_run_loop:140 | Clap listener active (mode=double, spike_ratio=11.40, gap=0.08–0.35s).
+2026-08-05 14:48:43.535 | INFO     | clap:start:68 | ✓ Clap listener background thread started (mode=double).
+2026-08-05 14:48:43.536 | INFO     | manager:register_instance:21 | Service instance 'clap_service' registered
+2026-08-05 14:48:43.536 | INFO     | main:lifespan:232 | ✓ Clap service initialized and listening (with window restore callback)
+2026-08-05 14:48:43.537 | INFO     | clap:_run_loop:140 | Clap listener active (mode=double, spike_ratio=11.40, gap=0.08–0.35s).
+2026-08-05 14:48:43.537 | INFO     | clap:start:68 | ✓ Clap listener background thread started (mode=double).
+2026-08-05 14:48:43.538 | INFO     | manager:register_instance:21 | Service instance 'clap_service' registered
+2026-08-05 14:48:43.539 | INFO     | main:lifespan:232 | ✓ Clap service initialized and listening (with window restore callback)
+2026-08-05 14:48:44.218 | INFO     | safety:__init__:250 | SafetyService initialised — confirm_dangerous=True, allow_terminal=True
+2026-08-05 14:48:44.218 | INFO     | safety:__init__:250 | SafetyService initialised — confirm_dangerous=True, allow_terminal=True
+2026-08-05 14:48:44.219 | INFO     | automation:__init__:191 | AutomationService initialised
+2026-08-05 14:48:44.219 | INFO     | manager:register_instance:21 | Service instance 'automation_service' registered
+2026-08-05 14:48:44.219 | INFO     | automation:__init__:191 | AutomationService initialised
+2026-08-05 14:48:44.219 | INFO     | manager:register_instance:21 | Service instance 'automation' registered
+2026-08-05 14:48:44.219 | INFO     | manager:register_instance:21 | Service instance 'automation_service' registered
+2026-08-05 14:48:44.219 | INFO     | main:lifespan:245 | ✓ Automation service initialized
+2026-08-05 14:48:44.219 | INFO     | manager:register_instance:21 | Service instance 'automation' registered
+2026-08-05 14:48:44.219 | INFO     | main:lifespan:245 | ✓ Automation service initialized
+2026-08-05 14:48:44.222 | INFO     | uia_engine:__init__:27 | UIAEngine initialized (Win32 Accessibility Core Ready)
+2026-08-05 14:48:44.221 | INFO     | uia_engine:__init__:27 | UIAEngine initialized (Win32 Accessibility Core Ready)
+2026-08-05 14:48:44.222 | INFO     | manager:register_instance:21 | Service instance 'uia_engine' registered
+2026-08-05 14:48:44.223 | INFO     | main:lifespan:256 | ✓ Win32 UIAEngine initialized and registered in ServiceManager
+2026-08-05 14:48:44.223 | INFO     | manager:register_instance:21 | Service instance 'uia_engine' registered
+2026-08-05 14:48:44.223 | INFO     | main:lifespan:256 | ✓ Win32 UIAEngine initialized and registered in ServiceManager
+2026-08-05 14:48:44.228 | INFO     | workspace_intelligence:__init__:46 | WorkspaceIntelligenceService initialized (Habit Store: user_habits.json)
+2026-08-05 14:48:44.229 | INFO     | manager:register_instance:21 | Service instance 'workspace_intelligence' registered
+2026-08-05 14:48:44.229 | INFO     | main:lifespan:266 | ✓ WorkspaceIntelligenceService initialized (Project, Goal & Habit Engine Active)
+2026-08-05 14:48:44.228 | INFO     | workspace_intelligence:__init__:46 | WorkspaceIntelligenceService initialized (Habit Store: user_habits.json)
+2026-08-05 14:48:44.229 | INFO     | manager:register_instance:21 | Service instance 'workspace_intelligence' registered
+2026-08-05 14:48:44.229 | INFO     | main:lifespan:266 | ✓ WorkspaceIntelligenceService initialized (Project, Goal & Habit Engine Active)
+2026-08-05 14:48:44.267 | WARNING  | screen:__init__:42 | Tesseract OCR not available: tesseract is not installed or it's not in your PATH. See README file for more information.. OCR features will be limited.
+2026-08-05 14:48:44.267 | WARNING  | screen:__init__:42 | Tesseract OCR not available: tesseract is not installed or it's not in your PATH. See README file for more information.. OCR features will be limited.
+2026-08-05 14:48:45.736 | WARNING  | screen:__init__:51 | OpenAI client not available for vision: The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable
+2026-08-05 14:48:45.736 | WARNING  | screen:__init__:51 | OpenAI client not available for vision: The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable
+2026-08-05 14:48:45.738 | INFO     | manager:register_instance:21 | Service instance 'screen_service' registered
+2026-08-05 14:48:45.738 | INFO     | main:lifespan:277 | ✓ Screen service initialized
+2026-08-05 14:48:45.738 | INFO     | manager:register_instance:21 | Service instance 'screen_service' registered
+2026-08-05 14:48:45.738 | INFO     | main:lifespan:277 | ✓ Screen service initialized
+2026-08-05 14:48:45.744 | INFO     | vision_service:__init__:32 | VisionService initialized (Vision Cooldown Rate-Limiter Active)
+2026-08-05 14:48:45.744 | INFO     | vision_service:__init__:32 | VisionService initialized (Vision Cooldown Rate-Limiter Active)
+2026-08-05 14:48:45.744 | INFO     | manager:register_instance:21 | Service instance 'vision_service' registered
+2026-08-05 14:48:45.744 | INFO     | manager:register_instance:21 | Service instance 'vision_service' registered
+2026-08-05 14:48:45.745 | INFO     | main:lifespan:287 | ✓ Vision service initialized
+2026-08-05 14:48:45.745 | INFO     | main:lifespan:287 | ✓ Vision service initialized
+2026-08-05 14:48:45.748 | INFO     | desktop_automation:__init__:36 | DesktopAutomationService initialized. Workflows directory: data\workflows
+2026-08-05 14:48:45.748 | INFO     | manager:register_instance:21 | Service instance 'desktop_automation_service' registered
+2026-08-05 14:48:45.748 | INFO     | main:lifespan:299 | ✓ Desktop automation service initialized
+2026-08-05 14:48:45.747 | INFO     | desktop_automation:__init__:36 | DesktopAutomationService initialized. Workflows directory: data\workflows
+2026-08-05 14:48:45.751 | INFO     | manager:register_instance:21 | Service instance 'desktop_automation_service' registered
+2026-08-05 14:48:45.751 | INFO     | main:lifespan:299 | ✓ Desktop automation service initialized
+2026-08-05 14:48:45.759 | INFO     | developer_assistant:__init__:21 | DeveloperAssistantService initialized
+2026-08-05 14:48:45.759 | INFO     | developer_assistant:__init__:21 | DeveloperAssistantService initialized
+2026-08-05 14:48:45.760 | INFO     | manager:register_instance:21 | Service instance 'developer_assistant_service' registered
+2026-08-05 14:48:45.760 | INFO     | main:lifespan:311 | ✓ Developer assistant service initialized
+2026-08-05 14:48:45.760 | INFO     | manager:register_instance:21 | Service instance 'developer_assistant_service' registered
+2026-08-05 14:48:45.760 | INFO     | main:lifespan:311 | ✓ Developer assistant service initialized
+2026-08-05 14:48:45.765 | INFO     | research_agent:__init__:25 | ResearchAgentService initialized. Profile directory: data\browser_profile
+2026-08-05 14:48:45.765 | INFO     | manager:register_instance:21 | Service instance 'research_service' registered
+2026-08-05 14:48:45.765 | INFO     | research_agent:__init__:25 | ResearchAgentService initialized. Profile directory: data\browser_profile
+2026-08-05 14:48:45.766 | INFO     | manager:register_instance:21 | Service instance 'research_service' registered
+2026-08-05 14:48:45.766 | INFO     | main:lifespan:321 | ✓ Research agent service initialized
+2026-08-05 14:48:45.770 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-05 14:48:45.770 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-05 14:48:45.770 | INFO     | manager:register_instance:21 | Service instance 'voice_intelligence_service' registered
+2026-08-05 14:48:45.771 | INFO     | main:lifespan:333 | ✓ Voice intelligence service initialized
+2026-08-05 14:48:45.777 | INFO     | manager:register_instance:21 | Service instance 'voice_intelligence_service' registered
+2026-08-05 14:48:45.778 | INFO     | main:lifespan:333 | ✓ Voice intelligence service initialized
+2026-08-05 14:48:45.781 | INFO     | productivity_service:__init__:34 | ProductivityService initialized. Data directory: data
+2026-08-05 14:48:45.781 | INFO     | productivity_service:__init__:34 | ProductivityService initialized. Data directory: data
+2026-08-05 14:48:45.781 | INFO     | manager:register_instance:21 | Service instance 'productivity_service' registered
+2026-08-05 14:48:45.781 | INFO     | manager:register_instance:21 | Service instance 'productivity_service' registered
+2026-08-05 14:48:45.782 | INFO     | main:lifespan:345 | ✓ Productivity service initialized
+2026-08-05 14:48:45.782 | INFO     | main:lifespan:345 | ✓ Productivity service initialized
+2026-08-05 14:48:45.785 | INFO     | manager:register_instance:21 | Service instance 'browser_service' registered
+2026-08-05 14:48:45.785 | INFO     | main:lifespan:357 | ✓ Browser service initialized (lazy start)
+2026-08-05 14:48:45.785 | INFO     | main:lifespan:357 | ✓ Browser service initialized (lazy start)
+2026-08-05 14:48:45.789 | INFO     | task_queue:__init__:60 | TaskQueueService initialized (max_concurrent=3)
+2026-08-05 14:48:45.789 | INFO     | task_queue:__init__:60 | TaskQueueService initialized (max_concurrent=3)
+2026-08-05 14:48:45.790 | INFO     | manager:register_instance:21 | Service instance 'task_queue_service' registered
+2026-08-05 14:48:45.790 | INFO     | main:lifespan:369 | ✓ Task queue service initialized
+2026-08-05 14:48:45.789 | INFO     | manager:register_instance:21 | Service instance 'task_queue_service' registered
+2026-08-05 14:48:45.790 | INFO     | main:lifespan:369 | ✓ Task queue service initialized
+2026-08-05 14:48:45.991 | INFO     | uia_engine:__init__:27 | UIAEngine initialized (Win32 Accessibility Core Ready)
+2026-08-05 14:48:45.991 | INFO     | uia_engine:__init__:27 | UIAEngine initialized (Win32 Accessibility Core Ready)
+2026-08-05 14:48:45.997 | INFO     | file_indexer:_init_fts5_db:43 | ✓ SQLite FTS5 File Indexer initialized at data\file_index.db
+2026-08-05 14:48:46.005 | INFO     | file_indexer:_init_fts5_db:43 | ✓ SQLite FTS5 File Indexer initialized at data\file_index.db
+2026-08-05 14:48:46.012 | INFO     | mobile_bridge:__init__:27 | MobileBridgeService initialized (Push Gatekeeper Ready)
+2026-08-05 14:48:46.022 | INFO     | mobile_bridge:__init__:27 | MobileBridgeService initialized (Push Gatekeeper Ready)
+2026-08-05 14:48:46.027 | INFO     | mobile_auth:__init__:44 | MobileAuthService initialized (Loaded 1 trusted devices)
+2026-08-05 14:48:46.028 | INFO     | mobile_gateway:__init__:43 | MobileGatewayService initialized (Mobile Gateway Active)
+2026-08-05 14:48:46.028 | INFO     | manager:register_instance:21 | Service instance 'uia_engine' registered
+2026-08-05 14:48:46.028 | INFO     | manager:register_instance:21 | Service instance 'file_indexer' registered
+2026-08-05 14:48:46.028 | INFO     | manager:register_instance:21 | Service instance 'mobile_bridge' registered
+2026-08-05 14:48:46.028 | INFO     | manager:register_instance:21 | Service instance 'mobile_auth_service' registered
+2026-08-05 14:48:46.028 | INFO     | manager:register_instance:21 | Service instance 'mobile_gateway_service' registered
+2026-08-05 14:48:46.038 | INFO     | mobile_auth:__init__:44 | MobileAuthService initialized (Loaded 1 trusted devices)
+2026-08-05 14:48:46.039 | INFO     | mobile_gateway:__init__:43 | MobileGatewayService initialized (Mobile Gateway Active)
+2026-08-05 14:48:46.039 | INFO     | manager:register_instance:21 | Service instance 'uia_engine' registered
+2026-08-05 14:48:46.039 | INFO     | manager:register_instance:21 | Service instance 'file_indexer' registered
+2026-08-05 14:48:46.040 | INFO     | manager:register_instance:21 | Service instance 'mobile_bridge' registered
+2026-08-05 14:48:46.040 | INFO     | manager:register_instance:21 | Service instance 'mobile_auth_service' registered
+2026-08-05 14:48:46.040 | INFO     | manager:register_instance:21 | Service instance 'mobile_gateway_service' registered
+2026-08-05 14:48:46.051 | INFO     | experience_engine:__init__:25 | ExperienceEngineService initialized at data\experiences.db
+2026-08-05 14:48:46.051 | INFO     | reflection_engine:__init__:24 | ReflectionEngineService initialized.
+2026-08-05 14:48:46.053 | INFO     | self_healing:__init__:26 | SelfHealingEngine initialized.
+2026-08-05 14:48:46.054 | INFO     | strategy_memory:__init__:29 | StrategyMemoryService initialized. File: data\strategy_memory.json
+2026-08-05 14:48:46.056 | INFO     | skill_library:__init__:28 | SkillLibraryService initialized.
+2026-08-05 14:48:46.056 | INFO     | manager:register_instance:21 | Service instance 'experience_engine' registered
+2026-08-05 14:48:46.056 | INFO     | manager:register_instance:21 | Service instance 'reflection_engine' registered
+2026-08-05 14:48:46.056 | INFO     | manager:register_instance:21 | Service instance 'self_healing' registered
+2026-08-05 14:48:46.056 | INFO     | manager:register_instance:21 | Service instance 'strategy_memory' registered
+2026-08-05 14:48:46.057 | INFO     | manager:register_instance:21 | Service instance 'skill_library' registered
+2026-08-05 14:48:46.059 | INFO     | experience_engine:__init__:25 | ExperienceEngineService initialized at data\experiences.db
+2026-08-05 14:48:46.060 | INFO     | reflection_engine:__init__:24 | ReflectionEngineService initialized.
+2026-08-05 14:48:46.061 | INFO     | self_healing:__init__:26 | SelfHealingEngine initialized.
+2026-08-05 14:48:46.062 | INFO     | strategy_memory:__init__:29 | StrategyMemoryService initialized. File: data\strategy_memory.json
+2026-08-05 14:48:46.063 | INFO     | skill_library:__init__:28 | SkillLibraryService initialized.
+2026-08-05 14:48:46.064 | INFO     | manager:register_instance:21 | Service instance 'experience_engine' registered
+2026-08-05 14:48:46.065 | INFO     | manager:register_instance:21 | Service instance 'reflection_engine' registered
+2026-08-05 14:48:46.065 | INFO     | manager:register_instance:21 | Service instance 'self_healing' registered
+2026-08-05 14:48:46.065 | INFO     | manager:register_instance:21 | Service instance 'strategy_memory' registered
+2026-08-05 14:48:46.065 | INFO     | manager:register_instance:21 | Service instance 'skill_library' registered
+2026-08-05 14:48:46.076 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-05 14:48:46.076 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-05 14:48:46.076 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:48:46.077 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:48:46.093 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:48:46.094 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-05 14:48:46.095 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:48:46.096 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-05 14:48:46.096 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 0.0ms (0 controls).
+2026-08-05 14:48:46.132 | INFO     | world_model:__init__:61 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-05 14:48:46.133 | INFO     | proactive_engine:__init__:50 | ProactiveEngine initialized (Proactive 2.0 with 20-min Cooldown & Session Memory Active).
+2026-08-05 14:48:46.133 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:48:46.133 | INFO     | spatial_ref_parser:__init__:25 | SpatialRefParser initialized (Deictic Spatial Resolver Ready).
+2026-08-05 14:48:46.133 | INFO     | workspace_memory:__init__:45 | WorkspaceMemory initialized at 'workspaces.json'.
+2026-08-05 14:48:46.134 | INFO     | manager:register_instance:21 | Service instance 'live_mode_engine' registered
+2026-08-05 14:48:46.134 | INFO     | main:lifespan:431 | ✓ Self-Improving Engines & Live Mode AI Assistant initialized
+2026-08-05 14:48:47.509 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 1412.3ms (0 controls).
+2026-08-05 14:48:47.557 | INFO     | world_model:__init__:61 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-05 14:48:47.558 | INFO     | proactive_engine:__init__:50 | ProactiveEngine initialized (Proactive 2.0 with 20-min Cooldown & Session Memory Active).
+2026-08-05 14:48:47.558 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:48:47.558 | INFO     | spatial_ref_parser:__init__:25 | SpatialRefParser initialized (Deictic Spatial Resolver Ready).
+2026-08-05 14:48:47.558 | INFO     | workspace_memory:__init__:45 | WorkspaceMemory initialized at 'workspaces.json'.
+2026-08-05 14:48:47.558 | INFO     | manager:register_instance:21 | Service instance 'live_mode_engine' registered
+2026-08-05 14:48:47.559 | INFO     | main:lifespan:431 | ✓ Self-Improving Engines & Live Mode AI Assistant initialized
+2026-08-05 14:48:49.806 | ERROR    | clap:_run_loop:232 | Error in clap listener loop: zero-size array to reduction operation maximum which has no identity
+2026-08-05 14:48:51.876 | WARNING  | memory:init:71 | SentenceTransformer not available, using default embeddings
+2026-08-05 14:48:51.877 | WARNING  | memory:init:71 | SentenceTransformer not available, using default embeddings
+2026-08-05 14:48:54.749 | INFO     | stt:_load_model_sync:136 | Whisper model loaded in 2.82s — size=small, device=cpu, compute=int8
+2026-08-05 14:48:54.753 | INFO     | stt:_load_model_sync:136 | Whisper model loaded in 2.82s — size=small, device=cpu, compute=int8
+2026-08-05 14:48:59.074 | INFO     | memory:init:95 | ChromaDB initialized at C:\Users\ashri\JARVIS\data\chroma_data
+2026-08-05 14:48:59.087 | INFO     | memory:init:95 | ChromaDB initialized at C:\Users\ashri\JARVIS\data\chroma_data
+2026-08-05 14:48:59.203 | INFO     | memory:init:115 | SQLite database initialized with WAL mode at C:\Users\ashri\JARVIS\data\jarvis.db
+2026-08-05 14:48:59.203 | INFO     | memory:init:120 | Memory service fully initialized with Self-Improving Brain capacity
+2026-08-05 14:48:59.203 | INFO     | manager:register_instance:21 | Service instance 'memory_service' registered
+2026-08-05 14:48:59.204 | INFO     | main:lifespan:443 | ✓ Memory service initialized
+2026-08-05 14:48:59.207 | INFO     | memory:init:115 | SQLite database initialized with WAL mode at C:\Users\ashri\JARVIS\data\jarvis.db
+2026-08-05 14:48:59.208 | INFO     | memory:init:120 | Memory service fully initialized with Self-Improving Brain capacity
+2026-08-05 14:48:59.208 | INFO     | manager:register_instance:21 | Service instance 'memory_service' registered
+2026-08-05 14:48:59.208 | INFO     | main:lifespan:443 | ✓ Memory service initialized
+2026-08-05 14:48:59.346 | INFO     | rag_service:_init_vector_db:73 | ✓ ChromaDB collection 'rag_documents' ready for RAG
+2026-08-05 14:48:59.346 | INFO     | manager:register_instance:21 | Service instance 'rag_service' registered
+2026-08-05 14:48:59.347 | INFO     | rag_service:_init_vector_db:73 | ✓ ChromaDB collection 'rag_documents' ready for RAG
+2026-08-05 14:48:59.346 | INFO     | main:lifespan:456 | ✓ RAG service initialized
+2026-08-05 14:48:59.347 | INFO     | manager:register_instance:21 | Service instance 'rag_service' registered
+2026-08-05 14:48:59.346 | INFO     | main:lifespan:605 | ============================================================
+2026-08-05 14:48:59.346 | INFO     | main:lifespan:606 |   JARVIS is online! (Instant socket bind: 16.270s)
+2026-08-05 14:48:59.347 | INFO     | main:lifespan:456 | ✓ RAG service initialized
+2026-08-05 14:48:59.348 | INFO     | main:lifespan:605 | ============================================================
+2026-08-05 14:48:59.348 | INFO     | main:lifespan:606 |   JARVIS is online! (Instant socket bind: 16.274s)
+2026-08-05 14:48:59.347 | INFO     | main:lifespan:607 |   Server: http://127.0.0.1:8000
+2026-08-05 14:48:59.348 | INFO     | main:lifespan:607 |   Server: http://127.0.0.1:8000
+2026-08-05 14:48:59.348 | INFO     | main:lifespan:608 |   WebSocket: ws://127.0.0.1:8000/ws
+2026-08-05 14:48:59.347 | INFO     | main:lifespan:608 |   WebSocket: ws://127.0.0.1:8000/ws
+2026-08-05 14:48:59.348 | INFO     | main:lifespan:609 | ============================================================
+2026-08-05 14:48:59.347 | INFO     | main:lifespan:609 | ============================================================
+2026-08-05 14:48:59.348 | INFO     | task_queue:start:31 | ✓ Async task queue worker started
+2026-08-05 14:48:59.378 | INFO     | manager:register_instance:21 | Service instance 'credential_vault' registered
+2026-08-05 14:48:59.379 | INFO     | manager:register_instance:21 | Service instance 'credential_vault' registered
+2026-08-05 14:48:59.379 | INFO     | manager:register_instance:21 | Service instance 'security_sandbox' registered
+2026-08-05 14:48:59.379 | INFO     | manager:register_instance:21 | Service instance 'security_orchestrator' registered
+2026-08-05 14:48:59.379 | INFO     | manager:register_instance:21 | Service instance 'security_sandbox' registered
+2026-08-05 14:48:59.379 | INFO     | manager:register_instance:21 | Service instance 'security_orchestrator' registered
+2026-08-05 14:48:59.387 | INFO     | manager:register_instance:21 | Service instance 'mcp_client_manager' registered
+2026-08-05 14:48:59.387 | INFO     | manager:register_instance:21 | Service instance 'mcp_client_manager' registered
+2026-08-05 14:48:59.404 | INFO     | agent_ecosystem:_init_mcu_agents:88 | ✓ Initialized 21 MCU J.A.R.V.I.S. Micro-Agents: ['VoiceAgent', 'ConversationAgent', 'MemoryAgent', 'PlanningAgent', 'VisionAgent', 'DesktopControlAgent', 'BrowserAgent', 'CodingAgent', 'ResearchAgent', 'AutomationAgent', 'CalendarAgent', 'ReminderAgent', 'NotificationAgent', 'SecurityAgent', 'MobileAgent', 'DeviceAgent', 'LearningAgent', 'EmotionAgent', 'ContextAgent', 'HealthAgent', 'SelfDiagnosticAgent']
+2026-08-05 14:48:59.405 | INFO     | agent_ecosystem:_init_mcu_agents:88 | ✓ Initialized 21 MCU J.A.R.V.I.S. Micro-Agents: ['VoiceAgent', 'ConversationAgent', 'MemoryAgent', 'PlanningAgent', 'VisionAgent', 'DesktopControlAgent', 'BrowserAgent', 'CodingAgent', 'ResearchAgent', 'AutomationAgent', 'CalendarAgent', 'ReminderAgent', 'NotificationAgent', 'SecurityAgent', 'MobileAgent', 'DeviceAgent', 'LearningAgent', 'EmotionAgent', 'ContextAgent', 'HealthAgent', 'SelfDiagnosticAgent']
+2026-08-05 14:48:59.421 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:48:59.422 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-05 14:48:59.422 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 0.0ms (0 controls).
+2026-08-05 14:48:59.426 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:48:59.426 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-05 14:48:59.459 | INFO     | world_model:__init__:61 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-05 14:48:59.460 | INFO     | manager:register_instance:21 | Service instance 'agent_ecosystem' registered
+2026-08-05 14:48:59.460 | INFO     | manager:register_instance:21 | Service instance 'checkpoint_service' registered
+2026-08-05 14:48:59.460 | INFO     | manager:register_instance:21 | Service instance 'kv_pruner' registered
+2026-08-05 14:48:59.461 | INFO     | manager:register_instance:21 | Service instance 'world_model' registered
+2026-08-05 14:48:59.461 | INFO     | safety:__init__:250 | SafetyService initialised — confirm_dangerous=True, allow_terminal=True
+2026-08-05 14:48:59.461 | INFO     | manager:register_instance:21 | Service instance 'safety_service' registered
+2026-08-05 14:48:59.486 | INFO     | face_biometrics:__init__:40 | FaceBiometricsService initialized (Profile Enrolled: True)
+2026-08-05 14:48:59.486 | INFO     | manager:register_instance:21 | Service instance 'face_biometrics_service' registered
+2026-08-05 14:48:59.486 | INFO     | main:_init_background_services:135 | ✓ Core services, Safety, Biometrics & Agent Ecosystem initialized in background
+2026-08-05 14:48:59.798 | INFO     | wake_word:_load_model_sync:80 | Wake word model loaded successfully — model=hey_jarvis
+2026-08-05 14:48:59.804 | INFO     | wake_word:_load_model_sync:80 | Wake word model loaded successfully — model=hey_jarvis
+2026-08-05 14:48:59.821 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-05 14:48:59.833 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-05 14:48:59.843 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-05 14:48:59.856 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-05 14:49:00.470 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 1043.4ms (0 controls).
+2026-08-05 14:49:00.499 | INFO     | world_model:__init__:61 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-05 14:49:00.499 | INFO     | manager:register_instance:21 | Service instance 'agent_ecosystem' registered
+2026-08-05 14:49:00.499 | INFO     | manager:register_instance:21 | Service instance 'checkpoint_service' registered
+2026-08-05 14:49:00.500 | INFO     | manager:register_instance:21 | Service instance 'kv_pruner' registered
+2026-08-05 14:49:00.500 | INFO     | manager:register_instance:21 | Service instance 'world_model' registered
+2026-08-05 14:49:00.500 | INFO     | safety:__init__:250 | SafetyService initialised — confirm_dangerous=True, allow_terminal=True
+2026-08-05 14:49:00.500 | INFO     | manager:register_instance:21 | Service instance 'safety_service' registered
+2026-08-05 14:49:00.520 | INFO     | face_biometrics:__init__:40 | FaceBiometricsService initialized (Profile Enrolled: True)
+2026-08-05 14:49:00.522 | INFO     | manager:register_instance:21 | Service instance 'face_biometrics_service' registered
+2026-08-05 14:49:00.522 | INFO     | main:_init_background_services:135 | ✓ Core services, Safety, Biometrics & Agent Ecosystem initialized in background
+2026-08-05 14:49:00.611 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-05 14:49:00.622 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-05 14:49:00.631 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-05 14:49:00.641 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-05 14:49:02.064 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-05 14:49:02.064 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-05 14:49:02.143 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-05 14:49:02.144 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-05 14:49:02.144 | INFO     | manager:register_instance:21 | Service instance 'llm_service' registered
+2026-08-05 14:49:02.144 | INFO     | main:_init_background_services:158 | ✓ LLM service initialized (provider: ollama, model: qwen2.5-coder:3b)
+2026-08-05 14:49:02.165 | DEBUG    | event_bus:subscribe:24 | Subscribed callback to topic pattern 'task.*'
+2026-08-05 14:49:02.165 | DEBUG    | event_bus:subscribe:24 | Subscribed callback to topic pattern 'config_reloaded'
+2026-08-05 14:49:02.165 | DEBUG    | event_bus:subscribe:24 | Subscribed callback to topic pattern 'security.approval_required'
+2026-08-05 14:49:02.165 | DEBUG    | event_bus:subscribe:24 | Subscribed callback to topic pattern 'context.updated.*'
+2026-08-05 14:49:02.166 | INFO     | world_model:_subscribe_event_bus:70 | ✓ [EventBus Subscriber] WorldModel bound to topics: task.*, config_reloaded, security.approval_required, context.updated.*
+2026-08-05 14:49:02.177 | INFO     | main:launch_frontend:620 | Auto-launching Electron frontend from C:\Users\ashri\JARVIS\frontend...
+2026-08-05 14:49:02.218 | INFO     | main:launch_frontend:636 | ✓ Electron frontend launch process spawned
+2026-08-05 14:49:02.233 | INFO     | long_horizon_checkpoint:initialize:63 | [LongHorizonCheckpoint] Initialized SQLite WAL goal queue & checkpoint tables.
+2026-08-05 14:49:02.245 | INFO     | llm_router:init:150 | ✓ LLM Router Engine fully initialized and background poller active
+2026-08-05 14:49:02.245 | INFO     | main:_init_background_services:164 | ✓ Dynamic LLM Router initialized and registered in App state
+2026-08-05 14:49:02.456 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-05 14:49:02.457 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-05 14:49:02.518 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-05 14:49:02.518 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-05 14:49:02.518 | INFO     | manager:register_instance:21 | Service instance 'llm_service' registered
+2026-08-05 14:49:02.519 | INFO     | main:_init_background_services:158 | ✓ LLM service initialized (provider: ollama, model: qwen2.5-coder:3b)
+2026-08-05 14:49:02.527 | DEBUG    | event_bus:subscribe:24 | Subscribed callback to topic pattern 'task.*'
+2026-08-05 14:49:02.527 | DEBUG    | event_bus:subscribe:24 | Subscribed callback to topic pattern 'config_reloaded'
+2026-08-05 14:49:02.527 | DEBUG    | event_bus:subscribe:24 | Subscribed callback to topic pattern 'security.approval_required'
+2026-08-05 14:49:02.529 | DEBUG    | event_bus:subscribe:24 | Subscribed callback to topic pattern 'context.updated.*'
+2026-08-05 14:49:02.529 | INFO     | world_model:_subscribe_event_bus:70 | ✓ [EventBus Subscriber] WorldModel bound to topics: task.*, config_reloaded, security.approval_required, context.updated.*
+2026-08-05 14:49:02.543 | INFO     | long_horizon_checkpoint:initialize:63 | [LongHorizonCheckpoint] Initialized SQLite WAL goal queue & checkpoint tables.
+2026-08-05 14:49:02.568 | INFO     | llm_router:init:150 | ✓ LLM Router Engine fully initialized and background poller active
+2026-08-05 14:49:02.568 | INFO     | main:_init_background_services:164 | ✓ Dynamic LLM Router initialized and registered in App state
+2026-08-05 14:49:02.705 | INFO     | client:start:36 | ✓ Started MCP server 'file_server' subprocess (attempt 1)
+2026-08-05 14:49:02.915 | INFO     | client:start:53 | ✓ MCP Server 'file_server' initialized. Discovered 5 tools.
+2026-08-05 14:49:03.044 | INFO     | client:start:36 | ✓ Started MCP server 'file_server' subprocess (attempt 1)
+2026-08-05 14:49:03.245 | INFO     | client:start:53 | ✓ MCP Server 'file_server' initialized. Discovered 5 tools.
+2026-08-05 14:49:13.813 | INFO     | websocket:connect:32 | WebSocket connected. Active connections: 1
+2026-08-05 14:49:15.791 | INFO     | websocket:connect:32 | WebSocket connected. Active connections: 2
+2026-08-05 14:49:25.762 | WARNING  | llm_router:record_metric:281 | !!! CIRCUIT BREAKER TRIPPED FOR gemini !!! (Skipping provider until recovery)
+2026-08-05 14:49:25.918 | WARNING  | llm_router:record_metric:281 | !!! CIRCUIT BREAKER TRIPPED FOR gemini !!! (Skipping provider until recovery)
+2026-08-05 14:49:26.237 | WARNING  | llm_router:record_metric:281 | !!! CIRCUIT BREAKER TRIPPED FOR openrouter !!! (Skipping provider until recovery)
+2026-08-05 14:49:26.754 | WARNING  | llm_router:record_metric:281 | !!! CIRCUIT BREAKER TRIPPED FOR openrouter !!! (Skipping provider until recovery)
+2026-08-05 14:49:26.912 | WARNING  | llm_router:record_metric:281 | !!! CIRCUIT BREAKER TRIPPED FOR nvidia !!! (Skipping provider until recovery)
+2026-08-05 14:49:27.822 | WARNING  | llm_router:record_metric:281 | !!! CIRCUIT BREAKER TRIPPED FOR nvidia !!! (Skipping provider until recovery)
+2026-08-05 14:50:03.709 | DEBUG    | middleware:log_requests:46 | → POST /api/biometrics/face/enroll
+2026-08-05 14:50:03.720 | ERROR    | middleware:log_requests:58 | ✗ POST /api/biometrics/face/enroll [500] 11.2ms — No module named 'backend.utils.service_manager'
+2026-08-05 14:50:03.725 | ERROR    | middleware:global_exception_handler:67 | Unhandled exception on /api/biometrics/face/enroll: No module named 'backend.utils.service_manager'
+2026-08-05 14:50:13.134 | DEBUG    | middleware:log_requests:46 | → POST /api/biometrics/face/verify_pin
+2026-08-05 14:50:13.141 | ERROR    | middleware:log_requests:58 | ✗ POST /api/biometrics/face/verify_pin [500] 7.0ms — No module named 'backend.utils.service_manager'
+2026-08-05 14:50:13.144 | ERROR    | middleware:global_exception_handler:67 | Unhandled exception on /api/biometrics/face/verify_pin: No module named 'backend.utils.service_manager'
+2026-08-05 14:50:17.262 | DEBUG    | middleware:log_requests:46 | → POST /api/biometrics/face/verify_pin
+2026-08-05 14:50:17.660 | ERROR    | middleware:log_requests:58 | ✗ POST /api/biometrics/face/verify_pin [500] 398.2ms — No module named 'backend.utils.service_manager'
+2026-08-05 14:50:17.661 | ERROR    | middleware:global_exception_handler:67 | Unhandled exception on /api/biometrics/face/verify_pin: No module named 'backend.utils.service_manager'
+2026-08-05 14:51:04.602 | ERROR    | clap:_run_loop:232 | Error in clap listener loop: zero-size array to reduction operation maximum which has no identity
+2026-08-05 14:51:10.789 | INFO     | websocket:connect:32 | WebSocket connected. Active connections: 1
+2026-08-05 14:51:10.813 | INFO     | websocket:connect:32 | WebSocket connected. Active connections: 2
+2026-08-05 14:51:20.258 | INFO     | websocket:websocket_endpoint:419 | WebSocket connection closed cleanly: Cannot call "receive" once a disconnect message has been received.
+2026-08-05 14:51:57.289 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-05 14:51:58.408 | INFO     | logger:setup_logger:99 | Logger initialised — console=DEBUG, file=DEBUG
+2026-08-05 14:51:58.410 | INFO     | main:lifespan:45 | ============================================================
+2026-08-05 14:51:58.410 | INFO     | main:lifespan:46 |   JARVIS AI Desktop Assistant — Starting Up
+2026-08-05 14:51:58.410 | INFO     | main:lifespan:47 | ============================================================
+2026-08-05 14:51:58.538 | INFO     | stt:__init__:81 | STTService created — model=small, device=auto, compute=int8
+2026-08-05 14:51:58.539 | INFO     | manager:register_instance:21 | Service instance 'stt_service' registered
+2026-08-05 14:51:58.539 | INFO     | main:lifespan:179 | ✓ STT service initialized (model: base)
+2026-08-05 14:51:58.564 | INFO     | tts:__init__:36 | TTSService initialised — voice=en-US-GuyNeural, rate=+0%
+2026-08-05 14:51:58.564 | INFO     | manager:register_instance:21 | Service instance 'tts_service' registered
+2026-08-05 14:51:58.565 | INFO     | main:lifespan:191 | ✓ TTS service initialized (voice: en-GB-RyanNeural)
+2026-08-05 14:51:58.567 | INFO     | wake_word:__init__:39 | WakeWordService created — threshold=0.35
+2026-08-05 14:51:58.568 | INFO     | manager:register_instance:21 | Service instance 'wake_word_service' registered
+2026-08-05 14:51:58.568 | INFO     | main:lifespan:209 | ✓ Wake word service initialized (model loading & background microphone listener starting)
+2026-08-05 14:51:58.819 | INFO     | clap:_run_loop:140 | Clap listener active (mode=double, spike_ratio=11.40, gap=0.08–0.35s).
+2026-08-05 14:51:58.825 | INFO     | clap:start:68 | ✓ Clap listener background thread started (mode=double).
+2026-08-05 14:51:58.826 | INFO     | manager:register_instance:21 | Service instance 'clap_service' registered
+2026-08-05 14:51:58.827 | INFO     | main:lifespan:232 | ✓ Clap service initialized and listening (with window restore callback)
+2026-08-05 14:51:59.338 | INFO     | safety:__init__:250 | SafetyService initialised — confirm_dangerous=True, allow_terminal=True
+2026-08-05 14:51:59.338 | INFO     | automation:__init__:191 | AutomationService initialised
+2026-08-05 14:51:59.338 | INFO     | manager:register_instance:21 | Service instance 'automation_service' registered
+2026-08-05 14:51:59.339 | INFO     | manager:register_instance:21 | Service instance 'automation' registered
+2026-08-05 14:51:59.339 | INFO     | main:lifespan:245 | ✓ Automation service initialized
+2026-08-05 14:51:59.347 | INFO     | uia_engine:__init__:27 | UIAEngine initialized (Win32 Accessibility Core Ready)
+2026-08-05 14:51:59.349 | INFO     | manager:register_instance:21 | Service instance 'uia_engine' registered
+2026-08-05 14:51:59.351 | INFO     | main:lifespan:256 | ✓ Win32 UIAEngine initialized and registered in ServiceManager
+2026-08-05 14:51:59.363 | INFO     | workspace_intelligence:__init__:46 | WorkspaceIntelligenceService initialized (Habit Store: user_habits.json)
+2026-08-05 14:51:59.364 | INFO     | manager:register_instance:21 | Service instance 'workspace_intelligence' registered
+2026-08-05 14:51:59.365 | INFO     | main:lifespan:266 | ✓ WorkspaceIntelligenceService initialized (Project, Goal & Habit Engine Active)
+2026-08-05 14:51:59.469 | WARNING  | screen:__init__:42 | Tesseract OCR not available: tesseract is not installed or it's not in your PATH. See README file for more information.. OCR features will be limited.
+2026-08-05 14:52:01.794 | WARNING  | screen:__init__:51 | OpenAI client not available for vision: The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable
+2026-08-05 14:52:01.794 | INFO     | manager:register_instance:21 | Service instance 'screen_service' registered
+2026-08-05 14:52:01.795 | INFO     | main:lifespan:277 | ✓ Screen service initialized
+2026-08-05 14:52:01.800 | INFO     | vision_service:__init__:32 | VisionService initialized (Vision Cooldown Rate-Limiter Active)
+2026-08-05 14:52:01.800 | INFO     | manager:register_instance:21 | Service instance 'vision_service' registered
+2026-08-05 14:52:01.800 | INFO     | main:lifespan:287 | ✓ Vision service initialized
+2026-08-05 14:52:01.804 | INFO     | desktop_automation:__init__:36 | DesktopAutomationService initialized. Workflows directory: data\workflows
+2026-08-05 14:52:01.804 | INFO     | manager:register_instance:21 | Service instance 'desktop_automation_service' registered
+2026-08-05 14:52:01.804 | INFO     | main:lifespan:299 | ✓ Desktop automation service initialized
+2026-08-05 14:52:01.807 | INFO     | developer_assistant:__init__:21 | DeveloperAssistantService initialized
+2026-08-05 14:52:01.808 | INFO     | manager:register_instance:21 | Service instance 'developer_assistant_service' registered
+2026-08-05 14:52:01.808 | INFO     | main:lifespan:311 | ✓ Developer assistant service initialized
+2026-08-05 14:52:01.812 | INFO     | research_agent:__init__:25 | ResearchAgentService initialized. Profile directory: data\browser_profile
+2026-08-05 14:52:01.813 | INFO     | manager:register_instance:21 | Service instance 'research_service' registered
+2026-08-05 14:52:01.813 | INFO     | main:lifespan:321 | ✓ Research agent service initialized
+2026-08-05 14:52:01.816 | INFO     | voice_intelligence:__init__:24 | VoiceIntelligenceService initialized. Profiles file: data\speaker_profiles.json
+2026-08-05 14:52:01.816 | INFO     | manager:register_instance:21 | Service instance 'voice_intelligence_service' registered
+2026-08-05 14:52:01.816 | INFO     | main:lifespan:333 | ✓ Voice intelligence service initialized
+2026-08-05 14:52:01.820 | INFO     | productivity_service:__init__:34 | ProductivityService initialized. Data directory: data
+2026-08-05 14:52:01.820 | INFO     | manager:register_instance:21 | Service instance 'productivity_service' registered
+2026-08-05 14:52:01.820 | INFO     | main:lifespan:345 | ✓ Productivity service initialized
+2026-08-05 14:52:01.823 | INFO     | manager:register_instance:21 | Service instance 'browser_service' registered
+2026-08-05 14:52:01.823 | INFO     | main:lifespan:357 | ✓ Browser service initialized (lazy start)
+2026-08-05 14:52:01.827 | INFO     | task_queue:__init__:60 | TaskQueueService initialized (max_concurrent=3)
+2026-08-05 14:52:01.827 | INFO     | manager:register_instance:21 | Service instance 'task_queue_service' registered
+2026-08-05 14:52:01.828 | INFO     | main:lifespan:369 | ✓ Task queue service initialized
+2026-08-05 14:52:01.930 | INFO     | uia_engine:__init__:27 | UIAEngine initialized (Win32 Accessibility Core Ready)
+2026-08-05 14:52:01.935 | INFO     | file_indexer:_init_fts5_db:43 | ✓ SQLite FTS5 File Indexer initialized at data\file_index.db
+2026-08-05 14:52:01.955 | INFO     | mobile_bridge:__init__:27 | MobileBridgeService initialized (Push Gatekeeper Ready)
+2026-08-05 14:52:01.973 | INFO     | mobile_auth:__init__:44 | MobileAuthService initialized (Loaded 1 trusted devices)
+2026-08-05 14:52:01.973 | INFO     | mobile_gateway:__init__:43 | MobileGatewayService initialized (Mobile Gateway Active)
+2026-08-05 14:52:01.974 | INFO     | manager:register_instance:21 | Service instance 'uia_engine' registered
+2026-08-05 14:52:01.974 | INFO     | manager:register_instance:21 | Service instance 'file_indexer' registered
+2026-08-05 14:52:01.974 | INFO     | manager:register_instance:21 | Service instance 'mobile_bridge' registered
+2026-08-05 14:52:01.974 | INFO     | manager:register_instance:21 | Service instance 'mobile_auth_service' registered
+2026-08-05 14:52:01.974 | INFO     | manager:register_instance:21 | Service instance 'mobile_gateway_service' registered
+2026-08-05 14:52:01.998 | INFO     | experience_engine:__init__:25 | ExperienceEngineService initialized at data\experiences.db
+2026-08-05 14:52:01.998 | INFO     | reflection_engine:__init__:24 | ReflectionEngineService initialized.
+2026-08-05 14:52:01.999 | INFO     | self_healing:__init__:26 | SelfHealingEngine initialized.
+2026-08-05 14:52:02.000 | INFO     | strategy_memory:__init__:29 | StrategyMemoryService initialized. File: data\strategy_memory.json
+2026-08-05 14:52:02.002 | INFO     | skill_library:__init__:28 | SkillLibraryService initialized.
+2026-08-05 14:52:02.002 | INFO     | manager:register_instance:21 | Service instance 'experience_engine' registered
+2026-08-05 14:52:02.002 | INFO     | manager:register_instance:21 | Service instance 'reflection_engine' registered
+2026-08-05 14:52:02.002 | INFO     | manager:register_instance:21 | Service instance 'self_healing' registered
+2026-08-05 14:52:02.003 | INFO     | manager:register_instance:21 | Service instance 'strategy_memory' registered
+2026-08-05 14:52:02.003 | INFO     | manager:register_instance:21 | Service instance 'skill_library' registered
+2026-08-05 14:52:02.011 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-05 14:52:02.011 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:52:02.033 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:52:02.034 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-05 14:52:02.204 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 170.5ms (0 controls).
+2026-08-05 14:52:02.251 | INFO     | world_model:__init__:61 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-05 14:52:02.252 | INFO     | proactive_engine:__init__:50 | ProactiveEngine initialized (Proactive 2.0 with 20-min Cooldown & Session Memory Active).
+2026-08-05 14:52:02.252 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:52:02.252 | INFO     | spatial_ref_parser:__init__:25 | SpatialRefParser initialized (Deictic Spatial Resolver Ready).
+2026-08-05 14:52:02.253 | INFO     | workspace_memory:__init__:45 | WorkspaceMemory initialized at 'workspaces.json'.
+2026-08-05 14:52:02.253 | INFO     | manager:register_instance:21 | Service instance 'live_mode_engine' registered
+2026-08-05 14:52:02.253 | INFO     | main:lifespan:431 | ✓ Self-Improving Engines & Live Mode AI Assistant initialized
+2026-08-05 14:52:10.656 | WARNING  | memory:init:71 | SentenceTransformer not available, using default embeddings
+2026-08-05 14:52:13.202 | INFO     | stt:_load_model_sync:136 | Whisper model loaded in 2.48s — size=small, device=cpu, compute=int8
+2026-08-05 14:52:17.050 | INFO     | memory:init:95 | ChromaDB initialized at C:\Users\ashri\JARVIS\data\chroma_data
+2026-08-05 14:52:17.244 | INFO     | memory:init:115 | SQLite database initialized with WAL mode at C:\Users\ashri\JARVIS\data\jarvis.db
+2026-08-05 14:52:17.244 | INFO     | memory:init:120 | Memory service fully initialized with Self-Improving Brain capacity
+2026-08-05 14:52:17.244 | INFO     | manager:register_instance:21 | Service instance 'memory_service' registered
+2026-08-05 14:52:17.245 | INFO     | main:lifespan:443 | ✓ Memory service initialized
+2026-08-05 14:52:17.455 | INFO     | rag_service:_init_vector_db:73 | ✓ ChromaDB collection 'rag_documents' ready for RAG
+2026-08-05 14:52:17.456 | INFO     | manager:register_instance:21 | Service instance 'rag_service' registered
+2026-08-05 14:52:17.456 | INFO     | main:lifespan:456 | ✓ RAG service initialized
+2026-08-05 14:52:17.457 | INFO     | main:lifespan:605 | ============================================================
+2026-08-05 14:52:17.457 | INFO     | main:lifespan:606 |   JARVIS is online! (Instant socket bind: 19.048s)
+2026-08-05 14:52:17.457 | INFO     | main:lifespan:607 |   Server: http://127.0.0.1:8000
+2026-08-05 14:52:17.457 | INFO     | main:lifespan:608 |   WebSocket: ws://127.0.0.1:8000/ws
+2026-08-05 14:52:17.457 | INFO     | main:lifespan:609 | ============================================================
+2026-08-05 14:52:17.460 | INFO     | task_queue:start:31 | ✓ Async task queue worker started
+2026-08-05 14:52:17.491 | INFO     | manager:register_instance:21 | Service instance 'credential_vault' registered
+2026-08-05 14:52:17.491 | INFO     | manager:register_instance:21 | Service instance 'security_sandbox' registered
+2026-08-05 14:52:17.491 | INFO     | manager:register_instance:21 | Service instance 'security_orchestrator' registered
+2026-08-05 14:52:17.504 | INFO     | manager:register_instance:21 | Service instance 'mcp_client_manager' registered
+2026-08-05 14:52:17.526 | INFO     | agent_ecosystem:_init_mcu_agents:88 | ✓ Initialized 21 MCU J.A.R.V.I.S. Micro-Agents: ['VoiceAgent', 'ConversationAgent', 'MemoryAgent', 'PlanningAgent', 'VisionAgent', 'DesktopControlAgent', 'BrowserAgent', 'CodingAgent', 'ResearchAgent', 'AutomationAgent', 'CalendarAgent', 'ReminderAgent', 'NotificationAgent', 'SecurityAgent', 'MobileAgent', 'DeviceAgent', 'LearningAgent', 'EmotionAgent', 'ContextAgent', 'HealthAgent', 'SelfDiagnosticAgent']
+2026-08-05 14:52:17.542 | DEBUG    | spatial_engine:refresh_displays:85 | Discovered 1 monitor(s).
+2026-08-05 14:52:17.542 | INFO     | uia_scene_graph:__init__:64 | UIASceneGraph initialized (Native Win32 UIA Parser Ready).
+2026-08-05 14:52:17.828 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 286.4ms (0 controls).
+2026-08-05 14:52:17.870 | INFO     | world_model:__init__:61 | WorldModel initialized (Central Desktop State Aggregator Ready).
+2026-08-05 14:52:17.870 | INFO     | manager:register_instance:21 | Service instance 'agent_ecosystem' registered
+2026-08-05 14:52:17.871 | INFO     | manager:register_instance:21 | Service instance 'checkpoint_service' registered
+2026-08-05 14:52:17.871 | INFO     | manager:register_instance:21 | Service instance 'kv_pruner' registered
+2026-08-05 14:52:17.871 | INFO     | manager:register_instance:21 | Service instance 'world_model' registered
+2026-08-05 14:52:17.871 | INFO     | safety:__init__:250 | SafetyService initialised — confirm_dangerous=True, allow_terminal=True
+2026-08-05 14:52:17.871 | INFO     | manager:register_instance:21 | Service instance 'safety_service' registered
+2026-08-05 14:52:17.903 | INFO     | face_biometrics:__init__:40 | FaceBiometricsService initialized (Profile Enrolled: True)
+2026-08-05 14:52:17.903 | INFO     | manager:register_instance:21 | Service instance 'face_biometrics_service' registered
+2026-08-05 14:52:17.903 | INFO     | main:_init_background_services:135 | ✓ Core services, Safety, Biometrics & Agent Ecosystem initialized in background
+2026-08-05 14:52:17.923 | INFO     | wake_word:_load_model_sync:80 | Wake word model loaded successfully — model=hey_jarvis
+2026-08-05 14:52:18.073 | INFO     | llm:__init__:759 | ✓ Ollama client initialized (model=qwen2.5-coder:3b, url=http://localhost:11434)
+2026-08-05 14:52:18.082 | INFO     | llm:__init__:785 | ✓ OpenRouter client initialized (model=meta-llama/llama-3.3-70b-instruct:free)
+2026-08-05 14:52:18.094 | INFO     | llm:__init__:797 | ✓ Groq client initialized (model=llama-3.3-70b-versatile)
+2026-08-05 14:52:18.107 | INFO     | llm:__init__:809 | ✓ NVIDIA NIM client initialized (model=meta/llama-3.1-8b-instruct)
+2026-08-05 14:52:20.638 | INFO     | llm:__init__:821 | ✓ Google Gemini client initialized successfully (using new google.genai SDK)
+2026-08-05 14:52:20.640 | INFO     | llm:__init__:827 | LLMService initialized. Provider=ollama. Ollama Online=True, Gemini Online=True, OpenAI Fallback Online=False, OpenRouter Online=True, Groq Online=True, NVIDIA NIM Online=True
+2026-08-05 14:52:20.751 | INFO     | engine:__init__:71 | PrashEngine created — model_dir=C:\Users\ashri\JARVIS\data\prash, device=cpu
+2026-08-05 14:52:20.751 | INFO     | llm:__init__:853 | ✓ Prash engine created (will initialize on first use)
+2026-08-05 14:52:20.751 | INFO     | manager:register_instance:21 | Service instance 'llm_service' registered
+2026-08-05 14:52:20.751 | INFO     | main:_init_background_services:158 | ✓ LLM service initialized (provider: ollama, model: qwen2.5-coder:3b)
+2026-08-05 14:52:20.756 | DEBUG    | event_bus:subscribe:24 | Subscribed callback to topic pattern 'task.*'
+2026-08-05 14:52:20.756 | DEBUG    | event_bus:subscribe:24 | Subscribed callback to topic pattern 'config_reloaded'
+2026-08-05 14:52:20.756 | DEBUG    | event_bus:subscribe:24 | Subscribed callback to topic pattern 'security.approval_required'
+2026-08-05 14:52:20.756 | DEBUG    | event_bus:subscribe:24 | Subscribed callback to topic pattern 'context.updated.*'
+2026-08-05 14:52:20.756 | INFO     | world_model:_subscribe_event_bus:70 | ✓ [EventBus Subscriber] WorldModel bound to topics: task.*, config_reloaded, security.approval_required, context.updated.*
+2026-08-05 14:52:20.788 | INFO     | long_horizon_checkpoint:initialize:63 | [LongHorizonCheckpoint] Initialized SQLite WAL goal queue & checkpoint tables.
+2026-08-05 14:52:20.810 | INFO     | llm_router:init:150 | ✓ LLM Router Engine fully initialized and background poller active
+2026-08-05 14:52:20.810 | INFO     | main:_init_background_services:164 | ✓ Dynamic LLM Router initialized and registered in App state
+2026-08-05 14:52:21.334 | INFO     | client:start:36 | ✓ Started MCP server 'file_server' subprocess (attempt 1)
+2026-08-05 14:52:21.394 | DEBUG    | middleware:log_requests:46 | → GET /api/biometrics/face/status
+2026-08-05 14:52:21.394 | INFO     | middleware:log_requests:51 | ← GET /api/biometrics/face/status [200] 1.0ms
+2026-08-05 14:52:21.545 | INFO     | client:start:53 | ✓ MCP Server 'file_server' initialized. Discovered 5 tools.
+2026-08-05 14:52:22.236 | DEBUG    | middleware:log_requests:46 | → GET /api/biometrics/face/status
+2026-08-05 14:52:22.237 | INFO     | middleware:log_requests:51 | ← GET /api/biometrics/face/status [200] 1.5ms
+2026-08-05 14:52:22.857 | INFO     | websocket:connect:32 | WebSocket connected. Active connections: 1
+2026-08-05 14:52:23.932 | DEBUG    | middleware:log_requests:46 | → POST /api/biometrics/face/enroll
+2026-08-05 14:52:24.213 | INFO     | face_biometrics:_save_profile:55 | ✓ Saved owner face biometrics profile to C:\Users\ashri\JARVIS\data\face_owner_profile.json
+2026-08-05 14:52:24.216 | INFO     | middleware:log_requests:51 | ← POST /api/biometrics/face/enroll [200] 284.0ms
+2026-08-05 14:52:25.443 | DEBUG    | middleware:log_requests:46 | → GET /api/biometrics/face/status
+2026-08-05 14:52:25.445 | INFO     | middleware:log_requests:51 | ← GET /api/biometrics/face/status [200] 2.1ms
+2026-08-05 14:52:26.790 | INFO     | websocket:connect:32 | WebSocket connected. Active connections: 2
+2026-08-05 14:52:27.974 | DEBUG    | middleware:log_requests:46 | → POST /api/biometrics/face/verify
+2026-08-05 14:52:27.994 | INFO     | middleware:log_requests:51 | ← POST /api/biometrics/face/verify [200] 20.4ms
+2026-08-05 14:52:28.467 | WARNING  | llm_router:record_metric:281 | !!! CIRCUIT BREAKER TRIPPED FOR gemini !!! (Skipping provider until recovery)
+2026-08-05 14:52:28.952 | WARNING  | llm_router:record_metric:281 | !!! CIRCUIT BREAKER TRIPPED FOR openrouter !!! (Skipping provider until recovery)
+2026-08-05 14:52:29.650 | WARNING  | llm_router:record_metric:281 | !!! CIRCUIT BREAKER TRIPPED FOR nvidia !!! (Skipping provider until recovery)
+2026-08-05 14:54:13.074 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/agents/active
+2026-08-05 14:54:13.075 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/agents/goals
+2026-08-05 14:54:13.088 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/agents/kv_cache
+2026-08-05 14:54:13.089 | INFO     | middleware:log_requests:51 | ← GET /api/v1/agents/active [200] 15.0ms
+2026-08-05 14:54:13.094 | INFO     | middleware:log_requests:51 | ← GET /api/v1/agents/kv_cache [200] 6.0ms
+2026-08-05 14:54:13.105 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/agents/active
+2026-08-05 14:54:13.106 | INFO     | middleware:log_requests:51 | ← GET /api/v1/agents/active [200] 1.5ms
+2026-08-05 14:54:13.108 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/agents/kv_cache
+2026-08-05 14:54:13.111 | INFO     | middleware:log_requests:51 | ← GET /api/v1/agents/kv_cache [200] 3.2ms
+2026-08-05 14:54:13.130 | INFO     | middleware:log_requests:51 | ← GET /api/v1/agents/goals [200] 55.0ms
+2026-08-05 14:54:13.136 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/agents/goals
+2026-08-05 14:54:13.164 | INFO     | middleware:log_requests:51 | ← GET /api/v1/agents/goals [200] 28.2ms
+2026-08-05 14:54:16.109 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/agents/active
+2026-08-05 14:54:16.111 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/agents/goals
+2026-08-05 14:54:16.114 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/agents/kv_cache
+2026-08-05 14:54:16.115 | INFO     | middleware:log_requests:51 | ← GET /api/v1/agents/active [200] 6.1ms
+2026-08-05 14:54:16.117 | INFO     | middleware:log_requests:51 | ← GET /api/v1/agents/kv_cache [200] 3.3ms
+2026-08-05 14:54:16.122 | INFO     | middleware:log_requests:51 | ← GET /api/v1/agents/goals [200] 10.2ms
+2026-08-05 14:54:19.106 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/agents/active
+2026-08-05 14:54:19.107 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/agents/goals
+2026-08-05 14:54:19.107 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/agents/kv_cache
+2026-08-05 14:54:19.108 | INFO     | middleware:log_requests:51 | ← GET /api/v1/agents/active [200] 2.5ms
+2026-08-05 14:54:19.113 | INFO     | middleware:log_requests:51 | ← GET /api/v1/agents/kv_cache [200] 5.9ms
+2026-08-05 14:54:19.119 | INFO     | middleware:log_requests:51 | ← GET /api/v1/agents/goals [200] 11.5ms
+2026-08-05 14:54:24.740 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:24.742 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 2.0ms
+2026-08-05 14:54:24.744 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:24.872 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 127.0ms (0 controls).
+2026-08-05 14:54:24.922 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 177.9ms
+2026-08-05 14:54:24.923 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:24.927 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 4.1ms
+2026-08-05 14:54:24.941 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:25.190 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 248.2ms (0 controls).
+2026-08-05 14:54:25.404 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 463.5ms
+2026-08-05 14:54:26.233 | DEBUG    | middleware:log_requests:46 | → POST /api/v1/mobile/live_mode/toggle
+2026-08-05 14:54:26.234 | INFO     | middleware:log_requests:51 | ← POST /api/v1/mobile/live_mode/toggle [401] 1.0ms
+2026-08-05 14:54:26.250 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:26.252 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 2.0ms
+2026-08-05 14:54:26.254 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:26.256 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 2.1ms
+2026-08-05 14:54:26.739 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:27.037 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 296.4ms (0 controls).
+2026-08-05 14:54:27.096 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 356.6ms
+2026-08-05 14:54:27.726 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:27.728 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 1.9ms
+2026-08-05 14:54:28.740 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:29.004 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 262.2ms (0 controls).
+2026-08-05 14:54:29.047 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 307.5ms
+2026-08-05 14:54:29.098 | DEBUG    | middleware:log_requests:46 | → POST /api/v1/mobile/live_mode/toggle
+2026-08-05 14:54:29.101 | INFO     | middleware:log_requests:51 | ← POST /api/v1/mobile/live_mode/toggle [401] 3.0ms
+2026-08-05 14:54:29.148 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:29.150 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 1.5ms
+2026-08-05 14:54:29.226 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:29.228 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 2.0ms
+2026-08-05 14:54:30.729 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:30.732 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 3.0ms
+2026-08-05 14:54:30.733 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:31.018 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 284.4ms (0 controls).
+2026-08-05 14:54:31.087 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 354.5ms
+2026-08-05 14:54:32.232 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:32.233 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 1.0ms
+2026-08-05 14:54:32.792 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:32.978 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 183.3ms (0 controls).
+2026-08-05 14:54:33.052 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 259.9ms
+2026-08-05 14:54:33.792 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:33.794 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 2.0ms
+2026-08-05 14:54:34.731 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:35.033 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 301.1ms (0 controls).
+2026-08-05 14:54:35.233 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 501.3ms
+2026-08-05 14:54:35.239 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:35.242 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 3.0ms
+2026-08-05 14:54:36.727 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:36.730 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:36.730 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 2.6ms
+2026-08-05 14:54:37.033 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 302.0ms (0 controls).
+2026-08-05 14:54:37.245 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 514.9ms
+2026-08-05 14:54:37.250 | DEBUG    | middleware:log_requests:46 | → POST /api/v1/mobile/shutdown_approval/request
+2026-08-05 14:54:37.251 | INFO     | middleware:log_requests:51 | ← POST /api/v1/mobile/shutdown_approval/request [401] 2.0ms
+2026-08-05 14:54:37.400 | DEBUG    | middleware:log_requests:46 | → POST /api/v1/mobile/shutdown_approval/request
+2026-08-05 14:54:37.402 | INFO     | middleware:log_requests:51 | ← POST /api/v1/mobile/shutdown_approval/request [401] 2.0ms
+2026-08-05 14:54:38.229 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:38.232 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 3.0ms
+2026-08-05 14:54:38.781 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:38.828 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 44.9ms (0 controls).
+2026-08-05 14:54:39.043 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 260.5ms
+2026-08-05 14:54:39.789 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:39.791 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 2.5ms
+2026-08-05 14:54:40.787 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:40.864 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 76.1ms (0 controls).
+2026-08-05 14:54:41.068 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 282.4ms
+2026-08-05 14:54:41.781 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:41.784 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 2.5ms
+2026-08-05 14:54:42.795 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:42.798 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 2.5ms
+2026-08-05 14:54:42.801 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:42.894 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 91.0ms (0 controls).
+2026-08-05 14:54:43.103 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 302.2ms
+2026-08-05 14:54:44.844 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:44.845 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 1.0ms
+2026-08-05 14:54:44.868 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:44.950 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 63.8ms (0 controls).
+2026-08-05 14:54:45.060 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 192.0ms
+2026-08-05 14:54:45.801 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:45.805 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 3.9ms
+2026-08-05 14:54:46.842 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:46.907 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 64.3ms (0 controls).
+2026-08-05 14:54:46.946 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 104.1ms
+2026-08-05 14:54:47.803 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:47.806 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 2.6ms
+2026-08-05 14:54:48.784 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:48.788 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 4.6ms
+2026-08-05 14:54:48.790 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:48.850 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 58.9ms (0 controls).
+2026-08-05 14:54:48.891 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 100.7ms
+2026-08-05 14:54:52.394 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:52.461 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 64.3ms (0 controls).
+2026-08-05 14:54:52.524 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:52.527 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 133.0ms
+2026-08-05 14:54:52.528 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 4.4ms
+2026-08-05 14:54:52.543 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:52.544 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 1.5ms
+2026-08-05 14:54:52.804 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:52.859 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 54.9ms (0 controls).
+2026-08-05 14:54:52.912 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 109.0ms
+2026-08-05 14:54:53.789 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:53.790 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 1.5ms
+2026-08-05 14:54:54.794 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:54.795 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:54.796 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 2.0ms
+2026-08-05 14:54:54.872 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 75.2ms (0 controls).
+2026-08-05 14:54:54.915 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 120.1ms
+2026-08-05 14:54:56.787 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:56.791 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:56.791 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 3.5ms
+2026-08-05 14:54:56.846 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 52.7ms (0 controls).
+2026-08-05 14:54:56.896 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 105.4ms
+2026-08-05 14:54:57.789 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:57.790 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 0.4ms
+2026-08-05 14:54:58.726 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:54:58.980 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 252.2ms (0 controls).
+2026-08-05 14:54:59.027 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 300.9ms
+2026-08-05 14:54:59.228 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:54:59.230 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 1.5ms
+2026-08-05 14:55:00.787 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:55:00.790 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:55:00.793 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 6.0ms
+2026-08-05 14:55:00.875 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 79.4ms (0 controls).
+2026-08-05 14:55:00.924 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 133.7ms
+2026-08-05 14:55:02.783 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:55:02.786 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 2.5ms
+2026-08-05 14:55:02.787 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/debug/world_model_inspector
+2026-08-05 14:55:02.834 | DEBUG    | uia_scene_graph:capture_scene:141 | Scene graph captured in 46.1ms (0 controls).
+2026-08-05 14:55:02.863 | INFO     | middleware:log_requests:51 | ← GET /api/v1/debug/world_model_inspector [200] 76.0ms
+2026-08-05 14:55:03.781 | DEBUG    | middleware:log_requests:46 | → GET /api/v1/mobile/live_mode/status
+2026-08-05 14:55:03.783 | INFO     | middleware:log_requests:51 | ← GET /api/v1/mobile/live_mode/status [401] 2.0ms

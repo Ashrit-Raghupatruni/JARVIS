@@ -23,6 +23,7 @@ import { MobileCompanionCard } from './MobileCompanionCard'
 import { LiveDebugInspector } from './LiveDebugInspector'
 import { LivePerceptionVisualizer } from './LivePerceptionVisualizer'
 import { AutonomousAgentStudio } from './AutonomousAgentStudio'
+import { DeveloperDashboard } from './DeveloperDashboard'
 import {
   Command,
   ChevronDown,
@@ -49,18 +50,19 @@ interface DashboardLayoutProps {
   onOrbClick: () => void
 }
 
-type NavTab = 'command' | 'agents' | 'history' | 'workflows' | 'queue' | 'telemetry' | 'live' | 'automation' | 'debug'
+type NavTab = 'command' | 'agents' | 'history' | 'workflows' | 'queue' | 'telemetry' | 'live' | 'automation' | 'debug' | 'developer'
 
 const NAV_ITEMS: { id: NavTab; label: string; icon: React.ReactNode }[] = [
-  { id: 'command', label: 'Command Center', icon: <Bot className="w-4 h-4 text-emerald-400" /> },
-  { id: 'agents', label: 'Agent Studio', icon: <Cpu className="w-4 h-4 text-emerald-400" /> },
-  { id: 'history', label: 'Chat History', icon: <MessageSquare className="w-4 h-4 text-emerald-400" /> },
-  { id: 'workflows', label: 'Workflow Studio', icon: <LayoutGrid className="w-4 h-4 text-emerald-400" /> },
-  { id: 'queue', label: 'Task Queue', icon: <ListOrdered className="w-4 h-4 text-emerald-400" /> },
-  { id: 'telemetry', label: 'Telemetry', icon: <Activity className="w-4 h-4 text-emerald-400" /> },
-  { id: 'live', label: 'Live Mode', icon: <Eye className="w-4 h-4 text-emerald-400" /> },
-  { id: 'automation', label: 'Automation', icon: <Globe className="w-4 h-4 text-emerald-400" /> },
-  { id: 'debug', label: 'Debug Inspector', icon: <Terminal className="w-4 h-4 text-emerald-400" /> }
+  { id: 'command', label: 'Command Center', icon: <Bot className="w-4 h-4 text-cyan-400" /> },
+  { id: 'agents', label: 'Agent Studio', icon: <Cpu className="w-4 h-4 text-cyan-400" /> },
+  { id: 'history', label: 'Chat History', icon: <MessageSquare className="w-4 h-4 text-cyan-400" /> },
+  { id: 'workflows', label: 'Workflow Studio', icon: <LayoutGrid className="w-4 h-4 text-cyan-400" /> },
+  { id: 'queue', label: 'Task Queue', icon: <ListOrdered className="w-4 h-4 text-cyan-400" /> },
+  { id: 'telemetry', label: 'Telemetry', icon: <Activity className="w-4 h-4 text-cyan-400" /> },
+  { id: 'live', label: 'Live Mode', icon: <Eye className="w-4 h-4 text-cyan-400" /> },
+  { id: 'automation', label: 'Automation', icon: <Globe className="w-4 h-4 text-cyan-400" /> },
+  { id: 'developer', label: 'Developer Portal', icon: <Terminal className="w-4 h-4 text-cyan-400" /> },
+  { id: 'debug', label: 'Debug Inspector', icon: <Terminal className="w-4 h-4 text-cyan-400" /> }
 ]
 
 export default function DashboardLayout({ onSendMessage, onOrbClick }: DashboardLayoutProps) {
@@ -402,6 +404,9 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
 
         {/* VIEW 8: DEBUG INSPECTOR */}
         {activeTab === 'debug' && <LiveDebugInspector />}
+
+        {/* VIEW 9: DEVELOPER PORTAL */}
+        {activeTab === 'developer' && <DeveloperDashboard />}
       </div>
 
       {/* Global Command Palette Modal */}

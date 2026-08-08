@@ -5,6 +5,7 @@ import { useAudio } from './hooks/useAudio'
 import DashboardLayout from './components/DashboardLayout'
 import SiriWidget from './components/SiriWidget'
 import { FaceLockScreen } from './components/FaceLockScreen'
+import type { HandTracker } from './lib/handTracker'
 
 export default function App() {
   const {
@@ -136,6 +137,57 @@ export default function App() {
 
   const [isLocked, setIsLocked] = useState(true)
 
+  // ── Laptop-Wide Global Hand Gesture Tracking Runner ───────────────
+  const globalVideoRef = useRef<HTMLVideoElement>(null)
+  const globalCanvasRef = useRef<HTMLCanvasElement>(null)
+  const globalTrackerRef = useRef<HandTracker | null>(null)
+  const handControlEnabled = Boolean(settings?.handControl?.enabled)
+
+  useEffect(() => {
+    if (isSiriWidget || isLocked || !handControlEnabled) {
+      if (globalTrackerRef.current) {
+        globalTrackerRef.current.stop()
+        globalTrackerRef.current = null
+      }
+      return
+    }
+
+    const video = globalVideoRef.current
+    const canvas = globalCanvasRef.current
+    if (!video || !canvas) return
+
+    import('./lib/handTracker').then(({ HandTracker }) => {
+      const tracker = new HandTracker(video, canvas, {
+        onHandAction: (action, params) => {
+          if (action === 'click') {
+            sendMessage('hand_action', {
+              action: 'click',
+              click_action: params.action || 'click',
+              button: params.button || 'left'
+            })
+          } else {
+            sendMessage('hand_action', { action, ...params })
+          }
+        }
+      })
+
+      tracker.updateConfigs(settings.handControl)
+      tracker.start().then(() => {
+        globalTrackerRef.current = tracker
+        console.log('[App] Laptop-Wide Global Hand Control Active')
+      }).catch((err) => {
+        console.error('[App] Global Hand Tracker notice:', err)
+      })
+    })
+
+    return () => {
+      if (globalTrackerRef.current) {
+        globalTrackerRef.current.stop()
+        globalTrackerRef.current = null
+      }
+    }
+  }, [handControlEnabled, isLocked, isSiriWidget, sendMessage, settings?.handControl])
+
   // If this window is the Siri widget overlay, render ONLY the Siri visualizer
   if (isSiriWidget) {
     return (
@@ -152,6 +204,10 @@ export default function App() {
 
   return (
     <div className={`h-screen w-screen relative overflow-hidden ${isSerious ? 'serious-mode' : ''}`}>
+      {/* Background hidden video & canvas elements for laptop-wide hand gesture tracking */}
+      <video ref={globalVideoRef} playsInline muted autoPlay className="fixed top-0 left-0 w-1 h-1 opacity-0 pointer-events-none -z-50" />
+      <canvas ref={globalCanvasRef} width={320} height={240} className="fixed top-0 left-0 w-1 h-1 opacity-0 pointer-events-none -z-50" />
+
       {isSerious && <div className="absolute inset-0 serious-scanlines z-50 pointer-events-none" />}
       <DashboardLayout
         onSendMessage={(text) => sendMessage('text_command', { text })}

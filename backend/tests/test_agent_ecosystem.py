@@ -95,3 +95,45 @@ def test_kv_cache_pruner():
     metrics = pruner.get_metrics()
     assert metrics["total_prune_events"] == 1
     assert metrics["pruned_tokens_saved"] > 0
+
+
+async def test_security_sandbox():
+    """Test SecuritySandbox execution rules, key scrubbing, and timeout protection."""
+    from backend.services.security.sandbox import SecuritySandbox
+    sandbox = SecuritySandbox(timeout_limit=2.0)
+    
+    # Test rejection of destructive patterns
+    res = await sandbox.execute_shell("rmdir /s /q C:\\Windows")
+    assert "Error:" in res.stderr
+    assert res.exit_code == -1
+    
+    # Test environment variable sanitization
+    os.environ["GEMINI_API_KEY"] = "sk-test-secret-gemini-key"
+    env = sandbox._get_sanitized_env()
+    assert "GEMINI_API_KEY" not in env
+    
+    # Test execution of simple script in sandbox
+    res_py = await sandbox.execute_python("print('Hello Sandbox')")
+    assert "Hello Sandbox" in res_py.stdout
+    assert res_py.exit_code == 0
+
+
+def test_security_rbac_classify():
+    """Test SecurityOrchestrator command level classification and secrets masking."""
+    from backend.services.security.rbac import SecurityOrchestrator
+    from backend.utils.event_bus import EventBus
+    
+    bus = EventBus()
+    orch = SecurityOrchestrator(event_bus=bus)
+    
+    # Check command levels
+    assert orch.classify_command("git status") == "SAFE"
+    assert orch.classify_command("npm install pandas") == "CONFIRM"
+    assert orch.classify_command("rmdir /s /q test") == "DANGEROUS"
+    
+    # Check secrets masking
+    raw_text = "My key is sk-test-secret-gemini-key-xyz"
+    masked = orch.mask_secrets(raw_text, ["sk-test-secret-gemini-key-xyz"])
+    assert "[REDACTED]" in masked
+    assert "sk-test-secret-gemini-key-xyz" not in masked
+

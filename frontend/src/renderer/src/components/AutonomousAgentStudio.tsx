@@ -131,7 +131,7 @@ export const AutonomousAgentStudio: React.FC = () => {
   }
 
   const getRoleIcon = (role: string) => {
-    if (role === 'CodeAgent') return <Code2 className="w-4 h-4 text-emerald-400" />
+    if (role === 'CodeAgent') return <Code2 className="w-4 h-4 text-cyan-400" />
     if (role === 'ResearchAgent') return <Search className="w-4 h-4 text-blue-400" />
     if (role === 'SecurityAgent') return <Shield className="w-4 h-4 text-amber-400" />
     return <Bot className="w-4 h-4 text-purple-400" />
@@ -140,10 +140,10 @@ export const AutonomousAgentStudio: React.FC = () => {
   return (
     <div className="w-full h-full flex flex-col bg-slate-950/90 text-slate-100 font-sans p-4 overflow-y-auto">
       {/* ── Studio Header & Navigation ────────────────────────────────────── */}
-      <div className="flex items-center justify-between border-b border-emerald-500/30 pb-3 mb-4">
+      <div className="flex items-center justify-between border-b border-cyan-500/30 pb-3 mb-4">
         <div className="flex items-center gap-2.5">
-          <Cpu className="w-5 h-5 text-emerald-400 animate-pulse" />
-          <h2 className="text-sm md:text-base font-mono font-bold text-emerald-200 tracking-wider">
+          <Cpu className="w-5 h-5 text-cyan-400 animate-pulse" />
+          <h2 className="text-sm md:text-base font-mono font-bold text-cyan-200 tracking-wider">
             AUTONOMOUS AGENT ECOSYSTEM
           </h2>
         </div>
@@ -155,7 +155,7 @@ export const AutonomousAgentStudio: React.FC = () => {
             onClick={() => setActiveTab('agents')}
             className={`px-3 py-1 rounded transition-all cursor-pointer ${
               activeTab === 'agents'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_8px_rgba(0,255,102,0.3)]'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_8px_rgba(0,229,255,0.3)]'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -166,7 +166,7 @@ export const AutonomousAgentStudio: React.FC = () => {
             onClick={() => setActiveTab('ipc')}
             className={`px-3 py-1 rounded transition-all cursor-pointer ${
               activeTab === 'ipc'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_8px_rgba(0,255,102,0.3)]'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_8px_rgba(0,229,255,0.3)]'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -177,7 +177,7 @@ export const AutonomousAgentStudio: React.FC = () => {
             onClick={() => setActiveTab('goals')}
             className={`px-3 py-1 rounded transition-all cursor-pointer ${
               activeTab === 'goals'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_8px_rgba(0,255,102,0.3)]'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_8px_rgba(0,229,255,0.3)]'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -188,7 +188,7 @@ export const AutonomousAgentStudio: React.FC = () => {
             onClick={() => setActiveTab('kv')}
             className={`px-3 py-1 rounded transition-all cursor-pointer ${
               activeTab === 'kv'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_8px_rgba(0,255,102,0.3)]'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_8px_rgba(0,229,255,0.3)]'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -203,17 +203,17 @@ export const AutonomousAgentStudio: React.FC = () => {
           {/* Sub-Agent Spawn Form */}
           <form
             onSubmit={handleSpawnAgent}
-            className="flex flex-wrap items-center gap-3 p-3 bg-slate-900/60 border border-emerald-500/20 rounded-xl backdrop-blur-md"
+            className="flex flex-wrap items-center gap-3 p-3 bg-slate-900/60 border border-cyan-500/20 rounded-xl backdrop-blur-md"
           >
-            <div className="flex items-center gap-2 text-xs font-mono text-emerald-300">
-              <PlusCircle className="w-4 h-4 text-emerald-400" />
+            <div className="flex items-center gap-2 text-xs font-mono text-cyan-300">
+              <PlusCircle className="w-4 h-4 text-cyan-400" />
               <span>SPAWN SUB-AGENT:</span>
             </div>
 
             <select
               value={spawnRole}
               onChange={(e) => setSpawnRole(e.target.value as any)}
-              className="bg-slate-950 text-slate-200 border border-slate-700 text-xs font-mono rounded px-2.5 py-1.5 focus:border-emerald-400 outline-none"
+              className="bg-slate-950 text-slate-200 border border-slate-700 text-xs font-mono rounded px-2.5 py-1.5 focus:border-cyan-400 outline-none"
             >
               <option value="CodeAgent">CodeAgent (AST & Refactor)</option>
               <option value="ResearchAgent">ResearchAgent (RAG & Web)</option>
@@ -225,13 +225,13 @@ export const AutonomousAgentStudio: React.FC = () => {
               placeholder="Task goal (e.g. Audit security sandbox & build user dashboard)"
               value={spawnGoal}
               onChange={(e) => setSpawnGoal(e.target.value)}
-              className="flex-1 bg-slate-950 text-slate-100 border border-slate-700 text-xs rounded px-3 py-1.5 focus:border-emerald-400 outline-none min-w-[200px]"
+              className="flex-1 bg-slate-950 text-slate-100 border border-slate-700 text-xs rounded px-3 py-1.5 focus:border-cyan-400 outline-none min-w-[200px]"
             />
 
             <button
               type="submit"
               disabled={isSpawning || !spawnGoal.trim()}
-              className="px-4 py-1.5 bg-emerald-500/20 border border-emerald-400 text-emerald-200 hover:bg-emerald-500/30 text-xs font-mono font-bold rounded transition-all disabled:opacity-50 cursor-pointer shadow-[0_0_10px_rgba(0,255,102,0.2)]"
+              className="px-4 py-1.5 bg-cyan-500/20 border border-cyan-400 text-cyan-200 hover:bg-cyan-500/30 text-xs font-mono font-bold rounded transition-all disabled:opacity-50 cursor-pointer shadow-[0_0_10px_rgba(0,229,255,0.2)]"
             >
               {isSpawning ? 'SPAWNING...' : 'LAUNCH THREAD'}
             </button>
@@ -242,7 +242,7 @@ export const AutonomousAgentStudio: React.FC = () => {
             {activeSubAgents.map((ag) => (
               <div
                 key={ag.agent_id}
-                className="p-3.5 bg-slate-900/80 border border-slate-800 hover:border-emerald-500/40 rounded-xl transition-all flex flex-col justify-between"
+                className="p-3.5 bg-slate-900/80 border border-slate-800 hover:border-cyan-500/40 rounded-xl transition-all flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
@@ -253,7 +253,7 @@ export const AutonomousAgentStudio: React.FC = () => {
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase font-bold ${
                         ag.status === 'completed'
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
                           : ag.status === 'running'
                           ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse'
                           : 'bg-slate-800 text-slate-400'
@@ -266,7 +266,7 @@ export const AutonomousAgentStudio: React.FC = () => {
                   <p className="text-xs text-slate-300 line-clamp-2 mb-2 font-mono">{ag.task_goal}</p>
 
                   <div className="text-[11px] font-mono text-slate-400 mb-2">
-                    Step: <span className="text-emerald-300">{ag.current_step}</span>
+                    Step: <span className="text-cyan-300">{ag.current_step}</span>
                   </div>
                 </div>
 
@@ -274,7 +274,7 @@ export const AutonomousAgentStudio: React.FC = () => {
                 <div>
                   <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden mb-1">
                     <div
-                      className="h-full bg-emerald-400 transition-all duration-300"
+                      className="h-full bg-cyan-400 transition-all duration-300"
                       style={{ width: `${Math.round((ag.progress || 0) * 100)}%` }}
                     />
                   </div>
@@ -292,8 +292,8 @@ export const AutonomousAgentStudio: React.FC = () => {
       {/* ── TAB 2: IPC Message Bus Stream ─────────────────────────────────── */}
       {activeTab === 'ipc' && (
         <div className="flex flex-col gap-2 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
-          <div className="flex items-center gap-2 text-xs font-mono text-emerald-300 mb-1">
-            <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
+          <div className="flex items-center gap-2 text-xs font-mono text-cyan-300 mb-1">
+            <Radio className="w-4 h-4 text-cyan-400 animate-pulse" />
             <span>REAL-TIME AGENT-TO-AGENT IPC STREAM</span>
           </div>
 
@@ -310,7 +310,7 @@ export const AutonomousAgentStudio: React.FC = () => {
                 >
                   <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-emerald-400 font-bold">{m.sender}</span>
+                      <span className="text-cyan-400 font-bold">{m.sender}</span>
                       <span className="text-slate-500">➔</span>
                       <span className="text-blue-400 font-bold">{m.recipient}</span>
                       <span className="px-1.5 py-0.2 rounded text-[9px] bg-slate-800 text-slate-300 uppercase">
@@ -331,11 +331,11 @@ export const AutonomousAgentStudio: React.FC = () => {
       {activeTab === 'goals' && (
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-emerald-300">PERSISTENT MULTI-DAY GOAL QUEUE (SQLITE WAL)</span>
+            <span className="text-xs font-mono text-cyan-300">PERSISTENT MULTI-DAY GOAL QUEUE (SQLITE WAL)</span>
             <button
               type="button"
               onClick={handleCreateGoal}
-              className="px-3 py-1 bg-emerald-500/20 border border-emerald-400 text-emerald-200 text-xs font-mono rounded hover:bg-emerald-500/30 transition-all cursor-pointer"
+              className="px-3 py-1 bg-cyan-500/20 border border-cyan-400 text-cyan-200 text-xs font-mono rounded hover:bg-cyan-500/30 transition-all cursor-pointer"
             >
               + NEW LONG-HORIZON GOAL
             </button>
@@ -349,12 +349,12 @@ export const AutonomousAgentStudio: React.FC = () => {
               >
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
-                    <Database className="w-4 h-4 text-emerald-400" />
+                    <Database className="w-4 h-4 text-cyan-400" />
                     <span className="font-mono text-sm font-bold text-slate-100">{g.title}</span>
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase ${
                         g.status === 'running'
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
                           : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                       }`}
                     >
@@ -366,7 +366,7 @@ export const AutonomousAgentStudio: React.FC = () => {
 
                 <div className="flex items-center gap-3 font-mono text-xs">
                   <span className="text-slate-400">
-                    Step <strong className="text-emerald-300">{g.current_step_index}</strong> / {g.total_steps}
+                    Step <strong className="text-cyan-300">{g.current_step_index}</strong> / {g.total_steps}
                   </span>
 
                   <button
@@ -375,7 +375,7 @@ export const AutonomousAgentStudio: React.FC = () => {
                     className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-700 cursor-pointer"
                     title={g.status === 'paused' ? 'Resume Goal' : 'Pause Goal'}
                   >
-                    {g.status === 'paused' ? <Play className="w-3.5 h-3.5 text-emerald-400" /> : <Pause className="w-3.5 h-3.5 text-amber-400" />}
+                    {g.status === 'paused' ? <Play className="w-3.5 h-3.5 text-cyan-400" /> : <Pause className="w-3.5 h-3.5 text-amber-400" />}
                   </button>
                 </div>
               </div>
@@ -388,8 +388,8 @@ export const AutonomousAgentStudio: React.FC = () => {
       {activeTab === 'kv' && (
         <div className="flex flex-col gap-4 p-4 bg-slate-900/60 rounded-xl border border-slate-800 font-mono">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs text-emerald-300">
-              <Zap className="w-4 h-4 text-emerald-400" />
+            <div className="flex items-center gap-2 text-xs text-cyan-300">
+              <Zap className="w-4 h-4 text-cyan-400" />
               <span>CONTEXT WINDOW KV-CACHE COMPRESSION METRICS</span>
             </div>
             <button
@@ -412,7 +412,7 @@ export const AutonomousAgentStudio: React.FC = () => {
             </div>
             <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
               <div className="text-[10px] text-slate-500 mb-1">PRUNED SAVINGS</div>
-              <div className="text-lg font-bold text-emerald-400">+{kvCacheMetrics?.pruned_tokens_saved || 0}</div>
+              <div className="text-lg font-bold text-cyan-400">+{kvCacheMetrics?.pruned_tokens_saved || 0}</div>
             </div>
             <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
               <div className="text-[10px] text-slate-500 mb-1">SAVINGS %</div>

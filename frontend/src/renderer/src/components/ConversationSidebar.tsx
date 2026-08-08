@@ -15,6 +15,11 @@ interface ConversationSidebarProps {
   onNewChat: () => void
 }
 
+const getApiUrl = (path: string) => {
+  const host = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.hostname !== '' ? window.location.hostname : '127.0.0.1'
+  return `http://${host}:8000${path}`
+}
+
 export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   activeId,
   onSelectConversation,
@@ -28,7 +33,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const fetchConversations = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/conversations')
+      const res = await fetch(getApiUrl('/api/conversations'))
       if (res.ok) {
         const data = await res.json()
         if (data.conversations) {
@@ -56,7 +61,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     e.stopPropagation()
     if (!editTitle.trim()) return
     try {
-      const res = await fetch(`/api/conversations/${id}`, {
+      const res = await fetch(getApiUrl(`/api/conversations/${id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: editTitle.trim() }),
@@ -77,7 +82,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     e.stopPropagation()
     if (!confirm('Are you sure you want to delete this conversation?')) return
     try {
-      const res = await fetch(`/api/conversations/${id}`, {
+      const res = await fetch(getApiUrl(`/api/conversations/${id}`), {
         method: 'DELETE',
       })
       if (res.ok) {

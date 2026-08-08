@@ -73,19 +73,30 @@ class StrategyMemoryService:
             return ranked[0]
         return {"strategy": "win32_uia", "confidence": 0.95, "name": "Default Win32 UIA"}
 
-    def update_strategy_outcome(self, category: str, strategy_id: str, success: bool) -> None:
-        """Update confidence score for a strategy based on execution outcome."""
+    def update_strategy_outcome(self, category: str, strategy_id: str, reward: float) -> None:
+        """Update confidence score dynamically based on reward/penalty outcomes.
+        
+        Reward mappings:
+        - Successful task: +1
+        - Excellent result: +2
+        - Partial success: +0.5
+        - User correction: -1
+        - Task failure: -2
+        - Repeated failure: -3
+        """
         strats = self.strategies.get(category, [])
         for s in strats:
             if s.get("strategy") == strategy_id:
-                if success:
+                # Adjust confidence based on reward
+                change = reward * 0.05
+                s["confidence"] = max(0.10, min(0.99, s.get("confidence", 0.5) + change))
+                if reward > 0:
                     s["success_count"] = s.get("success_count", 0) + 1
-                    s["confidence"] = min(0.99, s.get("confidence", 0.5) + 0.02)
                 else:
                     s["fail_count"] = s.get("fail_count", 0) + 1
-                    s["confidence"] = max(0.10, s.get("confidence", 0.5) - 0.05)
                 break
         
         self.strategies[category] = strats
         self._save_strategies()
-        logger.info("📈 Updated strategy confidence: {} -> {} (success={})", category, strategy_id, success)
+        logger.info("📈 Updated strategy confidence: {} -> {} (reward={}, confidence={:.2f})", category, strategy_id, reward, s.get("confidence", 0.0))
+

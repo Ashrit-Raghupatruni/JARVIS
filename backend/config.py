@@ -6,6 +6,12 @@ using Pydantic Settings. All configuration values are centralized here
 with sensible defaults for development and production use.
 """
 
+import os
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+os.environ["CHROMA_TELEMETRY"] = "False"
+os.environ["POSTHOG_DISABLED"] = "1"
+os.environ["POSTHOG_OPT_OUT"] = "1"
+
 from pathlib import Path
 from typing import Optional
 
@@ -40,7 +46,15 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # ── LLM Settings ─────────────────────────────────────────────────────
+    # ── LLM & System Settings ──────────────────────────────────────────────
+    JARVIS_ARCH_V2: bool = Field(
+        default=True,
+        description="Feature flag enabling 6-Pillar Core Control Architecture"
+    )
+    FORCE_OFFLINE_MODE: bool = Field(
+        default=True,
+        description="Force HuggingFace Hub and Transformers to run in offline mode to prevent pool hangs.",
+    )
     LLM_PROVIDER: str = Field(
         default="ollama",
         description="Primary LLM provider to use: ollama (primary), groq (secondary), openai (optional).",
