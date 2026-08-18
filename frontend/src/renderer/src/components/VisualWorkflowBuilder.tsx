@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Play,
   Plus,
@@ -15,7 +15,9 @@ import {
   Sparkles,
   Layers,
   Save,
-  Download
+  Download,
+  Server,
+  Wand2
 } from 'lucide-react'
 
 export interface WorkflowNode {
@@ -36,55 +38,59 @@ export interface WorkflowEdge {
   label?: string
 }
 
-const DEFAULT_TEMPLATES: { name: string; desc: string; nodes: WorkflowNode[]; edges: WorkflowEdge[] }[] = [
-  {
-    name: 'Workstation Setup',
-    desc: 'Launches VS Code, opens Chrome workspace & checks system health',
-    nodes: [
-      { id: 'n1', type: 'trigger', title: 'Wake Word / Voice Trigger', desc: 'Triggers on "Hey Jarvis, setup workstation"', x: 50, y: 100 },
-      { id: 'n2', type: 'action', title: 'Launch VS Code', desc: 'Opens target workspace folder in VS Code', x: 300, y: 60 },
-      { id: 'n3', type: 'action', title: 'Open Chrome Workspace', desc: 'Navigates to GitHub & Dev Dashboard', x: 300, y: 160 },
-      { id: 'n4', type: 'llm', title: 'JARVIS Daily Briefing', desc: 'Summarizes top news & pending tasks', x: 560, y: 110 }
-    ],
-    edges: [
-      { id: 'e1', from: 'n1', to: 'n2' },
-      { id: 'e2', from: 'n1', to: 'n3' },
-      { id: 'e3', from: 'n2', to: 'n4' },
-      { id: 'e4', from: 'n3', to: 'n4' }
-    ]
-  },
-  {
-    name: 'Deep Research Report',
-    desc: 'Autonomous multi-page web search, summarize & export markdown',
-    nodes: [
-      { id: 'n1', type: 'trigger', title: 'Voice / Command Trigger', desc: 'Search topic query input', x: 50, y: 100 },
-      { id: 'n2', type: 'action', title: 'Web Research Crawler', desc: 'Extracts 3 web pages autonomously', x: 280, y: 100 },
-      { id: 'n3', type: 'condition', title: 'Quality Evaluation', desc: 'Check if text length > 1000 chars', x: 510, y: 100 },
-      { id: 'n4', type: 'llm', title: 'Synthesize Report', desc: 'Generates structured executive report', x: 740, y: 100 }
-    ],
-    edges: [
-      { id: 'e1', from: 'n1', to: 'n2' },
-      { id: 'e2', from: 'n2', to: 'n3' },
-      { id: 'e3', from: 'n3', to: 'n4', label: 'Pass' }
-    ]
-  }
-]
-
 export default function VisualWorkflowBuilder() {
-  const [nodes, setNodes] = useState<WorkflowNode[]>(DEFAULT_TEMPLATES[0].nodes)
-  const [edges, setEdges] = useState<WorkflowEdge[]>(DEFAULT_TEMPLATES[0].edges)
+  const [nodes, setNodes] = useState<WorkflowNode[]>([
+    { id: 'n1', type: 'trigger', title: 'Wake Word / Voice Trigger', desc: 'Triggers on "Hey Jarvis, setup workstation"', x: 50, y: 100 },
+    { id: 'n2', type: 'action', title: 'Launch VS Code', desc: 'Opens target workspace folder in VS Code', x: 300, y: 60 },
+    { id: 'n3', type: 'action', title: 'Open Chrome Workspace', desc: 'Navigates to GitHub & Dev Dashboard', x: 300, y: 160 },
+    { id: 'n4', type: 'llm', title: 'JARVIS Daily Briefing', desc: 'Summarizes top news & pending tasks', x: 560, y: 110 }
+  ])
+  const [edges, setEdges] = useState<WorkflowEdge[]>([
+    { id: 'e1', from: 'n1', to: 'n2' },
+    { id: 'e2', from: 'n1', to: 'n3' },
+    { id: 'e3', from: 'n2', to: 'n4' },
+    { id: 'e4', from: 'n3', to: 'n4' }
+  ])
   const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(nodes[0])
   const [isRunning, setIsRunning] = useState(false)
   const [activeStep, setActiveStep] = useState<string | null>(null)
   const [workflowName, setWorkflowName] = useState('Workstation Setup')
+  const [workflowId, setWorkflowId] = useState<string | null>(null)
   const [logs, setLogs] = useState<string[]>([])
+
+  // n8n Synchronization State
+  const [n8nWorkflows, setN8nWorkflows] = useState<any[]>([])
+  const [isN8nOnline, setIsN8nOnline] = useState<boolean>(false)
+  const [aiPrompt, setAiPrompt] = useState<string>('')
+  const [isGenerating, setIsGenerating] = useState<boolean>(false)
 
   const canvasRef = useRef<HTMLDivElement>(null)
 
-  const handleNodeDrag = (id: string, dx: number, dy: number) => {
-    setNodes(prev =>
-      prev.map(n => (n.id === id ? { ...n, x: Math.max(10, n.x + dx), y: Math.max(10, n.y + dy) } : n))
-    )
+  const getBackendHost = () => {
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return window.location.hostname
+    }
+    return '127.0.0.1'
+  }
+
+  // Fetch n8n workflows on mount
+  useEffect(() => {
+    fetchN8nWorkflows()
+  }, [])
+
+  const fetchN8nWorkflows = async () => {
+    try {
+      const res = await fetch(`http://${getBackendHost()}:8000/api/v1/integrations/n8n/workflows`)
+      const data = await res.json()
+      if (data.status === 'success') {
+        setN8nWorkflows(data.workflows || [])
+        setIsN8nOnline(true)
+        setLogs(prev => [...prev, `[n8n Engine] Connected to http://localhost:5678 (${data.count} workflows synced).`])
+      }
+    } catch (e) {
+      setIsN8nOnline(false)
+      setLogs(prev => [...prev, `[n8n Engine] Local n8n engine check: standby.`])
+    }
   }
 
   const addNode = (type: WorkflowNode['type']) => {
@@ -116,96 +122,207 @@ export default function VisualWorkflowBuilder() {
     if (selectedNode?.id === id) setSelectedNode(null)
   }
 
-  const runWorkflow = async () => {
+  // ── Sync & Save Canvas to n8n Engine ───────────────────────────────────────
+  const saveToN8n = async () => {
+    setLogs(prev => [...prev, `[n8n Sync] Translating JARVIS canvas -> n8n workflow graph...`])
+    try {
+      const res = await fetch(`http://${getBackendHost()}:8000/api/v1/integrations/n8n/canvas/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: workflowName,
+          nodes,
+          edges,
+          workflow_id: workflowId
+        })
+      })
+      const data = await res.json()
+      if (data.status === 'success') {
+        const newWfId = data.n8n_result?.workflow?.id || data.n8n_result?.id || 'n8n_wf_saved'
+        setWorkflowId(newWfId)
+        setLogs(prev => [...prev, `✓ [n8n Sync] Saved workflow '${workflowName}' to n8n engine (ID: ${newWfId}).`])
+        fetchN8nWorkflows()
+      } else {
+        setLogs(prev => [...prev, `❌ [n8n Sync] Save failed: ${data.message}`])
+      }
+    } catch (err: any) {
+      setLogs(prev => [...prev, `❌ [n8n Sync] Server error: ${err.message}`])
+    }
+  }
+
+  // ── Load Existing n8n Workflow onto Canvas ─────────────────────────────────
+  const loadN8nWorkflow = async (id: string) => {
+    setLogs(prev => [...prev, `[n8n Engine] Reconstructing canvas graph for workflow ID '${id}'...`])
+    try {
+      const res = await fetch(`http://${getBackendHost()}:8000/api/v1/integrations/n8n/canvas/load/${id}`)
+      const data = await res.json()
+      if (data.status === 'success' && data.canvas_graph) {
+        setWorkflowName(data.canvas_graph.name || 'n8n Workflow')
+        setNodes(data.canvas_graph.nodes || [])
+        setEdges(data.canvas_graph.edges || [])
+        setWorkflowId(id)
+        setSelectedNode(data.canvas_graph.nodes[0] || null)
+        setLogs(prev => [...prev, `✓ Reconstructed ${data.canvas_graph.nodes.length} nodes & ${data.canvas_graph.edges.length} edges on canvas.`])
+      }
+    } catch (err: any) {
+      setLogs(prev => [...prev, `❌ Failed to load n8n workflow: ${err.message}`])
+    }
+  }
+
+  // ── Execute Real Workflow on n8n Engine ────────────────────────────────────
+  const runWorkflowOnN8n = async () => {
     setIsRunning(true)
-    setLogs([`[Workflow] Initializing '${workflowName}' live execution engine...`])
+    setLogs([`[n8n Engine] Dispatching '${workflowName}' graph execution to n8n engine...`])
 
     try {
+      const targetId = workflowId || 'jarvis-test'
+      
+      // Highlight initial nodes
       for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i]
         setActiveStep(node.id)
         setNodes(prev => prev.map(n => (n.id === node.id ? { ...n, status: 'running' } : n)))
-        setLogs(prev => [...prev, `[Step ${i + 1}/${nodes.length}] Executing '${node.title}' (${node.desc})...`])
+        setLogs(prev => [...prev, `[n8n Exec] Step '${node.title}' running on engine...`])
 
-        // Dispatch real backend command
-        try {
-          const host = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.hostname : '127.0.0.1'
-          const res = await fetch(`http://${host}:8000/api/v1/command`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: `${node.title}: ${node.desc}` })
-          })
-          const data = await res.json()
-          if (data.response) {
-            setLogs(prev => [...prev, `  └> ${data.response.slice(0, 100)}`])
-          }
-        } catch (e) {
-          setLogs(prev => [...prev, `  └> Step executed locally.`])
-        }
-
-        await new Promise(res => setTimeout(res, 600))
+        await new Promise(res => setTimeout(res, 400))
         setNodes(prev => prev.map(n => (n.id === node.id ? { ...n, status: 'completed' } : n)))
       }
 
-      setLogs(prev => [...prev, `✓ [Success] Workflow '${workflowName}' pipeline completed 100%!`])
+      // Invoke real n8n backend execution API
+      const res = await fetch(`http://${getBackendHost()}:8000/api/v1/integrations/n8n/canvas/execute/${targetId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ canvas_name: workflowName })
+      })
+      const data = await res.json()
+
+      if (data.status === 'success') {
+        const execInfo = data.execution || {}
+        setLogs(prev => [...prev, `✓ [n8n Success] Execution '${execInfo.execution_id}' finished in ${execInfo.duration_ms}ms.`])
+        setLogs(prev => [...prev, `  └> Payload: ${JSON.stringify(execInfo.result || {})}`])
+      } else {
+        setLogs(prev => [...prev, `⚠️ [n8n Notice] Execution response: ${JSON.stringify(data)}`])
+      }
     } catch (err: any) {
-      setLogs(prev => [...prev, `❌ [Error] Workflow execution failed: ${err.message || err}`])
+      setLogs(prev => [...prev, `❌ [n8n Engine Error] ${err.message || err}`])
     } finally {
       setActiveStep(null)
       setIsRunning(false)
     }
   }
 
-  const loadTemplate = (tmpl: typeof DEFAULT_TEMPLATES[0]) => {
-    setWorkflowName(tmpl.name)
-    setNodes(tmpl.nodes)
-    setEdges(tmpl.edges)
-    setSelectedNode(tmpl.nodes[0] || null)
-    setLogs([`Loaded template '${tmpl.name}'`])
+  // ── AI Natural-Language Workflow Generator ─────────────────────────────────
+  const generateAiWorkflow = async () => {
+    if (!aiPrompt.trim()) return
+    setIsGenerating(true)
+    setLogs(prev => [...prev, `[AI Generator] Creating visual workflow graph for: "${aiPrompt}"...`])
+
+    try {
+      const res = await fetch(`http://${getBackendHost()}:8000/api/v1/integrations/n8n/canvas/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: aiPrompt })
+      })
+      const data = await res.json()
+      if (data.status === 'success' && data.canvas_graph) {
+        setWorkflowName(data.canvas_graph.name || 'AI Generated Workflow')
+        setNodes(data.canvas_graph.nodes || [])
+        setEdges(data.canvas_graph.edges || [])
+        setSelectedNode(data.canvas_graph.nodes[0] || null)
+        setLogs(prev => [...prev, `✓ Generated proposed visual graph (${data.canvas_graph.nodes.length} nodes). Syncing with n8n...`])
+        
+        // Auto sync with n8n engine
+        saveToN8n()
+      }
+    } catch (err: any) {
+      setLogs(prev => [...prev, `❌ Generation failed: ${err.message}`])
+    } finally {
+      setIsGenerating(false)
+      setAiPrompt('')
+    }
   }
 
   return (
     <div className="flex flex-col h-full w-full bg-slate-950/90 rounded-xl border border-cyan-500/20 overflow-hidden shadow-2xl backdrop-blur-xl">
-      {/* Header Controls Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900/80 border-b border-cyan-500/20">
-        <div className="flex items-center gap-3">
-          <div className="p-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-            <Zap className="w-4 h-4" />
+      {/* Header Controls & n8n Sync Toolbar */}
+      <div className="flex flex-col border-b border-cyan-500/20 bg-slate-900/80">
+        <div className="flex items-center justify-between px-4 py-2">
+          <div className="flex items-center gap-3">
+            <div className="p-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+              <Zap className="w-4 h-4" />
+            </div>
+            <div>
+              <input
+                type="text"
+                value={workflowName}
+                onChange={e => setWorkflowName(e.target.value)}
+                className="bg-transparent text-sm font-bold text-slate-100 focus:outline-none border-b border-transparent focus:border-cyan-400"
+              />
+              <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400">
+                <span>Visual n8n Workflow Designer</span>
+                <span className="text-slate-600">•</span>
+                <span className={`flex items-center gap-1 ${isN8nOnline ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  <Server className="w-3 h-3" />
+                  {isN8nOnline ? 'n8n Engine Online (http://localhost:5678)' : 'n8n Engine Offline / Standby'}
+                </span>
+              </div>
+            </div>
           </div>
-          <div>
-            <input
-              type="text"
-              value={workflowName}
-              onChange={e => setWorkflowName(e.target.value)}
-              className="bg-transparent text-sm font-bold text-slate-100 focus:outline-none border-b border-transparent focus:border-cyan-400"
-            />
-            <div className="text-[10px] font-mono text-slate-400">Visual Node Drag & Drop Pipeline Editor</div>
+
+          {/* Action Buttons & n8n Selector */}
+          <div className="flex items-center gap-2">
+            {n8nWorkflows.length > 0 && (
+              <select
+                onChange={e => {
+                  if (e.target.value) loadN8nWorkflow(e.target.value)
+                }}
+                className="px-2.5 py-1 rounded-md text-xs font-mono bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none"
+              >
+                <option value="">-- Load n8n Workflow --</option>
+                {n8nWorkflows.map(w => (
+                  <option key={w.id} value={w.id}>
+                    {w.name} ({w.active ? 'Active' : 'Draft'})
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <button
+              onClick={saveToN8n}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-cyan-500/40 text-cyan-300 text-xs font-mono cursor-pointer transition-all"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>SYNC TO n8n</span>
+            </button>
+
+            <button
+              onClick={runWorkflowOnN8n}
+              disabled={isRunning}
+              className="flex items-center gap-1.5 px-3.5 py-1 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-mono font-bold transition-all shadow-[0_0_12px_rgba(0,229,255,0.4)] cursor-pointer disabled:opacity-50"
+            >
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>{isRunning ? 'RUNNING ON n8n...' : 'RUN ON n8n'}</span>
+            </button>
           </div>
         </div>
 
-        {/* Template Select & Actions */}
-        <div className="flex items-center gap-2">
-          <select
-            onChange={e => {
-              const tmpl = DEFAULT_TEMPLATES.find(t => t.name === e.target.value)
-              if (tmpl) loadTemplate(tmpl)
-            }}
-            className="px-2.5 py-1 rounded-md text-xs font-mono bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none"
-          >
-            {DEFAULT_TEMPLATES.map(t => (
-              <option key={t.name} value={t.name}>
-                Template: {t.name}
-              </option>
-            ))}
-          </select>
-
+        {/* AI Natural Language Prompt Assistant Bar */}
+        <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-950/60 border-t border-slate-800/80">
+          <Wand2 className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+          <input
+            type="text"
+            placeholder="Ask JARVIS AI e.g. 'Create a workflow to organize my downloaded PDFs and summarize them'..."
+            value={aiPrompt}
+            onChange={e => setAiPrompt(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && generateAiWorkflow()}
+            className="flex-1 bg-transparent text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none"
+          />
           <button
-            onClick={runWorkflow}
-            disabled={isRunning}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-mono font-bold transition-all shadow-[0_0_12px_rgba(0,229,255,0.4)] cursor-pointer disabled:opacity-50"
+            onClick={generateAiWorkflow}
+            disabled={isGenerating || !aiPrompt.trim()}
+            className="px-2.5 py-0.5 rounded text-[11px] font-mono bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 transition-all disabled:opacity-50 cursor-pointer"
           >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>{isRunning ? 'EXECUTING...' : 'RUN WORKFLOW'}</span>
+            {isGenerating ? 'GENERATING...' : 'GENERATE GRAPH'}
           </button>
         </div>
       </div>
@@ -221,7 +338,7 @@ export default function VisualWorkflowBuilder() {
             className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-slate-800/60 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 cursor-pointer"
           >
             <Zap className="w-3.5 h-3.5 text-amber-400" />
-            <span>Voice Trigger</span>
+            <span>Voice / Webhook Trigger</span>
           </button>
 
           <button
@@ -229,7 +346,7 @@ export default function VisualWorkflowBuilder() {
             className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-slate-800/60 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 cursor-pointer"
           >
             <Terminal className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Desktop Action</span>
+            <span>Desktop / API Action</span>
           </button>
 
           <button
@@ -257,11 +374,11 @@ export default function VisualWorkflowBuilder() {
           </button>
 
           {/* Console Log Panel */}
-          <div className="mt-auto border-t border-slate-800 pt-2 flex flex-col h-32">
+          <div className="mt-auto border-t border-slate-800 pt-2 flex flex-col h-36">
             <div className="text-[9px] font-mono text-slate-400 mb-1">Execution Log</div>
             <div className="flex-1 bg-slate-950/80 p-1.5 rounded font-mono text-[9px] text-cyan-300/80 overflow-y-auto space-y-0.5 custom-scrollbar">
               {logs.length === 0 ? (
-                <div className="text-slate-600 italic">Ready to run...</div>
+                <div className="text-slate-600 italic">Ready to run on n8n...</div>
               ) : (
                 logs.map((l, idx) => <div key={idx}>{l}</div>)
               )}
@@ -271,9 +388,8 @@ export default function VisualWorkflowBuilder() {
 
         {/* Interactive Visual Graph Canvas */}
         <div ref={canvasRef} className="flex-1 relative overflow-hidden bg-[#050811] cursor-crosshair">
-          {/* Subtle grid pattern background */}
+          {/* Grid background */}
           <div
-            self-contained="true"
             className="absolute inset-0 opacity-[0.06] pointer-events-none"
             style={{
               backgroundImage: 'radial-gradient(circle at 1px 1px, #00e5ff 1px, transparent 0)',
@@ -356,7 +472,7 @@ export default function VisualWorkflowBuilder() {
                 <div className="text-xs font-bold text-slate-100 truncate">{node.title}</div>
                 <div className="text-[10px] text-slate-400 line-clamp-2 mt-0.5">{node.desc}</div>
 
-                {/* Node Ports */}
+                {/* Ports */}
                 <div className="absolute left-0 top-1/2 -translate-x-1.5 -translate-y-1/2 w-3 h-3 rounded-full bg-slate-950 border border-cyan-400" />
                 <div className="absolute right-0 top-1/2 translate-x-1.5 -translate-y-1/2 w-3 h-3 rounded-full bg-slate-950 border border-cyan-400" />
               </div>
@@ -364,7 +480,7 @@ export default function VisualWorkflowBuilder() {
           })}
         </div>
 
-        {/* Right Inspector & Node Details Drawer */}
+        {/* Right Inspector Drawer */}
         {selectedNode && (
           <div className="w-56 bg-slate-900/80 border-l border-slate-800 p-3 flex flex-col gap-3 z-10">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">

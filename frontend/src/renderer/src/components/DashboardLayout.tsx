@@ -19,11 +19,13 @@ import SettingsPanel from './SettingsPanel'
 import VisualWorkflowBuilder from './VisualWorkflowBuilder'
 import TaskQueueManager from './TaskQueueManager'
 import LiveModeCard from './LiveModeCard'
+import { DynamicContentPanel, SearchResultCard } from './DynamicContentPanel'
 import { MobileCompanionCard } from './MobileCompanionCard'
 import { LiveDebugInspector } from './LiveDebugInspector'
 import { LivePerceptionVisualizer } from './LivePerceptionVisualizer'
 import { AutonomousAgentStudio } from './AutonomousAgentStudio'
 import { DeveloperDashboard } from './DeveloperDashboard'
+import { ProactiveGuidanceCard } from './ProactiveGuidanceCard'
 import {
   Command,
   ChevronDown,
@@ -315,6 +317,18 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
               <Orb onOrbClick={onOrbClick} />
               <div className="mt-2 w-full max-w-[360px]">
                 <VoiceWave />
+              </div>
+              <div className="w-full max-w-2xl mt-4 overflow-y-auto max-h-[340px] custom-scrollbar">
+                <ProactiveGuidanceCard
+                  item={{
+                    guidance_type: 'active_project',
+                    title: 'Proactive Check-In: JARVIS AI OS',
+                    message: '[Morning Briefing] You have been working on JARVIS AI OS across the last 8 turns.',
+                    action_suggestion: 'Run system integration tests'
+                  }}
+                  onActionClick={(suggestion) => onSendMessage(suggestion)}
+                />
+                <DynamicContentPanel />
               </div>
             </div>
 

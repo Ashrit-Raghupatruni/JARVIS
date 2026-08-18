@@ -125,11 +125,10 @@ class ToolRegistry:
             return f"Opened application '{app_name}' via system search."
 
         async def _web_search_handler(query: str):
-            import webbrowser, urllib.parse
-            q_enc = urllib.parse.quote(query)
-            url = f"https://www.google.com/search?q={q_enc}"
-            webbrowser.open(url)
-            return f"Opened browser for web search query: '{query}'."
+            from backend.services.online_research_engine import online_research_engine
+            if query.startswith("http://") or query.startswith("https://"):
+                return online_research_engine.extract_url_content(query)
+            return online_research_engine.search_web(query)
 
         async def _yt_handler(query: str):
             import webbrowser, urllib.parse
@@ -369,4 +368,95 @@ class ToolRegistry:
                 "required": ["topic"]
             },
             handler=_generate_quiz_handler
+        )
+        from backend.tools.n8n_tools import (
+            n8n_list_workflows,
+            n8n_get_workflow,
+            n8n_execute_workflow,
+            n8n_create_workflow,
+            n8n_activate_workflow,
+            n8n_deactivate_workflow,
+        )
+
+        self.register(
+            name="n8n_list_workflows",
+            description="Enumerates available active and inactive n8n automation workflows on the local n8n instance.",
+            category="integrations",
+            risk_level="low",
+            parameters={"type": "object", "properties": {}},
+            handler=n8n_list_workflows
+        )
+        self.register(
+            name="n8n_get_workflow",
+            description="Retrieves complete node graph details and configuration for a specific n8n workflow ID.",
+            category="integrations",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "workflow_id": {"type": "string", "description": "Target n8n workflow ID"}
+                },
+                "required": ["workflow_id"]
+            },
+            handler=n8n_get_workflow
+        )
+        self.register(
+            name="n8n_execute_workflow",
+            description="Executes an n8n workflow by workflow ID or webhook slug with custom JSON parameters.",
+            category="integrations",
+            risk_level="medium",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "target": {"type": "string", "description": "n8n workflow ID or webhook slug (e.g. 'send-email', 'calendar-sync')"},
+                    "payload": {"type": "object", "description": "JSON payload containing input parameters for the workflow"}
+                },
+                "required": ["target"]
+            },
+            handler=n8n_execute_workflow
+        )
+        self.register(
+            name="n8n_create_workflow",
+            description="Constructs and registers a new n8n workflow graph on the local n8n engine.",
+            category="integrations",
+            risk_level="high",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Workflow name"},
+                    "nodes": {"type": "array", "description": "List of n8n node objects"},
+                    "connections": {"type": "object", "description": "Workflow node connections dict"},
+                    "active": {"type": "boolean", "description": "Whether to activate upon creation"}
+                },
+                "required": ["name"]
+            },
+            handler=n8n_create_workflow
+        )
+        self.register(
+            name="n8n_activate_workflow",
+            description="Activates an n8n workflow by workflow ID.",
+            category="integrations",
+            risk_level="high",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "workflow_id": {"type": "string", "description": "Target n8n workflow ID"}
+                },
+                "required": ["workflow_id"]
+            },
+            handler=n8n_activate_workflow
+        )
+        self.register(
+            name="n8n_deactivate_workflow",
+            description="Deactivates an n8n workflow by workflow ID.",
+            category="integrations",
+            risk_level="high",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "workflow_id": {"type": "string", "description": "Target n8n workflow ID"}
+                },
+                "required": ["workflow_id"]
+            },
+            handler=n8n_deactivate_workflow
         )

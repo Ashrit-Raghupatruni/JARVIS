@@ -55,31 +55,29 @@ class DeveloperAssistantService:
             ".html": "HTML", ".css": "CSS", ".md": "Markdown"
         }
 
-        for path in root.rglob("*"):
-            # Ignore common build/venv directories
-            parts = path.parts
-            if any(p in ("node_modules", ".git", "venv", ".venv", "__pycache__", "dist", "build", ".next") for p in parts):
-                continue
+        import os
+        ignore_dirs = {"node_modules", ".git", "venv", ".venv", "__pycache__", "dist", "build", ".next", "data"}
 
-            if path.is_file():
+        for dirpath, dirnames, filenames in os.walk(str(root)):
+            # Prune ignored directories in-place
+            dirnames[:] = [d for d in dirnames if d not in ignore_dirs]
+            rel_dir = Path(dirpath).relative_to(root)
+
+            for name in filenames:
                 total_files += 1
-                name = path.name
-
                 if name in target_configs:
-                    config_files.append(str(path.relative_to(root)))
-
+                    config_files.append(str(rel_dir / name))
                 if name in ("main.py", "app.py", "index.ts", "index.js", "server.js", "main.go", "main.rs"):
-                    entry_points.append(str(path.relative_to(root)))
+                    entry_points.append(str(rel_dir / name))
 
-                ext = path.suffix.lower()
+                ext = Path(name).suffix.lower()
                 if ext in ext_map:
                     lang = ext_map[ext]
                     lang_counts[lang] = lang_counts.get(lang, 0) + 1
-
-                    # Count lines for small files
-                    if path.stat().st_size < 500000:
+                    full_path = Path(dirpath) / name
+                    if full_path.stat().st_size < 500000:
                         try:
-                            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                            with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
                                 total_lines += sum(1 for _ in f)
                         except Exception:
                             pass

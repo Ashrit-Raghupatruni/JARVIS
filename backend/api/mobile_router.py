@@ -117,6 +117,46 @@ async def initiate_pairing(req: PairingInitiateRequest, auth_svc=Depends(get_mob
     return auth_svc.initiate_pairing(req.device_name, req.device_id)
 
 
+@mobile_router.get("/pair/qr/generate")
+async def generate_qr_pairing(device_name: str = "Mobile Companion", auth_svc=Depends(get_mobile_auth_service)):
+    """Generate QR-code pairing session payload for desktop UI display."""
+    if not auth_svc:
+        raise HTTPException(status_code=503, detail="Mobile auth service unavailable")
+    init_res = auth_svc.initiate_pairing(device_name, "mobile_qr_client")
+    session_id = init_res.pairing_session_id
+    code = init_res.pairing_code
+    qr_payload = f"jarvis_pair://{session_id}:{code}"
+    return {
+        "pairing_session_id": session_id,
+        "pairing_code": code,
+        "qr_payload": qr_payload,
+        "expires_in": 300
+    }
+
+
+@mobile_router.post("/pair/qr/scan")
+async def scan_qr_pairing(payload: Dict[str, Any], auth_svc=Depends(get_mobile_auth_service)):
+    """Validate scanned QR payload from mobile companion app and issue JWT token."""
+    if not auth_svc:
+        raise HTTPException(status_code=503, detail="Mobile auth service unavailable")
+    
+    qr_payload = str(payload.get("qr_payload", "")).strip()
+    device_id = str(payload.get("device_id", "mobile_qr_scanner")).strip()
+    
+    if not qr_payload.startswith("jarvis_pair://"):
+        raise HTTPException(status_code=400, detail="Invalid QR code payload format")
+    
+    parts = qr_payload.replace("jarvis_pair://", "").split(":")
+    if len(parts) != 2:
+        raise HTTPException(status_code=400, detail="Malformed QR code session payload")
+    
+    session_id, code = parts[0], parts[1]
+    res = auth_svc.confirm_pairing(session_id, code, device_id)
+    if not res:
+        raise HTTPException(status_code=401, detail="QR code pairing session expired or invalid")
+    return res
+
+
 @mobile_router.post("/pair/confirm", response_model=PairingConfirmResponse)
 async def confirm_pairing(req: PairingConfirmRequest, auth_svc=Depends(get_mobile_auth_service)):
     """Validate 6-digit PIN and return signed JWT access token."""

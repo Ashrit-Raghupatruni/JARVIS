@@ -68,6 +68,7 @@ class WSMessage(BaseModel):
     """
 
     type: str = Field(..., description="Message type discriminator.")
+    msg_id: Optional[int] = Field(default=None, description="Sequence ID for ACK tracking.")
     data: Dict[str, Any] = Field(default_factory=dict, description="Payload data.")
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

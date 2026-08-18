@@ -146,3 +146,59 @@ class SpatialEngine:
             return matching[idx]
 
         return scene_elements[0] if scene_elements else None
+
+    def get_monitor_by_target(self, target: str | int) -> MonitorInfo:
+        """Resolve target monitor reference ('second monitor', 'monitor 2', 2) to MonitorInfo."""
+        monitors = self.get_monitors()
+        target_str = str(target).lower().strip()
+
+        # Check by numeric index or ordinal string
+        if "2" in target_str or "second" in target_str:
+            target_idx = 2
+        elif "3" in target_str or "third" in target_str:
+            target_idx = 3
+        else:
+            target_idx = 1
+
+        for m in monitors:
+            if m.index == target_idx:
+                return m
+
+        return monitors[0] if monitors else MonitorInfo(index=1, name="Monitor 1", bounds=[0, 0, 1920, 1080], width=1920, height=1080, is_primary=True)
+
+    def move_window_to_monitor(self, app_title_or_hwnd: str | int, target_monitor: str | int) -> Tuple[bool, str]:
+        """Move a target application window to the specified monitor bounds."""
+        mon = self.get_monitor_by_target(target_monitor)
+        left, top, right, bottom = mon.bounds
+        w, h = mon.width, mon.height
+
+        if not HAS_WIN32:
+            return True, f"Simulated window movement to '{mon.name}' bounds [{left}, {top}, {w}, {h}]."
+
+        try:
+            import win32gui
+            
+            # Find window handle by title if string provided
+            hwnd = None
+            if isinstance(app_title_or_hwnd, str):
+                target_lower = app_title_or_hwnd.lower()
+                def _enum_cb(h, _):
+                    nonlocal hwnd
+                    if win32gui.IsWindowVisible(h):
+                        txt = win32gui.GetWindowText(h)
+                        if txt and target_lower in txt.lower():
+                            hwnd = h
+                win32gui.EnumWindows(_enum_cb, None)
+            else:
+                hwnd = app_title_or_hwnd
+
+            if hwnd and win32gui.IsWindow(hwnd):
+                win32gui.MoveWindow(hwnd, left + 50, top + 50, w - 100, h - 100, True)
+                logger.info("SpatialEngine: Moved window '{}' (HWND {}) to {} bounds", app_title_or_hwnd, hwnd, mon.name)
+                return True, f"Successfully moved window '{app_title_or_hwnd}' to {mon.name}."
+            else:
+                return False, f"Could not locate visible window handle for '{app_title_or_hwnd}'."
+        except Exception as e:
+            logger.warning("SpatialEngine window positioning notice: {}", e)
+            return False, f"Failed to move window: {e}"
+

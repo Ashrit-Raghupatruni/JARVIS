@@ -181,7 +181,7 @@ class WakeWordService:
 
     # ── State Management ─────────────────────────────────────────────────
 
-    def start_standalone_listener(self, event_bus=None, on_wake_word_callback=None) -> None:
+    def start_standalone_listener(self, event_bus=None, on_wake_word_callback=None, main_loop=None) -> None:
         """
         Starts a dedicated background hardware microphone capture thread via sounddevice.
         Runs continuous openwakeword inference even when the frontend browser is minimized or idle.
@@ -193,6 +193,7 @@ class WakeWordService:
         self._listener_running = True
         self.event_bus = event_bus
         self.on_wake_word_callback = on_wake_word_callback
+        self.main_loop = main_loop
 
         def _bg_audio_loop():
             try:
@@ -210,10 +211,17 @@ class WakeWordService:
                         if self.event_bus:
                             import asyncio
                             try:
-                                loop = asyncio.get_event_loop()
-                                loop.create_task(self.event_bus.publish("wake_word.detected", {"threshold": self.threshold}))
-                            except Exception:
-                                pass
+                                target_loop = self.main_loop
+                                if target_loop and target_loop.is_running():
+                                    asyncio.run_coroutine_threadsafe(
+                                        self.event_bus.publish("wake_word.detected", {"threshold": self.threshold}),
+                                        target_loop
+                                    )
+                                else:
+                                    logger.warning("Event bus available but main_loop is not running; skipping event bus publish.")
+                            except Exception as e:
+                                logger.error("Error publishing wake_word event: {}", e)
+
                         if self.on_wake_word_callback:
                             try:
                                 self.on_wake_word_callback()

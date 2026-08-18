@@ -16,6 +16,31 @@ export default function PairingScreen() {
     Alert.alert("Server Configured", `Updated server address to http://${host}:${portNum}`);
   };
 
+  const [qrPayload, setQrPayload] = useState('');
+
+  const handleQRPairing = async () => {
+    if (!qrPayload.trim()) {
+      Alert.alert("QR Error", "Please paste or scan the QR pairing payload (e.g. jarvis_pair://sess_...:123456)");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      saveConnection();
+      const res = await mobileClient.pairWithQR(qrPayload.trim(), deviceName);
+      if (res && (res.access_token || res.token || res.status === 'paired')) {
+        setIsPaired(true);
+        Alert.alert("✓ QR Paired Successfully", `Device '${deviceName}' authenticated via QR Code!`);
+      } else {
+        Alert.alert("QR Pairing Failed", res.detail || res.message || "Invalid or expired QR payload.");
+      }
+    } catch (err) {
+      Alert.alert("QR Pairing Exception", String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePairing = async () => {
     if (!pin.trim()) {
       Alert.alert("Pairing Error", "Please enter the 6-digit PIN displayed on your desktop JARVIS OS screen.");
@@ -44,28 +69,20 @@ export default function PairingScreen() {
       <Text style={styles.headerTitle}>SECURE DEVICE PAIRING</Text>
 
       <View style={styles.sectionCard}>
-        <Text style={styles.cardTitle}>🌐 DESKTOP SERVER CONFIGURATION</Text>
-        <Text style={styles.label}>Desktop Local IP Address:</Text>
+        <Text style={styles.cardTitle}>📷 PAIR WITH QR CODE SCAN</Text>
+        <Text style={styles.cardSub}>Scan desktop QR Code modal or paste pairing payload</Text>
+
+        <Text style={styles.label}>QR Code Payload:</Text>
         <TextInput
           style={styles.input}
-          value={host}
-          onChangeText={setHost}
-          placeholder="e.g. 192.168.1.100"
+          value={qrPayload}
+          onChangeText={setQrPayload}
+          placeholder="jarvis_pair://sess_123:849201"
           placeholderTextColor="#557090"
         />
 
-        <Text style={styles.label}>Port:</Text>
-        <TextInput
-          style={styles.input}
-          value={port}
-          onChangeText={setPort}
-          keyboardType="numeric"
-          placeholder="8000"
-          placeholderTextColor="#557090"
-        />
-
-        <TouchableOpacity style={styles.secondaryBtn} onPress={saveConnection}>
-          <Text style={styles.secondaryBtnText}>SAVE SERVER ADDRESS</Text>
+        <TouchableOpacity style={styles.secondaryBtn} onPress={handleQRPairing} disabled={loading}>
+          <Text style={styles.secondaryBtnText}>{loading ? "AUTHENTICATING..." : "📱 PAIR WITH QR CODE NOW"}</Text>
         </TouchableOpacity>
       </View>
 

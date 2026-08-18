@@ -228,8 +228,27 @@ class SelfDevelopmentService:
             issues.append("openwakeword Hey Jarvis model is offline.")
 
         # 4. Device connectivity
-        # Camera checks (mock check based on desktop automation)
-        status["camera_perception"] = "CONNECTED"
+        # Real Camera perception check via OpenCV (fail-closed)
+        try:
+            import cv2
+            cap = cv2.VideoCapture(0, cv2.CAP_DSHOW) if sys.platform == "win32" else cv2.VideoCapture(0)
+            if cap is not None and cap.isOpened():
+                ret, frame = cap.read()
+                cap.release()
+                if ret and frame is not None and frame.size > 0:
+                    status["camera_perception"] = "CONNECTED"
+                else:
+                    status["camera_perception"] = "DISCONNECTED"
+                    issues.append("Camera device opened but failed to capture frame.")
+            else:
+                if cap is not None:
+                    cap.release()
+                status["camera_perception"] = "DISCONNECTED"
+                issues.append("No accessible video capture device (camera) detected.")
+        except Exception as e:
+            status["camera_perception"] = "DISCONNECTED"
+            issues.append(f"Camera perception diagnostic check error: {e}")
+
         try:
             pyautogui.size()
             status["display_screen"] = "CONNECTED"

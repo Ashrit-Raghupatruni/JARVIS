@@ -3,8 +3,10 @@ import os
 import sys
 from pathlib import Path
 
-# Add project root to sys.path
-sys.path.insert(0, r"c:\Users\ashri\JARVIS")
+# Add project root dynamically relative to this server script
+project_root = str(Path(__file__).resolve().parents[3])
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 def handle_request(req):
     msg_id = req.get("id")

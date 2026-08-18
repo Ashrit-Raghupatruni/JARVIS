@@ -73,30 +73,69 @@ class StrategyMemoryService:
             return ranked[0]
         return {"strategy": "win32_uia", "confidence": 0.95, "name": "Default Win32 UIA"}
 
-    def update_strategy_outcome(self, category: str, strategy_id: str, reward: float) -> None:
-        """Update confidence score dynamically based on reward/penalty outcomes.
+    def record_task_strategy_outcome(self, task_name: str, strategy_id: str, success: bool, failure_reason: str = "") -> None:
+        """Record task-specific strategy outcome to avoid repeating known failed strategies."""
+        t_key = task_name.lower().strip()
+        task_memory = self.strategies.setdefault("_task_history", {})
         
-        Reward mappings:
-        - Successful task: +1
-        - Excellent result: +2
-        - Partial success: +0.5
-        - User correction: -1
-        - Task failure: -2
-        - Repeated failure: -3
-        """
+        entry = task_memory.get(t_key, {"successful_strategy": None, "failed_strategies": []})
+        if success:
+            entry["successful_strategy"] = strategy_id
+            self.update_strategy_outcome("ui_automation", strategy_id, reward=1.0)
+        else:
+            if strategy_id not in entry.get("failed_strategies", []):
+                entry.setdefault("failed_strategies", []).append(strategy_id)
+            self.update_strategy_outcome("ui_automation", strategy_id, reward=-2.0)
+            
+        task_memory[t_key] = entry
+        self.strategies["_task_history"] = task_memory
+        self._save_strategies()
+        logger.info("🧠 Task strategy recorded: task='{}', strategy='{}', success={}", t_key, strategy_id, success)
+
+    def get_best_strategy_for_task(self, task_name: str, category: str = "ui_automation") -> Dict[str, Any]:
+        """Get best strategy for a specific task, excluding known failed strategies."""
+        t_key = task_name.lower().strip()
+        task_memory = self.strategies.get("_task_history", {}).get(t_key, {})
+        
+        # Prefer known successful strategy if available
+        pref_id = task_memory.get("successful_strategy")
+        failed_ids = set(task_memory.get("failed_strategies", []))
+        
+        ranked = self.get_ranked_strategies(category)
+        
+        # 1. Look for matching preferred strategy
+        if pref_id:
+            for s in ranked:
+                if s.get("strategy") == pref_id:
+                    return s
+                    
+        # 2. Filter out known failed strategies
+        for s in ranked:
+            if s.get("strategy") not in failed_ids:
+                return s
+
+        return self.get_preferred_strategy(category)
+
+    def update_strategy_outcome(self, category: str, strategy_id: str, reward: float) -> None:
+        """Update confidence score dynamically based on reward/penalty outcomes."""
         strats = self.strategies.get(category, [])
+        found = False
         for s in strats:
             if s.get("strategy") == strategy_id:
-                # Adjust confidence based on reward
                 change = reward * 0.05
                 s["confidence"] = max(0.10, min(0.99, s.get("confidence", 0.5) + change))
                 if reward > 0:
                     s["success_count"] = s.get("success_count", 0) + 1
                 else:
                     s["fail_count"] = s.get("fail_count", 0) + 1
+                found = True
                 break
         
+        if not found:
+            strats.append({"strategy": strategy_id, "name": strategy_id, "confidence": 0.5 + (reward * 0.05), "success_count": 1 if reward > 0 else 0, "fail_count": 0 if reward > 0 else 1})
+
         self.strategies[category] = strats
         self._save_strategies()
-        logger.info("📈 Updated strategy confidence: {} -> {} (reward={}, confidence={:.2f})", category, strategy_id, reward, s.get("confidence", 0.0))
+        logger.info("📈 Updated strategy confidence: {} -> {} (reward={})", category, strategy_id, reward)
+
 

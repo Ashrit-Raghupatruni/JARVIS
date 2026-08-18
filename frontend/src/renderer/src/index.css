@@ -3,27 +3,27 @@
 
 @import 'tailwindcss';
 
-/* ===== Design System Custom Properties — Green Hacker / Terminal HUD Theme ===== */
+/* ===== Design System Custom Properties — Clean Modern Dark Glassmorphism Theme ===== */
 @theme {
-  --color-jarvis-bg: #050d08;
-  --color-jarvis-bg-alt: #0a180f;
-  --color-jarvis-surface: rgba(10, 30, 18, 0.75);
-  --color-jarvis-surface-solid: #0c2014;
-  --color-jarvis-surface-hover: rgba(15, 45, 25, 0.95);
-  --color-jarvis-accent: #00ff66;
-  --color-jarvis-accent-2: #00cc55;
-  --color-jarvis-accent-3: #ffaa00;
-  --color-jarvis-accent-dim: rgba(0, 255, 102, 0.15);
-  --color-jarvis-accent-glow: rgba(0, 255, 102, 0.35);
-  --color-jarvis-text: #e1ffe8;
-  --color-jarvis-text-dim: #b0e6be;
-  --color-jarvis-text-muted: #78a886;
-  --color-jarvis-border: rgba(0, 255, 102, 0.22);
-  --color-jarvis-border-bright: rgba(0, 255, 102, 0.45);
-  --color-jarvis-danger: #ff3d00;
-  --color-jarvis-success: #00ff66;
-  --color-jarvis-warning: #ffaa00;
-  --color-jarvis-purple: #d500f9;
+  --color-jarvis-bg: #050811;
+  --color-jarvis-bg-alt: #0b1120;
+  --color-jarvis-surface: rgba(15, 23, 42, 0.75);
+  --color-jarvis-surface-solid: #0f172a;
+  --color-jarvis-surface-hover: rgba(30, 41, 59, 0.9);
+  --color-jarvis-accent: #00e5ff;
+  --color-jarvis-accent-2: #38bdf8;
+  --color-jarvis-accent-3: #818cf8;
+  --color-jarvis-accent-dim: rgba(0, 229, 255, 0.12);
+  --color-jarvis-accent-glow: rgba(0, 229, 255, 0.35);
+  --color-jarvis-text: #f8fafc;
+  --color-jarvis-text-dim: #cbd5e1;
+  --color-jarvis-text-muted: #94a3b8;
+  --color-jarvis-border: rgba(0, 229, 255, 0.2);
+  --color-jarvis-border-bright: rgba(0, 229, 255, 0.5);
+  --color-jarvis-danger: #f43f5e;
+  --color-jarvis-success: #10b981;
+  --color-jarvis-warning: #f59e0b;
+  --color-jarvis-purple: #a855f7;
 }
 
 :root {

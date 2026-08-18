@@ -263,7 +263,7 @@ class WorldModel:
         st = self._state
         return {
             "active_window": st.window_title,
-            "monitors_count": len(st.monitors),
+            "monitors_count": len(getattr(st, "monitors", getattr(st, "displays", []))),
             "control_nodes": st.scene_graph.get("total_elements", 0) if st.scene_graph else 0,
             "focused_control": st.scene_graph.get("focused_element") if st.scene_graph else None,
             "clipboard_has_text": bool(st.clipboard_text),

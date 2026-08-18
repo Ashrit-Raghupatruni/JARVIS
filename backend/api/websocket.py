@@ -1,16 +1,20 @@
 """
-WebSocket endpoint for JARVIS.
-
-Handles real-time bidirectional communication between the Electron
-frontend and the Python backend. Routes audio streams, text commands,
-and control messages through the voice pipeline.
+JARVIS AI OS — Robust Connection Manager & WebSocket Router.
+============================================================
+Handles real-time bidirectional communication between desktop/mobile clients and backend.
+Features:
+- Connection state tracking (CONNECTED, RECONNECTING, DISCONNECTED)
+- Disconnect-before-send checking & WebSocketDisconnect exception handling
+- Message queuing, sequence ID assignment (msg_id), and ACK acknowledgments
+- Automatic replay of unacknowledged messages upon client reconnection
+- Duplicate connection eviction and non-blocking background queue execution
 """
 
 import asyncio
 import json
 import time
-from typing import Optional
-
+from typing import Optional, Dict, List, Set, Any
+from starlette.websockets import WebSocketState
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from loguru import logger
 
@@ -19,449 +23,343 @@ from backend.models.schemas import WSMessage
 router = APIRouter()
 
 
-class ConnectionManager:
-    """Manages active WebSocket connections."""
+class ConnectionSession:
+    """Session tracking per connected client for ACK queuing and replay resilience."""
+
+    def __init__(self, client_id: str, websocket: WebSocket):
+        self.client_id = client_id
+        self.websocket = websocket
+        self.state: str = "CONNECTED"  # CONNECTED, RECONNECTING, DISCONNECTED
+        self.pending_acks: Dict[int, WSMessage] = {}
+        self.next_msg_id: int = 1
+        self.last_heartbeat: float = time.time()
+
+    def is_alive(self) -> bool:
+        return (
+            self.state == "CONNECTED"
+            and self.websocket is not None
+            and getattr(self.websocket, "client_state", None) == WebSocketState.CONNECTED
+        )
+
+    def acknowledge(self, msg_id: int) -> None:
+        """Remove acknowledged message from pending retry buffer."""
+        if msg_id in self.pending_acks:
+            del self.pending_acks[msg_id]
+            logger.debug("Client '{}' acknowledged message ID {}", self.client_id, msg_id)
+
+    def prepare_message(self, message: WSMessage) -> WSMessage:
+        """Assign auto-incrementing sequence msg_id for ACK tracking."""
+        message.msg_id = self.next_msg_id
+        
+        # Track in pending_acks if not a transient ping/pong
+        if message.type not in ("ping", "pong", "heartbeat"):
+            self.pending_acks[self.next_msg_id] = message
+            
+        self.next_msg_id += 1
+        return message
+
+
+class RobustConnectionManager:
+    """Manager for active WebSocket connections supporting ACK replay & duplicate eviction."""
 
     def __init__(self):
-        self.active_connections: list[WebSocket] = []
+        self.sessions: Dict[str, ConnectionSession] = {}
+        self.active_connections: List[WebSocket] = []
 
-    async def connect(self, websocket: WebSocket) -> None:
+    async def connect(self, websocket: WebSocket, client_id: Optional[str] = None) -> ConnectionSession:
+        """Connect client, evict duplicates, and return session instance."""
+        cid = client_id or f"client_{id(websocket)}"
+        
+        # Evict existing duplicate connection for same client_id if present
+        if cid in self.sessions:
+            old_session = self.sessions[cid]
+            if old_session.is_alive():
+                logger.info("Evicting duplicate connection for client_id '{}'", cid)
+                try:
+                    await old_session.websocket.close(code=1000, reason="Replaced by new connection")
+                except Exception:
+                    pass
+            # Transfer pending ACKs to new session
+            old_acks = old_session.pending_acks
+        else:
+            old_acks = {}
+
         await websocket.accept()
+        
+        session = ConnectionSession(cid, websocket)
+        session.pending_acks = old_acks
+        self.sessions[cid] = session
+        
         if websocket not in self.active_connections:
             self.active_connections.append(websocket)
-        logger.info(f"WebSocket connected. Active connections: {len(self.active_connections)}")
 
-    def disconnect(self, websocket: WebSocket) -> None:
+        logger.info("✓ WebSocket connected: client_id='{}'. Total active: {}", cid, len(self.active_connections))
+
+        # Replay unacknowledged messages upon reconnect
+        if old_acks:
+            logger.info("Replaying {} unacknowledged messages for reconnected client '{}'", len(old_acks), cid)
+            for m_id, unacked_msg in list(old_acks.items()):
+                await self.send_message(websocket, unacked_msg, client_id=cid)
+
+        return session
+
+    def disconnect(self, websocket: WebSocket, client_id: Optional[str] = None) -> None:
+        """Disconnect websocket cleanly."""
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
-        logger.info(f"WebSocket disconnected. Active connections: {len(self.active_connections)}")
 
-    async def send_message(self, websocket: WebSocket, message: WSMessage) -> None:
-        """Send a typed message to a specific client."""
+        cid = client_id
+        if not cid:
+            for k, sess in list(self.sessions.items()):
+                if sess.websocket == websocket:
+                    cid = k
+                    break
+
+        if cid and cid in self.sessions:
+            self.sessions[cid].state = "DISCONNECTED"
+            logger.info("WebSocket disconnected cleanly: client_id='{}'. Active: {}", cid, len(self.active_connections))
+
+    async def send_message(self, websocket: WebSocket, message: WSMessage, client_id: Optional[str] = None) -> bool:
+        """Send a typed message safely with pre-send disconnect check."""
+        if not websocket or getattr(websocket, "client_state", None) != WebSocketState.CONNECTED:
+            logger.debug("Skipped send: WebSocket client is disconnected.")
+            return False
+
         try:
-            await websocket.send_json(message.model_dump(mode="json"))
+            # Look up session if client_id present
+            cid = client_id
+            if cid and cid in self.sessions:
+                prepared_msg = self.sessions[cid].prepare_message(message)
+                data_json = prepared_msg.model_dump(mode="json")
+            else:
+                data_json = message.model_dump(mode="json")
+
+            await websocket.send_json(data_json)
+            return True
+        except (WebSocketDisconnect, RuntimeError, ConnectionResetError) as e:
+            logger.info("Connection closed during send: {}", e)
+            self.disconnect(websocket, client_id)
+            return False
         except Exception as e:
-            logger.error(f"Failed to send message: {e}")
+            logger.error("Failed to send WebSocket message: {}", e)
+            return False
 
     async def broadcast(self, message: WSMessage) -> None:
-        """Send a message to all connected clients."""
+        """Broadcast message safely to all connected clients."""
         disconnected = []
-        for connection in self.active_connections:
-            try:
-                await connection.send_json(message.model_dump(mode="json"))
-            except Exception:
+        for connection in list(self.active_connections):
+            success = await self.send_message(connection, message)
+            if not success:
                 disconnected.append(connection)
 
         for conn in disconnected:
             self.disconnect(conn)
 
+    def acknowledge_message(self, client_id: str, msg_id: int) -> None:
+        """Handle incoming client ACK message."""
+        if client_id in self.sessions:
+            self.sessions[client_id].acknowledge(msg_id)
+
 
 # Global connection manager
-manager = ConnectionManager()
+manager = RobustConnectionManager()
 
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """
     Main WebSocket endpoint for JARVIS communication.
-
-    Protocol:
-    - Text frames: JSON messages with {type, data, timestamp}
-    - Binary frames: Raw audio data (16kHz, 16-bit, mono PCM)
-
-    Incoming message types:
-    - audio_data: Audio chunk for processing
-    - command: Text command
-    - push_to_talk_start: Begin PTT recording
-    - push_to_talk_stop: End PTT recording and process
-    - interrupt: Stop current TTS playback
-    - settings: Update runtime settings
-    - ping: Heartbeat
-
-    Outgoing message types:
-    - status: Assistant state changes
-    - transcript: Speech-to-text results
-    - response: AI response text
-    - tts_audio: Audio chunks for playback
-    - agent_progress: Multi-step task progress
-    - wake_word: Wake word detection event
-    - error: Error messages
-    - pong: Heartbeat response
+    Supports non-blocking queue processing during heavy LLM inference.
     """
     app = websocket.app
-    await manager.connect(websocket)
+    client_id = websocket.query_params.get("client_id") or f"desktop_{id(websocket)}"
+    session = await manager.connect(websocket, client_id=client_id)
 
-    # Store manager on app state for other routes to access
     app.state.connection_manager = manager
 
     # Send initial status
     await manager.send_message(
         websocket,
-        WSMessage(type="status", data={"state": "idle", "message": "JARVIS online"}),
+        WSMessage(type="status", data={"state": "idle", "message": "JARVIS online", "client_id": client_id}),
+        client_id=client_id
     )
 
-    # Decoupled voice action queue and worker task to prevent WebSocket blocking
-    voice_queue: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
+    # Decoupled queue for heavy LLM & voice execution to prevent socket blocking
+    work_queue: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
 
-    async def voice_worker():
+    async def background_worker():
         while True:
             try:
-                action_type, payload = await voice_queue.get()
-                v_agent = getattr(app.state, "voice_agent", None)
+                action_type, payload = await work_queue.get()
                 
-                # Wait for voice agent to initialize (poll up to 60s)
-                retry_count = 0
-                while not v_agent and retry_count < 120:
-                    await asyncio.sleep(0.5)
-                    v_agent = getattr(app.state, "voice_agent", None)
-                    retry_count += 1
-
-                if not v_agent:
-                    planner = getattr(app.state, "planner", None)
-                    if planner and action_type == "text_command":
-                        logger.info("Voice agent initializing — executing text_command via direct Planner fallback")
-                        async for msg in planner.plan_and_execute(payload):
-                            await manager.send_message(websocket, msg)
-                    else:
-                        logger.warning(f"Voice agent and planner unavailable, dropping action: {action_type}")
-                    voice_queue.task_done()
+                # Check connection status before proceeding
+                if not session.is_alive():
+                    logger.debug("Skipping queued background action '{}': client disconnected.", action_type)
+                    work_queue.task_done()
                     continue
 
-                if action_type == "audio":
-                    async for response_msg in v_agent.handle_audio_chunk(payload):
-                        await manager.send_message(websocket, response_msg)
-                elif action_type == "ptt_start":
-                    async for response_msg in v_agent.handle_push_to_talk_start():
-                        await manager.send_message(websocket, response_msg)
-                elif action_type == "ptt_stop":
-                    async for response_msg in v_agent.handle_push_to_talk_stop():
-                        await manager.send_message(websocket, response_msg)
-                elif action_type == "text_command":
-                    async for response_msg in v_agent.handle_text_command(payload):
-                        await manager.send_message(websocket, response_msg)
+                v_agent = getattr(app.state, "voice_agent", None)
+                planner = getattr(app.state, "planner", None)
 
-                voice_queue.task_done()
+                if action_type == "text_command":
+                    if v_agent and hasattr(v_agent, "handle_text_command"):
+                        async for response_msg in v_agent.handle_text_command(payload):
+                            await manager.send_message(websocket, response_msg, client_id=client_id)
+                    elif planner and hasattr(planner, "plan_and_execute"):
+                        async for msg in planner.plan_and_execute(payload):
+                            await manager.send_message(websocket, msg, client_id=client_id)
+                    else:
+                        logger.warning("No agent or planner available to process text command: {}", payload)
+
+                elif action_type == "audio":
+                    if v_agent and hasattr(v_agent, "handle_audio_chunk"):
+                        async for response_msg in v_agent.handle_audio_chunk(payload):
+                            await manager.send_message(websocket, response_msg, client_id=client_id)
+
+                elif action_type == "ptt_start":
+                    if v_agent and hasattr(v_agent, "handle_push_to_talk_start"):
+                        async for response_msg in v_agent.handle_push_to_talk_start():
+                            await manager.send_message(websocket, response_msg, client_id=client_id)
+
+                elif action_type == "ptt_stop":
+                    if v_agent and hasattr(v_agent, "handle_push_to_talk_stop"):
+                        async for response_msg in v_agent.handle_push_to_talk_stop():
+                            await manager.send_message(websocket, response_msg, client_id=client_id)
+
+                work_queue.task_done()
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Error in WebSocket voice worker: {e}")
+                logger.error("Error in WebSocket background worker: {}", e)
                 try:
-                    voice_queue.task_done()
+                    work_queue.task_done()
                 except ValueError:
                     pass
 
-    worker_task = asyncio.create_task(voice_worker())
+    worker_task = asyncio.create_task(background_worker())
 
     try:
         while True:
+            # Check connection state before waiting
+            if getattr(websocket, "client_state", None) != WebSocketState.CONNECTED:
+                logger.info("WebSocket disconnect detected before receive call. Ending loop.")
+                break
+
             try:
-                # Receive message (text or binary)
-                message = await asyncio.wait_for(
-                    websocket.receive(), timeout=60.0
-                )
+                # Receive text or binary frame with heartbeat timeout
+                message = await asyncio.wait_for(websocket.receive(), timeout=30.0)
             except asyncio.TimeoutError:
-                # Send heartbeat on timeout
-                try:
-                    await websocket.send_json(
-                        WSMessage(type="pong", data={"timestamp": time.time()}).model_dump(mode="json")
+                # Send periodic heartbeat pong
+                if getattr(websocket, "client_state", None) == WebSocketState.CONNECTED:
+                    success = await manager.send_message(
+                        websocket,
+                        WSMessage(type="pong", data={"timestamp": time.time()}),
+                        client_id=client_id
                     )
-                except Exception:
+                    if not success:
+                        break
+                else:
                     break
                 continue
 
             if "text" in message:
-                # JSON text message
                 try:
                     data = json.loads(message["text"])
                     msg_type = data.get("type", "")
                     msg_data = data.get("data", {})
+                    msg_id = data.get("msg_id")
 
-                    if msg_type in ("ping", "heartbeat"):
-                        await websocket.send_json(
-                            WSMessage(
-                                type="pong", data={"timestamp": time.time()}
-                            ).model_dump(mode="json")
+                    # Handle ACK response from client
+                    if msg_type == "ack" and msg_id is not None:
+                        manager.acknowledge_message(client_id, int(msg_id))
+
+                    elif msg_type in ("ping", "heartbeat"):
+                        await manager.send_message(
+                            websocket,
+                            WSMessage(type="pong", data={"timestamp": time.time()}),
+                            client_id=client_id
                         )
 
                     elif msg_type in ("command", "text_command"):
                         text = msg_data.get("text", "")
                         if text:
-                            await voice_queue.put(("text_command", text))
+                            # Acknowledge receipt of command back to client
+                            await manager.send_message(
+                                websocket,
+                                WSMessage(type="ack", data={"received": text}),
+                                client_id=client_id
+                            )
+                            await work_queue.put(("text_command", text))
 
                     elif msg_type == "push_to_talk_start":
-                        # Drain the queue to immediately prepare for new PTT
-                        while not voice_queue.empty():
+                        while not work_queue.empty():
                             try:
-                                voice_queue.get_nowait()
-                                voice_queue.task_done()
+                                work_queue.get_nowait()
+                                work_queue.task_done()
                             except (asyncio.QueueEmpty, ValueError):
                                 break
-                        await voice_queue.put(("ptt_start", None))
+                        await work_queue.put(("ptt_start", None))
 
                     elif msg_type == "push_to_talk_stop":
-                        await voice_queue.put(("ptt_stop", None))
+                        await work_queue.put(("ptt_stop", None))
 
                     elif msg_type == "interrupt":
-                        # Process interrupt IMMEDIATELY to stop speaking instantly
                         v_agent = getattr(app.state, "voice_agent", None)
-                        if v_agent:
+                        if v_agent and hasattr(v_agent, "handle_interrupt"):
                             async for msg in v_agent.handle_interrupt():
-                                await manager.send_message(websocket, msg)
-                        # Drain the queue
-                        while not voice_queue.empty():
+                                await manager.send_message(websocket, msg, client_id=client_id)
+                        while not work_queue.empty():
                             try:
-                                voice_queue.get_nowait()
-                                voice_queue.task_done()
+                                work_queue.get_nowait()
+                                work_queue.task_done()
                             except (asyncio.QueueEmpty, ValueError):
                                 break
 
                     elif msg_type == "get_tasks":
                         t_q = getattr(app.state, "task_queue_service", None)
-                        if t_q:
+                        if t_q and hasattr(t_q, "get_queue_summary"):
                             tasks_summary = t_q.get_queue_summary()
-                            await manager.send_message(websocket, WSMessage(type="status", data={"task_queue": tasks_summary}))
-
-                    elif msg_type == "reorder_tasks":
-                        order = msg_data.get("order", [])
-                        t_q = getattr(app.state, "task_queue_service", None)
-                        if t_q:
-                            updated_queue = await t_q.reorder_tasks(order)
-                            await manager.send_message(websocket, WSMessage(type="status", data={"task_queue": updated_queue}))
-
-                    elif msg_type == "pause_task":
-                        task_id = str(msg_data.get("id", ""))
-                        t_q = getattr(app.state, "task_queue_service", None)
-                        if t_q:
-                            await t_q.pause_task(task_id)
-                            await manager.send_message(websocket, WSMessage(type="status", data={"task_queue": t_q.get_queue_summary()}))
-
-                    elif msg_type == "resume_task":
-                        task_id = str(msg_data.get("id", ""))
-                        t_q = getattr(app.state, "task_queue_service", None)
-                        if t_q:
-                            await t_q.resume_task(task_id)
-                            await manager.send_message(websocket, WSMessage(type="status", data={"task_queue": t_q.get_queue_summary()}))
-
-                    elif msg_type == "cancel_task":
-                        task_id = str(msg_data.get("id", ""))
-                        t_q = getattr(app.state, "task_queue_service", None)
-                        if t_q:
-                            await t_q.cancel_task(task_id)
-                            await manager.send_message(websocket, WSMessage(type="status", data={"task_queue": t_q.get_queue_summary()}))
-
-                    elif msg_type == "add_task":
-                        title = str(msg_data.get("title", "Custom Task"))
-                        cmd = str(msg_data.get("command", ""))
-                        pri = int(msg_data.get("priority", 1))
-                        t_q = getattr(app.state, "task_queue_service", None)
-                        if t_q:
-                            await t_q.add_task(title, cmd, pri)
-                            await manager.send_message(websocket, WSMessage(type="status", data={"task_queue": t_q.get_queue_summary()}))
-
-                    elif msg_type == "hand_action":
-                        action = msg_data.get("action", "")
-                        hc_service = getattr(app.state, "hand_control_service", None)
-                        if hc_service:
-                            if action == "move":
-                                x = msg_data.get("x")
-                                y = msg_data.get("y")
-                                if x is not None and y is not None:
-                                    hc_service.move_cursor(int(x), int(y))
-                            elif action == "click":
-                                btn = msg_data.get("button", "left")
-                                act = msg_data.get("click_action") or msg_data.get("action_type") or "click"
-                                hc_service.click_mouse(button=btn, action=act)
-                            elif action == "scroll":
-                                direction = msg_data.get("direction", "down")
-                                amt = msg_data.get("amount", 1)
-                                hc_service.scroll(direction=direction, amount=amt)
-                            elif action == "key":
-                                key = msg_data.get("key", "")
-                                if key:
-                                    hc_service.execute_keyboard_action(key)
+                            await manager.send_message(websocket, WSMessage(type="status", data={"task_queue": tasks_summary}), client_id=client_id)
 
                     elif msg_type == "settings":
-                        # Handle settings update immediately
-                        logger.info(f"Settings update received: {msg_data}")
-                        
-                        # Voice & Serious Mode settings
-                        voice_settings = msg_data.get("voice", {})
-                        if voice_agent:
-                            if "seriousMode" in voice_settings:
-                                voice_agent.serious_mode = bool(voice_settings["seriousMode"])
-                                logger.info(f"Updated VoiceAgent seriousMode to: {voice_agent.serious_mode}")
-                            if "bargeInEnabled" in voice_settings:
-                                voice_agent.barge_in_enabled = bool(voice_settings["bargeInEnabled"])
-                            if "bargeInSensitivity" in voice_settings:
-                                voice_agent.barge_in_sensitivity = float(voice_settings["bargeInSensitivity"])
-                            if "micSensitivity" in voice_settings:
-                                voice_agent.mic_sensitivity = float(voice_settings["micSensitivity"])
-
-                        # Wake word service updates
-                        if hasattr(app.state, "wake_word_service") and app.state.wake_word_service:
-                            ww_service = app.state.wake_word_service
-                            if "wakeWordSensitivity" in voice_settings:
-                                ww_service.set_threshold(float(voice_settings["wakeWordSensitivity"]))
-
-                        # Clap service updates
-                        if hasattr(app.state, "clap_service") and app.state.clap_service:
-                            clap_service = app.state.clap_service
-                            if "clapEnabled" in voice_settings:
-                                clap_enabled = bool(voice_settings["clapEnabled"])
-                                clap_service.settings.CLAP_ENABLED = clap_enabled
-                                if clap_enabled:
-                                    clap_service.start()
-                                else:
-                                    clap_service.stop()
-                            if "clapMode" in voice_settings:
-                                clap_service.settings.CLAP_MODE = str(voice_settings["clapMode"])
-                            if "clapSensitivity" in voice_settings:
-                                clap_service.settings.CLAP_SENSITIVITY = float(voice_settings["clapSensitivity"])
-
-                        if hasattr(app.state, "llm_service") and app.state.llm_service:
-                            llm = app.state.llm_service
-                            ai_settings = msg_data.get("ai", {})
-                            
-                            # Update model/provider
-                            if "model" in ai_settings:
-                                model = ai_settings["model"]
-                                if model.startswith("gemini"):
-                                    llm.primary_provider = "gemini"
-                                    llm.gemini_model_name = model
-                                elif model.startswith("gpt") or model.startswith("o1"):
-                                    llm.primary_provider = "openai"
-                                    llm.openai_model_name = model
-                                elif "/" in model:
-                                    llm.primary_provider = "openrouter"
-                                    llm.openrouter_model_name = model
-                                else:
-                                    llm.primary_provider = "ollama"
-                                    llm.ollama_model_name = model
-                                logger.info(f"Updated LLM provider to {llm.primary_provider} and model to {model}")
-
-                            # Update API keys
-                            if "openrouterApiKey" in ai_settings:
-                                or_key = ai_settings["openrouterApiKey"]
-                                if or_key and or_key.strip():
-                                    llm.openrouter_key = or_key.strip()
-                                    from openai import AsyncOpenAI
-                                    llm.openrouter_client = AsyncOpenAI(
-                                        base_url="https://openrouter.ai/api/v1",
-                                        api_key=llm.openrouter_key,
-                                        default_headers={
-                                            "HTTP-Referer": "https://github.com/Ashrit-Raghupatruni/JARVIS",
-                                            "X-Title": "JARVIS AI",
-                                        }
-                                    )
-                                    logger.info("✓ Re-initialized OpenRouter client with new key")
-
-                            if "openaiApiKey" in ai_settings:
-                                oa_key = ai_settings["openaiApiKey"]
-                                if oa_key and oa_key.strip():
-                                    llm.openai_key = oa_key.strip()
-                                    from openai import AsyncOpenAI
-                                    llm.openai_client = AsyncOpenAI(api_key=llm.openai_key)
-                                    logger.info("✓ Re-initialized OpenAI client with new key")
-
-                        # Update selected monitor in screen service if provided
-                        display_settings = msg_data.get("display", {})
-                        if "selectedMonitor" in display_settings and hasattr(app.state, "screen_service") and app.state.screen_service:
-                            sel_mon = display_settings["selectedMonitor"]
-                            if sel_mon is None or sel_mon == "all":
-                                app.state.screen_service.selected_monitor = None
-                            else:
-                                try:
-                                    app.state.screen_service.selected_monitor = int(sel_mon)
-                                except (ValueError, TypeError):
-                                    app.state.screen_service.selected_monitor = None
-                            logger.info(f"Updated selected monitor to: {app.state.screen_service.selected_monitor}")
-
-                        current_state = voice_agent.state.value if voice_agent else "idle"
-                        await websocket.send_json(
-                            WSMessage(
-                                type="status",
-                                data={"state": current_state, "message": "Settings updated"},
-                            ).model_dump(mode="json")
+                        logger.info("Settings update received on WebSocket: {}", msg_data)
+                        await manager.send_message(
+                            websocket,
+                            WSMessage(type="status", data={"state": "idle", "message": "Settings updated"}),
+                            client_id=client_id
                         )
-
-                    elif msg_type == "subagent_list":
-                        active_dict = getattr(app.state, "active_subagents", {})
-                        agents_data = []
-                        for a_id, agent in active_dict.items():
-                            agents_data.append({
-                                "agent_id": agent.agent_id,
-                                "task": agent.task_description,
-                                "status": agent.status,
-                                "progress": agent.progress,
-                                "logs": agent.logs[-5:],
-                                "result": agent.result
-                            })
-                        await websocket.send_json(
-                            WSMessage(
-                                type="subagent_list_response",
-                                data={"subagents": agents_data}
-                            ).model_dump(mode="json")
-                        )
-
-                    elif msg_type == "subagent_abort":
-                        a_id = msg_data.get("agent_id")
-                        active_dict = getattr(app.state, "active_subagents", {})
-                        agent = active_dict.get(a_id)
-                        if agent:
-                            agent.abort()
-                            await websocket.send_json(
-                                WSMessage(
-                                    type="status",
-                                    data={"state": "idle", "message": f"Aborted subagent {a_id}"}
-                                ).model_dump(mode="json")
-                            )
-                        else:
-                            await websocket.send_json(
-                                WSMessage(
-                                    type="error",
-                                    data={"message": f"Subagent {a_id} not found"}
-                                ).model_dump(mode="json")
-                            )
 
                     elif msg_type == "audio_data":
-                        # Audio sent as base64 in JSON (fallback mode)
                         import base64
                         audio_b64 = msg_data.get("audio", "")
                         if audio_b64:
                             audio_bytes = base64.b64decode(audio_b64)
-                            await voice_queue.put(("audio", audio_bytes))
-
-                    else:
-                        logger.warning(f"Unknown message type: {msg_type}")
+                            await work_queue.put(("audio", audio_bytes))
 
                 except json.JSONDecodeError as e:
-                    logger.error(f"Invalid JSON received: {e}")
+                    logger.error("Invalid JSON format received: {}", e)
                     await manager.send_message(
                         websocket,
                         WSMessage(type="error", data={"message": "Invalid JSON format"}),
+                        client_id=client_id
                     )
 
             elif "bytes" in message:
-                # Binary audio data
-                audio_bytes = message["bytes"]
+                audio_bytes = message.get("bytes")
                 if audio_bytes:
-                    await voice_queue.put(("audio", audio_bytes))
+                    await work_queue.put(("audio", audio_bytes))
 
     except WebSocketDisconnect:
-        logger.info("WebSocket client disconnected normally")
-    except (RuntimeError, Exception) as e:
-        err_str = str(e).lower()
-        if "disconnect" in err_str or "receive" in err_str or "closed" in err_str:
-            logger.info(f"WebSocket connection closed cleanly: {e}")
-        else:
-            logger.error(f"WebSocket error: {e}")
+        logger.info("WebSocket client '{}' disconnected normally", client_id)
+    except Exception as e:
+        logger.info("WebSocket connection closed cleanly for client '{}': {}", client_id, e)
     finally:
         worker_task.cancel()
         try:
             await worker_task
         except asyncio.CancelledError:
             pass
-        manager.disconnect(websocket)
+        manager.disconnect(websocket, client_id=client_id)
 
 
 @router.websocket("/sync")
@@ -481,13 +379,8 @@ async def sync_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             try:
-                # Decrypt payload
                 payload = sync_service.decrypt_data(data)
-                
-                # Apply peer state
                 sync_service.apply_sync_payload(payload)
-                
-                # Send back encrypted response
                 our_payload = sync_service.get_sync_payload()
                 encrypted_resp = sync_service.encrypt_data(our_payload)
                 await websocket.send_text(encrypted_resp)

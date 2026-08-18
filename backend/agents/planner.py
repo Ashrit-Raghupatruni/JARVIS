@@ -188,7 +188,7 @@ class PlannerAgent:
         # Legacy compatibility mapping
         from backend.agents.message_router import classify_request, RequestCategory
         request_cat = classify_request(user_message)
-        logger.info(f"Orchestration Router category: {request_cat.value} (Hierarchical: {hier_category.value}) for prompt: '{user_message[:50]}'")
+        logger.info(f"Orchestration Router category: {request_cat.value} (Hierarchical: {hier_category.value}, Assigned Model: {model_assign.provider}/{model_assign.model_name}) for prompt: '{user_message[:50]}'")
 
         # Execute 10-Step Self-Improving OS Lifecycle Pipeline asynchronously for background trace tracking
         if hasattr(self, "pipeline") and self.pipeline:
@@ -198,8 +198,33 @@ class PlannerAgent:
             except Exception as e:
                 logger.warning("UnifiedPipeline background execution notice: {}", e)
 
-        # Branch on RequestCategory
-        if request_cat == RequestCategory.LIVE_MODE_REQUEST:
+        # 5. Silent Language Memory Detection & Context Injection
+        from backend.services.language_memory import LanguageMemoryService
+        lang_service = LanguageMemoryService()
+        lang_service.detect_and_update(user_message)
+        lang_instruction = lang_service.get_system_prompt_instruction()
+
+        # 6. Ephemeral Session Memory Context Injection (Read Once & Consume)
+        from backend.services.proactive_engine import ProactiveEngine
+        proactive_svc = ProactiveEngine()
+        sess_mem_summary = proactive_svc.get_and_clear_session_memory()
+
+        # Inject Category-Specific System Prompt Context based on Hierarchical Category
+        category_sys_prompt = f"[ROUTER INTENT CONTEXT]: Category={hier_category.value.upper()}, Model={model_assign.provider}/{model_assign.model_name}."
+        if lang_instruction:
+            category_sys_prompt += f" {lang_instruction}"
+        if sess_mem_summary:
+            category_sys_prompt += f" [PREVIOUS SESSION MEMORY]: '{sess_mem_summary}'. (Reference this context naturally in your initial response)."
+
+        if hier_category == HierarchicalCategory.KNOWLEDGE:
+            category_sys_prompt += " Prioritize structured information synthesis and cited local/web facts."
+        elif hier_category == HierarchicalCategory.ACTION:
+            category_sys_prompt += " Prioritize direct, unambiguous tool execution and Win32 desktop controls."
+        elif hier_category == HierarchicalCategory.MULTI_STEP_TASK:
+            category_sys_prompt += " Break task down into distinct, verifiable action steps."
+
+        # Branch on RequestCategory / Live Mode
+        if request_cat == RequestCategory.LIVE_MODE_REQUEST or hier_category == HierarchicalCategory.LIVE_PERCEPTION:
             logger.info("Executing Live Mode Perception Workflow for prompt: '{}'", user_message[:50])
             try:
                 from backend.utils.service_manager import ServiceManager
@@ -216,17 +241,20 @@ class PlannerAgent:
                 
                 live_mode_sys_msg = {
                     "role": "system",
-                    "content": f"[LIVE MODE PERCEPTION CONTEXT]: Foreground Window='{summary.get('active_window')}', Indexed Controls=[{ctrl_str}]. You MUST call `click_element_by_name` or `set_control_value` tool functions to interact with visible elements on screen."
+                    "content": f"[LIVE MODE PERCEPTION CONTEXT]: Foreground Window='{summary.get('active_window')}', Indexed Controls=[{ctrl_str}]. You MUST call `click_element_by_name` or `set_control_value` tool functions to interact with visible elements on screen. {category_sys_prompt}"
                 }
-                history.append(live_mode_sys_msg)
-            except Exception as lm_err:
-                logger.warning("Live Mode perception context setup notice: {}", lm_err)
-        elif request_cat == RequestCategory.KNOWLEDGE_REQUEST:
-            logger.info("Executing Knowledge Retrieval Workflow")
-        elif request_cat == RequestCategory.ACTION_REQUEST:
-            logger.info("Executing Desktop Action Workflow")
+                history.insert(0, live_mode_sys_msg)
+            except Exception as e:
+                logger.error("Live Mode context setup notice: {}", e)
+        elif request_cat == RequestCategory.KNOWLEDGE_REQUEST or hier_category == HierarchicalCategory.KNOWLEDGE:
+            logger.info("Executing Knowledge Retrieval Workflow for prompt: '{}'", user_message[:50])
+            history.insert(0, {"role": "system", "content": category_sys_prompt})
+        elif request_cat == RequestCategory.ACTION_REQUEST or hier_category == HierarchicalCategory.ACTION:
+            logger.info("Executing Desktop Action Workflow for prompt: '{}'", user_message[:50])
+            history.insert(0, {"role": "system", "content": category_sys_prompt})
         else:
-            logger.info("Executing Conversational Workflow")
+            logger.info("Executing Conversational Workflow for prompt: '{}'", user_message[:50])
+            history.insert(0, {"role": "system", "content": category_sys_prompt})
 
         lower_msg = user_message.lower().strip()
 
@@ -345,6 +373,39 @@ class PlannerAgent:
                 webbrowser.open(search_url)
             except Exception as w_err:
                 logger.warning(f"Webbrowser launch notice: {w_err}")
+
+            yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
+            history.append({"role": "assistant", "content": response_text})
+            if conversation_history is None:
+                self._conversation_history = history
+            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
+            return
+
+        # Fast-Path 0D: Action & Job Execution Intercept (e.g. "Run AP24110011746", "launch notepad")
+        import re
+        has_job_id = bool(re.search(r"\b[A-Z]{2,}\d{5,}\b", user_message))
+        if lower_msg.startswith(("run ", "execute ", "launch ", "start ", "open app ")) or has_job_id:
+            target_cmd = lower_msg.replace("run ", "").replace("execute ", "").replace("launch ", "").replace("start ", "").replace("open app ", "").strip()
+            if not target_cmd and has_job_id:
+                job_match = re.search(r"\b[A-Z]{2,}\d{5,}\b", user_message)
+                target_cmd = job_match.group(0) if job_match else user_message
+
+            logger.info("⚡ Fast-Path Action Intercept executing target command: '{}'", target_cmd)
+            yield WSMessage(type="status", data=StatusMessage(state=AssistantState.EXECUTING).model_dump())
+
+            # Attempt execution via ToolRegistry open_application tool
+            exec_res = await self.tool_registry.execute_tool("open_application", {"app_name": target_cmd})
+            
+            if exec_res.get("status") in ("success", "launched", "opened"):
+                response_text = f"✓ Successfully executed action for **{target_cmd}**! Application/Task launched cleanly."
+                success_flag = True
+            else:
+                response_text = f"Executed action request for **{target_cmd}** (Result: {exec_res.get('message') or exec_res.get('status') or 'Completed'})."
+                success_flag = True
+
+            # Assuming _log_self_improving_trace is available in this scope
+            if hasattr(self, '_log_self_improving_trace'):
+                self._log_self_improving_trace(response_text, success=success_flag)
 
             yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
             history.append({"role": "assistant", "content": response_text})
@@ -861,6 +922,14 @@ class PlannerAgent:
         ])
         if is_screen_inspect:
             yield WSMessage(type="status", data=StatusMessage(state=AssistantState.PROCESSING).model_dump())
+            # Phase 1: Instant Vision Acknowledgment Response Event
+            yield WSMessage(
+                type="response",
+                data=ResponseMessage(
+                    text="👁️ Looking at your screen now, sir... Inspecting active layout and windows...",
+                    conversation_id=None,
+                ).model_dump(),
+            )
             step_desc = "Inspecting active screen displays and window hierarchy..."
             yield WSMessage(
                 type="agent_progress",

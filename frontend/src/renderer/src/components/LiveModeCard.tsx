@@ -45,6 +45,85 @@ export default function LiveModeCard() {
     handControlActive: false
   })
 
+  // Real Monitored Topics State & Safety Guardrails
+  const [monitoredTopics, setMonitoredTopics] = useState<string[]>([
+    'quantum computing advances',
+    'ai os integration'
+  ])
+  const [newTopicInput, setNewTopicInput] = useState('')
+  const [topicStatusMsg, setTopicStatusMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchMonitoredTopics()
+  }, [])
+
+  const fetchMonitoredTopics = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/v1/monitored_topics')
+      if (res.ok) {
+        const data = await res.json()
+        if (data.monitored_topics) {
+          setMonitoredTopics(data.monitored_topics)
+        }
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
+  const handleAddTopic = async (topicToAdd: string) => {
+    const clean = topicToAdd.trim()
+    if (!clean) return
+    const blocked = ['crypto', 'bitcoin', 'ethereum', 'forex', 'daytrading', 'gambling', 'casino']
+    if (blocked.some((b) => clean.toLowerCase().includes(b))) {
+      setTopicStatusMsg('⚠️ Safety Policy Alert: Financial, crypto, day-trading, and gambling topics are blocked by content safety policy.')
+      return
+    }
+
+    try {
+      const res = await fetch('http://localhost:8000/api/v1/monitored_topics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: clean })
+      })
+      const data = await res.json()
+      if (data.status === 'blocked') {
+        setTopicStatusMsg(`⚠️ Safety Policy Alert: ${data.reason}`)
+        return
+      }
+      if (data.monitored_topics) {
+        setMonitoredTopics(data.monitored_topics)
+        setTopicStatusMsg(`✓ Added monitored topic: '${clean}'`)
+        setNewTopicInput('')
+        return
+      }
+    } catch {
+      if (!monitoredTopics.includes(clean)) {
+        setMonitoredTopics([...monitoredTopics, clean])
+        setTopicStatusMsg(`✓ Added monitored topic: '${clean}' (Local)`)
+        setNewTopicInput('')
+      }
+    }
+  }
+
+  const handleRemoveTopic = async (topicToRemove: string) => {
+    try {
+      const res = await fetch(`http://localhost:8000/api/v1/monitored_topics/${encodeURIComponent(topicToRemove)}`, {
+        method: 'DELETE'
+      })
+      const data = await res.json()
+      if (data.monitored_topics) {
+        setMonitoredTopics(data.monitored_topics)
+        setTopicStatusMsg(`✓ Removed monitored topic: '${topicToRemove}'`)
+        return
+      }
+    } catch {
+      // Fallback
+    }
+    setMonitoredTopics(monitoredTopics.filter((t) => t !== topicToRemove))
+    setTopicStatusMsg(`✓ Removed monitored topic: '${topicToRemove}'`)
+  }
+
   // Start/Stop Hand Tracker reactively (Gated strictly to Live Mode active + Hand Control enabled)
   useEffect(() => {
     if (!isEnabled || !handControlEnabled) {
@@ -418,6 +497,74 @@ export default function LiveModeCard() {
               <span className="text-slate-200">📝 Writer Layout</span>
               <span className="text-[10px] text-cyan-400">Restore</span>
             </button>
+          </div>
+        </div>
+
+        {/* Panel 5: Background Topic Monitor Manager & Content Safety Guardrails */}
+        <div className="col-span-1 md:col-span-3 bg-slate-900/60 rounded-lg border border-slate-800 p-3 flex flex-col gap-3">
+          <div className="text-xs font-mono font-bold text-amber-400 uppercase flex items-center justify-between border-b border-slate-800 pb-2">
+            <div className="flex items-center gap-1.5">
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+              <span>📡 Background Topic Monitor Manager</span>
+            </div>
+            <span className="text-[10px] text-slate-400 font-mono">Deduplicated & Content-Safe</span>
+          </div>
+
+          {topicStatusMsg && (
+            <div className={`p-2 rounded text-xs font-mono border transition-all ${
+              topicStatusMsg.includes('Alert') || topicStatusMsg.includes('blocked')
+                ? 'bg-rose-950/60 border-rose-500/40 text-rose-300'
+                : 'bg-cyan-950/60 border-cyan-500/40 text-cyan-300'
+            }`}>
+              {topicStatusMsg}
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={newTopicInput}
+              onChange={(e) => setNewTopicInput(e.target.value)}
+              placeholder="e.g. Quantum Computing, AI Breakthroughs..."
+              className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-100 placeholder-slate-500 outline-none focus:border-cyan-500/50"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleAddTopic(newTopicInput)
+                }
+              }}
+            />
+            <button
+              onClick={() => handleAddTopic(newTopicInput)}
+              className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 text-xs font-mono font-bold transition-all cursor-pointer"
+            >
+              + ADD TOPIC
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            {monitoredTopics.map((topic, idx) => (
+              <span
+                key={idx}
+                className="text-[11px] px-2.5 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 font-mono flex items-center gap-2"
+              >
+                <span>● {topic}</span>
+                <button
+                  onClick={() => handleRemoveTopic(topic)}
+                  className="text-cyan-400/60 hover:text-rose-400 font-bold transition-colors cursor-pointer"
+                  title={`Remove ${topic}`}
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+
+            <span
+              className="text-[11px] px-2.5 py-1 rounded-full bg-slate-950 border border-rose-500/30 text-rose-300/70 font-mono line-through flex items-center gap-1.5"
+              title="Financial & crypto topics blocked by safety policy"
+            >
+              <span>✕ Crypto & Daytrading</span>
+              <span className="text-[9px] text-rose-400/80">BLOCKED</span>
+            </span>
           </div>
         </div>
       </div>

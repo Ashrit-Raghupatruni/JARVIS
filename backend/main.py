@@ -206,10 +206,47 @@ async def lifespan(app: FastAPI):
             wake_word_service = WakeWordService()
             
             async def _init_wake_word_background():
+                main_loop = asyncio.get_running_loop()
                 await wake_word_service.load_model()
-                wake_word_service.start_standalone_listener(event_bus=event_bus)
 
-            asyncio.create_task(_init_wake_word_background())
+                def handle_wake_word_reaction():
+                    logger.info("🔥 [Wake Word Handler] Wake word 'Hey Jarvis' detected! Triggering window focus & WS broadcast...")
+                    try:
+                        auto_svc = ServiceManager.get_instance("automation_service")
+                        if auto_svc and hasattr(auto_svc, "focus_window"):
+                            auto_svc.focus_window("JARVIS")
+                    except Exception as e:
+                        logger.warning("Could not focus JARVIS window on wake word: {}", e)
+
+                    try:
+                        from backend.api.websocket import manager as ws_manager
+                        asyncio.run_coroutine_threadsafe(
+                            ws_manager.broadcast({
+                                "type": "wake_word",
+                                "event": "detected",
+                                "message": "👁️ Wake word 'Hey Jarvis' detected!",
+                                "timestamp": time.time()
+                            }),
+                            main_loop
+                        )
+                    except Exception as e:
+                        logger.warning("Failed to broadcast wake_word event over WebSocket: {}", e)
+
+                wake_word_service.start_standalone_listener(
+                    event_bus=event_bus,
+                    on_wake_word_callback=handle_wake_word_reaction,
+                    main_loop=main_loop
+                )
+
+            task = asyncio.create_task(_init_wake_word_background())
+            def _wake_word_init_done(t: asyncio.Task):
+                if t.cancelled():
+                    logger.warning("⚠️ Wake word background init task was cancelled.")
+                elif t.exception():
+                    logger.error(f"💥 CRITICAL: Wake word background init task FAILED with exception: {t.exception()}", exc_info=t.exception())
+                else:
+                    logger.info("✓ Wake word background init task completed successfully.")
+            task.add_done_callback(_wake_word_init_done)
             app.state.wake_word_service = wake_word_service
             ServiceManager.register_instance("wake_word_service", wake_word_service)
             logger.info("✓ Wake word service initialized (model loading & background microphone listener starting)")
@@ -773,6 +810,7 @@ from backend.api.routes_ui import router as ui_router
 from backend.api.mobile_router import mobile_router
 from backend.api.mobile_ws import mobile_ws_router
 from backend.api.debug_router import debug_router
+from backend.api.integrations_router import integrations_router
 
 setup_middleware(app)
 app.include_router(api_router, tags=["API"])
@@ -781,6 +819,7 @@ app.include_router(ui_router)
 app.include_router(mobile_router)
 app.include_router(mobile_ws_router)
 app.include_router(debug_router)
+app.include_router(integrations_router)
 
 
 # ── Root route (browser-friendly status page) ───────────────

@@ -97,31 +97,29 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
         }
       }}
       className={`flex flex-col glass-heavy rounded-xl overflow-hidden transition-all duration-500 relative w-full ${
-        isDragging ? 'border border-jarvis-accent bg-jarvis-bg/85' : ''
-      } ${
-        isMinimized ? 'h-12' : 'h-full'
-      }`}
+        isDragging ? 'border border-cyan-500 bg-slate-950/85' : ''
+      } ${isMinimized ? 'h-12' : 'h-full'}`}
       style={{
         boxShadow: '0 0 30px rgba(0, 0, 0, 0.3), 0 0 15px rgba(0, 229, 255, 0.05)'
       }}
     >
       {isDragging && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 border border-jarvis-accent rounded-xl animate-fade-in pointer-events-none">
-          <svg className="w-12 h-12 text-jarvis-accent animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 border border-cyan-400 rounded-xl animate-fade-in pointer-events-none">
+          <svg className="w-12 h-12 text-cyan-400 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
           </svg>
-          <span className="text-sm font-medium text-jarvis-accent mt-3">Drop file to attach</span>
-          <span className="text-xs text-jarvis-text-dim mt-1">Supports source code, logs, text, markdown</span>
+          <span className="text-sm font-medium text-cyan-300 mt-3">Drop file to attach</span>
+          <span className="text-xs text-slate-400 mt-1">Supports source code, logs, text, markdown</span>
         </div>
       )}
       {/* Header */}
       <div
-        className="flex items-center justify-between px-4 h-12 border-b border-jarvis-border cursor-pointer shrink-0"
+        className="flex items-center justify-between px-4 h-12 border-b border-cyan-500/20 cursor-pointer shrink-0"
         onClick={() => setIsMinimized(!isMinimized)}
       >
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-jarvis-accent animate-pulse" />
-          <h2 className="text-sm font-semibold text-jarvis-text tracking-wide">AI CHAT</h2>
+          <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+          <h2 className="text-sm font-semibold text-slate-200 tracking-wide font-mono">AI CHAT</h2>
           
           {/* Connection Status Indicator Pill */}
           <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded tracking-wider border flex items-center gap-1.5 transition-all ${
@@ -157,7 +155,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
           }}
         >
           <svg
-            className={`w-3 h-3 text-jarvis-text-dim transition-transform duration-300 ${
+            className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-300 ${
               isMinimized ? 'rotate-180' : ''
             }`}
             fill="none"
@@ -173,14 +171,14 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
       {/* Messages */}
       {!isMinimized && (
         <>
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 custom-scrollbar">
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full gap-3 opacity-40">
-                <svg className="w-10 h-10 text-jarvis-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                <svg className="w-10 h-10 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
-                <span className="text-xs text-jarvis-text-muted">
-                  Say "Hey JARVIS" or press Ctrl+Space
+                <span className="text-xs text-slate-400 font-mono">
+                  Say "Hey JARVIS" or type your command...
                 </span>
               </div>
             )}
@@ -192,8 +190,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
             {/* Live transcript */}
             {currentTranscript && (
               <div className="animate-fade-in flex justify-end">
-                <div className="max-w-[85%] px-3 py-2 rounded-lg bg-white/5 border border-white/10">
-                  <p className="text-sm text-jarvis-text-dim italic animate-pulse-soft">
+                <div className="max-w-[85%] px-3 py-2 rounded-lg bg-cyan-950/40 border border-cyan-500/30">
+                  <p className="text-xs text-cyan-300 italic animate-pulse">
                     {currentTranscript}
                   </p>
                 </div>
@@ -203,24 +201,24 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
             {/* Thinking indicator */}
             {assistantState === 'processing' && (
               <div className="animate-fade-in-up flex justify-start">
-                <div className="max-w-[85%] px-3 py-2 rounded-lg bg-jarvis-accent-dim border border-jarvis-border">
+                <div className="max-w-[85%] px-3 py-2 rounded-lg bg-slate-900 border border-cyan-500/30">
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1">
                       <span
-                        className="w-1.5 h-1.5 rounded-full bg-jarvis-accent"
+                        className="w-1.5 h-1.5 rounded-full bg-cyan-400"
                         style={{ animation: 'thinking-dot 1.4s infinite ease-in-out', animationDelay: '0s' }}
                       />
                       <span
-                        className="w-1.5 h-1.5 rounded-full bg-jarvis-accent"
+                        className="w-1.5 h-1.5 rounded-full bg-cyan-400"
                         style={{ animation: 'thinking-dot 1.4s infinite ease-in-out', animationDelay: '0.2s' }}
                       />
                       <span
-                        className="w-1.5 h-1.5 rounded-full bg-jarvis-accent"
+                        className="w-1.5 h-1.5 rounded-full bg-cyan-400"
                         style={{ animation: 'thinking-dot 1.4s infinite ease-in-out', animationDelay: '0.4s' }}
                       />
                     </div>
                     {thinkingText && (
-                      <span className="text-xs text-jarvis-text-dim">{thinkingText}</span>
+                      <span className="text-xs text-slate-400 font-mono">{thinkingText}</span>
                     )}
                   </div>
                 </div>
@@ -231,19 +229,19 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
           </div>
 
           {/* Input */}
-          <div className="px-3 pb-3 pt-1 border-t border-jarvis-border shrink-0">
+          <div className="px-3 pb-3 pt-1 border-t border-slate-800 shrink-0">
             {attachedFile && (
-              <div className="flex items-center justify-between mx-1 mb-2 px-3 py-1.5 rounded bg-white/5 border border-white/10 text-xs text-jarvis-text animate-fade-in">
-                <span className="truncate max-w-[85%]">📄 {attachedFile.name}</span>
+              <div className="flex items-center justify-between mx-1 mb-2 px-3 py-1.5 rounded bg-slate-900 border border-cyan-500/30 text-xs text-slate-200 animate-fade-in">
+                <span className="truncate max-w-[85%] font-mono">📄 {attachedFile.name}</span>
                 <button
                   onClick={() => setAttachedFile(null)}
-                  className="text-jarvis-text-dim hover:text-jarvis-accent transition-fast"
+                  className="text-slate-400 hover:text-cyan-400 transition-fast"
                 >
                   ✕
                 </button>
               </div>
             )}
-            <div className="flex items-center gap-2 glass rounded-lg px-3 py-1.5 border border-cyan-500/20">
+            <div className="flex items-center gap-2 bg-slate-950/80 rounded-lg px-3 py-1.5 border border-cyan-500/30">
               <input
                 ref={inputRef}
                 type="text"
@@ -251,7 +249,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={assistantState === 'listening' ? "🎤 Listening to your voice..." : "Type a message or say 'Hey Jarvis'..."}
-                className="flex-1 bg-transparent text-sm font-sans text-jarvis-text placeholder-jarvis-text-muted outline-none caret-cyan-400"
+                className="flex-1 bg-transparent text-sm font-sans text-slate-100 placeholder-slate-500 outline-none caret-cyan-400"
               />
 
               {/* Mic Toggle Button inside Chat Box */}
@@ -268,7 +266,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
                 className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${
                   assistantState === 'listening'
                     ? 'bg-rose-500/30 text-rose-400 border border-rose-500/50 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.4)]'
-                    : 'bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff]/30'
+                    : 'bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
                 }`}
                 title={assistantState === 'listening' ? "Stop Mic (Click or Ctrl+Space)" : "Activate Mic (Click or Ctrl+Space)"}
               >
@@ -281,11 +279,11 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
               <button
                 onClick={handleSend}
                 disabled={!inputText.trim() && !attachedFile}
-                className="w-7 h-7 flex items-center justify-center rounded-md bg-jarvis-accent/20 hover:bg-jarvis-accent/30 disabled:opacity-30 disabled:cursor-not-allowed transition-fast"
+                className="w-7 h-7 flex items-center justify-center rounded-md bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
                 title="Send Message"
               >
                 <svg
-                  className="w-3.5 h-3.5 text-jarvis-accent"
+                  className="w-3.5 h-3.5 text-cyan-300"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -294,7 +292,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </button>
-
             </div>
           </div>
         </>
@@ -312,86 +309,68 @@ interface MessageBubbleProps {
 function cleanChatMessageText(text: string): string {
   if (!text) return ''
   let cleaned = text
-  // 1. Remove function call tags (<function=...>...</function>)
   cleaned = cleaned.replace(/<function=[\s\S]*?<\/function>/gi, '')
   cleaned = cleaned.replace(/<function=[\s\S]*?$/gi, '')
-  // 2. Remove internal system markers
   cleaned = cleaned.replace(/\[SERIOUS MODE ACTIVE:[^\]]*\]/gi, '')
-  // 3. Remove excess empty lines
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n')
   return cleaned.trim()
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message, formatTime }) => {
+  const isUser = message.role === 'user'
+  const isVisionAck = !isUser && message.content.includes('Looking at your screen now')
+  const isSessionMem = message.content.includes('[PREVIOUS SESSION MEMORY]') || message.content.includes('PREVIOUS SESSION MEMORY')
+
   if (message.role === 'system') {
     return (
-      <div className="animate-fade-in flex justify-center">
-        <div className="px-3 py-1 rounded-full bg-white/5">
-          <span className="text-xs text-jarvis-text-muted">{cleanChatMessageText(message.content)}</span>
+      <div className="animate-fade-in flex justify-center font-mono">
+        <div className="px-3 py-1 rounded-full bg-slate-900 border border-slate-800">
+          <span className="text-xs text-slate-400">{cleanChatMessageText(message.content)}</span>
         </div>
       </div>
     )
   }
 
-  const isUser = message.role === 'user'
-  const displayContent = cleanChatMessageText(message.content)
-
   return (
-    <div
-      className={`animate-fade-in-up flex ${isUser ? 'justify-end' : 'justify-start'}`}
-    >
+    <div className={`animate-fade-in-up flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+      {/* Session Memory Continuity Chip */}
+      {isSessionMem && (
+        <div className="w-full my-1.5 p-2 rounded-lg bg-cyan-950/60 border border-cyan-500/30 flex items-center justify-between text-xs text-cyan-300 font-mono">
+          <div className="flex items-center space-x-2">
+            <span className="text-base">🧠</span>
+            <span className="font-semibold">Session Context Restored</span>
+          </div>
+          <span className="text-[10px] text-cyan-400/70">Read-Once Active</span>
+        </div>
+      )}
+
       <div
-        className={`max-w-[85%] flex gap-2 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+        className={`max-w-[85%] px-3.5 py-2.5 rounded-xl transition-all duration-200 ${
+          isUser
+            ? 'bg-cyan-950/70 border border-cyan-500/30 text-cyan-100 rounded-tr-none shadow-[0_2px_10px_rgba(0,229,255,0.1)]'
+            : isVisionAck
+            ? 'bg-amber-950/60 border border-amber-500/40 text-amber-100 rounded-tl-none shadow-[0_2px_12px_rgba(245,158,11,0.2)]'
+            : 'bg-slate-900/90 border border-slate-800 text-slate-100 rounded-tl-none shadow-[0_2px_10px_rgba(0,0,0,0.3)]'
+        }`}
       >
-        {/* Avatar */}
-        <div
-          className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-            isUser
-              ? 'bg-jarvis-accent/20'
-              : 'bg-gradient-to-br from-jarvis-accent/30 to-jarvis-accent-2/30'
-          }`}
-          style={{
-            boxShadow: isUser
-              ? 'none'
-              : '0 0 8px rgba(0, 229, 255, 0.2)'
-          }}
-        >
-          {isUser ? (
-            <svg className="w-3 h-3 text-jarvis-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-          ) : (
-            <svg className="w-3 h-3 text-jarvis-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-          )}
+        {/* Vision Live Pulse Badge */}
+        {isVisionAck && (
+          <div className="flex items-center space-x-1.5 mb-1.5 text-[11px] font-mono text-amber-400 font-bold">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+            <span>👁️ INSTANT VISION ACKNOWLEDGMENT</span>
+          </div>
+        )}
+
+        <div className="text-sm leading-relaxed whitespace-pre-wrap break-words font-sans">
+          {cleanChatMessageText(message.content)}
         </div>
 
-        {/* Content */}
         <div
-          className={`px-3 py-2 rounded-lg ${
-            isUser
-              ? 'bg-white/5 border border-white/10'
-              : 'bg-jarvis-accent-dim border border-jarvis-border'
+          className={`text-[9px] font-mono mt-1 ${
+            isUser ? 'text-cyan-400/60 text-right' : 'text-slate-500 text-left'
           }`}
         >
-          {!isUser && (
-            <div className="mb-1 flex items-center gap-1.5">
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                ⚡ Prash Local Engine
-              </span>
-            </div>
-          )}
-          <p className="text-sm text-jarvis-text leading-relaxed whitespace-pre-wrap break-words">
-            {displayContent}
-          </p>
-          <span
-            className={`text-[10px] mt-1 block ${
-              isUser ? 'text-jarvis-text-muted text-right' : 'text-jarvis-text-muted'
-            }`}
-          >
-            {formatTime(message.timestamp)}
-          </span>
+          {formatTime(message.timestamp)}
         </div>
       </div>
     </div>

@@ -43,11 +43,13 @@ class ProactiveEngine:
         self._action_history: List[str] = []
         self._last_proactive_time = 0.0
         self.cooldown_seconds = 1200.0  # 20 minutes between interjections
+        self.rotation_index = 0  # 3-way focus area rotation (0: Active Project, 1: Monitored Topic, 2: Time-of-Day Agenda)
         self.data_dir = data_dir or Path("data")
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.session_memory_file = self.data_dir / "session_memory.json"
         self.monitored_topics_file = self.data_dir / "monitored_topics.json"
-        logger.info("ProactiveEngine initialized (Proactive 2.0 with 20-min Cooldown & Session Memory Active).")
+        self.seen_headlines_file = self.data_dir / "seen_headlines.json"
+        logger.info("ProactiveEngine initialized (Proactive 2.0 with 20-min Cooldown & 3-Way Rotation Active).")
 
     # ── Session Memory (Ephemeral Continuity) ──────────────────────────
 
@@ -57,7 +59,8 @@ class ProactiveEngine:
             payload = {
                 "summary": summary_text.strip(),
                 "timestamp": time.time(),
-                "formatted_date": time.strftime("%Y-%m-%d %H:%M:%S")
+                "formatted_date": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "consumed": False
             }
             with open(self.session_memory_file, "w", encoding="utf-8") as f:
                 json.dump(payload, f, indent=2)
@@ -65,22 +68,37 @@ class ProactiveEngine:
         except Exception as e:
             logger.error("Failed to save session summary: {}", e)
 
-    def get_and_clear_session_memory(self) -> Optional[str]:
-        """Read session summary once on startup and discard it (never repeats)."""
+    def get_last_session_summary(self) -> Optional[str]:
+        """Read session summary if present and not yet consumed."""
         if not self.session_memory_file.exists():
             return None
         try:
             with open(self.session_memory_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            summary = data.get("summary")
-            # Delete file after reading so it is used exactly once
-            self.session_memory_file.unlink(missing_ok=True)
-            return summary
+            if data.get("consumed", False):
+                return None
+            return data.get("summary")
         except Exception as e:
-            logger.error("Failed to read session memory: {}", e)
+            logger.error("Failed to read last session summary: {}", e)
             return None
 
-    # ── Background Topic Monitoring (with Content Safety) ─────────────
+    def consume_session_summary(self) -> None:
+        """Mark session summary consumed and delete file so it is never reused."""
+        if self.session_memory_file.exists():
+            try:
+                self.session_memory_file.unlink(missing_ok=True)
+                logger.info("Consumed ephemeral session summary file.")
+            except Exception as e:
+                logger.error("Failed to consume session summary file: {}", e)
+
+    def get_and_clear_session_memory(self) -> Optional[str]:
+        """Read session summary once on startup and discard it (never repeats)."""
+        summary = self.get_last_session_summary()
+        if summary:
+            self.consume_session_summary()
+        return summary
+
+    # ── Background Topic Monitoring (with Content Safety & Dedup) ─────
 
     def add_monitored_topic(self, topic: str) -> Dict[str, Any]:
         """Add topic for background monitoring after validating content safety rules."""
@@ -101,6 +119,20 @@ class ProactiveEngine:
 
         return {"status": "ok", "monitored_topics": topics}
 
+    def remove_monitored_topic(self, topic: str) -> Dict[str, Any]:
+        """Remove a topic from background monitoring and update persistent storage."""
+        clean_topic = topic.lower().strip()
+        topics = self._load_monitored_topics()
+        if clean_topic in topics:
+            topics.remove(clean_topic)
+            self._save_monitored_topics(topics)
+            logger.info(f"Removed monitored topic: '{clean_topic}'")
+        return {"status": "ok", "monitored_topics": topics}
+
+    def get_monitored_topics(self) -> List[str]:
+        """Return currently monitored topics list from persistent storage."""
+        return self._load_monitored_topics()
+
     def _load_monitored_topics(self) -> List[str]:
         if self.monitored_topics_file.exists():
             try:
@@ -116,6 +148,32 @@ class ProactiveEngine:
                 json.dump(topics, f, indent=2)
         except Exception as e:
             logger.error("Failed to save monitored topics: {}", e)
+
+    def is_headline_new(self, headline: str) -> bool:
+        """Check if headline has already been processed to prevent duplicate notifications."""
+        clean = headline.lower().strip()
+        seen = []
+        if self.seen_headlines_file.exists():
+            try:
+                with open(self.seen_headlines_file, "r", encoding="utf-8") as f:
+                    seen = json.load(f)
+            except Exception:
+                seen = []
+
+        if clean in seen:
+            return False
+
+        seen.append(clean)
+        if len(seen) > 200:
+            seen = seen[-200:]  # Cap rolling buffer
+
+        try:
+            with open(self.seen_headlines_file, "w", encoding="utf-8") as f:
+                json.dump(seen, f, indent=2)
+        except Exception:
+            pass
+
+        return True
 
     # ── Context Analysis & Proactive 2.0 Cooldown ──────────────────────
 
@@ -203,3 +261,76 @@ class ProactiveEngine:
             message="JARVIS is observing your desktop context in real-time.",
             action_suggestion=f"Active workflow: {state.current_workflow}"
         )
+
+    def generate_proactive_checkin(
+        self,
+        active_project: str = "JARVIS AI OS",
+        recent_turns: Optional[List[str]] = None,
+        force: bool = False
+    ) -> Optional[ProactiveGuidance]:
+        """
+        Generate proactive 2.0 check-in card using 4 context inputs:
+        1. Time of day
+        2. Active project from memory
+        3. Monitored topics
+        4. Recent conversation turns
+        And 3-way rotation between focus areas (0: Active Project, 1: Monitored Topics, 2: Time-of-Day Agenda).
+        Enforces 20-minute (1200s) cooldown unless force=True.
+        """
+        now = time.time()
+        if not force and (now - self._last_proactive_time) < self.cooldown_seconds:
+            logger.debug(f"Proactive 2.0 check-in skipped (cooldown active: {int(self.cooldown_seconds - (now - self._last_proactive_time))}s remaining)")
+            return None
+
+        self._last_proactive_time = now
+
+        # Context Input 1: Time of Day
+        hour = time.localtime().tm_hour
+        if 5 <= hour < 12:
+            tod = "Morning Briefing"
+        elif 12 <= hour < 18:
+            tod = "Afternoon Progress Review"
+        else:
+            tod = "Evening Workflow Summary"
+
+        # Context Input 2: Active Project
+        project_name = active_project or "JARVIS OS"
+
+        # Context Input 3: Monitored Topics
+        topics = self._load_monitored_topics()
+        top_topic = topics[0] if topics else "Quantum Computing Advances"
+
+        # Context Input 4: Conversation History
+        turn_count = len(recent_turns) if recent_turns else 0
+
+        # 3-Way Focus Area Rotation
+        rot = self.rotation_index % 3
+        self.rotation_index += 1
+
+        if rot == 0:
+            # Rotation 0: Active Project Check-in
+            guidance = ProactiveGuidance(
+                guidance_type="active_project",
+                title=f"Proactive Check-In: {project_name}",
+                message=f"[{tod}] You have been working on '{project_name}' across the last {turn_count} conversation turns.",
+                action_suggestion="Shall I review recent code changes or run system integration tests?"
+            )
+        elif rot == 1:
+            # Rotation 1: Monitored Topic Digest
+            guidance = ProactiveGuidance(
+                guidance_type="topic_digest",
+                title=f"Background Topic Alert: {top_topic.title()}",
+                message=f"[{tod}] Updated news digest available for monitored topic '{top_topic}'.",
+                action_suggestion="Say 'Show topic news' to view visual card previews."
+            )
+        else:
+            # Rotation 2: Time-of-Day Agenda
+            guidance = ProactiveGuidance(
+                guidance_type="agenda_recap",
+                title=f"{tod} Agenda",
+                message=f"[{tod}] Hardware resources nominal. {len(topics)} topic(s) monitored.",
+                action_suggestion="Say 'Show daily briefing' for full task summary."
+            )
+
+        logger.info(f"Generated Proactive 2.0 Guidance (Rotation {rot}): '{guidance.title}'")
+        return guidance

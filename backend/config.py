@@ -55,6 +55,18 @@ class Settings(BaseSettings):
         default=True,
         description="Force HuggingFace Hub and Transformers to run in offline mode to prevent pool hangs.",
     )
+    N8N_BASE_URL: str = Field(
+        default="http://localhost:5678",
+        description="Base URL for n8n workflow automation engine instance.",
+    )
+    N8N_API_KEY: Optional[str] = Field(
+        default=None,
+        description="Optional API key for authenticating with n8n REST API endpoints.",
+    )
+    N8N_WEBHOOK_SECRET: Optional[str] = Field(
+        default=None,
+        description="Optional secret token for authenticating incoming n8n webhook callbacks.",
+    )
     LLM_PROVIDER: str = Field(
         default="ollama",
         description="Primary LLM provider to use: ollama (primary), groq (secondary), openai (optional).",

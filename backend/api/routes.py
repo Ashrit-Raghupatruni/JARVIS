@@ -7,7 +7,7 @@ conversation history, settings management, and TTS voice listing.
 
 import time
 import asyncio
-from typing import Optional
+from typing import Optional, Dict, Any, List
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -856,4 +856,28 @@ async def reject_developer_approval(approval_id: str):
     if not dev_service:
         return {"status": "error", "message": "Self development service offline."}
     return dev_service.reject_modification(approval_id)
+
+# ── Monitored Topics Management ────────────────────────────────────────
+
+@router.get("/api/v1/monitored_topics")
+async def get_monitored_topics():
+    from backend.services.proactive_engine import ProactiveEngine
+    engine = ProactiveEngine()
+    topics = engine.get_monitored_topics()
+    return {"status": "ok", "monitored_topics": topics}
+
+@router.post("/api/v1/monitored_topics")
+async def add_monitored_topic(payload: Dict[str, Any]):
+    topic = payload.get("topic", "")
+    if not topic:
+        return {"status": "error", "message": "Topic parameter required."}
+    from backend.services.proactive_engine import ProactiveEngine
+    engine = ProactiveEngine()
+    return engine.add_monitored_topic(topic)
+
+@router.delete("/api/v1/monitored_topics/{topic}")
+async def remove_monitored_topic(topic: str):
+    from backend.services.proactive_engine import ProactiveEngine
+    engine = ProactiveEngine()
+    return engine.remove_monitored_topic(topic)
 

@@ -66,3 +66,29 @@ Tone Instruction: {tone_instruction}
             situational_mode=mode.upper(),
             tone_instruction=instruction
         )
+
+    def enforce_executive_tone(self, response_text: str) -> str:
+        """Strip verbose conversational filler to enforce an executive, authoritative MCU J.A.R.V.I.S. tone."""
+        if not response_text:
+            return ""
+
+        import re
+        txt = response_text
+
+        # List of forbidden verbose filler prefixes to strip
+        filler_patterns = [
+            r"^(sure|certainly|absolutely|of course)!?\s*(i can help you with that|i'd be happy to help)?\.?\s*",
+            r"^as an ai (assistant|language model),?\s*",
+            r"^here is the information you requested:?\s*",
+            r"^i have processed your request:?\s*"
+        ]
+
+        for pat in filler_patterns:
+            txt = re.sub(pat, "", txt, flags=re.IGNORECASE).strip()
+
+        # Capitalize first letter if modified
+        if txt and txt[0].islower():
+            txt = txt[0].upper() + txt[1:]
+
+        return txt
+

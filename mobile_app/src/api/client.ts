@@ -98,6 +98,19 @@ export class JarvisMobileClient {
     return data;
   }
 
+  async pairWithQR(qrPayload: string, deviceId: string = "mobile-qr-client") {
+    const res = await fetch(`${this.baseUrl}/api/v1/mobile/pair/qr/scan`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ qr_payload: qrPayload, device_id: deviceId })
+    });
+    const data = await res.json();
+    if (data.access_token || data.token) {
+      this.setAuthToken(data.access_token || data.token);
+    }
+    return data;
+  }
+
   async fetchTrustedDevices() {
     const res = await fetch(`${this.baseUrl}/api/v1/mobile/devices`, {
       headers: this.getHeaders()
