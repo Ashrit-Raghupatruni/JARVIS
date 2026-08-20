@@ -8,6 +8,7 @@ import os
 import sys
 import time
 import asyncio
+from typing import Dict, Any, List, Optional
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -32,7 +33,7 @@ os.environ["ANONYMIZED_TELEMETRY"] = "False"
 os.environ["CHROMA_TELEMETRY"] = "False"
 os.environ["CHROMA_TELEMETRY_ENABLED"] = "False"
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from loguru import logger
 from backend.agents.context_manager import SharedContextManager
 from backend.utils.task_queue import AsyncTaskQueue
@@ -525,146 +526,148 @@ async def lifespan(app: FastAPI):
             logger.error(f"✗ RAG service failed: {e}")
             app.state.rag_service = None
 
-            # ── Initialize Agents ────────────────────────────────────
+        # ── Initialize Agents ────────────────────────────────────
 
-            # Planner Agent
-            planner_agent = None
-            if llm_service:
-                try:
-                    from backend.agents.planner import PlannerAgent
-                    planner_agent = PlannerAgent(
-                        llm_service=llm_service,
-                        automation_service=automation_service,
-                        screen_service=screen_service,
-                        browser_service=browser_service,
-                        memory_service=memory_service,
-                        safety_service=safety_service,
-                        vision_service=vision_service,
-                        desktop_automation_service=desktop_automation_service,
-                        developer_assistant_service=developer_assistant_service,
-                        research_service=research_service,
-                        voice_intelligence_service=voice_intelligence_service,
-                        productivity_service=productivity_service,
-                    )
-                    app.state.planner_agent = planner_agent
-                    app.state.active_subagents = {}
-                    logger.info("✓ Planner agent initialized")
-                except Exception as e:
-                    logger.error(f"✗ Planner agent failed: {e}")
-                    app.state.planner_agent = None
-            else:
-                app.state.planner_agent = None
-
-            # Voice Agent
-            voice_agent = None
+        # Planner Agent
+        planner_agent = None
+        if llm_service:
             try:
-                from backend.agents.voice import VoiceAgent
-                voice_agent = VoiceAgent(
-                    wake_word_service=wake_word_service,
-                    stt_service=stt_service,
-                    tts_service=tts_service,
-                    planner_agent=planner_agent,
+                from backend.agents.planner import PlannerAgent
+                planner_agent = PlannerAgent(
+                    llm_service=llm_service,
+                    automation_service=automation_service,
+                    screen_service=screen_service,
+                    browser_service=browser_service,
+                    memory_service=memory_service,
+                    safety_service=safety_service,
+                    vision_service=vision_service,
+                    desktop_automation_service=desktop_automation_service,
+                    developer_assistant_service=developer_assistant_service,
+                    research_service=research_service,
+                    voice_intelligence_service=voice_intelligence_service,
+                    productivity_service=productivity_service,
                 )
-                app.state.voice_agent = voice_agent
-                logger.info("✓ Voice agent initialized")
-
-                # Connect Clap Listener to Voice Agent wake trigger
-                if clap_service:
-                    def handle_clap_wake(clap_mode: str):
-                        v_agent = getattr(app.state, "voice_agent", None)
-                        if v_agent:
-                            if v_agent.state in (AssistantState.SPEAKING, AssistantState.PROCESSING, AssistantState.EXECUTING, AssistantState.LISTENING):
-                                logger.info(f"Ignoring clap trigger during active voice state ({v_agent.state.value})")
-                                return
-                            logger.info(f"Clap trigger activated (mode={clap_mode}) — transitioning voice agent to listening!")
-                            v_agent._session_id += 1
-                            v_agent.state = AssistantState.LISTENING
-                            v_agent._listening_start_time = time.time()
-                            v_agent._last_speech_time = time.time()
-                            v_agent._has_speech = False
-                            v_agent._played_ack = False
-                        conn_mgr = getattr(app.state, "connection_manager", None)
-                        if conn_mgr and hasattr(app, "loop") and app.loop.is_running():
-                            asyncio.run_coroutine_threadsafe(
-                                conn_mgr.broadcast(WSMessage(type="status", data={"state": "listening", "message": f"{clap_mode.capitalize()} clap trigger"})),
-                                app.loop
-                            )
-                    clap_service.on_clap_detected = handle_clap_wake
+                app.state.planner_agent = planner_agent
+                app.state.active_subagents = {}
+                ServiceManager.register_instance("planner_agent", planner_agent)
+                logger.info("✓ Planner agent initialized")
             except Exception as e:
-                logger.error(f"✗ Voice agent failed: {e}")
-                app.state.voice_agent = None
+                logger.error(f"✗ Planner agent failed: {e}")
+                app.state.planner_agent = None
+        else:
+            app.state.planner_agent = None
 
-            # Proactive Skill & background worker
-            proactive_task = None
-            try:
-                from backend.services.skills.proactive_skill import ProactiveSkill
-                proactive_skill = ProactiveSkill(app_state=app.state)
-                app.state.proactive_skill = proactive_skill
+        # Voice Agent
+        voice_agent = None
+        try:
+            from backend.agents.voice import VoiceAgent
+            voice_agent = VoiceAgent(
+                wake_word_service=wake_word_service,
+                stt_service=stt_service,
+                tts_service=tts_service,
+                planner_agent=planner_agent,
+            )
+            app.state.voice_agent = voice_agent
+            ServiceManager.register_instance("voice_agent", voice_agent)
+            logger.info("✓ Voice agent initialized")
+
+            # Connect Clap Listener to Voice Agent wake trigger
+            if clap_service:
+                def handle_clap_wake(clap_mode: str):
+                    v_agent = getattr(app.state, "voice_agent", None)
+                    if v_agent:
+                        if v_agent.state in (AssistantState.SPEAKING, AssistantState.PROCESSING, AssistantState.EXECUTING, AssistantState.LISTENING):
+                            logger.info(f"Ignoring clap trigger during active voice state ({v_agent.state.value})")
+                            return
+                        logger.info(f"Clap trigger activated (mode={clap_mode}) — transitioning voice agent to listening!")
+                        v_agent._session_id += 1
+                        v_agent.state = AssistantState.LISTENING
+                        v_agent._listening_start_time = time.time()
+                        v_agent._last_speech_time = time.time()
+                        v_agent._has_speech = False
+                        v_agent._played_ack = False
+                    conn_mgr = getattr(app.state, "connection_manager", None)
+                    if conn_mgr and hasattr(app, "loop") and app.loop.is_running():
+                        asyncio.run_coroutine_threadsafe(
+                            conn_mgr.broadcast(WSMessage(type="status", data={"state": "listening", "message": f"{clap_mode.capitalize()} clap trigger"})),
+                            app.loop
+                        )
+                clap_service.on_clap_detected = handle_clap_wake
+        except Exception as e:
+            logger.error(f"✗ Voice agent failed: {e}")
+            app.state.voice_agent = None
+
+        # Proactive Skill & background worker
+        proactive_task = None
+        try:
+            from backend.services.skills.proactive_skill import ProactiveSkill
+            proactive_skill = ProactiveSkill(app_state=app.state)
+            app.state.proactive_skill = proactive_skill
+            
+            if planner_agent and hasattr(planner_agent, "skills_registry"):
+                planner_agent.skills_registry.register_skill(proactive_skill)
                 
-                if planner_agent and hasattr(planner_agent, "skills_registry"):
-                    planner_agent.skills_registry.register_skill(proactive_skill)
+            async def proactive_worker():
+                logger.info("✓ Proactive background worker started")
+                while True:
+                    try:
+                        await proactive_skill.check_triggers()
+                    except Exception as ex:
+                        logger.error("Error in proactive check loop: {}", ex)
+                    await asyncio.sleep(10)
                     
-                async def proactive_worker():
-                    logger.info("✓ Proactive background worker started")
-                    while True:
-                        try:
-                            await proactive_skill.check_triggers()
-                        except Exception as ex:
-                            logger.error("Error in proactive check loop: {}", ex)
-                        await asyncio.sleep(10)
-                        
-                proactive_task = asyncio.create_task(proactive_worker())
-                app.state.proactive_task = proactive_task
-                logger.info("✓ Proactive background checks initialized")
-            except Exception as e:
-                logger.error(f"✗ Proactive checks failed: {e}")
+            proactive_task = asyncio.create_task(proactive_worker())
+            app.state.proactive_task = proactive_task
+            logger.info("✓ Proactive background checks initialized")
+        except Exception as e:
+            logger.error(f"✗ Proactive checks failed: {e}")
 
-            # Context Skill background worker
-            context_task = None
-            try:
-                if planner_agent and hasattr(planner_agent, "skills_registry"):
-                    context_skill = planner_agent.skills_registry.skills.get("ContextSkill")
-                    if context_skill:
-                        async def context_worker():
-                            logger.info("✓ Context background worker started")
-                            while True:
-                                try:
-                                    changed = context_skill.update_active_window()
-                                    if changed:
-                                        from backend.api.websocket import manager as ws_manager
-                                        try:
-                                            from backend.models.schemas import WSMessage
-                                            ctx = context_skill.active_context
-                                            await ws_manager.broadcast(WSMessage(
-                                                type="context_update",
-                                                data={
-                                                    "window_title": ctx.get("window_title", ""),
-                                                    "process_name": ctx.get("process_name", ""),
-                                                    "inferred_project": ctx.get("inferred_project", ""),
-                                                    "start_time": ctx.get("start_time", "")
-                                                }
-                                            ))
-                                        except Exception as ws_err:
-                                            logger.debug("WS broadcast context_update failed: {}", ws_err)
-                                except Exception as ex:
-                                    logger.error("Error in context scanner loop: {}", ex)
-                                await asyncio.sleep(30)
+        # Context Skill background worker
+        context_task = None
+        try:
+            if planner_agent and hasattr(planner_agent, "skills_registry"):
+                context_skill = planner_agent.skills_registry.skills.get("ContextSkill")
+                if context_skill:
+                    async def context_worker():
+                        logger.info("✓ Context background worker started")
+                        while True:
+                            try:
+                                changed = context_skill.update_active_window()
+                                if changed:
+                                    from backend.api.websocket import manager as ws_manager
+                                    try:
+                                        from backend.models.schemas import WSMessage
+                                        ctx = context_skill.active_context
+                                        await ws_manager.broadcast(WSMessage(
+                                            type="context_update",
+                                            data={
+                                                "window_title": ctx.get("window_title", ""),
+                                                "process_name": ctx.get("process_name", ""),
+                                                "inferred_project": ctx.get("inferred_project", ""),
+                                                "start_time": ctx.get("start_time", "")
+                                            }
+                                        ))
+                                    except Exception as ws_err:
+                                        logger.debug("WS broadcast context_update failed: {}", ws_err)
+                            except Exception as ex:
+                                logger.error("Error in context scanner loop: {}", ex)
+                            await asyncio.sleep(30)
 
-                        context_task = asyncio.create_task(context_worker())
-                        app.state.context_task = context_task
-                        logger.info("✓ Context background scanner initialized")
-            except Exception as e:
-                logger.error(f"✗ Context worker initialization failed: {e}")
+                    context_task = asyncio.create_task(context_worker())
+                    app.state.context_task = context_task
+                    logger.info("✓ Context background scanner initialized")
+        except Exception as e:
+            logger.error(f"✗ Context worker initialization failed: {e}")
 
-            # Sync Service
-            sync_service = None
-            try:
-                from backend.services.sync_service import SyncService
-                sync_service = SyncService(app_state=app.state)
-                sync_service.start()
-                app.state.sync_service = sync_service
-            except Exception as e:
-                logger.error(f"✗ Sync service failed: {e}")
+        # Sync Service
+        sync_service = None
+        try:
+            from backend.services.sync_service import SyncService
+            sync_service = SyncService(app_state=app.state)
+            sync_service.start()
+            app.state.sync_service = sync_service
+        except Exception as e:
+            logger.error(f"✗ Sync service failed: {e}")
 
     asyncio.create_task(_init_background_services())
 
@@ -820,6 +823,84 @@ app.include_router(mobile_router)
 app.include_router(mobile_ws_router)
 app.include_router(debug_router)
 app.include_router(integrations_router)
+
+
+@app.get("/api/live_mode/status")
+@app.get("/live_mode/status")
+@app.get("/api/v1/live_mode/status")
+async def get_live_mode_status_global(request: Request):
+    """Global API endpoint for Live Mode status."""
+    live_engine = ServiceManager.get_instance("live_mode_engine")
+    if not live_engine and hasattr(request.app.state, "live_mode_engine"):
+        live_engine = request.app.state.live_mode_engine
+    if not live_engine or not live_engine.is_enabled:
+        return {"status": "inactive", "live_mode_enabled": False}
+
+    frame = getattr(live_engine, "latest_frame", None)
+    return {
+        "status": "active",
+        "live_mode_enabled": True,
+        "frame": frame.model_dump() if frame and hasattr(frame, "model_dump") else None
+    }
+
+
+# ── Global Chat History Endpoints ───────────────────────────
+
+@app.get("/api/conversations")
+@app.get("/api/v1/conversations")
+@app.get("/history")
+@app.get("/api/v1/history")
+async def get_conversations_global(request: Request, limit: int = 30):
+    """Fetch conversation list for sidebar UI."""
+    mem_svc = ServiceManager.get_instance("memory_service") or getattr(request.app.state, "memory_service", None)
+    if mem_svc:
+        try:
+            conversations = await mem_svc.get_recent_conversations(limit=limit)
+            return {"status": "ok", "conversations": conversations}
+        except Exception as e:
+            logger.error("Failed to get conversations: {}", e)
+            return {"status": "error", "conversations": [], "error": str(e)}
+    return {"status": "ok", "conversations": []}
+
+
+@app.get("/api/conversations/{conv_id}")
+@app.get("/api/v1/conversations/{conv_id}")
+async def get_conversation_by_id_global(conv_id: int, request: Request):
+    """Fetch single conversation transcript."""
+    mem_svc = ServiceManager.get_instance("memory_service") or getattr(request.app.state, "memory_service", None)
+    if mem_svc:
+        conv = await mem_svc.get_conversation(conv_id)
+        if conv:
+            return {"status": "ok", "conversation": conv}
+        return JSONResponse(status_code=404, content={"status": "error", "message": "Conversation not found"})
+    return JSONResponse(status_code=503, content={"status": "error", "message": "Memory service unavailable"})
+
+
+@app.put("/api/conversations/{conv_id}")
+@app.put("/api/v1/conversations/{conv_id}")
+async def rename_conversation_by_id_global(conv_id: int, payload: Dict[str, Any], request: Request):
+    """Rename a conversation by ID."""
+    mem_svc = ServiceManager.get_instance("memory_service") or getattr(request.app.state, "memory_service", None)
+    new_title = payload.get("title") or "Untitled Conversation"
+    if mem_svc:
+        success = await mem_svc.rename_conversation(conv_id, new_title)
+        if success:
+            return {"status": "ok", "message": f"Conversation {conv_id} renamed to '{new_title}'"}
+        return JSONResponse(status_code=404, content={"status": "error", "message": "Conversation not found"})
+    return JSONResponse(status_code=503, content={"status": "error", "message": "Memory service unavailable"})
+
+
+@app.delete("/api/conversations/{conv_id}")
+@app.delete("/api/v1/conversations/{conv_id}")
+async def delete_conversation_by_id_global(conv_id: int, request: Request):
+    """Delete a conversation by ID."""
+    mem_svc = ServiceManager.get_instance("memory_service") or getattr(request.app.state, "memory_service", None)
+    if mem_svc:
+        success = await mem_svc.delete_conversation(conv_id)
+        if success:
+            return {"status": "ok", "message": f"Conversation {conv_id} deleted"}
+        return JSONResponse(status_code=404, content={"status": "error", "message": "Conversation not found"})
+    return JSONResponse(status_code=503, content={"status": "error", "message": "Memory service unavailable"})
 
 
 # ── Root route (browser-friendly status page) ───────────────

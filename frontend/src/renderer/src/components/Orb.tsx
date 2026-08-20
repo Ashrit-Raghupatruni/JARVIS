@@ -46,8 +46,6 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
     scene.setAssistantState(assistantState, audioLevel)
 
     return () => {
-      trackerRef.current?.stop()
-      trackerRef.current = null
       scene.dispose()
       sceneRef.current = null
     }

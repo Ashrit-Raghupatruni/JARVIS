@@ -210,7 +210,10 @@ export default function App() {
 
       {isSerious && <div className="absolute inset-0 serious-scanlines z-50 pointer-events-none" />}
       <DashboardLayout
-        onSendMessage={(text) => sendMessage('text_command', { text })}
+        onSendMessage={(text) => {
+          const activeId = useAppStore.getState().activeConversationId
+          sendMessage('text_command', { text, conversation_id: activeId })
+        }}
         onOrbClick={handleOrbClick}
       />
     </div>

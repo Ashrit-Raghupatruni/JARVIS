@@ -66,14 +66,15 @@ async def get_world_model_inspector():
     textboxes = [c.get("name", "Unnamed") for c in controls if c.get("control_type") in ("Edit", "50004")]
     dialogs = [c.get("name", "Unnamed") for c in controls if c.get("control_type") in ("Window", "50032")]
 
+    monitors_list = getattr(state, "monitors", [{"id": 1, "name": "Primary Display"}])
     return {
         "timestamp": state.timestamp,
         "active_app": state.active_app,
         "window_title": state.window_title or "[Empty Window Title]",
         "process_id": state.process_id or 0,
-        "active_monitor_id": state.active_monitor_id,
-        "monitors": state.monitors,
-        "monitors_count": len(state.monitors),
+        "active_monitor_id": getattr(state, "active_monitor_id", 0),
+        "monitors": monitors_list,
+        "monitors_count": len(monitors_list),
         "clipboard_text": state.clipboard_text or "[Clipboard Empty]",
         "scene_graph_nodes": len(controls),
         "buttons_detected": buttons[:10],
@@ -82,7 +83,7 @@ async def get_world_model_inspector():
         "textboxes_count": len(textboxes),
         "dialogs_detected": dialogs[:10],
         "dialogs_count": len(dialogs),
-        "is_healthy": len(state.monitors) > 0 and state.window_title != "[Empty Window Title]"
+        "is_healthy": len(monitors_list) > 0 and state.window_title != "[Empty Window Title]"
     }
 
 

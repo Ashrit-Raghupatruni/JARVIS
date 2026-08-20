@@ -1,16 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { mobileClient, MobileApprovalItem } from '../api/client';
 
 export default function ApprovalsScreen() {
-  const [activeApproval, setActiveApproval] = useState<MobileApprovalItem | null>({
-    approval_id: "appr_101",
-    action_type: "terminal_command",
-    description: "Execute: python backend/scripts/backup.py --force",
-    dangerous_target: "C:\\Users\\ashri\\JARVIS\\data",
-    timestamp: Date.now(),
-    timeout_seconds: 30
-  });
+  const [activeApproval, setActiveApproval] = useState<MobileApprovalItem | null>(null);
+
+  useEffect(() => {
+    // 1. Initial fetch for any already pending approvals
+    const checkPending = async () => {
+      try {
+        const res = await mobileClient.fetchPendingApprovals();
+        if (res && res.pending_approvals && res.pending_approvals.length > 0) {
+          setActiveApproval(res.pending_approvals[0]);
+        }
+      } catch (err) {
+        console.warn("Failed to check pending approvals:", err);
+      }
+    };
+    checkPending();
+
+    // 2. Real-time WebSocket listener for new approval requests
+    mobileClient.connectWebSocket(
+      () => {},
+      (msg) => {
+        if (msg.type === "approval_request") {
+          setActiveApproval({
+            approval_id: msg.approval_id,
+            action_type: msg.action_type || "dangerous_action",
+            description: msg.description || "Unspecified dangerous operation",
+            dangerous_target: msg.dangerous_target || "System Resource",
+            timestamp: Date.now(),
+            timeout_seconds: msg.timeout_seconds || 30
+          });
+        }
+      }
+    );
+  }, []);
 
   const handleDecision = async (decision: 'approve' | 'deny' | 'always_allow' | 'always_deny') => {
     if (!activeApproval) return;

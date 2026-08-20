@@ -10,6 +10,7 @@ import json
 import uuid
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
+from sqlalchemy import select
 
 from loguru import logger
 
@@ -289,8 +290,81 @@ class MemoryService:
             logger.error(f"Failed to create conversation session: {e}")
             return None
 
-    async def get_recent_conversations(self, limit: int = 20) -> list[dict]:
-        """Get recent conversations from SQLite."""
+    async def add_message_to_conversation(
+        self, conv_id: int, role: str, content: str
+    ) -> Optional[int]:
+        """Append a single message in real-time to a conversation in SQLite."""
+        if not self._session_factory:
+            return None
+        try:
+            from backend.models.database import Conversation, Message as DbMessage
+            async with self._session_factory() as session:
+                result = await session.execute(
+                    select(Conversation).where(Conversation.id == conv_id)
+                )
+                conv = result.scalar_one_or_none()
+                if not conv:
+                    conv = Conversation(id=conv_id, title="New Conversation")
+                    session.add(conv)
+                    await session.flush()
+                
+                conv.updated_at = datetime.now(timezone.utc)
+                msg = DbMessage(
+                    conversation_id=conv.id,
+                    role=role,
+                    content=content,
+                )
+                session.add(msg)
+                await session.commit()
+                await session.refresh(msg)
+                return conv.id
+        except Exception as e:
+            logger.error(f"Failed to append message to conversation {conv_id}: {e}")
+            return None
+
+    async def generate_auto_title(
+        self, conv_id: int, user_prompt: str, assistant_reply: str = ""
+    ) -> str:
+        """Generate a short (3-6 word) title using a cheap LLM call, with truncated text fallback."""
+        fallback_title = user_prompt.strip().replace("\n", " ")[:40] or "New Conversation"
+        if len(fallback_title) == 40:
+            fallback_title += "..."
+
+        title = fallback_title
+        try:
+            from backend.services.manager import ServiceManager
+            llm_svc = ServiceManager.get_instance("llm_service")
+            if llm_svc and hasattr(llm_svc, "simple_completion"):
+                sys_prompt = "You are a concise title generator. Generate a short 3-6 word title summarizing the user prompt. Output ONLY the plain text title. No quotes, no markdown, no punctuation."
+                llm_response = await llm_svc.simple_completion(f"User Prompt: {user_prompt[:200]}", system_prompt=sys_prompt)
+                if llm_response and isinstance(llm_response, str):
+                    clean_t = llm_response.strip().strip('"\'`')
+                    if 2 <= len(clean_t) <= 60:
+                        title = clean_t
+        except Exception as e:
+            logger.warning(f"LLM auto-title generation notice for conv {conv_id}: {e}")
+
+        # Update in DB
+        if self._session_factory:
+            try:
+                from backend.models.database import Conversation
+                async with self._session_factory() as session:
+                    result = await session.execute(
+                        select(Conversation).where(Conversation.id == conv_id)
+                    )
+                    conv = result.scalar_one_or_none()
+                    if conv:
+                        conv.title = title
+                        conv.updated_at = datetime.now(timezone.utc)
+                        await session.commit()
+                        logger.info("✓ Auto-generated title for conv {}: '{}'", conv_id, title)
+            except Exception as db_err:
+                logger.error(f"Failed to save auto-generated title to DB: {db_err}")
+
+        return title
+
+    async def get_recent_conversations(self, limit: int = 30) -> list[dict]:
+        """Get recent conversations from SQLite ordered by last updated."""
         if not self._session_factory:
             return []
 
@@ -299,13 +373,13 @@ class MemoryService:
             async with self._session_factory() as session:
                 result = await session.execute(
                     select(Conversation)
-                    .order_by(Conversation.created_at.desc())
+                    .order_by(Conversation.updated_at.desc())
                     .limit(limit)
                 )
                 conversations = result.scalars().all()
                 return [
                     {
-                        "id": str(c.id),
+                        "id": c.id,
                         "title": c.title,
                         "created_at": c.created_at.isoformat() if c.created_at else None,
                         "updated_at": c.updated_at.isoformat() if c.updated_at else None,
@@ -332,7 +406,7 @@ class MemoryService:
                 if not c:
                     return None
                 return {
-                    "id": str(c.id),
+                    "id": c.id,
                     "title": c.title,
                     "created_at": c.created_at.isoformat() if c.created_at else None,
                     "updated_at": c.updated_at.isoformat() if c.updated_at else None,

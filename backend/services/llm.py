@@ -937,29 +937,12 @@ class LLMService:
         dynamic_info = f"\n\n[Active Model Information]\nYou are currently running the model '{active_model}' served by the '{provider}' provider. If the user asks which model or provider you are using, retrieve this information and answer them directly."
         return JARVIS_SYSTEM_PROMPT + dynamic_info
 
-    def get_tools(self, query: str = "") -> List[Dict[str, Any]]:
-        """Retrieve dynamic tool definitions from registered skills, strictly filtered by user intent."""
-        if not query:
-            return []
-
-        query_lower = query.lower().strip()
-
-        # Conversational / Knowledge question fast-bypass:
-        # If the user is asking a general question, math problem, code explanation, or greeting,
-        # do NOT inject tools so local models (Ollama 3B) answer directly without tool confusion.
-        action_triggers = [
-            "open", "launch", "close", "kill", "search", "google", "create", "delete",
-            "rename", "move", "copy", "type", "press", "screenshot", "volume", "mute",
-            "play", "pause", "media", "spotify", "wifi", "shutdown", "restart", "sleep",
-            "lock", "cmd", "terminal", "remember", "recall", "focus", "agent", "macro",
-            "headline", "digest", "weather", "ocr", "read screen", "analyze screen",
-            "click", "tap", "fill", "form", "select", "enter", "browse", "rag"
-        ]
-        
-        is_action_prompt = any(trig in query_lower for trig in action_triggers)
-        if not is_action_prompt:
-            return []
-
+    def _filter_tools_for_query(self, query: str) -> List[Dict[str, Any]]:
+        """
+        Builds and merges the complete set of tool definitions from ToolRegistry,
+        SkillsRegistry, and core TOOL_DEFINITIONS. Guarantees that tool schemas are
+        available for LLM function calling without hardcoded keyword suppression.
+        """
         raw_tools = []
         # Pull tools from ToolRegistry singleton
         try:
@@ -973,82 +956,27 @@ class LLMService:
             logger.debug("ToolRegistry schema load notice: {}", tr_err)
 
         if hasattr(self, "skills_registry") and self.skills_registry:
-            raw_tools.extend(self.skills_registry.get_all_tool_definitions())
+            try:
+                raw_tools.extend(self.skills_registry.get_all_tool_definitions())
+            except Exception as sk_err:
+                logger.debug("SkillsRegistry schema load notice: {}", sk_err)
+        
         raw_tools.extend(TOOL_DEFINITIONS)
 
         seen = set()
         merged = []
         for t in raw_tools:
-            name = t["function"]["name"]
-            if name not in seen:
-                seen.add(name)
-                merged.append(t)
+            if isinstance(t, dict) and "function" in t and isinstance(t["function"], dict):
+                name = t["function"].get("name")
+                if name and name not in seen:
+                    seen.add(name)
+                    merged.append(t)
 
-        filtered_tools = []
+        return merged
 
-        # Define precise semantic mapping of tool names to query action keywords
-        tool_keywords = {
-            # UI & Perception Grounded Controls
-            "click_element_by_name": ["click", "tap", "press button", "select button", "hit button", "click on"],
-            "set_control_value": ["type into", "fill field", "enter text", "input value", "set field"],
-            "auto_fill_form": ["fill form", "auto fill", "autocomplete form"],
-            "browser_agent_task": ["browser task", "browse to", "navigate and"],
-            "rag_knowledge_search": ["rag search", "knowledge base", "local docs"],
-            # Volume & System sound
-            "adjust_volume": ["volume", "sound", "mute", "unmute", "speaker", "audio"],
-            # Media control
-            "control_media": ["media", "play", "pause", "resume", "skip", "next", "previous", "track", "song", "music"],
-            # Play music
-            "play_music": ["spotify", "youtube music", "play song", "play music"],
-            # Notepad & writing
-            "type_text": ["type text", "type this", "type into", "write text"],
-            "press_hotkey": ["press key", "shortcut", "hotkey", "press enter", "press ctrl"],
-            # Apps & Windows
-            "open_application": ["open ", "launch ", "run app", "open chrome", "open notepad", "open spotify", "open calculator"],
-            "close_application": ["close ", "exit ", "kill process", "terminate app"],
-            "minimize_all_windows": ["minimize all", "show desktop", "minimize windows"],
-            "minimize_window": ["minimize window", "hide window", "minimize app"],
-            "focus_window": ["focus window", "switch to window", "bring to front"],
-            # Web Search & Browser
-            "search_web": ["search web", "google search", "find online", "search for", "look up online", "latest news"],
-            "open_url": ["open url", "open website", "navigate to http"],
-            "browser_navigate": ["browser back", "browser forward", "browser refresh"],
-            # System Info
-            "get_system_info": ["system info", "cpu usage", "ram usage", "battery status", "system stats"],
-            # Screenshot & screen
-            "take_screenshot": ["take screenshot", "capture screen", "screen capture"],
-            "read_screen_text": ["read screen", "ocr", "extract text from screen"],
-            "analyze_screen": ["analyze screen", "what is on my screen", "look at my screen"],
-            # File system
-            "create_file": ["create file", "write file", "make file"],
-            "create_folder": ["create folder", "make directory", "create directory"],
-            "rename_file": ["rename file", "rename folder"],
-            "delete_file": ["delete file", "delete folder", "remove file"],
-            "run_terminal_command": ["run command", "terminal command", "cmd command", "exec shell"],
-            # Memory
-            "remember": ["remember that", "remember my", "store in memory"],
-            "recall": ["recall", "what is my name", "retrieve memory", "what did I tell you about"],
-        }
-
-        for t in merged:
-            name = t["function"]["name"]
-            keywords = tool_keywords.get(name, [])
-            if any(kw in query_lower for kw in keywords):
-                filtered_tools.append(t)
-            else:
-                # Always pass tool if name matches exact word or function calling pattern
-                filtered_tools.append(t)
-
-        # Deduplicate final filtered tools
-        final_tools = []
-        final_names = set()
-        for ft in filtered_tools:
-            fname = ft["function"]["name"]
-            if fname not in final_names:
-                final_names.add(fname)
-                final_tools.append(ft)
-
-        return final_tools
+    def get_tools(self, query: str = "") -> List[Dict[str, Any]]:
+        """Retrieve merged tool definitions from ToolRegistry, SkillsRegistry, and core tools."""
+        return self._filter_tools_for_query(query)
 
     # ── Public APIs ───────────────────────────────────────────────────────
 

@@ -157,8 +157,12 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
             content: response.data.text,
             timestamp: message.timestamp
           }
-          useAppStore.getState().addMessage(assistantMsg)
-          useAppStore.getState().setThinkingText('')
+          const store = useAppStore.getState()
+          store.addMessage(assistantMsg)
+          if (response.data.conversation_id) {
+            store.setActiveConversationId(response.data.conversation_id)
+          }
+          store.setThinkingText('')
           break
         }
 

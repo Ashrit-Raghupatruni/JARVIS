@@ -486,11 +486,14 @@ class BrowserService:
         logger.info(f"🌐 Starting Autonomous Web Agent Loop for task: '{task}'")
         action_log = [f"Task: {task}"]
 
-        # Try to retrieve LLM service instance
+        # Retrieve LLM service instance with robust fallback
         llm_service = None
         try:
             from backend.services.manager import ServiceManager
             llm_service = ServiceManager.get_instance("llm_service")
+            if not llm_service:
+                from backend.services.llm import LLMService
+                llm_service = LLMService()
         except Exception:
             pass
 

@@ -230,6 +230,19 @@ export class JarvisMobileClient {
     };
   }
 
+  async fetchPendingApprovals() {
+    const res = await fetch(`${this.baseUrl}/api/v1/mobile/approvals/pending`, {
+      headers: this.getHeaders()
+    });
+    return res.json();
+  }
+
+  sendAudioInput(audioBase64: string) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: "audio", audio_base64: audioBase64 }));
+    }
+  }
+
   sendChatMessage(text: string) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ type: "chat", text }));
@@ -238,3 +251,4 @@ export class JarvisMobileClient {
 }
 
 export const mobileClient = new JarvisMobileClient();
+

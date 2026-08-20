@@ -108,26 +108,36 @@ class PrashEngine:
             from backend.prash.inference import PrashInference
             from backend.prash.memory import PrashMemory
 
-            # ── Load / create default config ─────────────────────────
+            # ── Resolve Checkpoint & Config ───────────────────────────
+            checkpoint_path = self.model_dir / "prash_397m_model.pt"
+            if not checkpoint_path.exists():
+                checkpoint_path = self.model_dir / "checkpoint_latest.pt"
+
+            ckpt_data = None
+            if checkpoint_path.exists():
+                try:
+                    ckpt_data = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
+                    logger.info("Loaded checkpoint payload from {}", checkpoint_path.name)
+                except Exception as e:
+                    logger.warning("Could not pre-read checkpoint payload: {}", e)
+
+            # ── Load / create config (prefer embedded config from .pt) ─
             config_path = self.model_dir / "model_config.json"
-            if config_path.exists():
+            if isinstance(ckpt_data, dict) and "config" in ckpt_data and isinstance(ckpt_data["config"], dict):
+                valid_fields = set(vars(PrashConfig()).keys())
+                cfg_kwargs = {k: v for k, v in ckpt_data["config"].items() if k in valid_fields}
+                self.config = PrashConfig(**cfg_kwargs)
+                logger.info("Model config auto-restored from checkpoint metadata (d_model={}, n_layers={})", self.config.d_model, self.config.n_layers)
+            elif config_path.exists():
                 with open(config_path, "r", encoding="utf-8") as fh:
                     config_data = json.load(fh)
-                self.config = PrashConfig(**config_data)
+                valid_fields = set(vars(PrashConfig()).keys())
+                cfg_kwargs = {k: v for k, v in config_data.items() if k in valid_fields}
+                self.config = PrashConfig(**cfg_kwargs)
                 logger.info("Model config loaded from {}", config_path.name)
             else:
                 self.config = PrashConfig()
-                # Persist default config for reproducibility
-                config_dict = {
-                    k: v
-                    for k, v in vars(self.config).items()
-                    if isinstance(v, (int, float, str, bool))
-                }
-                with open(config_path, "w", encoding="utf-8") as fh:
-                    json.dump(config_dict, fh, indent=2)
-                logger.info(
-                    "Default model config created → {}", config_path.name
-                )
+                logger.info("Default model config created")
 
             # ── Load tokenizer ───────────────────────────────────────
             tokenizer_path = self.model_dir / "tokenizer.json"
@@ -151,13 +161,14 @@ class PrashEngine:
 
             # ── Sync config vocab_size with tokenizer if needed ──────
             tok_vocab = getattr(self.tokenizer, "vocab_size", None)
-            if tok_vocab and tok_vocab != self.config.vocab_size:
-                logger.info(
-                    "Adjusting config.vocab_size {} → {} to match tokenizer",
-                    self.config.vocab_size,
-                    tok_vocab,
-                )
-                self.config.vocab_size = tok_vocab
+            if not (isinstance(ckpt_data, dict) and "config" in ckpt_data and "vocab_size" in ckpt_data["config"]):
+                if tok_vocab and tok_vocab != self.config.vocab_size:
+                    logger.info(
+                        "Adjusting config.vocab_size {} → {} to match tokenizer",
+                        self.config.vocab_size,
+                        tok_vocab,
+                    )
+                    self.config.vocab_size = tok_vocab
 
             # ── Create model ─────────────────────────────────────────
             self.model = PrashTransformer(self.config)
@@ -172,7 +183,8 @@ class PrashEngine:
             )
 
             # ── Load weights (if checkpoint exists) ──────────────────
-            checkpoint_path = self.model_dir / "checkpoint_latest.pt"
+            if not checkpoint_path.exists():
+                checkpoint_path = self.model_dir / "checkpoint_latest.pt"
             if checkpoint_path.exists():
                 try:
                     checkpoint = torch.load(
@@ -185,11 +197,27 @@ class PrashEngine:
                         if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint
                         else checkpoint
                     )
-                    self.model.load_state_dict(state_dict)
+
+                    # Key remapping dictionary to harmonize Colab 397M model and local PrashTransformer parameter names
+                    key_mapping = {
+                        "tok_embeddings.weight": "tok_emb.weight",
+                        "norm.weight": "final_norm.weight",
+                        "head.weight": "output_head.weight"
+                    }
+                    
+                    remapped_dict = {}
+                    for k, v in state_dict.items():
+                        new_k = key_mapping.get(k, k)
+                        new_k = new_k.replace(".attn_norm.", ".norm1.")
+                        new_k = new_k.replace(".ffn_norm.", ".norm2.")
+                        new_k = new_k.replace(".attn.out_proj.", ".attn.o_proj.")
+                        remapped_dict[new_k] = v
+
+                    self.model.load_state_dict(remapped_dict, strict=False)
                     epoch = checkpoint.get("epoch", "?") if isinstance(checkpoint, dict) else "?"
                     loss = checkpoint.get("loss", "?") if isinstance(checkpoint, dict) else "?"
                     logger.info(
-                        "Weights loaded from {} (epoch={}, loss={})",
+                        "✓ Weights successfully restored from {} (epoch={}, loss={})",
                         checkpoint_path.name,
                         epoch,
                         loss,

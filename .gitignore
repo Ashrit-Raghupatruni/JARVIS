@@ -65,5 +65,8 @@ mobile_app/node_modules/
 temp_*/
 scratch/
 *.zip
+logs/
+backend/logs/
+*.log
 
 

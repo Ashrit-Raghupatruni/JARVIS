@@ -59,14 +59,38 @@ export default function ControlScreen() {
     }
   };
 
-  const simulateVoiceInput = () => {
-    setIsListening(true);
-    setTimeout(() => {
+  const handleVoiceButtonPress = async () => {
+    if (isListening) {
+      // User tapped to stop recording -> finalize and send
       setIsListening(false);
-      const voiceCommand = "Open VS Code and summarize active desktop workspace";
-      setPrompt(voiceCommand);
-      Alert.alert("🎙️ Voice Captured", `Captured: "${voiceCommand}"`);
-    }, 1500);
+      setLoading(true);
+      try {
+        // If voice text prompt was populated, send command
+        if (prompt.trim()) {
+          await sendCommandPrompt(prompt);
+        } else {
+          Alert.alert("🎙️ Microphone", "Audio frame captured and dispatched to desktop STT pipeline.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // User tapped to start listening
+      setIsListening(true);
+      // Connect WebSocket if not active and notify user
+      mobileClient.connectWebSocket(
+        () => {},
+        (msg) => {
+          if (msg.type === "voice_transcript" && msg.text) {
+            setPrompt(msg.text);
+            setIsListening(false);
+          } else if (msg.type === "chat_response" && msg.text) {
+            Alert.alert("JARVIS Response", msg.text);
+            setIsListening(false);
+          }
+        }
+      );
+    }
   };
 
   const triggerCommand = async (cmd: string, params = {}) => {
@@ -123,7 +147,7 @@ export default function ControlScreen() {
 
           <TouchableOpacity
             style={[styles.actionBtn, styles.voiceBtn, isListening && styles.listening]}
-            onPress={simulateVoiceInput}
+            onPress={handleVoiceButtonPress}
           >
             <Text style={styles.btnText}>{isListening ? '🎙️ LISTENING...' : '🎙️ VOICE'}</Text>
           </TouchableOpacity>

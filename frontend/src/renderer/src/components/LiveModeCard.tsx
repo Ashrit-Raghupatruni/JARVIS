@@ -214,7 +214,15 @@ export default function LiveModeCard() {
       })
       const data = await res.json()
       setIsEnabled(data.live_mode_enabled)
-      
+
+      if (data.live_mode_enabled) {
+        useAppStore.getState().setAssistantState('listening')
+        setStatusMsg('🎤 Hands-Free Voice Control Active')
+      } else {
+        useAppStore.getState().setAssistantState('idle')
+        setStatusMsg('Live Mode Standing By')
+      }
+
       // Toggle Electron system-wide spotlight overlay
       if (typeof window !== 'undefined' && (window as any).electron?.ipcRenderer) {
         ;(window as any).electron.ipcRenderer.invoke('live-mode:toggle-overlay', data.live_mode_enabled)

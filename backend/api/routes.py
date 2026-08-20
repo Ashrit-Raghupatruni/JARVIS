@@ -135,14 +135,17 @@ async def toggle_live_mode_public(request: Request, enable: bool = True):
         request.app.state.live_mode_engine = live_engine
         ServiceManager.register_instance("live_mode_engine", live_engine)
 
+    greeting_msg = None
     if enable:
-        live_engine.start()
+        live_engine.start(speak_greeting=True)
+        greeting_msg = live_engine.get_activation_greeting()
     else:
         live_engine.stop()
 
     return {
         "status": "ok",
         "live_mode_enabled": live_engine.is_enabled,
+        "greeting": greeting_msg,
         "message": f"Live Mode {'enabled' if enable else 'disabled'}"
     }
 
@@ -820,7 +823,9 @@ async def get_developer_diagnostic():
 async def get_capability_registry():
     import json
     from pathlib import Path
-    registry_path = Path("backend/CapabilityRegistry.json")
+    registry_path = Path(__file__).resolve().parent.parent / "CapabilityRegistry.json"
+    if not registry_path.exists():
+        registry_path = Path("backend/CapabilityRegistry.json")
     if not registry_path.exists():
         return {"status": "error", "message": "Capability map registry not found."}
     try:

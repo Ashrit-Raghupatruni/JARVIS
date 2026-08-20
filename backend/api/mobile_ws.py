@@ -213,8 +213,54 @@ async def handle_mobile_ws(websocket: WebSocket):
                     except Exception as e:
                         await websocket.send_json({"type": "response", "status": "error", "message": str(e)})
 
-            # ── 2. PROMPT / CHAT FROM PHONE ─────────────────────────────
-            elif msg_type == "chat" or text_query:
+            # ── 2. REAL MOBILE AUDIO / VOICE STREAMING ──────────────────
+            elif msg_type in ("audio", "voice", "voice_input") or "audio_base64" in message:
+                audio_data_b64 = message.get("audio_base64") or message.get("data", "")
+                logger.info("🎙️ Mobile audio packet received ({} bytes b64)...", len(audio_data_b64))
+
+                await websocket.send_json({
+                    "type": "chat_response",
+                    "status": "processing",
+                    "text": "Transcribing mobile voice audio..."
+                })
+
+                transcribed_text = ""
+                try:
+                    raw_audio = base64.b64decode(audio_data_b64)
+                    stt = ServiceManager.get_instance("stt_service")
+                    if stt and hasattr(stt, "transcribe_bytes"):
+                        transcribed_text = await stt.transcribe_bytes(raw_audio)
+                    elif stt and hasattr(stt, "transcribe"):
+                        import tempfile
+                        tmp_aud = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
+                        with open(tmp_aud, "wb") as f:
+                            f.write(raw_audio)
+                        transcribed_text = await stt.transcribe(tmp_aud)
+                except Exception as stt_err:
+                    logger.error("Failed to transcribe mobile audio: {}", stt_err)
+
+                if not transcribed_text:
+                    # Fallback to query field if provided alongside audio
+                    transcribed_text = message.get("query") or message.get("text") or ""
+
+                if transcribed_text:
+                    logger.info("✓ Transcribed mobile voice: '{}'", transcribed_text)
+                    await websocket.send_json({
+                        "type": "voice_transcript",
+                        "text": transcribed_text
+                    })
+                    text_query = transcribed_text
+                    msg_type = "chat"
+                else:
+                    await websocket.send_json({
+                        "type": "chat_response",
+                        "status": "error",
+                        "text": "Could not recognize audio from mobile microphone."
+                    })
+                    continue
+
+            # ── 3. PROMPT / CHAT FROM PHONE ─────────────────────────────
+            if msg_type == "chat" or text_query:
                 query = text_query or message.get("query", "")
                 logger.info("💬 Mobile AI prompt received: '{}'", query)
 

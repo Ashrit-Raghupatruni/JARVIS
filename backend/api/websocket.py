@@ -198,18 +198,42 @@ async def websocket_endpoint(websocket: WebSocket):
                     work_queue.task_done()
                     continue
 
-                v_agent = getattr(app.state, "voice_agent", None)
-                planner = getattr(app.state, "planner", None)
+                from backend.services.manager import ServiceManager
+                v_agent = getattr(app.state, "voice_agent", None) or ServiceManager.get_instance("voice_agent")
+                planner = getattr(app.state, "planner_agent", None) or getattr(app.state, "planner", None) or ServiceManager.get_instance("planner_agent")
 
                 if action_type == "text_command":
+                    text_cmd = payload.get("text", "") if isinstance(payload, dict) else str(payload)
+                    conv_id_arg = payload.get("conversation_id") if isinstance(payload, dict) else None
+
                     if v_agent and hasattr(v_agent, "handle_text_command"):
-                        async for response_msg in v_agent.handle_text_command(payload):
+                        async for response_msg in v_agent.handle_text_command(text_cmd):
                             await manager.send_message(websocket, response_msg, client_id=client_id)
                     elif planner and hasattr(planner, "plan_and_execute"):
-                        async for msg in planner.plan_and_execute(payload):
+                        async for msg in planner.plan_and_execute(text_cmd, conversation_id=conv_id_arg):
                             await manager.send_message(websocket, msg, client_id=client_id)
                     else:
                         logger.warning("No agent or planner available to process text command: {}", payload)
+
+                    # Persist interaction into MemoryService (SQLite & ChromaDB)
+                    if response_texts:
+                        mem_svc = ServiceManager.get_instance("memory_service") or getattr(app.state, "memory_service", None)
+                        if mem_svc:
+                            try:
+                                full_resp = "\n\n".join(response_texts)
+                                conv_id = str(int(time.time() * 1000))
+                                title = payload[:45].strip() or "Chat Session"
+                                await mem_svc.store_conversation(
+                                    conv_id,
+                                    [
+                                        {"role": "user", "content": payload},
+                                        {"role": "assistant", "content": full_resp}
+                                    ],
+                                    title=title
+                                )
+                                logger.info("✓ Chat History saved to database for query: '{}'", title)
+                            except Exception as save_err:
+                                logger.warning("Failed to persist conversation history: {}", save_err)
 
                 elif action_type == "audio":
                     if v_agent and hasattr(v_agent, "handle_audio_chunk"):
@@ -282,6 +306,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     elif msg_type in ("command", "text_command"):
                         text = msg_data.get("text", "")
+                        conv_id = msg_data.get("conversation_id")
                         if text:
                             # Acknowledge receipt of command back to client
                             await manager.send_message(
@@ -289,7 +314,7 @@ async def websocket_endpoint(websocket: WebSocket):
                                 WSMessage(type="ack", data={"received": text}),
                                 client_id=client_id
                             )
-                            await work_queue.put(("text_command", text))
+                            await work_queue.put(("text_command", {"text": text, "conversation_id": conv_id}))
 
                     elif msg_type == "push_to_talk_start":
                         while not work_queue.empty():
@@ -323,6 +348,31 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     elif msg_type == "settings":
                         logger.info("Settings update received on WebSocket: {}", msg_data)
+
+                    elif msg_type == "hand_action":
+                        from backend.services.manager import ServiceManager
+                        live_eng = ServiceManager.get_instance("live_mode_engine")
+                        if live_eng and live_eng.is_enabled:
+                            hand_svc = ServiceManager.get_instance("hand_control_service")
+                            if not hand_svc:
+                                from backend.services.hand_control_service import HandControlService
+                                hand_svc = HandControlService()
+                                ServiceManager.register_instance("hand_control_service", hand_svc)
+
+                            action = msg_data.get("action")
+                            if action == "move":
+                                hand_svc.move_cursor(int(msg_data.get("x", 0)), int(msg_data.get("y", 0)))
+                            elif action in ("click", "mouse_click"):
+                                btn = msg_data.get("button", "left")
+                                act = msg_data.get("click_action", "click")
+                                hand_svc.click_mouse(button=btn, action=act)
+                            elif action == "scroll":
+                                direction = msg_data.get("direction", "down")
+                                amount = int(msg_data.get("amount", 120))
+                                hand_svc.scroll(direction=direction, amount=amount)
+                            elif action == "keyboard":
+                                key_act = msg_data.get("keyboard_action", "")
+                                hand_svc.execute_keyboard_action(key_act)
                         await manager.send_message(
                             websocket,
                             WSMessage(type="status", data={"state": "idle", "message": "Settings updated"}),

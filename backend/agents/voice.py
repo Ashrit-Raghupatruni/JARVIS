@@ -114,9 +114,6 @@ def expects_follow_up(text: str) -> bool:
     return False
 
 
-class VoiceAgent:
-    """Manages the voice interaction pipeline and state machine."""
-
 SERIOUS_ACKNOWLEDGMENTS = [
     "Standing by.",
     "Directive received.",
@@ -623,6 +620,26 @@ class VoiceAgent:
             yield msg
             if msg.type == "response":
                 response_text = msg.data.get("text", "")
+
+        # Persist to MemoryService (SQLite & ChromaDB)
+        if response_text:
+            from backend.services.manager import ServiceManager
+            mem_svc = ServiceManager.get_instance("memory_service")
+            if mem_svc:
+                try:
+                    conv_id = str(int(time.time() * 1000))
+                    title = text[:45].strip() or "Chat Session"
+                    await mem_svc.store_conversation(
+                        conv_id,
+                        [
+                            {"role": "user", "content": text},
+                            {"role": "assistant", "content": response_text}
+                        ],
+                        title=title
+                    )
+                    logger.info("✓ Saved voice/text conversation to database: '{}'", title)
+                except Exception as save_err:
+                    logger.warning("Failed to store voice conversation history: {}", save_err)
 
         # TTS for the response if speech audio enabled
         if response_text:

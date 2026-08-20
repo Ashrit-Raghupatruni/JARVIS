@@ -76,6 +76,7 @@ class PrashConfig:
     max_seq_len: int = 512
     dropout: float = 0.1
     rope_theta: float = 10000.0
+    norm_eps: float = 1e-5
 
     # -- Serialization --------------------------------------------------- #
 

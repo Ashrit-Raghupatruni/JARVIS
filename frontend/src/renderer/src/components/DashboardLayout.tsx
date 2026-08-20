@@ -26,6 +26,7 @@ import { LivePerceptionVisualizer } from './LivePerceptionVisualizer'
 import { AutonomousAgentStudio } from './AutonomousAgentStudio'
 import { DeveloperDashboard } from './DeveloperDashboard'
 import { ProactiveGuidanceCard } from './ProactiveGuidanceCard'
+import { ConversationSidebar } from './ConversationSidebar'
 import {
   Command,
   ChevronDown,
@@ -68,10 +69,37 @@ const NAV_ITEMS: { id: NavTab; label: string; icon: React.ReactNode }[] = [
 ]
 
 export default function DashboardLayout({ onSendMessage, onOrbClick }: DashboardLayoutProps) {
-  const { assistantState, showSettings, toggleSettings, clearMessages } = useAppStore()
+  const { assistantState, showSettings, toggleSettings, clearMessages, activeConversationId, setActiveConversationId, setMessages } = useAppStore()
   const [isPaletteOpen, setIsPaletteOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<NavTab>('command')
   const [isNavOpen, setIsNavOpen] = useState(false)
+
+  const handleSelectConversation = useCallback(async (convId: string | number) => {
+    setActiveConversationId(convId)
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/conversations/${convId}`)
+      if (res.ok) {
+        const data = await res.json()
+        const conv = data.conversation || data
+        if (conv && conv.messages) {
+          const formatted = conv.messages.map((m: any) => ({
+            id: String(m.id || Math.random()),
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp || new Date().toISOString()
+          }))
+          setMessages(formatted)
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load conversation history:', e)
+    }
+  }, [setActiveConversationId, setMessages])
+
+  const handleNewChat = useCallback(() => {
+    setActiveConversationId(null)
+    setMessages([])
+  }, [setActiveConversationId, setMessages])
 
   // Resizable 70/30 panel split ratio (default 0.70, persisted in localStorage)
   const [splitRatio, setSplitRatio] = useState<number>(() => {
@@ -361,14 +389,17 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
         {/* VIEW 2: AUTONOMOUS AGENT STUDIO */}
         {activeTab === 'agents' && <AutonomousAgentStudio />}
 
-        {/* VIEW 3: CHAT HISTORY */}
+        {/* VIEW 3: CHAT HISTORY (Persistent Sidebar + Resumable Chat) */}
         {activeTab === 'history' && (
-          <div className="h-full rounded-xl border border-cyan-500/20 bg-slate-900/40 backdrop-blur-xl p-4 overflow-y-auto custom-scrollbar">
-            <h2 className="text-sm font-bold text-cyan-400 tracking-widest uppercase mb-3 flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" />
-              <span>SESSION CONVERSATION LOG</span>
-            </h2>
-            <CommandHistory />
+          <div className="h-full flex items-stretch gap-3 overflow-hidden rounded-xl border border-cyan-500/20 bg-slate-900/40 backdrop-blur-xl p-2">
+            <ConversationSidebar
+              activeId={activeConversationId}
+              onSelectConversation={handleSelectConversation}
+              onNewChat={handleNewChat}
+            />
+            <div className="flex-1 h-full min-w-0">
+              <ChatPanel onSendMessage={onSendMessage} />
+            </div>
           </div>
         )}
 

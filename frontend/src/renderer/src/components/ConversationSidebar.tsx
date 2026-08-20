@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { MessageSquare, Plus, Edit2, Trash2, Check, X, Clock } from 'lucide-react'
+import { MessageSquare, Plus, Edit2, Trash2, Check, X, Clock, Search } from 'lucide-react'
 
 export interface ConversationItem {
-  id: string
+  id: string | number
   title: string
   created_at: string | null
   updated_at: string | null
@@ -10,14 +10,30 @@ export interface ConversationItem {
 }
 
 interface ConversationSidebarProps {
-  activeId: string | null
-  onSelectConversation: (id: string) => void
+  activeId: string | number | null
+  onSelectConversation: (id: string | number) => void
   onNewChat: () => void
 }
 
 const getApiUrl = (path: string) => {
   const host = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.hostname !== '' ? window.location.hostname : '127.0.0.1'
   return `http://${host}:8000${path}`
+}
+
+const formatRelativeTime = (isoString: string | null) => {
+  if (!isoString) return 'Recent'
+  try {
+    const date = new Date(isoString)
+    const now = new Date()
+    const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000)
+    if (diffSec < 60) return 'Just now'
+    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`
+    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`
+    if (diffSec < 172800) return 'Yesterday'
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' })
+  } catch {
+    return 'Recent'
+  }
 }
 
 export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
@@ -27,8 +43,9 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 }) => {
   const [conversations, setConversations] = useState<ConversationItem[]>([])
   const [loading, setLoading] = useState<boolean>(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | number | null>(null)
   const [editTitle, setEditTitle] = useState<string>('')
+  const [searchQuery, setSearchQuery] = useState<string>('')
 
   const fetchConversations = async () => {
     setLoading(true)
@@ -57,7 +74,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     setEditTitle(conv.title)
   }
 
-  const handleSaveRename = async (id: string, e: React.MouseEvent) => {
+  const handleSaveRename = async (id: string | number, e: React.MouseEvent) => {
     e.stopPropagation()
     if (!editTitle.trim()) return
     try {
@@ -68,7 +85,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       })
       if (res.ok) {
         setConversations((prev) =>
-          prev.map((c) => (c.id === id ? { ...c, title: editTitle.trim() } : c))
+          prev.map((c) => (String(c.id) === String(id) ? { ...c, title: editTitle.trim() } : c))
         )
       }
     } catch (err) {
@@ -78,7 +95,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     }
   }
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string | number, e: React.MouseEvent) => {
     e.stopPropagation()
     if (!confirm('Are you sure you want to delete this conversation?')) return
     try {
@@ -86,8 +103,8 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         method: 'DELETE',
       })
       if (res.ok) {
-        setConversations((prev) => prev.filter((c) => c.id !== id))
-        if (activeId === id) {
+        setConversations((prev) => prev.filter((c) => String(c.id) !== String(id)))
+        if (String(activeId) === String(id)) {
           onNewChat()
         }
       }
@@ -96,33 +113,53 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     }
   }
 
+  const filteredConversations = conversations.filter((c) =>
+    c.title.toLowerCase().includes(searchQuery.toLowerCase().trim())
+  )
+
   return (
-    <div className="w-64 bg-slate-900/90 border-r border-cyan-500/20 flex flex-col h-full text-slate-200">
+    <div className="w-64 bg-slate-900/90 border-r border-cyan-500/20 flex flex-col h-full text-slate-200 select-none">
       {/* Header & New Chat */}
       <div className="p-3 border-b border-cyan-500/20 flex items-center justify-between">
         <span className="text-xs font-semibold tracking-wider text-cyan-400 uppercase flex items-center gap-1.5">
           <MessageSquare className="w-4 h-4 text-cyan-400" />
-          History
+          Chat History
         </span>
         <button
           onClick={onNewChat}
-          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-cyan-300 bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-500/30 rounded transition-all shadow-sm"
+          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-cyan-300 bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-500/30 rounded transition-all shadow-sm cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
           New
         </button>
       </div>
 
+      {/* Search Filter Box */}
+      <div className="px-3 pt-2.5 pb-1">
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search chat history..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500/50 rounded-md pl-8 pr-2 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-all"
+          />
+        </div>
+      </div>
+
       {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+      <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
         {loading && conversations.length === 0 ? (
           <div className="p-4 text-center text-xs text-slate-400">Loading history...</div>
-        ) : conversations.length === 0 ? (
-          <div className="p-4 text-center text-xs text-slate-500">No past conversations</div>
+        ) : filteredConversations.length === 0 ? (
+          <div className="p-4 text-center text-xs text-slate-500">
+            {searchQuery ? 'No matching conversations' : 'No past conversations'}
+          </div>
         ) : (
-          conversations.map((conv) => {
-            const isActive = activeId === conv.id
-            const isEditing = editingId === conv.id
+          filteredConversations.map((conv) => {
+            const isActive = String(activeId) === String(conv.id)
+            const isEditing = String(editingId) === String(conv.id)
 
             return (
               <div
@@ -145,7 +182,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                     />
                     <button
                       onClick={(e) => handleSaveRename(conv.id, e)}
-                      className="p-1 hover:text-green-400 text-slate-400"
+                      className="p-1 hover:text-green-400 text-slate-400 cursor-pointer"
                     >
                       <Check className="w-3.5 h-3.5" />
                     </button>
@@ -154,7 +191,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                         e.stopPropagation()
                         setEditingId(null)
                       }}
-                      className="p-1 hover:text-red-400 text-slate-400"
+                      className="p-1 hover:text-red-400 text-slate-400 cursor-pointer"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -164,13 +201,8 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                     <div className="flex flex-col min-w-0 pr-2">
                       <span className="truncate font-medium">{conv.title}</span>
                       <span className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
-                        <Clock className="w-2.5 h-2.5" />
-                        {conv.created_at
-                          ? new Date(conv.created_at).toLocaleDateString([], {
-                              month: 'short',
-                              day: 'numeric',
-                            })
-                          : 'Recent'}
+                        <Clock className="w-2.5 h-2.5 text-slate-400" />
+                        {formatRelativeTime(conv.updated_at || conv.created_at)}
                       </span>
                     </div>
 
@@ -179,14 +211,14 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                       <button
                         onClick={(e) => handleStartRename(conv, e)}
                         title="Rename"
-                        className="p-1 hover:text-cyan-300 text-slate-400"
+                        className="p-1 hover:text-cyan-300 text-slate-400 cursor-pointer"
                       >
                         <Edit2 className="w-3 h-3" />
                       </button>
                       <button
                         onClick={(e) => handleDelete(conv.id, e)}
                         title="Delete"
-                        className="p-1 hover:text-rose-400 text-slate-400"
+                        className="p-1 hover:text-rose-400 text-slate-400 cursor-pointer"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>

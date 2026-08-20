@@ -25,6 +25,7 @@ class N8nIntegrationService:
         settings = get_settings()
         self.base_url = (base_url or settings.N8N_BASE_URL).rstrip("/")
         self.api_key = api_key or settings.N8N_API_KEY
+        self.webhook_secret = getattr(settings, "N8N_WEBHOOK_SECRET", None)
         self.execution_history: List[Dict[str, Any]] = []
 
         logger.info(
@@ -39,15 +40,36 @@ class N8nIntegrationService:
             headers["X-N8N-API-KEY"] = self.api_key
         return headers
 
+    def _is_reachable(self, timeout_sec: float = 0.25) -> bool:
+        """Fast TCP socket pre-flight check to eliminate offline timeouts (<250ms)."""
+        import socket
+        import urllib.parse
+        try:
+            parsed = urllib.parse.urlparse(self.base_url)
+            host = parsed.hostname or "localhost"
+            port = parsed.port or (443 if parsed.scheme == "https" else 5678)
+            with socket.create_connection((host, port), timeout=timeout_sec):
+                return True
+        except Exception:
+            return False
+
     def health_check(self) -> Dict[str, Any]:
         """
         Check if the local n8n instance at base_url (default http://localhost:5678) is online and reachable.
-        Fails closed gracefully without raising uncaught exceptions.
+        Fails closed gracefully in <250ms without raising uncaught exceptions.
         """
+        if not self._is_reachable():
+            return {
+                "status": "offline",
+                "base_url": self.base_url,
+                "error": "n8n local engine is offline (connection refused in <250ms probe)",
+                "timestamp": time.time()
+            }
+
         url = f"{self.base_url}/healthz"
         try:
             req = urllib.request.Request(url, headers=self._get_headers())
-            with urllib.request.urlopen(req, timeout=3) as resp:
+            with urllib.request.urlopen(req, timeout=1.5) as resp:
                 raw = resp.read().decode("utf-8")
                 return {
                     "status": "online",
@@ -60,7 +82,7 @@ class N8nIntegrationService:
             url_alt = f"{self.base_url}/api/v1/workflows"
             try:
                 req = urllib.request.Request(url_alt, headers=self._get_headers())
-                with urllib.request.urlopen(req, timeout=3) as resp:
+                with urllib.request.urlopen(req, timeout=1.5) as resp:
                     return {
                         "status": "online",
                         "base_url": self.base_url,
@@ -148,7 +170,17 @@ class N8nIntegrationService:
         else:
             url = f"{self.base_url}/webhook/{target}"
 
-        logger.info("Executing n8n workflow target: '{}' via URL '{}'", target, url)
+        if not self._is_reachable():
+            record = {
+                "execution_id": f"exec_{int(time.time()*1000)}",
+                "target": target,
+                "status": "error",
+                "duration_ms": round((time.time() - start_t) * 1000, 2),
+                "error": "n8n engine is offline (connection failed in fast pre-flight probe <250ms)",
+                "timestamp": time.time(),
+            }
+            self.execution_history.append(record)
+            return record
 
         try:
             req_data = json.dumps(payload).encode("utf-8")
@@ -236,21 +268,28 @@ class N8nIntegrationService:
             logger.error("Failed to activate n8n workflow ID '{}': {}", workflow_id, e)
             return {"status": "error", "workflow_id": workflow_id, "error": str(e)}
 
-    def deactivate_workflow(self, workflow_id: str) -> Dict[str, Any]:
-        """
-        Deactivate an n8n workflow by workflow ID.
-        """
-        url = f"{self.base_url}/api/v1/workflows/{workflow_id}/deactivate"
-        try:
-            req = urllib.request.Request(url, headers=self._get_headers(), method="POST")
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                logger.info("Deactivated n8n workflow ID: {}", workflow_id)
-                return {"status": "success", "workflow_id": workflow_id, "active": False, "details": data}
-        except Exception as e:
-            logger.error("Failed to deactivate n8n workflow ID '{}': {}", workflow_id, e)
-            return {"status": "error", "workflow_id": workflow_id, "error": str(e)}
+    def trigger_workflow(self, target: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Convenience alias for execute_workflow."""
+        return self.execute_workflow(target, payload)
+
+    def get_execution_status(self, execution_id: str) -> Dict[str, Any]:
+        """Fetch execution record from history."""
+        for item in self.execution_history:
+            if item.get("execution_id") == execution_id:
+                return item
+        return {"execution_id": execution_id, "status": "unknown", "message": "Execution ID not found in local history."}
+
+    def handle_incoming_webhook(self, source: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle incoming webhook callback from n8n node."""
+        logger.info("Handling incoming n8n webhook callback from source '{}' with {} keys", source, len(data))
+        return {
+            "status": "success",
+            "source": source,
+            "received_at": time.time(),
+            "data": data
+        }
 
 
 # Register in ServiceManager at module import
 ServiceManager.register_instance("n8n_service", N8nIntegrationService())
+

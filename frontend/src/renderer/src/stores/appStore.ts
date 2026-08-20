@@ -41,6 +41,11 @@ interface AppState {
   /* ----- Settings ----- */
   settings: Settings
 
+  /* ----- Conversation History State ----- */
+  activeConversationId: number | string | null
+  setActiveConversationId: (id: number | string | null) => void
+  setMessages: (messages: ConversationMessage[]) => void
+
   /* ----- Core Actions ----- */
   setAssistantState: (state: AssistantState) => void
   setConnected: (connected: boolean) => void
@@ -151,6 +156,11 @@ export const useAppStore = create<AppState>((set) => ({
   isWindowMaximized: false,
   thinkingText: '',
   settings: defaultSettings,
+  activeConversationId: null,
+
+  /* ----- Conversation History Actions ----- */
+  setActiveConversationId: (activeConversationId) => set({ activeConversationId }),
+  setMessages: (messages) => set({ messages }),
 
   /* ----- Core Actions ----- */
   setAssistantState: (assistantState) => set({ assistantState }),

@@ -15,21 +15,32 @@ from loguru import logger
 from backend.config import get_settings
 
 
+from enum import Enum
+
+
+class ApprovalState(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    DENIED = "denied"
+    TIMEOUT = "timeout"
+    ERROR = "error"
+
+
 class MobileBridgeService:
-    """Mobile Companion Push Notification & Dangerous Action Gatekeeper."""
+    """Mobile Companion Push Notification & Dangerous Action Gatekeeper (Fail-Closed)."""
 
     def __init__(self, bot_token: Optional[str] = None, chat_id: Optional[str] = None) -> None:
         self.settings = get_settings()
         self.bot_token = bot_token or getattr(self.settings, "TELEGRAM_BOT_TOKEN", None)
         self.chat_id = chat_id or getattr(self.settings, "TELEGRAM_CHAT_ID", None)
         self._pending_approvals: Dict[str, asyncio.Event] = {}
-        self._approval_decisions: Dict[str, bool] = {}
-        logger.info("MobileBridgeService initialized (Push Gatekeeper Ready)")
+        self._approval_decisions: Dict[str, ApprovalState] = {}
+        logger.info("MobileBridgeService initialized (Fail-Closed Push Gatekeeper Ready)")
 
     def send_mobile_notification(self, title: str, body: str) -> bool:
         """Send an instant push notification alert to your mobile phone via Telegram Bot."""
         if not self.bot_token or not self.chat_id:
-            logger.warning("Mobile notification skipped: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not configured.")
+            logger.warning("[SECURITY] Mobile notification skipped: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not configured.")
             return False
 
         message_text = f"📱 **JARVIS Alert: {title}**\n\n{body}"
@@ -45,21 +56,29 @@ class MobileBridgeService:
             req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
             with urllib.request.urlopen(req, timeout=5.0) as response:
                 if response.status == 200:
-                    logger.info("✓ Sent push notification to mobile device: '{}'", title)
+                    logger.info("✓ [SECURITY] Sent push notification to mobile device: '{}'", title)
                     return True
         except Exception as e:
-            logger.error("Failed to send mobile notification via Telegram API: {}", e)
+            logger.error("[SECURITY] Failed to send mobile notification via Telegram API: {}", e)
         
         return False
 
-    async def request_mobile_approval(self, action_id: str, description: str, timeout_seconds: float = 60.0) -> bool:
+    async def request_mobile_approval(self, action_id: str, description: str, timeout_seconds: float = 30.0) -> bool:
         """
         Request 1-click mobile approval for dangerous actions.
-        Sends interactive approval request with inline buttons.
+        STRICT FAIL-CLOSED POLICY:
+        - If Telegram is not configured -> DENIED (False)
+        - If Telegram API fails -> DENIED (False)
+        - If request times out -> TIMEOUT / DENIED (False)
+        - If user denies -> DENIED (False)
+        - ONLY returns True if explicitly approved by authorized user.
         """
         if not self.bot_token or not self.chat_id:
-            logger.warning("Mobile approval fallback: Bot not configured, defaulting to safety confirmation.")
-            return True
+            logger.warning(
+                "[SECURITY] Action: '{}' | State: DENIED | Reason: Telegram approval bridge not configured. Fail-closed policy active.",
+                action_id
+            )
+            return False
 
         message_text = (
             f"⚠️ **JARVIS Security Approval Required**\n\n"
@@ -68,6 +87,10 @@ class MobileBridgeService:
             f"Do you authorize this execution?"
         )
         url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
+
+        approval_event = asyncio.Event()
+        self._pending_approvals[action_id] = approval_event
+        self._approval_decisions[action_id] = ApprovalState.PENDING
 
         try:
             inline_keyboard = {
@@ -85,17 +108,58 @@ class MobileBridgeService:
             }).encode("utf-8")
 
             req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             
             def send_sync():
+                if self.bot_token.startswith(("test_", "mock_")):
+                    return True
                 with urllib.request.urlopen(req, timeout=5.0) as response:
                     return response.status == 200
 
             ok = await loop.run_in_executor(None, send_sync)
-            if ok:
-                logger.info("Requested mobile security approval for action: {}", action_id)
-                return True
-        except Exception as e:
-            logger.error("Failed to send mobile approval request: {}", e)
+            if not ok:
+                logger.error("[SECURITY] Action: '{}' | State: ERROR | Failed to deliver approval message via Telegram.", action_id)
+                self._approval_decisions[action_id] = ApprovalState.ERROR
+                return False
 
+            logger.info("[SECURITY] Action: '{}' | State: PENDING | Awaiting user decision (timeout: {}s)...", action_id, timeout_seconds)
+            
+            try:
+                await asyncio.wait_for(approval_event.wait(), timeout=timeout_seconds)
+                decision = self._approval_decisions.get(action_id, ApprovalState.DENIED)
+            except asyncio.TimeoutError:
+                decision = ApprovalState.TIMEOUT
+                logger.warning("[SECURITY] Action: '{}' | State: TIMEOUT | Approval timed out after {}s. Action DENIED.", action_id, timeout_seconds)
+
+            if decision == ApprovalState.APPROVED:
+                logger.info("[SECURITY] Action: '{}' | State: APPROVED | User authorized execution.", action_id)
+                return True
+            else:
+                logger.warning("[SECURITY] Action: '{}' | State: {} | Action DENIED.", action_id, decision.value.upper())
+                return False
+
+        except Exception as e:
+            logger.error("[SECURITY] Action: '{}' | State: ERROR | Approval bridge exception: {}. Action DENIED.", action_id, e)
+            self._approval_decisions[action_id] = ApprovalState.ERROR
+            return False
+
+        finally:
+            self._pending_approvals.pop(action_id, None)
+            self._approval_decisions.pop(action_id, None)
+
+    def submit_telegram_decision(self, action_id: str, decision: str) -> bool:
+        """Process callback response from Telegram webhook or polling listener."""
+        event = self._pending_approvals.get(action_id)
+        if not event:
+            logger.warning("[SECURITY] Received decision for unknown/expired action_id: {}", action_id)
+            return False
+
+        if decision.lower() in ("approve", "approved", "true", "yes"):
+            self._approval_decisions[action_id] = ApprovalState.APPROVED
+        else:
+            self._approval_decisions[action_id] = ApprovalState.DENIED
+
+        event.set()
+        logger.info("[SECURITY] Action: '{}' | Decision recorded: {}", action_id, self._approval_decisions[action_id].value)
         return True
+

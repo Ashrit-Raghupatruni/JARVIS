@@ -63,13 +63,56 @@ class LiveModeEngine:
         self.latest_frame: Optional[LiveContextFrame] = None
         self._last_window_title: str = ""
 
-    def start(self) -> None:
-        """Start the background Live Mode perception loop."""
+    def get_activation_greeting(self) -> str:
+        """Get human-readable spoken greeting for Live Mode activation."""
+        return "JARVIS Live Mode active. What are we working on now?"
+
+    def start(self, speak_greeting: bool = True) -> None:
+        """Start the background Live Mode perception loop and trigger spoken greeting."""
         if self.is_enabled:
             return
         self.is_enabled = True
         self._task = asyncio.create_task(self._perception_loop())
         logger.info("✓ Live Mode AI Assistant started (1.0 FPS perception loop active).")
+
+        if speak_greeting:
+            asyncio.create_task(self._broadcast_activation_greeting())
+
+    async def _broadcast_activation_greeting(self) -> None:
+        """Synthesize and broadcast activation greeting over WebSocket."""
+        try:
+            greeting_text = self.get_activation_greeting()
+            from backend.services.manager import ServiceManager
+            tts = ServiceManager.get_instance("tts_service")
+            ws_mgr = ServiceManager.get_instance("connection_manager")
+            
+            audio_bytes = None
+            if tts and hasattr(tts, "synthesize"):
+                audio_bytes = await tts.synthesize(greeting_text)
+
+            if ws_mgr and hasattr(ws_mgr, "broadcast"):
+                from backend.models.schemas import WSMessage, ResponseMessage, StatusMessage, AssistantState
+                await ws_mgr.broadcast(WSMessage(
+                    type="status",
+                    data=StatusMessage(state=AssistantState.SPEAKING, message=greeting_text).model_dump()
+                ))
+                await ws_mgr.broadcast(WSMessage(
+                    type="response",
+                    data=ResponseMessage(text=greeting_text).model_dump()
+                ))
+                if audio_bytes:
+                    import base64
+                    audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+                    await ws_mgr.broadcast(WSMessage(
+                        type="tts_audio",
+                        data={"audio": audio_b64, "format": "mp3"}
+                    ))
+                await ws_mgr.broadcast(WSMessage(
+                    type="status",
+                    data=StatusMessage(state=AssistantState.LISTENING, message="Hands-free voice control active").model_dump()
+                ))
+        except Exception as err:
+            logger.warning(f"Live Mode activation greeting broadcast notice: {err}")
 
     def stop(self) -> None:
         """Stop the background Live Mode perception loop."""

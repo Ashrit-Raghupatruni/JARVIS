@@ -20,8 +20,11 @@ import psutil
 
 from backend.services.manager import ServiceManager
 
-MEMORY_FILE = Path("data/self_development_memory.json")
-REGISTRY_FILE = Path("backend/CapabilityRegistry.json")
+BASE_DIR = Path(__file__).resolve().parent.parent
+MEMORY_FILE = BASE_DIR.parent / "data" / "self_development_memory.json"
+REGISTRY_FILE = BASE_DIR / "CapabilityRegistry.json"
+if not REGISTRY_FILE.exists():
+    REGISTRY_FILE = BASE_DIR.parent / "backend" / "CapabilityRegistry.json"
 
 
 class SelfDevelopmentService:
@@ -81,7 +84,7 @@ class SelfDevelopmentService:
             "file_path": file_path,
             "proposed_code": proposed_code,
             "description": description,
-            "timestamp": os.time() if hasattr(os, "time") else 0
+            "timestamp": time.time()
         }
 
     def approve_modification(self, approval_id: str) -> Dict[str, Any]:
