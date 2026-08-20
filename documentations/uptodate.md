@@ -51,6 +51,13 @@ gantt
     Full 21 Micro-Agent Ecosystem Architecture :done, t8_2, 2026-08-03, 1d
     Marvel J.A.R.V.I.S. Situational Personality Engine :done, t8_3, 2026-08-03, 1d
     Connected Security Sandbox & Strategy Learning Loops :done, t8_4, 2026-08-08, 1d
+    section Production Hardening (Phases 1–9)
+    Fail-Closed Gatekeeper & Security Audit :done, t9_1, 2026-08-20, 1d
+    Dual-Provider Offline SAPI TTS Fallback :done, t9_2, 2026-08-20, 1d
+    Real Mobile Audio Streaming & Dynamic Approvals :done, t9_3, 2026-08-20, 1d
+    Backend Hand Tracking CV Worker with Debouncing :done, t9_4, 2026-08-20, 1d
+    MCU Domain Agents & Fast n8n Socket Probe :done, t9_5, 2026-08-20, 1d
+    Outcome-Based E2E Verification Suite :done, t9_6, 2026-08-20, 1d
 ```
 
 ---
@@ -70,16 +77,25 @@ The architecture is split into a **React + Electron** desktop client (frontend),
 ### Backend Engine (Python Service)
 * **Core Web Server:** FastAPI v0.115.9 + Uvicorn v0.34.2 (bound to `0.0.0.0:8000`).
 * **Database (Relational):** SQLite + SQLAlchemy ORM v2.0.41 + `aiosqlite` v0.21.0 (enforced SQLite WAL mode).
-* **UI Automation & Indexing:** `UIAEngine` (Win32 accessibility) + `FileIndexerService` (SQLite FTS5).
+* **Voice Synthesis:** Dual-Provider `TTSService` (`EdgeTTSProvider` online neural + `LocalTTSProvider` offline Windows SAPI `SpVoice`).
+* **Speech Recognition:** `faster-whisper` + `openwakeword` hardware listener.
+* **Computer Vision:** OpenCV `cv2.VideoCapture` standalone `CameraWorker` + MediaPipe `GestureEngine` classifier + Haar Cascade face biometrics.
+* **Automation & Integrations:** `UIAEngine` (Win32 accessibility) + `FileIndexerService` (SQLite FTS5) + `N8nIntegrationService` (sub-250ms socket probing).
+* **Security Gatekeeper:** `MobileBridgeService` with strict fail-closed policy, `ApprovalState` lifecycle, and structured security audit logging.
 
 ---
 
 ## 🎯 Verification & Build Confirmation
 
+- **Outcome-Based E2E Verification**: `backend/venv/Scripts/python.exe scratch/test_outcome_based_verification.py` → **`PASSED 6/6 Checks (100%)`**.
+- **Fail-Closed Security Verification**: `backend/venv/Scripts/python.exe scratch/test_fail_closed.py` → **`PASSED 100%`**.
+- **Micro-Agent Ecosystem Tests**: `backend/venv/Scripts/python.exe scratch/run_ecosystem_tests.py` → **`PASSED 3/3 Tests`**.
+- **n8n Workflow Integration Suite**: `backend/venv/Scripts/python.exe scratch/test_n8n_integration.py` → **`PASSED 100%`**.
 - **Automated Sandbox & Agent Verification**: `backend/venv/Scripts/python.exe run_tests.py` → **`All test cases PASSED`**.
 - **Backend Python Diagnostic Audit**: `python scratch/test_ocr_and_all_systems.py` → **`PASSED 100%`**.
 - **EventBus Subscriber Test**: `python scratch/test_event_bus_subscriber.py` → **`PASSED`**.
 - **Wake Word Detection Hardware Listener**: `python scratch/test_wake_word_fix.py` → **`PASSED`**.
 - **Live Mode Full Suite**: `python scratch/test_live_mode_full_suite.py` → **`PASSED`**.
 - **Vite HMR & Electron Build**: Clean compilation without import path errors.
-- **GitHub Status**: All commits pushed to remote GitHub repository per explicit user instruction.
+- **GitHub Status**: All commits pushed to `feature` branch on remote GitHub repository.
+

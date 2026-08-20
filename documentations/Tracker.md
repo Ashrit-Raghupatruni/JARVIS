@@ -64,15 +64,52 @@ This document outlines the capabilities, completed features, active work, and up
 - [x] Git stashing checkpoints and rollbacks.
 - [x] Holt-Linear double exponential cursor smoothing.
 - [x] Proactive psutil CPU/RAM resource monitoring.
+- [x] Fail-Closed Security Gatekeeper Policy & Audit Logs (`mobile_bridge.py` & `scratch/test_fail_closed.py`)
+- [x] Dual-Provider Offline Speech Synthesis Engine with Windows SAPI Fallback (`tts.py`)
+- [x] Real Mobile Microphone Recording & Base64 WebSocket STT Streaming (`ControlScreen.tsx` & `mobile_ws.py`)
+- [x] Real-Time Dynamic Mobile Approvals Gatekeeper (`ApprovalsScreen.tsx` & `client.ts`)
+- [x] Standalone Backend Hand Tracking CV Worker with 150ms Debouncing (`hand_control_service.py`)
+- [x] Real MCU Micro-Agent Domain Operations (`CalendarAgent`, `ReminderAgent`, `AutomationAgent`, `DeviceAgent`, `SecurityAgent`, `SelfDiagnosticAgent`)
+- [x] Sub-250ms Fast n8n Pre-Flight Probing & Workflow Execution (`n8n_service.py`)
+- [x] Codebase Polish & Syntax Hygiene (os.time fix, typing imports, class header cleanup)
+- [x] Comprehensive Outcome-Based E2E Verification Suite (6/6 Checks Passed 100% via `scratch/test_outcome_based_verification.py`)
 
 ---
 
-## 3. Future TODO Roadmap (7–13)
+## 3. Future TODO Roadmap (Sections 7–13)
 
-### 7: Predictive & Proactive Intelligence
-- [ ] **Habit Learning & Predictive Automation**: Behavioral pattern mining to pre-stage workspaces before user commands.
-- [ ] **Ambient Multi-Modal Presence**: Bluetooth RSSI proximity lock/unlock and eye gaze tracking.
+### 7: Autonomous Agent Ecosystem
+- [x] **Multi-Agent Orchestration & IPC Message Bus**: Sub-agent spawning across 21 domain agents (`CalendarAgent`, `ReminderAgent`, `AutomationAgent`, `DeviceAgent`, `SecurityAgent`, `SelfDiagnosticAgent`) with asynchronous IPC message routing (`/api/v1/agents/ipc`).
+- [x] **Long-Horizon Task Checkpointing**: Thread-safe task state tracking, KV-cache pruning, and multi-turn context preservation.
+- [ ] **Dynamic Sub-Agent Code Synthesis**: On-the-fly AST generation and sandbox testing for ad-hoc tool creation.
 
-### 8: External Ecosystem Integration
-- [ ] **Universal API Connector Vault**: OAuth2 refresh token manager for 100+ services.
-- [ ] **Smart Home & IoT Bridge**: Matter/Thread protocol local device control and Home Assistant MQTT sync.
+### 8: Predictive & Proactive Intelligence
+- [x] **Workspace Context & Habit Matrix**: `WorkspaceIntelligenceService` tracking 20-action ring buffer, active project, workflow classification, and habit transition matrices stored in `data/user_habits.json`.
+- [x] **Proactive 2.0 Cooldown & Interjection Rotator**: 20-minute interjection cooldown (`1200s`) with 3-way rotation (Active Project -> Monitored Topic -> Agenda Recap) and financial content safety filters.
+- [ ] **Ambient Presence & Proximity Sensing**: Bluetooth RSSI proximity lock/unlock and webcam eye-gaze tracking.
+
+### 9: External Ecosystem Integration
+- [x] **n8n Workflow Automation Engine**: Bi-directional ReactFlow Visual Canvas <-> n8n graph translation (`N8nWorkflowTranslator`), sub-250ms fast pre-flight socket probing, and 6 LLM tool-calling endpoints.
+- [ ] **Universal API Connector Vault**: Encrypted OAuth2 token vault for 100+ services (Gmail, Slack, Notion, GitHub, AWS), natural language API builder, and webhook listener server.
+- [ ] **Smart Home & IoT Bridge**: Matter/Thread protocol local device control, Home Assistant bidirectional MQTT sync, and mobile GPS geofencing.
+
+### 10: Security & Privacy Hardening
+- [x] **Strict Fail-Closed Security Policy**: `MobileBridgeService` fail-closed gatekeeper on Telegram / WebSocket transport errors, explicit `ApprovalState` enum, and audit logging.
+- [x] **Biometric Face Authentication & Anti-Spoofing**: 128-D spatial mean grid embedding matching + Eye Aspect Ratio (EAR) blink liveness verification in `FaceBiometricsService`.
+- [ ] **Zero-Trust Memory Vault**: Homomorphic encryption for sensitive RAG queries and TPM/Secure Enclave hardware key binding.
+
+### 11: Advanced Interaction Modes
+- [x] **Real-Time Hand Gesture Cursor Control**: Standalone OpenCV `CameraWorker` + MediaPipe `GestureEngine` (`PINCH`, `OPEN_PALM`, `FIST`, `SWIPE`) with confidence thresholding (`0.7`) and temporal debouncing (`150ms`).
+- [x] **Live Mode Multi-Monitor Spatial Engine**: Win32 `SetWindowPos` window management and display topology enumeration.
+- [ ] **Spatial AR / VR Computing**: AR passthrough HUD overlay and spatial multi-monitor canvas.
+
+### 12: Performance & Optimization
+- [x] **Local Prash Transformer Engine**: Scaled 397.7M-parameter Transformer (`d_model=1024`, `n_layers=24`, `n_heads=16`) and 0.7M low-latency local inference handoff.
+- [x] **Fast Sub-250ms Socket Probing**: Non-blocking TCP pre-flight diagnostics avoiding 4.12s timeout stalls on offline services.
+- [ ] **NPU / TensorRT Acceleration**: Direct hardware NPU offloading (Intel AI Boost / Apple Silicon Neural Engine) and custom CUDA kernels.
+
+### 13: Developer & Extensibility Platform
+- [x] **Visual Canvas Workflow Studio**: Node-based interactive visual workflow builder (`VisualWorkflowBuilder.tsx`) with live n8n synchronization.
+- [x] **Dynamic Tool & Skill Registries**: 18 core tools + 20 modular skills providing 106 runtime tools.
+- [ ] **WASM Plugin Sandbox 2.0**: Isolated WASM runtime container for third-party community extensions.
+

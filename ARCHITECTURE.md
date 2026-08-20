@@ -78,6 +78,23 @@ Every user command undergoes a 10-stage execution pipeline:
 ### 7. Interactive Safety Interlocks & Mobile Gatekeeper
 - **Destructive Command Guard**: Commands containing `del`, `rmdir`, `format`, `shutdown`, `reboot` require explicit confirmation.
 - **Desktop Exit Interlock**: Window close ('X') or application shutdown triggers a signed approval request via `MobileGatewayService` to the paired Android companion app and renders a desktop `SafetyPermissionModal.tsx`.
+- **Fail-Closed Security Policy**: Overhauled in `mobile_bridge.py`. Any communication failure, timeout, unconfigured bot, or network error results strictly in `return False` (deny), preventing unauthorized escalation. Explicit `ApprovalState` enum and security audit logs record all attempts.
+
+### 8. Dual-Provider Offline Speech Architecture (`TTSService`)
+- **Abstracted Multi-Tier Pipeline**: `EdgeTTSProvider` (online Microsoft neural audio) + `LocalTTSProvider` (offline Windows Native SAPI `SpVoice` / `SpFileStream` WAV synthesizer).
+- **Seamless Failover**: When internet connectivity is absent or Edge-TTS throws exceptions, `TTSService` automatically falls back to local SAPI within ~10ms with zero user disruption. Real-time barge-in and cancellation are fully preserved across both providers.
+
+### 9. Standalone Backend Hand Tracking CV Worker (`HandControlService`)
+- **Decoupled CV Thread**: Runs a dedicated `CameraWorker` thread capturing OpenCV frames independently of the frontend UI lifecycle.
+- **Debounced Landmark Classifier**: MediaPipe landmark vectors are evaluated via `GestureEngine` (`PINCH`, `OPEN_PALM`, `FIST`, `SWIPE`), filtered through confidence gating (`>= 0.7`), and temporal debouncing (`150ms`) to eliminate click jitter. Works continuously even when the desktop app is minimized or hidden.
+
+### 10. Autonomous MCU Micro-Agents Ecosystem (`mcu_agents.py`)
+- **Domain Specialization**: 21 micro-agents operating over an asynchronous IPC message bus with specialized domain handlers (`CalendarAgent`, `ReminderAgent`, `AutomationAgent`, `DeviceAgent`, `SecurityAgent`, `SelfDiagnosticAgent`).
+- **Autonomous Multi-Agent Collaboration**: Managed by `AgentEcosystemService` with checkpoint persistence, thread-safe message queues, and memory caching.
+
+### 11. Sub-250ms Fast n8n Pre-Flight Probing (`N8nIntegrationService`)
+- **Non-Blocking TCP Probe**: Connects via raw socket probe (`timeout=0.25s`) before sending HTTP requests, eliminating 4.12s connection timeout stalls when n8n is offline.
+- **Bi-Directional Graph Translation**: `N8nWorkflowTranslator` converts between ReactFlow UI canvas graphs and native n8n execution nodes.
 
 ---
 

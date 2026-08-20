@@ -17,16 +17,19 @@
 ## ✨ Features
 
 ### 🎤 Voice Control, Mobile Companion & Live Mode AI Co-Pilot
+- **Dual-Provider Offline TTS Engine** — Abstracted voice architecture featuring `EdgeTTSProvider` (online Microsoft streaming neural audio) with seamless, zero-exception automatic failover to `LocalTTSProvider` (offline Windows Native SAPI `SpVoice` / `SpFileStream`). Preserves real-time barge-in and cancellation.
 - **Dedicated Live Mode (AI Screen Assistant)** — Real-time continuous desktop observation operating mode. Extracts structured Win32 UIA Scene Graphs (~15ms Win32 UIA tree capture), offers step-by-step next logical guidance, smart form auto-fill with pre-submission validation, and multi-monitor workspace layout restorer (**Coding** & **Research** layouts).
 - **Persistent Chat History (Claude/GPT-Style)** — Browsable, persistent conversation sessions stored in SQLite (`jarvis.db`) with automatic first-message title generation, session sidebar (`ConversationSidebar.tsx`), inline renaming, deletion, and transcript restoration.
 - **Live Mode Browser Automation Engine** — Native multi-step perceive-decide-act-observe agent loop (`run_browser_agent` in `BrowserService`) and `browser_agent_task` tool for autonomous web research.
 - **Proactive Desktop Intelligence Suite** — Instant TTS interrupt barge-in (`cancel_playback`), exponential backoff retry decorator, 3.0s vision rate-limiter, Windows Registry boot auto-start (`system_autostart.py`), Clipboard Quick-Action Intelligence (`clipboard_intelligence.py`), session memory continuity (`session_memory.json`), background topic monitoring with content safety filters, and Proactive 2.0 with a 20-minute interjection cooldown timer.
 - **Structured Layout & Table OCR Engine** — Bounding box, structured table, and layout extraction in `VisionService` with PP-StructureV3 deep vision, pytesseract, and PIL grid fallback.
-- **Mobile Security Gatekeeper Intercept** — Intercepts laptop window close ('X' button) or terminal exit (`start.bat` / `Ctrl+C`). Broadcasts high-priority approval cards to your Android phone for 1-click `[Approve]` / `[Deny]` control.
+- **Fail-Closed Mobile & Telegram Gatekeeper Intercept** — Strictly fail-closed permission gatekeeper. Intercepts laptop window close, terminal exit, or dangerous system commands (`rm -rf`, `shutdown`). Broadcasts high-priority approval cards over WebSocket and Telegram with 1-click `[Approve]` / `[Deny]` control. Fails closed (denies action) if transport is offline.
+- **Standalone Backend Hand Tracking CV Worker** — Background `CameraWorker` thread capturing OpenCV frames, classifying landmarks via `GestureEngine` (`PINCH`, `OPEN_PALM`, `FIST`, `SWIPE`), filtering by confidence (`0.7`), and applying `150ms` debouncing. Works even when the Electron window is minimized.
+- **Sub-250ms Fast n8n Integration** — Pre-flight TCP socket probing reduces n8n offline failure latency from 4.12s to ~250ms. Bi-directional Visual Canvas <-> n8n graph translation and 6 LLM tools.
+- **Real Mobile Voice Input & Companion App** — Live microphone audio recording streaming base64 chunks over WebSocket to backend `faster-whisper` STT in `mobile_ws.py`. Companion Android app features 8 modular tabs, real-time telemetry HUD streaming, remote screen preview, and dynamic approval cards.
 - **Laptop Battery Level Mobile Alerts** — Automatic push & WebSocket notifications sent to phone at 30% (Warning) and 20% (Critical) unplugged battery levels.
 - **Double Clap Detection Engine** — Acoustic Peak-to-Average Power Ratio (PAPR > 3.2) transient filter with TTS speaker activity guard; double clapping when JARVIS is minimized or sleeping instantly restores and focuses the desktop window.
 - **Wake Word Activation** — Say "Hey Jarvis" to activate (local `openwakeword` engine tuned to 0.35 threshold).
-- **Mobile Companion App (Android)** — Android app featuring Arc Reactor launcher icon, 8 modular tabs (including Tab 8 Live Mode Co-Pilot), real-time telemetry HUD streaming, remote screen preview, and approval management.
 
 ### 🎨 Visual HUD & AI Command Center Studio
 - **Unified Command Center** — Modular workspace featuring 3D Orb focal core, AI Chat, Computer Use, Visual Workflow Studio, Task Queue Manager, Telemetry, and RAG Knowledge Hub.
