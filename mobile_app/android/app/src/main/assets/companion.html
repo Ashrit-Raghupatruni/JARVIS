@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>JARVIS Mission Control</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -248,14 +249,34 @@
         <div class="grid-2">
           <div>
             <label>Server URL</label>
-            <input type="text" id="serverUrl" value="http://10.102.57.177:8000">
+            <input type="text" id="serverUrl" value="http://10.200.40.177:8000">
           </div>
           <div>
             <label>Pairing PIN</label>
-            <input type="text" id="pairingPin" value="236786">
+            <input type="text" id="pairingPin" placeholder="e.g. 121706" value="">
           </div>
         </div>
-        <button class="btn" style="margin-top: 8px;" onclick="pairDevice()">Connect to JARVIS Desktop</button>
+        <button class="btn" style="margin-top: 8px;" onclick="pairDevice()">Connect to JARVIS Desktop (PIN)</button>
+        
+        <!-- Live Camera QR Scanner Section -->
+        <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed rgba(0,229,255,0.3);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label style="margin: 0; font-weight: bold; color: #00e5ff;">📷 LIVE CAMERA QR SCANNER</label>
+            <span id="scanStatusBadge" style="font-size: 0.7rem; color: #80deea;">Ready</span>
+          </div>
+
+          <button id="cameraToggleBtn" class="btn" style="background: linear-gradient(135deg, #00e5ff 0%, #00b0ff 100%); margin-bottom: 8px;" onclick="toggleCameraScanner()">📷 Open Live Camera QR Scanner</button>
+
+          <div id="scannerContainer" style="display: none; position: relative; width: 100%; border-radius: 8px; overflow: hidden; border: 2px solid #00e5ff; background: #000; margin-bottom: 8px;">
+            <video id="qrVideo" playsinline style="width: 100%; max-height: 220px; object-fit: cover;"></video>
+            <canvas id="qrCanvas" style="display: none;"></canvas>
+            <div style="position: absolute; top: 10%; left: 10%; width: 80%; height: 80%; border: 2px dashed rgba(0, 229, 255, 0.8); border-radius: 8px; pointer-events: none; box-shadow: 0 0 15px rgba(0,229,255,0.4);"></div>
+            <div style="position: absolute; bottom: 6px; width: 100%; text-align: center; font-size: 0.72rem; color: #fff; background: rgba(0,0,0,0.6); padding: 2px 0;">Point camera at Desktop Telemetry QR code</div>
+          </div>
+
+          <input type="text" id="qrPayloadInput" placeholder="jarvis_pair://sess_...:123456" style="margin-top: 4px;">
+          <button class="action-btn" style="width: 100%; margin-top: 6px; background: rgba(0, 229, 255, 0.15); border-color: #00e5ff; color: #00e5ff;" onclick="pairWithQRPayload()">📱 Pair with Pasted QR Payload</button>
+        </div>
       </div>
 
       <div class="card">
@@ -495,6 +516,138 @@
         }
       } catch (err) {
         log('❌ Fetch Error: ' + err.message);
+      }
+    }
+
+    let cameraStream = null;
+    let cameraScanInterval = null;
+
+    async function toggleCameraScanner() {
+      const container = document.getElementById('scannerContainer');
+      const btn = document.getElementById('cameraToggleBtn');
+      const statusBadge = document.getElementById('scanStatusBadge');
+
+      if (cameraStream) {
+        stopCameraScanner();
+        return;
+      }
+
+      try {
+        statusBadge.innerText = 'Starting Camera...';
+        const constraints = {
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        };
+        cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+        const video = document.getElementById('qrVideo');
+        video.srcObject = cameraStream;
+        video.setAttribute('playsinline', true);
+        await video.play();
+
+        container.style.display = 'block';
+        btn.innerText = '❌ Close Camera Scanner';
+        btn.style.background = 'linear-gradient(135deg, #f44336 0%, #d32f2f 100%)';
+        statusBadge.innerText = 'Scanning...';
+
+        startLiveQRDecoding();
+      } catch (err) {
+        log('❌ Camera Access Error: ' + err.message);
+        statusBadge.innerText = 'Camera Error';
+        alert('Camera permission required to scan QR code: ' + err.message);
+      }
+    }
+
+    function stopCameraScanner() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+      }
+      if (cameraScanInterval) {
+        clearInterval(cameraScanInterval);
+        cameraScanInterval = null;
+      }
+      const container = document.getElementById('scannerContainer');
+      const btn = document.getElementById('cameraToggleBtn');
+      const statusBadge = document.getElementById('scanStatusBadge');
+      if (container) container.style.display = 'none';
+      if (btn) {
+        btn.innerText = '📷 Open Live Camera QR Scanner';
+        btn.style.background = 'linear-gradient(135deg, #00e5ff 0%, #00b0ff 100%)';
+      }
+      if (statusBadge) statusBadge.innerText = 'Ready';
+    }
+
+    function startLiveQRDecoding() {
+      const video = document.getElementById('qrVideo');
+      const canvas = document.getElementById('qrCanvas');
+      const ctx = canvas.getContext('2d');
+
+      cameraScanInterval = setInterval(async () => {
+        if (!cameraStream || video.readyState !== video.HAVE_ENOUGH_DATA) return;
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Method 1: Native BarcodeDetector if available
+        if ('BarcodeDetector' in window) {
+          try {
+            const barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
+            const barcodes = await barcodeDetector.detect(canvas);
+            if (barcodes.length > 0) {
+              const rawVal = barcodes[0].rawValue;
+              handleDetectedQRCode(rawVal);
+              return;
+            }
+          } catch (e) {}
+        }
+
+        // Method 2: jsQR Canvas fallback
+        if (typeof jsQR !== 'undefined') {
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'dontInvert',
+          });
+          if (code && code.data) {
+            handleDetectedQRCode(code.data);
+            return;
+          }
+        }
+      }, 250);
+    }
+
+    function handleDetectedQRCode(payload) {
+      if (!payload) return;
+      log('📷 Scanned QR Code: ' + payload);
+      document.getElementById('qrPayloadInput').value = payload;
+      stopCameraScanner();
+      pairWithQRPayload();
+    }
+
+    async function pairWithQRPayload() {
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      const payload = document.getElementById('qrPayloadInput').value.trim();
+
+      if (!payload) { log('❌ Please enter or scan QR Code payload.'); return; }
+      log('Authenticating via Scanned QR...');
+
+      try {
+        const res = await fetch(baseUrl + '/api/v1/mobile/pair/qr/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ qr_payload: payload, device_id: 'android-qr-companion' })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          deviceToken = data.token || data.access_token;
+          localStorage.setItem('jarvis_device_token', deviceToken);
+          log('✅ QR Paired Successfully!');
+          connectWebSocket(baseUrl);
+        } else {
+          log('❌ QR Code Expired or Invalid');
+        }
+      } catch (err) {
+        log('❌ QR Fetch Error: ' + err.message);
       }
     }
 

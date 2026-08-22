@@ -90,6 +90,66 @@ class SpatialEngine:
             self.refresh_displays()
         return self._monitors
 
+    def get_virtual_desktop_bounds(self) -> Tuple[int, int, int, int, int, int]:
+        """
+        Returns (min_x, min_y, max_x, max_y, total_width, total_height) for the entire virtual desktop span.
+        Accounts for multiple monitors, negative coordinate offsets, stacked and side-by-side topologies.
+        """
+        monitors = self.get_monitors()
+        if monitors:
+            min_x = min(m.bounds[0] for m in monitors)
+            min_y = min(m.bounds[1] for m in monitors)
+            max_x = max(m.bounds[2] for m in monitors) - 1
+            max_y = max(m.bounds[3] for m in monitors) - 1
+            total_w = max_x - min_x + 1
+            total_h = max_y - min_y + 1
+            return min_x, min_y, max_x, max_y, total_w, total_h
+
+        if HAS_WIN32:
+            try:
+                min_x = win32api.GetSystemMetrics(win32con.SM_XVIRTUALSCREEN)
+                min_y = win32api.GetSystemMetrics(win32con.SM_YVIRTUALSCREEN)
+                total_w = win32api.GetSystemMetrics(win32con.SM_CXVIRTUALSCREEN)
+                total_h = win32api.GetSystemMetrics(win32con.SM_CYVIRTUALSCREEN)
+                max_x = min_x + total_w - 1
+                max_y = min_y + total_h - 1
+                return min_x, min_y, max_x, max_y, total_w, total_h
+            except Exception:
+                pass
+
+        return 0, 0, 1919, 1079, 1920, 1080
+
+    def map_normalized_to_screen(
+        self,
+        norm_x: float,
+        norm_y: float,
+        target_monitor: Optional[int | str] = None
+    ) -> Tuple[int, int]:
+        """
+        Map normalized [0.0, 1.0] coordinates across multi-monitor virtual desktop or specific display.
+        Handles arbitrary monitor topologies (side-by-side, stacked, unequal resolutions, negative offsets).
+        """
+        # Clamp normalized inputs to [0.0, 1.0]
+        norm_x = max(0.0, min(1.0, float(norm_x)))
+        norm_y = max(0.0, min(1.0, float(norm_y)))
+
+        if target_monitor is not None:
+            mon = self.get_monitor_by_target(target_monitor)
+            left, top, right, bottom = mon.bounds
+            x = int(round(left + norm_x * (right - left - 1)))
+            y = int(round(top + norm_y * (bottom - top - 1)))
+            return x, y
+
+        # Global multi-monitor virtual desktop span
+        min_x, min_y, max_x, max_y, total_w, total_h = self.get_virtual_desktop_bounds()
+        x = int(round(min_x + norm_x * (max_x - min_x)))
+        y = int(round(min_y + norm_y * (max_y - min_y)))
+
+        # Clamp to virtual bounds
+        x = max(min_x, min(max_x, x))
+        y = max(min_y, min(max_y, y))
+        return x, y
+
     def get_cursor_position(self) -> Tuple[int, int]:
         """Get current Windows mouse cursor screen coordinates."""
         try:

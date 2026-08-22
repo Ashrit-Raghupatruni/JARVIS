@@ -460,3 +460,222 @@ class ToolRegistry:
             },
             handler=n8n_deactivate_workflow
         )
+
+        # ── Direct OAuth2 Google Workspace & Microsoft 365 Tools ───────
+        async def _gmail_list_handler(query: str = "", max_results: int = 10):
+            from backend.services.oauth_service import oauth_service
+            return await oauth_service.gmail_list_messages(query=query, max_results=max_results)
+
+        async def _gmail_send_handler(to: str, subject: str, body: str):
+            from backend.services.oauth_service import oauth_service
+            return await oauth_service.gmail_send_message(to=to, subject=subject, body=body)
+
+        async def _gcal_list_handler(time_min: Optional[str] = None, max_results: int = 10):
+            from backend.services.oauth_service import oauth_service
+            return await oauth_service.google_calendar_list_events(time_min=time_min, max_results=max_results)
+
+        async def _gcal_create_handler(summary: str, start_time: str, end_time: str, description: str = ""):
+            from backend.services.oauth_service import oauth_service
+            return await oauth_service.google_calendar_create_event(
+                summary=summary, start_time=start_time, end_time=end_time, description=description
+            )
+
+        async def _outlook_list_handler(query: str = "", max_results: int = 10):
+            from backend.services.oauth_service import oauth_service
+            return await oauth_service.outlook_list_messages(query=query, max_results=max_results)
+
+        async def _outlook_send_handler(to: str, subject: str, body: str):
+            from backend.services.oauth_service import oauth_service
+            return await oauth_service.outlook_send_message(to=to, subject=subject, body=body)
+
+        async def _outlook_cal_list_handler(start_time: Optional[str] = None, end_time: Optional[str] = None, max_results: int = 10):
+            from backend.services.oauth_service import oauth_service
+            return await oauth_service.outlook_calendar_list_events(start_time=start_time, end_time=end_time, max_results=max_results)
+
+        async def _outlook_cal_create_handler(subject: str, start_time: str, end_time: str, body: str = ""):
+            from backend.services.oauth_service import oauth_service
+            return await oauth_service.outlook_calendar_create_event(
+                subject=subject, start_time=start_time, end_time=end_time, body=body
+            )
+
+        self.register(
+            name="gmail_list_messages",
+            description="Searches and reads messages from the user's Google Workspace Gmail inbox.",
+            category="integrations",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query or sender filter (e.g., 'from:boss', 'is:unread')"},
+                    "max_results": {"type": "integer", "description": "Maximum number of messages to return"}
+                }
+            },
+            handler=_gmail_list_handler
+        )
+
+        self.register(
+            name="gmail_send_message",
+            description="Sends an email to a recipient using the user's authenticated Gmail account.",
+            category="integrations",
+            risk_level="medium",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "to": {"type": "string", "description": "Recipient email address"},
+                    "subject": {"type": "string", "description": "Email subject header"},
+                    "body": {"type": "string", "description": "Plain text email body content"}
+                },
+                "required": ["to", "subject", "body"]
+            },
+            handler=_gmail_send_handler
+        )
+
+        self.register(
+            name="google_calendar_list_events",
+            description="Lists upcoming calendar events and meetings from Google Calendar.",
+            category="integrations",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "time_min": {"type": "string", "description": "ISO 8601 start time threshold (e.g., '2026-08-22T00:00:00Z')"},
+                    "max_results": {"type": "integer", "description": "Maximum events to return"}
+                }
+            },
+            handler=_gcal_list_handler
+        )
+
+        self.register(
+            name="google_calendar_create_event",
+            description="Schedules and creates a new meeting or event on Google Calendar.",
+            category="integrations",
+            risk_level="medium",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "summary": {"type": "string", "description": "Title/summary of the meeting or event"},
+                    "start_time": {"type": "string", "description": "ISO 8601 start datetime (e.g., '2026-08-23T15:00:00Z')"},
+                    "end_time": {"type": "string", "description": "ISO 8601 end datetime (e.g., '2026-08-23T16:00:00Z')"},
+                    "description": {"type": "string", "description": "Optional event details or agenda"}
+                },
+                "required": ["summary", "start_time", "end_time"]
+            },
+            handler=_gcal_create_handler
+        )
+
+        self.register(
+            name="outlook_list_messages",
+            description="Searches and reads emails from Microsoft Outlook / Office 365 inbox.",
+            category="integrations",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search term or subject filter"},
+                    "max_results": {"type": "integer", "description": "Maximum number of messages to return"}
+                }
+            },
+            handler=_outlook_list_handler
+        )
+
+        self.register(
+            name="outlook_send_message",
+            description="Sends an email via Microsoft Outlook / Graph API.",
+            category="integrations",
+            risk_level="medium",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "to": {"type": "string", "description": "Recipient email address"},
+                    "subject": {"type": "string", "description": "Email subject header"},
+                    "body": {"type": "string", "description": "Email message body"}
+                },
+                "required": ["to", "subject", "body"]
+            },
+            handler=_outlook_send_handler
+        )
+
+        self.register(
+            name="outlook_calendar_list_events",
+            description="Fetches scheduled appointments and meetings from Microsoft Outlook Calendar.",
+            category="integrations",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "start_time": {"type": "string", "description": "ISO 8601 start threshold"},
+                    "end_time": {"type": "string", "description": "ISO 8601 end threshold"},
+                    "max_results": {"type": "integer", "description": "Maximum events to return"}
+                }
+            },
+            handler=_outlook_cal_list_handler
+        )
+
+        self.register(
+            name="outlook_calendar_create_event",
+            description="Creates a new calendar meeting in Microsoft Outlook.",
+            category="integrations",
+            risk_level="medium",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "subject": {"type": "string", "description": "Meeting subject or title"},
+                    "start_time": {"type": "string", "description": "ISO 8601 start datetime"},
+                    "end_time": {"type": "string", "description": "ISO 8601 end datetime"},
+                    "body": {"type": "string", "description": "Meeting agenda/notes"}
+                },
+                "required": ["subject", "start_time", "end_time"]
+            },
+            handler=_outlook_cal_create_handler
+        )
+
+        # ── Bluetooth Proximity Auto-Lock & Biometric Wake Tools ───────
+        async def _proximity_status_handler():
+            from backend.services.bluetooth_proximity import bluetooth_proximity_service
+            return bluetooth_proximity_service.get_telemetry()
+
+        async def _proximity_config_handler(
+            auto_lock_enabled: Optional[bool] = None,
+            debounce_seconds: Optional[float] = None,
+            lock_threshold_dbm: Optional[int] = None,
+            wake_threshold_dbm: Optional[int] = None
+        ):
+            from backend.services.bluetooth_proximity import bluetooth_proximity_service
+            bluetooth_proximity_service.configure_thresholds(
+                lock_threshold=lock_threshold_dbm,
+                wake_threshold=wake_threshold_dbm,
+                debounce_seconds=debounce_seconds,
+                auto_lock_enabled=auto_lock_enabled
+            )
+            return bluetooth_proximity_service.get_telemetry()
+
+        self.register(
+            name="get_proximity_telemetry",
+            description="Returns the real-time Bluetooth RSSI proximity signal strength, connection state, and auto-lock threshold telemetry.",
+            category="security",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {}
+            },
+            handler=_proximity_status_handler
+        )
+
+        self.register(
+            name="configure_proximity_lock",
+            description="Configures Bluetooth RSSI proximity auto-lock parameters, departure debounce duration, and distance thresholds.",
+            category="security",
+            risk_level="medium",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "auto_lock_enabled": {"type": "boolean", "description": "Enable or disable auto-locking on departure"},
+                    "debounce_seconds": {"type": "number", "description": "Sustained weak signal seconds before locking (default: 7.0s)"},
+                    "lock_threshold_dbm": {"type": "integer", "description": "Signal threshold in dBm weaker than which triggers departure (e.g. -82)"},
+                    "wake_threshold_dbm": {"type": "integer", "description": "Signal threshold in dBm stronger than which triggers biometric wake (e.g. -65)"}
+                }
+            },
+            handler=_proximity_config_handler
+        )
+
+

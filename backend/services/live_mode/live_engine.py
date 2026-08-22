@@ -62,10 +62,38 @@ class LiveModeEngine:
         self._task: Optional[asyncio.Task] = None
         self.latest_frame: Optional[LiveContextFrame] = None
         self._last_window_title: str = ""
+        self._last_win_bounds: Optional[Dict[str, int]] = None
 
     def get_activation_greeting(self) -> str:
         """Get human-readable spoken greeting for Live Mode activation."""
         return "JARVIS Live Mode active. What are we working on now?"
+
+    async def _broadcast_live_mode_status(
+        self,
+        is_active: bool,
+        active_app: str = "Desktop",
+        window_title: str = "Desktop Workspace",
+        window_bounds: Optional[Dict[str, int]] = None
+    ) -> None:
+        """Broadcast live mode activation state and focused window bounds for UI transparency and spotlight overlay."""
+        try:
+            from backend.services.manager import ServiceManager
+            ws_mgr = ServiceManager.get_instance("connection_manager")
+            if ws_mgr and hasattr(ws_mgr, "broadcast"):
+                from backend.models.schemas import WSMessage, LiveModeStatusMessage
+                payload = LiveModeStatusMessage(
+                    is_active=is_active,
+                    active_app=active_app,
+                    window_title=window_title,
+                    window_bounds=window_bounds,
+                    timestamp=time.time()
+                )
+                await ws_mgr.broadcast(WSMessage(
+                    type="live_mode_status",
+                    data=payload.model_dump()
+                ))
+        except Exception as err:
+            logger.debug("Live Mode status broadcast notice: {}", err)
 
     def start(self, speak_greeting: bool = True) -> None:
         """Start the background Live Mode perception loop and trigger spoken greeting."""
@@ -74,6 +102,8 @@ class LiveModeEngine:
         self.is_enabled = True
         self._task = asyncio.create_task(self._perception_loop())
         logger.info("✓ Live Mode AI Assistant started (1.0 FPS perception loop active).")
+
+        asyncio.create_task(self._broadcast_live_mode_status(is_active=True))
 
         if speak_greeting:
             asyncio.create_task(self._broadcast_activation_greeting())
@@ -120,6 +150,10 @@ class LiveModeEngine:
         if self._task:
             self._task.cancel()
             self._task = None
+        try:
+            asyncio.create_task(self._broadcast_live_mode_status(is_active=False))
+        except Exception:
+            pass
         logger.info("Live Mode AI Assistant stopped.")
 
     async def _perception_loop(self) -> None:
@@ -188,6 +222,16 @@ class LiveModeEngine:
 
                 self.latest_frame = frame
                 
+                # Broadcast live status & window bounds if focus or geometry shifted
+                if window_title != self._last_window_title or win_bounds != self._last_win_bounds:
+                    self._last_win_bounds = win_bounds
+                    await self._broadcast_live_mode_status(
+                        is_active=True,
+                        active_app=wm_state.active_app,
+                        window_title=wm_state.window_title,
+                        window_bounds=win_bounds
+                    )
+
                 # Event-driven callback trigger: notify when window changes or proactive suggestion is generated
                 if self.on_context_update and (window_title != self._last_window_title or suggestion):
                     self._last_window_title = window_title

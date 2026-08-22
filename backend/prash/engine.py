@@ -456,10 +456,13 @@ class PrashEngine:
             # Build prompt matching training BPE token format
             token_ids = self._build_token_ids(prompt, conversation_history)
 
-            # Run inference using token IDs directly
-            response_text, avg_entropy = self.inference.generate(
+            # Run CPU inference inside a thread pool with reduced token cap to never block the async event loop
+            import asyncio
+            gen_limit = min(64, max_tokens)
+            response_text, avg_entropy = await asyncio.to_thread(
+                self.inference.generate,
                 prompt=token_ids,
-                max_new_tokens=max_tokens,
+                max_new_tokens=gen_limit,
                 temperature=temperature,
             )
 

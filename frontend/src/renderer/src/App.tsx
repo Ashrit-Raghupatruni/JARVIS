@@ -5,6 +5,7 @@ import { useAudio } from './hooks/useAudio'
 import DashboardLayout from './components/DashboardLayout'
 import SiriWidget from './components/SiriWidget'
 import { FaceLockScreen } from './components/FaceLockScreen'
+import { WindowSpotlightOverlay } from './components/WindowSpotlightOverlay'
 import type { HandTracker } from './lib/handTracker'
 
 export default function App() {
@@ -15,6 +16,7 @@ export default function App() {
     showSettings,
     audioLevel,
     settings,
+    liveModeStatus,
   } = useAppStore()
 
   // Detect if this is the Siri widget overlay window
@@ -202,8 +204,17 @@ export default function App() {
     return <FaceLockScreen onUnlock={() => setIsLocked(false)} />
   }
 
+  const isLiveActive = Boolean(liveModeStatus?.isActive)
+
   return (
-    <div className={`h-screen w-screen relative overflow-hidden ${isSerious ? 'serious-mode' : ''}`}>
+    <div
+      className={`h-screen w-screen relative overflow-hidden transition-all duration-300 ${
+        isLiveActive ? 'bg-slate-950/75 backdrop-blur-md' : ''
+      } ${isSerious ? 'serious-mode' : ''}`}
+    >
+      {/* Live Mode Focused Window High-Contrast Spotlight Overlay */}
+      <WindowSpotlightOverlay />
+
       {/* Background hidden video & canvas elements for laptop-wide hand gesture tracking */}
       <video ref={globalVideoRef} playsInline muted autoPlay className="fixed top-0 left-0 w-1 h-1 opacity-0 pointer-events-none -z-50" />
       <canvas ref={globalCanvasRef} width={320} height={240} className="fixed top-0 left-0 w-1 h-1 opacity-0 pointer-events-none -z-50" />

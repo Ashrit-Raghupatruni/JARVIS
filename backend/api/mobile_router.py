@@ -7,7 +7,7 @@ file management, screen previews, and mobile security approval responses.
 
 import time
 from typing import Dict, Any, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Header, Request, Body
 from loguru import logger
 
 from backend.models.mobile_schemas import (
@@ -69,12 +69,16 @@ async def require_mobile_auth(
     """
     FastAPI dependency enforcing verified mobile authentication across router endpoints.
     Extracts JWT from Authorization header ('Bearer <token>') or 'token' query parameter.
-    Fails closed with HTTP 401 Unauthorized if missing, invalid, or expired.
-    Bypasses pairing endpoints (/pair/initiate, /pair/confirm, /pair).
+    Allows read-only telemetry, pairing, and discovery without blocking initial HUD sync.
+    Strictly enforces JWT authentication for remote control commands & destructive actions.
     """
     path = request.url.path.rstrip('/')
-    if path.endswith('/pair/initiate') or path.endswith('/pair/confirm') or path.endswith('/pair') or path.endswith('/devices'):
+    
+    # 1. Allow pairing, QR session handshakes, device discovery, and read-only telemetry HUD
+    if '/pair' in path or path.endswith('/devices') or path.endswith('/telemetry') or path.endswith('/diagnostics'):
         return {}
+        
+    # 2. Allow localhost UI calls
     if request.client and request.client.host in ("127.0.0.1", "localhost", "::1"):
         return {}
 
@@ -82,7 +86,7 @@ async def require_mobile_auth(
     if not raw_token:
         raise HTTPException(
             status_code=401,
-            detail="Unauthorized: Missing Authorization header or token query parameter"
+            detail="Unauthorized: Missing Authorization header or token query parameter for remote execution"
         )
 
     auth_svc = get_mobile_auth_service(request)
@@ -594,4 +598,134 @@ async def execute_system_mode(mode_id: str = "coding_mode"):
     if not skill_lib:
         return {"status": "error", "message": "Skill Library unavailable"}
     return skill_lib.execute_mode(mode_id)
+
+
+
+# ── FCM PUSH NOTIFICATIONS & GEOFENCING ROUTER EXTENSIONS ────────────
+
+@mobile_router.post("/fcm/register_token")
+async def register_fcm_token(request: Request, body: Dict[str, Any]):
+    """Registers client device FCM token for high-priority push notifications."""
+    from backend.services.fcm_service import fcm_service
+    device_id = body.get("device_id", "mobile_device")
+    fcm_token = body.get("fcm_token") or body.get("token")
+    platform = body.get("platform", "android")
+    device_name = body.get("device_name", "Android Companion")
+
+    if not fcm_token:
+        raise HTTPException(status_code=400, detail="Missing required 'fcm_token' parameter")
+
+    success = fcm_service.register_device_token(
+        device_id=device_id,
+        fcm_token=fcm_token,
+        platform=platform,
+        device_name=device_name
+    )
+    return {
+        "status": "success" if success else "error",
+        "device_id": device_id,
+        "registered": success
+    }
+
+
+@mobile_router.post("/fcm/test_push")
+async def test_fcm_push(title: str = "🛡️ Security Gate", body: str = "Test approval push notification"):
+    """Sends a test push notification to all registered backgrounded devices."""
+    from backend.services.fcm_service import fcm_service
+    res = await fcm_service.broadcast_push_notification(title=title, body=body, notification_type="test")
+    return res
+
+
+@mobile_router.post("/geofence/update_location")
+async def update_mobile_location(body: Dict[str, Any]):
+    """Receives background GPS coordinates from mobile device and evaluates geofence triggers."""
+    from backend.services.geofence_service import geofence_service
+    device_id = body.get("device_id", "mobile_companion")
+    latitude = float(body.get("latitude", 0.0))
+    longitude = float(body.get("longitude", 0.0))
+    accuracy = float(body.get("accuracy", 10.0))
+
+    res = await geofence_service.evaluate_gps_update(
+        device_id=device_id,
+        latitude=latitude,
+        longitude=longitude,
+        accuracy_meters=accuracy
+    )
+    return res
+
+
+@mobile_router.post("/geofence/configure")
+async def configure_geofence(name: str = "Home", latitude: float = 17.385044, longitude: float = 78.486671, radius: float = 150.0):
+    """Configures geofence coordinate center and radius in meters."""
+    from backend.services.geofence_service import geofence_service
+    geofence_service.set_geofence(name=name, latitude=latitude, longitude=longitude, radius_meters=radius)
+    return {"status": "success", "configured_geofence": name, "radius_meters": radius}
+
+
+@mobile_router.post("/webrtc/offer")
+async def handle_webrtc_offer(body: Dict[str, Any]):
+    """Handles WebRTC SDP Offer for local-network full-duplex voice streaming."""
+    from backend.services.webrtc_service import webrtc_service
+    session_id = body.get("session_id", "webrtc_default")
+    sdp = body.get("sdp", "")
+    peer_id = body.get("peer_id", "mobile_client")
+
+    res = await webrtc_service.handle_sdp_offer(session_id=session_id, sdp_offer=sdp, peer_id=peer_id)
+    return res
+
+
+# ── Bluetooth RSSI Proximity Auto-Lock & Biometric Wake Endpoints ─────────────
+
+@mobile_router.get("/proximity/status")
+async def get_proximity_status():
+    """Returns real-time Bluetooth RSSI proximity metrics, debounced state, and thresholds."""
+    from backend.services.bluetooth_proximity import bluetooth_proximity_service
+    return {"status": "ok", "telemetry": bluetooth_proximity_service.get_telemetry()}
+
+
+@mobile_router.post("/proximity/config")
+async def configure_proximity(payload: Dict[str, Any] = Body(...)):
+    """Configure proximity lock & biometric wake calibration parameters."""
+    from backend.services.bluetooth_proximity import bluetooth_proximity_service
+    if "target_device" in payload:
+        bluetooth_proximity_service.set_target_device(payload["target_device"])
+    bluetooth_proximity_service.configure_thresholds(
+        lock_threshold=payload.get("lock_threshold_dbm"),
+        wake_threshold=payload.get("wake_threshold_dbm"),
+        debounce_seconds=payload.get("debounce_seconds"),
+        auto_lock_enabled=payload.get("auto_lock_enabled"),
+        biometric_wake_enabled=payload.get("biometric_wake_enabled")
+    )
+    return {"status": "success", "telemetry": bluetooth_proximity_service.get_telemetry()}
+
+
+@mobile_router.post("/proximity/scan")
+async def scan_nearby_ble_devices(timeout_seconds: float = 3.0):
+    """Executes a single BLE discovery scan on Windows hardware returning detected devices and RSSI."""
+    try:
+        from bleak import BleakScanner
+        devices = await BleakScanner.discover(timeout=min(timeout_seconds, 10.0))
+        return {
+            "status": "success",
+            "count": len(devices),
+            "devices": [
+                {
+                    "name": d.name or "Unknown",
+                    "address": d.address,
+                    "rssi": d.rssi
+                }
+                for d in devices
+            ]
+        }
+    except Exception as e:
+        logger.warning(f"BLE scan notice: {e}")
+        return {"status": "radio_offline", "error": str(e), "devices": []}
+
+
+@mobile_router.post("/proximity/lock_now")
+async def trigger_proximity_lock():
+    """Manually test or trigger workstation lock via Proximity service."""
+    from backend.services.bluetooth_proximity import bluetooth_proximity_service
+    bluetooth_proximity_service._trigger_auto_lock()
+    return {"status": "locked", "telemetry": bluetooth_proximity_service.get_telemetry()}
 

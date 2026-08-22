@@ -135,10 +135,22 @@ async def prash_node(state: AgentState, config: RunnableConfig) -> AgentState:
     state["logs"].append(f"Querying PrashEngine with query: '{query}'")
     
     try:
-        response_text, is_confident, metadata = await prash_engine.generate(
-            prompt=query,
-            conversation_history=formatted_history
-        )
+        import asyncio
+        # Impose a strict 4.0s timeout on CPU tensor inference to prevent event-loop stalls
+        try:
+            response_text, is_confident, metadata = await asyncio.wait_for(
+                prash_engine.generate(
+                    prompt=query,
+                    conversation_history=formatted_history
+                ),
+                timeout=4.0
+            )
+        except asyncio.TimeoutError:
+            logger.warning("PrashEngine CPU inference timed out after 4.0s. Falling back to active local/cloud LLM.")
+            state["status"] = "fallback"
+            state["prash_confident"] = False
+            state["logs"].append("Prash CPU inference exceeded 4.0s. Routing immediately to fallback LLM.")
+            return state
         
         prash_confident = is_confident and len(response_text.strip()) > 5
         state["prash_confident"] = prash_confident

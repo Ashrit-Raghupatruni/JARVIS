@@ -8,6 +8,7 @@ these schemas, enabling strong validation and IDE auto-completion.
 
 from __future__ import annotations
 
+import time
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
@@ -273,3 +274,19 @@ class ConversationMessage(BaseModel):
         default=None,
         description="Name of the tool function (tool role only).",
     )
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  Live Mode Perception & Visual Synchronizer Messages
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+class LiveModeStatusMessage(BaseModel):
+    """Real-time status and active window perception frame for Live Mode visual synchronization."""
+
+    is_active: bool = Field(..., description="Whether Live Mode is active.")
+    active_app: str = Field(default="Desktop", description="Currently focused application.")
+    window_title: str = Field(default="Desktop Workspace", description="Title of the active foreground window.")
+    window_bounds: Optional[Dict[str, int]] = Field(default=None, description="Screen coordinates and dimensions {x, y, w, h}.")
+    timestamp: float = Field(default_factory=time.time, description="Timestamp of status update.")
+

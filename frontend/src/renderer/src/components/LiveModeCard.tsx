@@ -397,9 +397,60 @@ export default function LiveModeCard() {
                   <span className="text-slate-400">Processor FPS</span>
                   <span className="text-slate-200 font-bold">{telemetry.fps} FPS</span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center border-b border-slate-800/60 pb-1">
                   <span className="text-slate-400">Confidence Score</span>
                   <span className="text-cyan-400 font-bold">{telemetry.confidence}%</span>
+                </div>
+              </div>
+
+              {/* Live Gesture Sensitivity & Smoothing Tuning Sliders */}
+              <div className="mt-2 pt-2 border-t border-slate-800/80 space-y-2 font-mono text-[10px]">
+                <div>
+                  <div className="flex justify-between text-slate-400 mb-1">
+                    <span>Sensitivity</span>
+                    <span className="text-cyan-300 font-bold">{(settings.handControl?.sensitivity ?? 1.6).toFixed(1)}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="3.0"
+                    step="0.1"
+                    value={settings.handControl?.sensitivity ?? 1.6}
+                    onChange={(e) => updateHandControlSettings({ sensitivity: parseFloat(e.target.value) })}
+                    className="w-full h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-cyan-400"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-slate-400 mb-1">
+                    <span>Smoothing</span>
+                    <span className="text-cyan-300 font-bold">{(settings.handControl?.smoothing ?? 0.45).toFixed(2)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.05"
+                    max="0.95"
+                    step="0.05"
+                    value={settings.handControl?.smoothing ?? 0.45}
+                    onChange={(e) => updateHandControlSettings({ smoothing: parseFloat(e.target.value) })}
+                    className="w-full h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-cyan-400"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-slate-400 mb-1">
+                    <span>Pinch Threshold</span>
+                    <span className="text-cyan-300 font-bold">{(settings.handControl?.pinchThreshold ?? 0.32).toFixed(2)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.15"
+                    max="0.55"
+                    step="0.01"
+                    value={settings.handControl?.pinchThreshold ?? 0.32}
+                    onChange={(e) => updateHandControlSettings({ pinchThreshold: parseFloat(e.target.value) })}
+                    className="w-full h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-cyan-400"
+                  />
                 </div>
               </div>
             </div>

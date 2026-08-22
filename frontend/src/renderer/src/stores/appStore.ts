@@ -46,6 +46,20 @@ interface AppState {
   setActiveConversationId: (id: number | string | null) => void
   setMessages: (messages: ConversationMessage[]) => void
 
+  /* ----- Live Mode Visual Sync State ----- */
+  liveModeStatus: {
+    isActive: boolean
+    activeApp: string
+    windowTitle: string
+    windowBounds: { x: number; y: number; w: number; h: number } | null
+  }
+  setLiveModeStatus: (status: {
+    isActive: boolean
+    activeApp?: string
+    windowTitle?: string
+    windowBounds?: { x: number; y: number; w: number; h: number } | null
+  }) => void
+
   /* ----- Core Actions ----- */
   setAssistantState: (state: AssistantState) => void
   setConnected: (connected: boolean) => void
@@ -123,6 +137,38 @@ const defaultSettings: Settings = {
   }
 }
 
+const getInitialSettings = (): Settings => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const saved = window.localStorage.getItem('jarvis_app_settings')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        return {
+          ...defaultSettings,
+          ...parsed,
+          handControl: { ...defaultSettings.handControl, ...(parsed.handControl || {}) },
+          voice: { ...defaultSettings.voice, ...(parsed.voice || {}) },
+          ai: { ...defaultSettings.ai, ...(parsed.ai || {}) },
+          display: { ...defaultSettings.display, ...(parsed.display || {}) }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[AppStore] Failed to load settings from localStorage:', e)
+  }
+  return defaultSettings
+}
+
+const saveSettingsToStorage = (settings: Settings) => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem('jarvis_app_settings', JSON.stringify(settings))
+    }
+  } catch (e) {
+    console.error('[AppStore] Failed to save settings to localStorage:', e)
+  }
+}
+
 export const useAppStore = create<AppState>((set) => ({
   /* ----- Initial State ----- */
   assistantState: 'idle',
@@ -155,12 +201,29 @@ export const useAppStore = create<AppState>((set) => ({
   showCommandHistory: false,
   isWindowMaximized: false,
   thinkingText: '',
-  settings: defaultSettings,
+  settings: getInitialSettings(),
   activeConversationId: null,
+  liveModeStatus: {
+    isActive: false,
+    activeApp: 'Desktop',
+    windowTitle: 'Desktop Workspace',
+    windowBounds: null
+  },
 
   /* ----- Conversation History Actions ----- */
   setActiveConversationId: (activeConversationId) => set({ activeConversationId }),
   setMessages: (messages) => set({ messages }),
+
+  /* ----- Live Mode Visual Sync Action ----- */
+  setLiveModeStatus: (status) =>
+    set((state) => ({
+      liveModeStatus: {
+        isActive: status.isActive,
+        activeApp: status.activeApp ?? state.liveModeStatus.activeApp,
+        windowTitle: status.windowTitle ?? state.liveModeStatus.windowTitle,
+        windowBounds: status.windowBounds !== undefined ? status.windowBounds : state.liveModeStatus.windowBounds
+      }
+    })),
 
   /* ----- Core Actions ----- */
   setAssistantState: (assistantState) => set({ assistantState }),
@@ -245,39 +308,49 @@ export const useAppStore = create<AppState>((set) => ({
 
   /* ----- Settings Actions ----- */
   updateSettings: (newSettings) =>
-    set((state) => ({
-      settings: { ...state.settings, ...newSettings }
-    })),
+    set((state) => {
+      const updated = { ...state.settings, ...newSettings }
+      saveSettingsToStorage(updated)
+      return { settings: updated }
+    }),
 
   updateVoiceSettings: (voice) =>
-    set((state) => ({
-      settings: {
+    set((state) => {
+      const updated = {
         ...state.settings,
         voice: { ...state.settings.voice, ...voice }
       }
-    })),
+      saveSettingsToStorage(updated)
+      return { settings: updated }
+    }),
 
   updateAISettings: (ai) =>
-    set((state) => ({
-      settings: {
+    set((state) => {
+      const updated = {
         ...state.settings,
         ai: { ...state.settings.ai, ...ai }
       }
-    })),
+      saveSettingsToStorage(updated)
+      return { settings: updated }
+    }),
 
   updateDisplaySettings: (display) =>
-    set((state) => ({
-      settings: {
+    set((state) => {
+      const updated = {
         ...state.settings,
         display: { ...state.settings.display, ...display }
       }
-    })),
+      saveSettingsToStorage(updated)
+      return { settings: updated }
+    }),
 
   updateHandControlSettings: (handControl) =>
-    set((state) => ({
-      settings: {
+    set((state) => {
+      const updated = {
         ...state.settings,
         handControl: { ...state.settings.handControl, ...handControl }
       }
-    }))
+      saveSettingsToStorage(updated)
+      return { settings: updated }
+    })
 }))

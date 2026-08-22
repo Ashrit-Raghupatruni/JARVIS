@@ -340,6 +340,8 @@ class STTService:
 
     # ── Properties ───────────────────────────────────────────────────────
 
+    transcribe_bytes = transcribe
+
     @property
     def is_loaded(self) -> bool:
         """Whether the Whisper model is loaded and ready."""

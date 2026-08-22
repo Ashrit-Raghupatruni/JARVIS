@@ -504,17 +504,19 @@ export default function SettingsPanel() {
                   </div>
 
                   <div>
-                    <label className="block text-xs mb-1.5" style={{ color: 'var(--jarvis-text-dim)' }}>Sensitivity ({localSettings.handControl?.sensitivity.toFixed(1)})</label>
+                    <label className="block text-xs mb-1.5" style={{ color: 'var(--jarvis-text-dim)' }}>Sensitivity ({localSettings.handControl?.sensitivity.toFixed(1)}x)</label>
                     <input
                       type="range"
                       min="0.5"
                       max="3.0"
                       step="0.1"
-                      value={localSettings.handControl?.sensitivity ?? 1.5}
-                      onChange={(e) => setLocalSettings({
-                        ...localSettings,
-                        handControl: { ...localSettings.handControl, sensitivity: parseFloat(e.target.value) }
-                      })}
+                      value={localSettings.handControl?.sensitivity ?? 1.6}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value)
+                        const updated = { ...localSettings.handControl, sensitivity: val }
+                        setLocalSettings({ ...localSettings, handControl: updated })
+                        updateHandControlSettings(updated)
+                      }}
                       className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-[var(--jarvis-accent)]"
                     />
                   </div>
@@ -526,11 +528,13 @@ export default function SettingsPanel() {
                       min="0.05"
                       max="0.95"
                       step="0.05"
-                      value={localSettings.handControl?.smoothing ?? 0.5}
-                      onChange={(e) => setLocalSettings({
-                        ...localSettings,
-                        handControl: { ...localSettings.handControl, smoothing: parseFloat(e.target.value) }
-                      })}
+                      value={localSettings.handControl?.smoothing ?? 0.45}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value)
+                        const updated = { ...localSettings.handControl, smoothing: val }
+                        setLocalSettings({ ...localSettings, handControl: updated })
+                        updateHandControlSettings(updated)
+                      }}
                       className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-[var(--jarvis-accent)]"
                     />
                   </div>
@@ -543,26 +547,30 @@ export default function SettingsPanel() {
                       max="0.55"
                       step="0.01"
                       value={localSettings.handControl?.pinchThreshold ?? 0.32}
-                      onChange={(e) => setLocalSettings({
-                        ...localSettings,
-                        handControl: { ...localSettings.handControl, pinchThreshold: parseFloat(e.target.value) }
-                      })}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value)
+                        const updated = { ...localSettings.handControl, pinchThreshold: val }
+                        setLocalSettings({ ...localSettings, handControl: updated })
+                        updateHandControlSettings(updated)
+                      }}
                       className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-[var(--jarvis-accent)]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs mb-1.5" style={{ color: 'var(--jarvis-text-dim)' }}>Scroll Speed ({localSettings.handControl?.scrollSpeed.toFixed(0)})</label>
+                    <label className="block text-xs mb-1.5" style={{ color: 'var(--jarvis-text-dim)' }}>Scroll Speed ({localSettings.handControl?.scrollSpeed.toFixed(0)} px/frame)</label>
                     <input
                       type="range"
                       min="10"
                       max="100"
                       step="5"
                       value={localSettings.handControl?.scrollSpeed ?? 40}
-                      onChange={(e) => setLocalSettings({
-                        ...localSettings,
-                        handControl: { ...localSettings.handControl, scrollSpeed: parseInt(e.target.value, 10) }
-                      })}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10)
+                        const updated = { ...localSettings.handControl, scrollSpeed: val }
+                        setLocalSettings({ ...localSettings, handControl: updated })
+                        updateHandControlSettings(updated)
+                      }}
                       className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-[var(--jarvis-accent)]"
                     />
                   </div>

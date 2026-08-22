@@ -322,6 +322,9 @@ class MemoryService:
             logger.error(f"Failed to append message to conversation {conv_id}: {e}")
             return None
 
+    save_message = add_message_to_conversation
+    add_message = add_message_to_conversation
+
     async def generate_auto_title(
         self, conv_id: int, user_prompt: str, assistant_reply: str = ""
     ) -> str:

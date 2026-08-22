@@ -180,6 +180,18 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
           break
         }
 
+        case 'live_mode_status': {
+          const data = message.data as any
+          const store = useAppStore.getState()
+          store.setLiveModeStatus({
+            isActive: Boolean(data?.is_active),
+            activeApp: data?.active_app,
+            windowTitle: data?.window_title,
+            windowBounds: data?.window_bounds ?? null
+          })
+          break
+        }
+
         case 'clap_detected': {
           const store = useAppStore.getState()
           store.setAssistantState('wake_word_detected')

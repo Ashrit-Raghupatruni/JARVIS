@@ -34,7 +34,17 @@ public class MainActivity extends Activity {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
         webView.setWebViewClient(new WebViewClient());
-        webView.setWebChromeClient(new WebChromeClient());
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onPermissionRequest(final android.webkit.PermissionRequest request) {
+                request.grant(request.getResources());
+            }
+        });
+
+        // Request runtime Camera permission if needed
+        if (checkSelfPermission(android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.CAMERA, android.Manifest.permission.RECORD_AUDIO}, 101);
+        }
 
         // Load the embedded companion UI
         webView.loadUrl("file:///android_asset/companion.html");

@@ -213,6 +213,30 @@ async def handle_mobile_ws(websocket: WebSocket):
                     except Exception as e:
                         await websocket.send_json({"type": "response", "status": "error", "message": str(e)})
 
+
+            # ── 3. REAL WEBRTC FULL-DUPLEX SIGNALLING ───────────────────
+            elif msg_type == "webrtc_offer":
+                from backend.services.webrtc_service import webrtc_service
+                session_id = message.get("session_id", "ws_webrtc_session")
+                sdp_offer = message.get("sdp", "")
+                res = await webrtc_service.handle_sdp_offer(session_id, sdp_offer)
+                await websocket.send_json(res)
+
+            elif msg_type == "webrtc_ice_candidate":
+                from backend.services.webrtc_service import webrtc_service
+                session_id = message.get("session_id", "ws_webrtc_session")
+                candidate = message.get("candidate", {})
+                webrtc_service.add_ice_candidate(session_id, candidate)
+                await websocket.send_json({"type": "webrtc_ice_ack", "status": "candidate_added"})
+
+            elif msg_type == "geofence_gps_ping":
+                from backend.services.geofence_service import geofence_service
+                dev_id = message.get("device_id", "mobile_ws_device")
+                lat = float(message.get("latitude", 0.0))
+                lon = float(message.get("longitude", 0.0))
+                geo_res = await geofence_service.evaluate_gps_update(dev_id, lat, lon)
+                await websocket.send_json({"type": "geofence_status", "data": geo_res})
+
             # ── 2. REAL MOBILE AUDIO / VOICE STREAMING ──────────────────
             elif msg_type in ("audio", "voice", "voice_input") or "audio_base64" in message:
                 audio_data_b64 = message.get("audio_base64") or message.get("data", "")
@@ -270,9 +294,18 @@ async def handle_mobile_ws(websocket: WebSocket):
                     "text": f"Thinking..."
                 })
 
-                # Process query via Planner or LLM Service
-                planner = getattr(websocket.app.state, "planner_agent", None)
-                llm = getattr(websocket.app.state, "llm_service", None)
+                # Process query via Planner or LLM Service (Unified Post-Phase 0 Tool Execution)
+                from backend.services.manager import ServiceManager
+                planner = ServiceManager.get_instance("planner_agent") or getattr(websocket.app.state, "planner_agent", None)
+                if not planner:
+                    try:
+                        from backend.agents.planner import PlannerAgent
+                        planner = PlannerAgent()
+                        ServiceManager.register_instance("planner_agent", planner)
+                    except Exception as p_init_err:
+                        logger.warning("Could not instantiate PlannerAgent for mobile WS: {}", p_init_err)
+
+                llm = ServiceManager.get_instance("llm_service") or getattr(websocket.app.state, "llm_service", None)
 
                 answer = ""
                 try:

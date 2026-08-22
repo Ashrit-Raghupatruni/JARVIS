@@ -27,6 +27,49 @@ export interface MobileApprovalItem {
   timeout_seconds: number;
 }
 
+export interface ConversationListItem {
+  id: number;
+  title: string;
+  summary?: string;
+  message_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConversationDetail {
+  id: number;
+  title: string;
+  messages: Array<{
+    id: string;
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    timestamp: string;
+  }>;
+}
+
+export interface LiveModeFrameData {
+  is_live_mode_enabled: boolean;
+  active_app: string;
+  window_title: string;
+  active_workflow?: string;
+  current_step?: string;
+  proactive_suggestion?: string;
+  detected_form_fields?: number;
+  confidence_score?: number;
+  window_bounds?: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  } | null;
+}
+
+export interface LiveModeStatusResponse {
+  status: string;
+  live_mode_enabled: boolean;
+  frame?: LiveModeFrameData | null;
+}
+
 export class JarvisMobileClient {
   private serverHost: string;
   private serverPort: number;
@@ -165,25 +208,70 @@ export class JarvisMobileClient {
     return res.json();
   }
 
-  async fetchLiveModeStatus() {
+  async fetchLiveModeStatus(): Promise<LiveModeStatusResponse> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/live_mode/status`, {
+        headers: this.getHeaders()
+      });
+      if (res.ok) {
+        return res.json();
+      }
+    } catch {
+      // Fallback to mobile router endpoint
+    }
     const res = await fetch(`${this.baseUrl}/api/v1/mobile/live_mode/status`, {
       headers: this.getHeaders()
     });
     return res.json();
   }
 
-  async fetchChatHistory() {
-    const res = await fetch(`${this.baseUrl}/api/v1/chat/history`, {
+  async fetchConversations(limit: number = 30): Promise<{ status: string; conversations: ConversationListItem[] }> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/conversations?limit=${limit}`, {
+        headers: this.getHeaders()
+      });
+      if (res.ok) {
+        return res.json();
+      }
+    } catch {
+      // Fallback
+    }
+    const res = await fetch(`${this.baseUrl}/api/v1/conversations?limit=${limit}`, {
       headers: this.getHeaders()
     });
     return res.json();
   }
 
-  async sendNaturalLanguageCommand(prompt: string) {
+  async fetchConversationById(id: number | string): Promise<{ status: string; conversation?: ConversationDetail }> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/conversations/${id}`, {
+        headers: this.getHeaders()
+      });
+      if (res.ok) {
+        return res.json();
+      }
+    } catch {
+      // Fallback
+    }
+    const res = await fetch(`${this.baseUrl}/api/v1/conversations/${id}`, {
+      headers: this.getHeaders()
+    });
+    return res.json();
+  }
+
+  async fetchChatHistory() {
+    return this.fetchConversations();
+  }
+
+  async sendNaturalLanguageCommand(prompt: string, conversationId?: number | string | null) {
+    const payload: Record<string, any> = { message: prompt };
+    if (conversationId) {
+      payload["conversation_id"] = conversationId;
+    }
     const res = await fetch(`${this.baseUrl}/api/v1/chat`, {
       method: "POST",
       headers: this.getHeaders(),
-      body: JSON.stringify({ message: prompt })
+      body: JSON.stringify(payload)
     });
     return res.json();
   }
@@ -246,6 +334,65 @@ export class JarvisMobileClient {
   sendChatMessage(text: string) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ type: "chat", text }));
+    }
+  }
+
+  // ── PART A: FCM PUSH NOTIFICATION REGISTRATION ─────────────────────
+  async registerFCMToken(fcmToken: string, deviceId: string = "android-companion-1", deviceName: string = "Android Phone") {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/v1/mobile/fcm/register_token`, {
+        method: "POST",
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          device_id: deviceId,
+          fcm_token: fcmToken,
+          platform: "android",
+          device_name: deviceName
+        })
+      });
+      return await res.json();
+    } catch (e) {
+      console.error("Failed to register FCM token:", e);
+      return { status: "error", error: String(e) };
+    }
+  }
+
+  // ── PART B: WEBRTC FULL-DUPLEX SIGNALLING ───────────────────────────
+  async initiateWebRTCSession(sessionId: string = "webrtc_session_1", localSdpOffer: string = "") {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/v1/mobile/webrtc/offer`, {
+        method: "POST",
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          session_id: sessionId,
+          sdp: localSdpOffer || "v=0\r\no=- 123 2 IN IP4 127.0.0.1\r\ns=Mobile Mic Stream\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n",
+          peer_id: "android-companion-1"
+        })
+      });
+      return await res.json();
+    } catch (e) {
+      console.error("WebRTC offer initiation error:", e);
+      return { status: "error", error: String(e) };
+    }
+  }
+
+  // ── PART C: GPS GEOFENCING BACKGROUND UPDATE ───────────────────────
+  async sendGPSLocationUpdate(latitude: number, longitude: number, accuracy: number = 10.0, deviceId: string = "android-companion-1") {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/v1/mobile/geofence/update_location`, {
+        method: "POST",
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          device_id: deviceId,
+          latitude,
+          longitude,
+          accuracy
+        })
+      });
+      return await res.json();
+    } catch (e) {
+      console.error("GPS location update failed:", e);
+      return { status: "error", error: String(e) };
     }
   }
 }

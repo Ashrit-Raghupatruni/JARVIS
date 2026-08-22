@@ -109,3 +109,7 @@ class TaskQueueManager:
 
 # Global Singleton Task Queue Manager
 task_queue_manager = TaskQueueManager()
+
+
+# Alias TaskQueueService for backwards-compatibility with main.py service manager
+TaskQueueService = TaskQueueManager

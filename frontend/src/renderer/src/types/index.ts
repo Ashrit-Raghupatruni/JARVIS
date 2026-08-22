@@ -27,10 +27,28 @@ export type WSMessageType =
   | 'push_to_talk_stop'
   | 'serious_mode_changed'
   | 'clap_detected'
+  | 'live_mode_status'
 
 export interface WSMessage {
   type: WSMessageType
   data: Record<string, unknown>
+  timestamp: string
+}
+
+export interface LiveModeStatusMessage {
+  type: 'live_mode_status'
+  data: {
+    is_active: boolean
+    active_app: string
+    window_title: string
+    window_bounds?: {
+      x: number
+      y: number
+      w: number
+      h: number
+    } | null
+    timestamp: number
+  }
   timestamp: string
 }
 

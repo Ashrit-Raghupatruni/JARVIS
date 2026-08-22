@@ -41,11 +41,11 @@ class PlannerAgent:
 
     def __init__(
         self,
-        llm_service,
-        automation_service,
-        screen_service,
-        browser_service,
-        memory_service,
+        llm_service=None,
+        automation_service=None,
+        screen_service=None,
+        browser_service=None,
+        memory_service=None,
         safety_service=None,
         vision_service=None,
         desktop_automation_service=None,
@@ -54,18 +54,19 @@ class PlannerAgent:
         voice_intelligence_service=None,
         productivity_service=None,
     ):
-        self.llm = llm_service
-        self.automation = automation_service
-        self.screen = screen_service
-        self.browser = browser_service
-        self.memory = memory_service
-        self.safety = safety_service
-        self.vision_service = vision_service
-        self.desktop_automation_service = desktop_automation_service
-        self.developer_assistant_service = developer_assistant_service
-        self.research_service = research_service
-        self.voice_intelligence_service = voice_intelligence_service
-        self.productivity_service = productivity_service
+        from backend.services.manager import ServiceManager
+        self.llm = llm_service or ServiceManager.get_instance("llm_service")
+        self.automation = automation_service or ServiceManager.get_instance("automation_service")
+        self.screen = screen_service or ServiceManager.get_instance("screen_service")
+        self.browser = browser_service or ServiceManager.get_instance("browser_service")
+        self.memory = memory_service or ServiceManager.get_instance("memory_service")
+        self.safety = safety_service or ServiceManager.get_instance("safety_service")
+        self.vision_service = vision_service or ServiceManager.get_instance("vision_service")
+        self.desktop_automation_service = desktop_automation_service or ServiceManager.get_instance("desktop_automation_service")
+        self.developer_assistant_service = developer_assistant_service or ServiceManager.get_instance("developer_assistant_service")
+        self.research_service = research_service or ServiceManager.get_instance("research_service")
+        self.voice_intelligence_service = voice_intelligence_service or ServiceManager.get_instance("voice_intelligence_service")
+        self.productivity_service = productivity_service or ServiceManager.get_instance("productivity_service")
         self._conversation_history: list[dict] = []
         self._max_history = 20  # Keep last 20 messages for context
 
@@ -327,7 +328,25 @@ class PlannerAgent:
                 return
 
         # Fast-Path 0: Conversational Greetings Intercept
-        if lower_msg in ("hi", "hello", "hey", "hey jarvis", "hi jarvis", "hello jarvis", "greetings", "good morning", "good afternoon", "good evening"):
+        if lower_msg in (
+            "hi", "hello", "hey", "hey jarvis", "hi jarvis", "hello jarvis", "hlo", "hlo jarvis",
+            "greetings", "good morning", "good afternoon", "good evening", "how are you", "how are you doing",
+            "how are you jarvis", "what's up", "whats up", "how's it going", "hows it going"
+        ):
+            if "how are you" in lower_msg or "hows it going" in lower_msg or "how's it going" in lower_msg:
+                greetings = [
+                    "I'm functioning at optimal capacity, sir! How can I help you today?",
+                    "All systems operational and running smoothly, sir. What are we working on?",
+                    "Doing great, sir! Standing by and ready for your commands."
+                ]
+            else:
+                greetings = [
+                    "Hello sir! How can I assist you today?",
+                    "Greetings, sir. I am online and at your service.",
+                    "At your service, sir. What can I do for you?",
+                    "Hello sir! All systems operational. Ready for your command.",
+                    "Hey there, sir! Standing by to assist you."
+                ]
             greetings = [
                 "Hello sir! How can I assist you today?",
                 "Greetings, sir. I am online and at your service.",

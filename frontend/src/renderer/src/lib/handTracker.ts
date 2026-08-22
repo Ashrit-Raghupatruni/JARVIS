@@ -278,7 +278,7 @@ export class HandTracker {
     if (this.configs.enabled && !this.scrollActive && !this.ringPinching) {
       const now = performance.now();
       if (now - this.lastMoveTime >= 15 && (Math.abs(screenX - this.lastSentX) >= 2 || Math.abs(screenY - this.lastSentY) >= 2)) {
-        this.callbacks.onHandAction("move", { x: screenX, y: screenY });
+        this.callbacks.onHandAction("move", { x: screenX, y: screenY, norm_x: this.smoothedX, norm_y: this.smoothedY });
         this.lastMoveTime = now;
         this.lastSentX = screenX;
         this.lastSentY = screenY;

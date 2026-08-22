@@ -45,21 +45,41 @@ class HandControlService:
         logger.info("HandControlService initialized. Native win32api: {}, OpenCV: {}", HAS_WIN32, HAS_CV2)
 
     def move_cursor(self, x: int, y: int) -> None:
-        """Move cursor to absolute coordinates on screen using sub-millisecond win32api."""
+        """Move cursor to absolute coordinates across virtual desktop using sub-millisecond win32api."""
         try:
-            screen_w, screen_h = pyautogui.size()
-            x = max(0, min(screen_w - 1, x))
-            y = max(0, min(screen_h - 1, y))
-
             if HAS_WIN32:
                 try:
+                    min_x = win32api.GetSystemMetrics(win32con.SM_XVIRTUALSCREEN)
+                    min_y = win32api.GetSystemMetrics(win32con.SM_YVIRTUALSCREEN)
+                    max_x = min_x + win32api.GetSystemMetrics(win32con.SM_CXVIRTUALSCREEN) - 1
+                    max_y = min_y + win32api.GetSystemMetrics(win32con.SM_CYVIRTUALSCREEN) - 1
+                    x = max(min_x, min(max_x, x))
+                    y = max(min_y, min(max_y, y))
                     win32api.SetCursorPos((x, y))
                     return
                 except Exception:
                     pass
+
+            screen_w, screen_h = pyautogui.size()
+            x = max(0, min(screen_w - 1, x))
+            y = max(0, min(screen_h - 1, y))
             pyautogui.moveTo(x, y)
         except Exception as e:
             logger.debug("Move cursor warning: {}", e)
+
+    def move_cursor_normalized(self, norm_x: float, norm_y: float, target_monitor: Optional[int | str] = None) -> Tuple[int, int]:
+        """
+        Move cursor using normalized [0.0, 1.0] coordinates mapped across multi-monitor virtual desktop or target display.
+        """
+        from backend.services.perception.spatial_engine import SpatialEngine
+        from backend.services.manager import ServiceManager
+        spatial = ServiceManager.get_instance("spatial_engine")
+        if not spatial:
+            spatial = SpatialEngine()
+
+        target_x, target_y = spatial.map_normalized_to_screen(norm_x, norm_y, target_monitor=target_monitor)
+        self.move_cursor(target_x, target_y)
+        return target_x, target_y
 
     def click_mouse(self, button: str = "left", action: str = "click") -> None:
         """Execute clicking actions with debouncing guard."""

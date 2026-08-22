@@ -198,11 +198,24 @@ class MobileGatewayService:
             for ws in list(active_mobile_connections):
                 asyncio.create_task(ws.send_json(payload))
 
-            # Also attempt push notification via MobileBridgeService if available
+            # 1. FCM Push Notification to closed/backgrounded mobile companion devices
+            try:
+                from backend.services.fcm_service import fcm_service
+                asyncio.create_task(fcm_service.send_approval_request_push(
+                    approval_id=approval_id,
+                    action_type=action_type,
+                    description=description,
+                    dangerous_target=dangerous_target,
+                    timeout_seconds=timeout_seconds
+                ))
+            except Exception as fcm_err:
+                logger.warning("FCM approval push broadcast notice: {}", fcm_err)
+
+            # 2. Telegram Fail-Closed Gatekeeper Bridge if configured
             from backend.services.manager import ServiceManager
             bridge = ServiceManager.get_instance("mobile_bridge")
-            if bridge and hasattr(bridge, "send_approval_request"):
-                asyncio.create_task(bridge.send_approval_request(action_type, description, dangerous_target, approval_id))
+            if bridge and hasattr(bridge, "request_mobile_approval"):
+                asyncio.create_task(bridge.request_mobile_approval(approval_id, f"{action_type}: {description}", timeout_seconds))
         except Exception as ws_err:
             logger.warning("Failed to broadcast approval request over WS: {}", ws_err)
 

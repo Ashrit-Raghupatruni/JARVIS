@@ -465,6 +465,18 @@ async def lifespan(app: FastAPI):
             ServiceManager.register_instance("mobile_auth_service", mobile_auth_service)
             ServiceManager.register_instance("mobile_gateway_service", mobile_gateway_service)
 
+            # Direct OAuth2 Integrations (Google Workspace & Microsoft 365)
+            from backend.services.oauth_service import oauth_service
+            app.state.oauth_service = oauth_service
+            ServiceManager.register_instance("oauth_service", oauth_service)
+            logger.info("✓ Direct OAuth2 service initialized (Google & Microsoft)")
+
+            # Bluetooth RSSI Proximity Auto-Lock & Biometric Wake Service
+            from backend.services.bluetooth_proximity import bluetooth_proximity_service
+            app.state.bluetooth_proximity_service = bluetooth_proximity_service
+            ServiceManager.register_instance("bluetooth_proximity_service", bluetooth_proximity_service)
+            logger.info("✓ Bluetooth proximity auto-lock service initialized")
+
             # ── Self-Improving Core Services ──────────────────────────────
             from backend.services.experience_engine import ExperienceEngineService
             from backend.services.reflection_engine import ReflectionEngineService
@@ -814,6 +826,7 @@ from backend.api.mobile_router import mobile_router
 from backend.api.mobile_ws import mobile_ws_router
 from backend.api.debug_router import debug_router
 from backend.api.integrations_router import integrations_router
+from backend.api.oauth import router as oauth_router
 
 setup_middleware(app)
 app.include_router(api_router, tags=["API"])
@@ -823,6 +836,7 @@ app.include_router(mobile_router)
 app.include_router(mobile_ws_router)
 app.include_router(debug_router)
 app.include_router(integrations_router)
+app.include_router(oauth_router)
 
 
 @app.get("/api/live_mode/status")

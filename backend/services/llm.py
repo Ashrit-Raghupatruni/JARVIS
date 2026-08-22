@@ -1066,13 +1066,20 @@ class LLMService:
                             if role in ("user", "assistant") and content:
                                 prash_history.append({"role": role, "content": content})
 
-                    # Generate response
-                    response_text, is_confident, metadata = await self.prash_engine.generate(
-                        prompt=prompt_text,
-                        conversation_history=prash_history,
-                        max_tokens=self.prash_max_tokens,
-                        temperature=self.prash_temperature,
-                    )
+                    # Generate response with 4.0s CPU fail-safe timeout
+                    try:
+                        response_text, is_confident, metadata = await asyncio.wait_for(
+                            self.prash_engine.generate(
+                                prompt=prompt_text,
+                                conversation_history=prash_history,
+                                max_tokens=min(128, self.prash_max_tokens),
+                                temperature=self.prash_temperature,
+                            ),
+                            timeout=4.0
+                        )
+                    except (asyncio.TimeoutError, TimeoutError):
+                        logger.warning("PrashEngine CPU inference exceeded 4.0s. Falling back to active local/cloud LLM cascade.")
+                        response_text, is_confident, metadata = "", False, {"entropy": 999.0}
 
                     prash_entropy = metadata.get("entropy", 999.0)
                     prash_confident = is_confident and len(response_text.strip()) > 5
@@ -1293,11 +1300,18 @@ class LLMService:
 
                 if self._prash_initialized and self.prash_engine.is_available():
                     logger.info("Attempting Prash simple completion...")
-                    response_text, is_confident, metadata = await self.prash_engine.generate(
-                        prompt=prompt,
-                        max_tokens=max_tokens,
-                        temperature=temperature,
-                    )
+                    try:
+                        response_text, is_confident, metadata = await asyncio.wait_for(
+                            self.prash_engine.generate(
+                                prompt=prompt,
+                                max_tokens=min(128, max_tokens),
+                                temperature=temperature,
+                            ),
+                            timeout=4.0
+                        )
+                    except (asyncio.TimeoutError, TimeoutError):
+                        logger.warning("PrashEngine simple completion exceeded 4.0s. Falling back.")
+                        response_text, is_confident, metadata = "", False, {"entropy": 999.0}
                     prash_entropy = metadata.get("entropy", 999.0)
                     prash_confident = is_confident and len(response_text.strip()) > 5
 
