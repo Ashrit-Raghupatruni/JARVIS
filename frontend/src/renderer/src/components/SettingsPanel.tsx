@@ -2,24 +2,29 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAppStore } from '../stores/appStore'
 import { useWebSocket } from '../hooks/useWebSocket'
 import type { Settings } from '../types'
+import OAuthIntegrationsCard from './OAuthIntegrationsCard'
+import BluetoothProximityCard from './BluetoothProximityCard'
 
 const VOICE_OPTIONS = [
-  { value: 'en-US-GuyNeural', label: 'Guy (US Male)' },
-  { value: 'en-GB-RyanNeural', label: 'Ryan (UK Male)' },
-  { value: 'en-AU-WilliamNeural', label: 'William (AU Male)' },
-  { value: 'en-IN-PrabhatNeural', label: 'Prabhat (IN Male)' },
+  { value: 'piper:en_US-lessac-low', label: 'Piper Lessac (Local Neural / Offline 0ms Latency)' },
+  { value: 'en-GB-RyanNeural', label: 'Ryan (Edge-TTS / UK Male)' },
+  { value: 'en-US-GuyNeural', label: 'Guy (Edge-TTS / US Male)' },
+  { value: 'en-AU-WilliamNeural', label: 'William (Edge-TTS / AU Male)' },
+  { value: 'en-IN-PrabhatNeural', label: 'Prabhat (Edge-TTS / IN Male)' },
 ]
 
 const MODEL_OPTIONS = [
   { value: 'qwen2.5-coder:3b', label: 'Qwen 2.5 Coder 3B (Ollama / Local)' },
+  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (Google Cloud)' },
   { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (Cloud)' },
   { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (Cloud)' },
   { value: 'gpt-4o', label: 'GPT-4o (OpenAI)' },
   { value: 'gpt-4o-mini', label: 'GPT-4o Mini (OpenAI)' },
+  { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (Groq Fast)' },
   { value: 'meta-llama/llama-3.3-70b-instruct:free', label: 'Llama 3.3 70B (OpenRouter Free)' },
-  { value: 'qwen/qwen-2.5-coder-32b-instruct:free', label: 'Qwen 2.5 Coder 32B (OpenRouter Free)' },
   { value: 'deepseek/deepseek-chat', label: 'DeepSeek V3 (OpenRouter)' },
 ]
+
 
 
 export default function SettingsPanel() {
@@ -30,7 +35,7 @@ export default function SettingsPanel() {
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([])
   
   // Tab and Analytics State
-  const [activeTab, setActiveTab] = useState<'general' | 'orchestrator' | 'brain'>('general')
+  const [activeTab, setActiveTab] = useState<'general' | 'orchestrator' | 'brain' | 'integrations' | 'proximity'>('general')
   const [rankings, setRankings] = useState<any[]>([])
   const [routerMetrics, setRouterMetrics] = useState<any[]>([])
   const [brainData, setBrainData] = useState<{ memories: any[], lessons: any[], workflows: any[] }>({ memories: [], lessons: [], workflows: [] })
@@ -181,6 +186,18 @@ export default function SettingsPanel() {
             onClick={() => setActiveTab('general')}
           >
             General
+          </button>
+          <button
+            className={`flex-1 py-3 text-center border-b-2 font-medium transition-all ${activeTab === 'integrations' ? 'border-[var(--jarvis-accent)] text-[var(--jarvis-text)]' : 'border-transparent text-[var(--jarvis-text-dim)] hover:text-white'}`}
+            onClick={() => setActiveTab('integrations')}
+          >
+            OAuth Integrations
+          </button>
+          <button
+            className={`flex-1 py-3 text-center border-b-2 font-medium transition-all ${activeTab === 'proximity' ? 'border-[var(--jarvis-accent)] text-[var(--jarvis-text)]' : 'border-transparent text-[var(--jarvis-text-dim)] hover:text-white'}`}
+            onClick={() => setActiveTab('proximity')}
+          >
+            Proximity & BLE
           </button>
           <button
             className={`flex-1 py-3 text-center border-b-2 font-medium transition-all ${activeTab === 'orchestrator' ? 'border-[var(--jarvis-accent)] text-[var(--jarvis-text)]' : 'border-transparent text-[var(--jarvis-text-dim)] hover:text-white'}`}
@@ -767,6 +784,18 @@ export default function SettingsPanel() {
                   )}
                 </div>
               </section>
+            </div>
+          )}
+
+          {activeTab === 'integrations' && (
+            <div className="space-y-4">
+              <OAuthIntegrationsCard />
+            </div>
+          )}
+
+          {activeTab === 'proximity' && (
+            <div className="space-y-4">
+              <BluetoothProximityCard />
             </div>
           )}
         </div>

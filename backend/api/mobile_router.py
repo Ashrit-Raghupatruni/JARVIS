@@ -281,15 +281,28 @@ async def execute_remote_command(req: RemoteCommandRequest, gateway_svc=Depends(
 
 @mobile_router.post("/approvals/respond")
 async def submit_approval_decision(req: MobileApprovalDecision, gateway_svc=Depends(get_mobile_gateway_service)):
-    """Submit mobile security approval decision (approve, deny, always_allow, always_deny)."""
+    """Submit mobile security approval decision with biometric hardware verification."""
     if not gateway_svc:
         raise HTTPException(status_code=503, detail="Mobile gateway unavailable")
 
-    ok = gateway_svc.submit_approval_decision(req.approval_id, req.decision)
-    if not ok:
-        raise HTTPException(status_code=404, detail="Approval request ID not found or expired")
+    success, message = gateway_svc.submit_approval_decision_with_biometrics(
+        approval_id=req.approval_id,
+        decision=req.decision,
+        biometric_authenticated=req.biometric_authenticated,
+        biometric_signature=req.biometric_signature,
+    )
+    if not success:
+        if "biometric" in message.lower():
+            raise HTTPException(status_code=403, detail=message)
+        raise HTTPException(status_code=404, detail=message)
 
-    return {"status": "decision_processed", "approval_id": req.approval_id, "decision": req.decision}
+    return {
+        "status": "decision_processed",
+        "approval_id": req.approval_id,
+        "decision": req.decision,
+        "biometric_verified": req.biometric_authenticated,
+    }
+
 
 
 @mobile_router.post("/shutdown_approval/request")

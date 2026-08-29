@@ -188,7 +188,204 @@ class LongHorizonCheckpointService:
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute(
                 "UPDATE goal_queue SET status = ?, updated_at = ? WHERE goal_id = ?",
-                (status, now, goal_id)
+                (status, now, goal_id),
             )
             await db.commit()
             return cursor.rowcount > 0
+
+    async def record_step_completion(
+        self,
+        goal_id: str,
+        step_index: int,
+        step_title: str,
+        step_output: Dict[str, Any],
+        artifacts: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Atomically records a completed step, creates a persistent checkpoint,
+        and transitions the goal to 'completed' if the final step has executed.
+        """
+        await self.initialize()
+        now = time.time()
+
+        # Retrieve goal metadata
+        goal = None
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT * FROM goal_queue WHERE goal_id = ?", (goal_id,)) as cursor:
+                row = await cursor.fetchone()
+                if row:
+                    goal = dict(row)
+
+        if not goal:
+            raise ValueError(f"Goal '{goal_id}' not found")
+
+        total_steps = goal.get("total_steps", 1)
+        is_finished = step_index >= total_steps
+        new_status = "completed" if is_finished else "running"
+
+        state_data = {
+            "step_index": step_index,
+            "status": new_status,
+            "output": step_output,
+            "completed_at": now,
+        }
+
+        # Save checkpoint
+        checkpoint = await self.create_checkpoint(
+            goal_id=goal_id,
+            step_title=step_title,
+            state_data=state_data,
+            artifacts=artifacts or [],
+        )
+
+        # Update status if completed
+        if is_finished:
+            await self.set_goal_status(goal_id, "completed")
+            logger.info("[LongHorizonCheckpoint] Goal '{}' marked as COMPLETED (All {} steps done)", goal_id, total_steps)
+
+        return {
+            "goal_id": goal_id,
+            "step_index": step_index,
+            "total_steps": total_steps,
+            "status": new_status,
+            "checkpoint_id": checkpoint["checkpoint_id"],
+            "completed": is_finished,
+        }
+
+    async def recover_interrupted_goals(self) -> List[Dict[str, Any]]:
+        """
+        Self-recovery engine: scans for interrupted goals (e.g. status='running' on boot),
+        retrieves their latest checkpoint, and marks them as 'paused_for_resume'
+        to prevent dangling states and enable automated resumption.
+        """
+        await self.initialize()
+        recovered: List[Dict[str, Any]] = []
+        now = time.time()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT * FROM goal_queue WHERE status = 'running'") as cursor:
+                interrupted_rows = [dict(r) async for r in cursor]
+
+            for row in interrupted_rows:
+                g_id = row["goal_id"]
+                # Fetch latest checkpoint
+                checkpoints = await self.get_checkpoints_for_goal(g_id)
+                latest_chk = checkpoints[-1] if checkpoints else None
+
+                # Transition to paused_for_resume
+                await db.execute(
+                    "UPDATE goal_queue SET status = 'paused_for_resume', updated_at = ? WHERE goal_id = ?",
+                    (now, g_id),
+                )
+                await db.commit()
+
+                rec_entry = {
+                    "goal_id": g_id,
+                    "title": row["title"],
+                    "current_step_index": row["current_step_index"],
+                    "total_steps": row["total_steps"],
+                    "latest_checkpoint": latest_chk,
+                    "recovered_at": now,
+                }
+                recovered.append(rec_entry)
+                logger.warning(
+                    "[LongHorizonCheckpoint] Self-recovered interrupted goal '{}' ('{}') at step {}/{}",
+                    g_id,
+                    row["title"],
+                    row["current_step_index"],
+                    row["total_steps"],
+                )
+
+        return recovered
+
+    async def resume_goal(self, goal_id: str) -> Dict[str, Any]:
+        """
+        Restores execution context for an interrupted or paused goal.
+        Aggregates all previously created artifacts and identifies the exact next step.
+        """
+        await self.initialize()
+
+        # Fetch goal
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT * FROM goal_queue WHERE goal_id = ?", (goal_id,)) as cursor:
+                row = await cursor.fetchone()
+                if not row:
+                    raise ValueError(f"Goal '{goal_id}' does not exist")
+                goal_data = dict(row)
+
+        checkpoints = await self.get_checkpoints_for_goal(goal_id)
+        latest_chk = checkpoints[-1] if checkpoints else None
+
+        # Aggregate artifacts across all completed checkpoints
+        all_artifacts: List[str] = []
+        for chk in checkpoints:
+            for art in chk.get("artifacts", []):
+                if art not in all_artifacts:
+                    all_artifacts.append(art)
+
+        next_step_index = goal_data.get("current_step_index", 0) + 1
+
+        # Re-activate goal to running
+        await self.set_goal_status(goal_id, "running")
+
+        logger.info(
+            "[LongHorizonCheckpoint] Resumed goal '{}' ('{}') -> proceeding to Step {}/{}",
+            goal_id,
+            goal_data.get("title"),
+            next_step_index,
+            goal_data.get("total_steps"),
+        )
+
+        return {
+            "goal_id": goal_id,
+            "title": goal_data.get("title"),
+            "description": goal_data.get("description"),
+            "status": "running",
+            "resume_from_step": next_step_index,
+            "total_steps": goal_data.get("total_steps"),
+            "latest_checkpoint": latest_chk,
+            "accumulated_artifacts": all_artifacts,
+        }
+
+    async def fail_goal_with_recovery_checkpoint(
+        self,
+        goal_id: str,
+        step_index: int,
+        error_message: str,
+        recoverable: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Records an error state checkpoint preserving all context up to the failure point,
+        marking the goal as 'paused_recoverable' so that self-healing or retry can take place.
+        """
+        await self.initialize()
+        status = "paused_recoverable" if recoverable else "failed"
+
+        chk = await self.create_checkpoint(
+            goal_id=goal_id,
+            step_title=f"Step {step_index} Error",
+            state_data={
+                "step_index": step_index,
+                "error": error_message,
+                "recoverable": recoverable,
+                "failed_at": time.time(),
+            },
+        )
+        await self.set_goal_status(goal_id, status)
+        logger.warning(
+            "[LongHorizonCheckpoint] Goal '{}' marked as '{}' at step {}: {}",
+            goal_id,
+            status,
+            step_index,
+            error_message,
+        )
+        return {
+            "goal_id": goal_id,
+            "status": status,
+            "error": error_message,
+            "checkpoint_id": chk["checkpoint_id"],
+        }
+

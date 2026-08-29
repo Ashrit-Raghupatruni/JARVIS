@@ -198,10 +198,63 @@ export const MobileCompanionCard: React.FC = () => {
             )}
           </div>
         </div>
+
+
+        {/* Section 4: Security & Auto-Discovery Feature Bar */}
+        <div className="mt-4 pt-4 border-t border-cyan-500/10 grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* mDNS Auto-Discovery */}
+          <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-xs">
+            <div className="p-1.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+              <ShieldCheck className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <div className="font-semibold text-slate-200 flex items-center gap-1.5">
+                <span>mDNS Auto-Discovery</span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-mono">
+                  _jarvis._tcp
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400">Port 8000 broadcast on LAN. Zero manual IP entry.</p>
+            </div>
+          </div>
+
+          {/* Biometric Gatekeeper */}
+          <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-xs">
+            <div className="p-1.5 rounded bg-purple-500/10 border border-purple-500/30 text-purple-400">
+              <Smartphone className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <div className="font-semibold text-slate-200 flex items-center gap-1.5">
+                <span>Biometric Hardware Lock</span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 font-mono">
+                  ENFORCED
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400">Fingerprint/Face ID required for high-risk actions.</p>
+            </div>
+          </div>
+
+          {/* FCM Background Push */}
+          <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-xs">
+            <div className="p-1.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400">
+              <SmartphoneNfc className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <div className="font-semibold text-slate-200 flex items-center gap-1.5">
+                <span>FCM Cloud Push</span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono">
+                  ACTIVE
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400">Real-time alerts when mobile app is backgrounded.</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* QR Pairing Modal Overlay */}
       <QRPairingModal isOpen={showQRModal} onClose={() => setShowQRModal(false)} />
+
     </>
   );
 };

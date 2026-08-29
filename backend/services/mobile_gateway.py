@@ -9,7 +9,7 @@ import io
 import time
 import base64
 import asyncio
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from loguru import logger
 
 # PyWin32 / PyAutoGUI for screen snapshot
@@ -240,15 +240,73 @@ class MobileGatewayService:
 
         return decision
 
-    def submit_approval_decision(self, approval_id: str, decision: str) -> bool:
-        """Receive approval decision from Android client and unblock execution."""
+    HIGH_RISK_ACTIONS = {
+        "system_shutdown",
+        "shell_command",
+        "file_delete",
+        "registry_write",
+        "terminal_command",
+        "critical_security",
+        "open_application_sudo",
+    }
+
+    def submit_approval_decision(
+        self,
+        approval_id: str,
+        decision: str,
+        biometric_authenticated: bool = False,
+        biometric_signature: Optional[str] = None,
+    ) -> bool:
+        """Receive approval decision from client, enforce biometric lock on high-risk actions, and unblock execution."""
         item = self.pending_approvals.get(approval_id)
         if not item:
             logger.warning("Approval decision received for unknown or expired ID: {}", approval_id)
             return False
 
+        action_type = item.get("action_type", "")
+        # Enforce fail-closed biometric lock for high-risk actions
+        if decision in ("approve", "always_allow") and action_type in self.HIGH_RISK_ACTIONS:
+            if not biometric_authenticated:
+                logger.warning(
+                    "⛔ Mobile Biometric Lock: Denied approval for high-risk action '{}' — Fingerprint/Face ID required!",
+                    action_type,
+                )
+                return False
+
         self.approval_decisions[approval_id] = decision
         event: asyncio.Event = item["event"]
         event.set()
-        logger.info("✓ Mobile approval decision set: {} -> {}", approval_id, decision)
+        logger.info(
+            "✓ Mobile approval decision set: {} -> {} (biometric_verified={})",
+            approval_id,
+            decision,
+            biometric_authenticated,
+        )
         return True
+
+    def submit_approval_decision_with_biometrics(
+        self,
+        approval_id: str,
+        decision: str,
+        biometric_authenticated: bool = False,
+        biometric_signature: Optional[str] = None,
+    ) -> Tuple[bool, str]:
+        """Validates approval with detailed status message."""
+        item = self.pending_approvals.get(approval_id)
+        if not item:
+            return False, "Approval request ID not found or expired"
+
+        action_type = item.get("action_type", "")
+        if decision in ("approve", "always_allow") and action_type in self.HIGH_RISK_ACTIONS:
+            if not biometric_authenticated:
+                logger.warning(
+                    "⛔ Mobile Biometric Lock: Denied approval for high-risk action '{}' — Fingerprint/Face ID required!",
+                    action_type,
+                )
+                return False, f"Biometric authentication (fingerprint/Face ID) required for high-risk action '{action_type}'"
+
+        self.approval_decisions[approval_id] = decision
+        event: asyncio.Event = item["event"]
+        event.set()
+        return True, "Approval decision processed"
+

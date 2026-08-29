@@ -43,6 +43,10 @@ class SandboxTestResult(BaseModel):
     duration_seconds: float = 0.0
     error: Optional[str] = None
     output_data: Optional[Dict[str, Any]] = None
+    peak_memory_mb: float = 0.0
+    cpu_time_seconds: float = 0.0
+    quota_exceeded: bool = False
+
 
 
 class DynamicTool(BaseModel):
@@ -240,9 +244,14 @@ class DynamicSubAgentSynthesizer:
         tool: DynamicTool,
         args: Dict[str, Any],
         timeout_seconds: float = 8.0,
+        max_memory_mb: float = 256.0,
+        max_cpu_time_seconds: float = 4.0,
     ) -> SandboxTestResult:
         """
-        Executes the synthesized tool inside a strictly isolated subprocess sandbox.
+        Executes the synthesized tool inside a strictly isolated subprocess sandbox with hard resource quotas:
+        - Memory quota: hard cap in megabytes (default 256MB)
+        - CPU time quota: hard active CPU time in seconds (default 4.0s)
+        - Wall-clock timeout: maximum elapsed seconds (default 8.0s)
         """
         tool_sandbox = self.sandbox_dir / tool.tool_id
         tool_sandbox.mkdir(parents=True, exist_ok=True)
@@ -288,19 +297,136 @@ if __name__ == '__main__':
         }
 
         start_t = time.time()
+        quota_violated = False
+        quota_reason = ""
+        peak_memory_mb = 0.0
+        cpu_time_used = 0.0
+
         try:
-            proc = subprocess.run(
+            import threading
+            import psutil
+
+            proc = subprocess.Popen(
                 [sys.executable, "-s", "-I", str(runner_script_path.resolve())],
-                input=json.dumps(args),
-                capture_output=True,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
-                timeout=timeout_seconds,
                 cwd=str(tool_sandbox.resolve()),
                 env=clean_env,
             )
+
+            # Feed stdin asynchronously
+            input_payload = json.dumps(args)
+            def _write_stdin():
+                try:
+                    if proc.stdin:
+                        proc.stdin.write(input_payload)
+                        proc.stdin.close()
+                except Exception:
+                    pass
+
+            stdin_thread = threading.Thread(target=_write_stdin, daemon=True)
+            stdin_thread.start()
+
+            try:
+                ps_proc = psutil.Process(proc.pid)
+            except Exception:
+                ps_proc = None
+
+            poll_interval = 0.04
+            deadline = start_t + timeout_seconds
+
+            while time.time() < deadline:
+                ret = proc.poll()
+                if ret is not None:
+                    break
+
+                if ps_proc and ps_proc.is_running():
+                    try:
+                        # 1. Evaluate Memory Quota (RSS bytes across process tree)
+                        mem_bytes = ps_proc.memory_info().rss
+                        for child in ps_proc.children(recursive=True):
+                            try:
+                                mem_bytes += child.memory_info().rss
+                            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                                pass
+                        current_mem_mb = mem_bytes / (1024 * 1024)
+                        if current_mem_mb > peak_memory_mb:
+                            peak_memory_mb = current_mem_mb
+
+                        if current_mem_mb > max_memory_mb:
+                            quota_violated = True
+                            quota_reason = f"Memory limit exceeded: {current_mem_mb:.1f}MB > {max_memory_mb:.1f}MB cap"
+                            break
+
+                        # 2. Evaluate CPU Time Quota (User + System time)
+                        cpu_times = ps_proc.cpu_times()
+                        total_cpu = cpu_times.user + cpu_times.system
+                        for child in ps_proc.children(recursive=True):
+                            try:
+                                c_times = child.cpu_times()
+                                total_cpu += c_times.user + c_times.system
+                            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                                pass
+                        cpu_time_used = total_cpu
+                        if total_cpu > max_cpu_time_seconds:
+                            quota_violated = True
+                            quota_reason = f"CPU time quota exceeded: {total_cpu:.2f}s > {max_cpu_time_seconds:.2f}s cap"
+                            break
+
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        break
+
+                time.sleep(poll_interval)
+
+            if quota_violated:
+                logger.warning("DynamicSynthesizer: Quota exceeded for '{}': {}", tool.name, quota_reason)
+                try:
+                    if ps_proc and ps_proc.is_running():
+                        for child in ps_proc.children(recursive=True):
+                            child.kill()
+                        ps_proc.kill()
+                except Exception:
+                    pass
+                proc.kill()
+                proc.wait()
+                return SandboxTestResult(
+                    success=False,
+                    error=f"Hard Resource Quota Exceeded: {quota_reason}",
+                    quota_exceeded=True,
+                    peak_memory_mb=round(peak_memory_mb, 2),
+                    cpu_time_seconds=round(cpu_time_used, 3),
+                    duration_seconds=round(time.time() - start_t, 3),
+                    return_code=-9,
+                )
+
+            if proc.poll() is None:
+                # Wall-clock timeout exceeded
+                logger.warning("DynamicSynthesizer: Execution timed out for '{}' after {}s", tool.name, timeout_seconds)
+                try:
+                    if ps_proc and ps_proc.is_running():
+                        for child in ps_proc.children(recursive=True):
+                            child.kill()
+                        ps_proc.kill()
+                except Exception:
+                    pass
+                proc.kill()
+                proc.wait()
+                return SandboxTestResult(
+                    success=False,
+                    error=f"Execution timed out after {timeout_seconds} seconds",
+                    duration_seconds=timeout_seconds,
+                    return_code=-1,
+                    quota_exceeded=True,
+                    peak_memory_mb=round(peak_memory_mb, 2),
+                    cpu_time_seconds=round(cpu_time_used, 3),
+                )
+
+            stdout, stderr = proc.communicate()
             duration = time.time() - start_t
-            stdout = proc.stdout.strip()
-            stderr = proc.stderr.strip()
+            stdout = stdout.strip()
+            stderr = stderr.strip()
 
             parsed_out = None
             if stdout:
@@ -317,6 +443,9 @@ if __name__ == '__main__':
                     return_code=proc.returncode,
                     duration_seconds=round(duration, 3),
                     output_data=parsed_out,
+                    peak_memory_mb=round(peak_memory_mb, 2),
+                    cpu_time_seconds=round(cpu_time_used, 3),
+                    quota_exceeded=False,
                 )
             else:
                 return SandboxTestResult(
@@ -327,20 +456,20 @@ if __name__ == '__main__':
                     duration_seconds=round(duration, 3),
                     error=stderr or f"Non-zero exit code: {proc.returncode}",
                     output_data=parsed_out,
+                    peak_memory_mb=round(peak_memory_mb, 2),
+                    cpu_time_seconds=round(cpu_time_used, 3),
+                    quota_exceeded=False,
                 )
-        except subprocess.TimeoutExpired:
-            return SandboxTestResult(
-                success=False,
-                error=f"Execution timed out after {timeout_seconds} seconds",
-                duration_seconds=timeout_seconds,
-                return_code=-1,
-            )
+
         except Exception as e:
             return SandboxTestResult(
                 success=False,
                 error=f"Subprocess runner exception: {e}",
                 duration_seconds=round(time.time() - start_t, 3),
                 return_code=-1,
+                peak_memory_mb=round(peak_memory_mb, 2),
+                cpu_time_seconds=round(cpu_time_used, 3),
+                quota_exceeded=False,
             )
         finally:
             try:

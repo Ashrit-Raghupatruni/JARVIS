@@ -355,9 +355,8 @@ async def websocket_endpoint(websocket: WebSocket):
                         logger.info("Settings update received on WebSocket: {}", msg_data)
 
                     elif msg_type == "hand_action":
-                        from backend.services.manager import ServiceManager
-                        live_eng = ServiceManager.get_instance("live_mode_engine")
-                        if live_eng and live_eng.is_enabled:
+                        try:
+                            from backend.services.manager import ServiceManager
                             hand_svc = ServiceManager.get_instance("hand_control_service")
                             if not hand_svc:
                                 from backend.services.hand_control_service import HandControlService
@@ -385,11 +384,8 @@ async def websocket_endpoint(websocket: WebSocket):
                             elif action == "keyboard":
                                 key_act = msg_data.get("keyboard_action", "")
                                 hand_svc.execute_keyboard_action(key_act)
-                        await manager.send_message(
-                            websocket,
-                            WSMessage(type="status", data={"state": "idle", "message": "Settings updated"}),
-                            client_id=client_id
-                        )
+                        except Exception as h_err:
+                            logger.debug("Hand action dispatch note: {}", h_err)
 
                     elif msg_type == "audio_data":
                         import base64

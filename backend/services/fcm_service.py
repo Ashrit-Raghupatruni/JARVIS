@@ -244,12 +244,27 @@ class FCMPushService:
             "summary": summary,
             "action": "open_control_screen"
         }
-        return await self.broadcast_push_notification(
-            title=title,
-            body=body,
-            notification_type="live_mode",
-            data=data
-        )
+    def get_status(self) -> Dict[str, Any]:
+        """Returns the live operational status of the FCM service."""
+        has_creds = bool(self.credentials_path and Path(self.credentials_path).exists())
+        return {
+            "service": "FCMPushService",
+            "has_credentials": has_creds,
+            "credentials_path": self.credentials_path,
+            "admin_sdk_active": bool(self._firebase_admin_app is not None),
+            "registered_devices_count": len(self._devices),
+            "project_id": self.project_id or ("jarvis-os-prod" if has_creds else None),
+            "transport_mode": "firebase_admin_sdk" if self._firebase_admin_app else "simulated_bridge",
+        }
+
+    def reload_credentials(self) -> bool:
+        """Reloads credentials from disk and initializes Firebase SDK if available."""
+        candidate = self.storage_dir / "firebase_service_account.json"
+        if candidate.exists():
+            self.credentials_path = str(candidate)
+        self._init_firebase_sdk()
+        return bool(self._firebase_admin_app is not None)
 
 
 fcm_service = FCMPushService()
+

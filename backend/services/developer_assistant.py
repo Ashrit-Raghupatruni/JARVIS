@@ -56,7 +56,7 @@ class DeveloperAssistantService:
         }
 
         import os
-        ignore_dirs = {"node_modules", ".git", "venv", ".venv", "__pycache__", "dist", "build", ".next", "data"}
+        ignore_dirs = {"node_modules", ".git", "venv", ".venv", "__pycache__", "dist", "build", "out", ".next", "data", ".gradle", "android", "ios", ".cxx"}
 
         for dirpath, dirnames, filenames in os.walk(str(root)):
             # Prune ignored directories in-place

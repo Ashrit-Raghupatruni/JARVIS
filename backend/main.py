@@ -508,7 +508,12 @@ async def lifespan(app: FastAPI):
             app.state.live_mode_engine = live_mode_engine
             ServiceManager.register_instance("live_mode_engine", live_mode_engine)
 
-            logger.info("✓ Self-Improving Engines & Live Mode AI Assistant initialized")
+            # ── Fast Intent Router Service ────────────────────────────────────
+            from backend.services.fast_intent_router import fast_intent_router
+            app.state.fast_intent_router = fast_intent_router
+            ServiceManager.register_instance("fast_intent_router", fast_intent_router)
+
+            logger.info("✓ Self-Improving Engines, Fast Intent Router & Live Mode AI Assistant initialized")
         except Exception as e:
             logger.error(f"✗ Personal AI OS services initialization warning: {e}")
 
@@ -679,9 +684,17 @@ async def lifespan(app: FastAPI):
             sync_service.start()
             app.state.sync_service = sync_service
         except Exception as e:
-            logger.error(f"✗ Sync service failed: {e}")
+        # Zeroconf mDNS Service (Local Auto-Discovery)
+        try:
+            from backend.services.zeroconf_service import zeroconf_service
+            zeroconf_service.start()
+            app.state.zeroconf_service = zeroconf_service
+            ServiceManager.register_instance("zeroconf_service", zeroconf_service)
+        except Exception as e:
+            logger.warning("mDNS Zeroconf registration notice: {}", e)
 
     asyncio.create_task(_init_background_services())
+
 
     elapsed = time.time() - start_time
     logger.info("=" * 60)
@@ -776,6 +789,13 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Sync service cleanup error: {e}")
 
+    if hasattr(app.state, "zeroconf_service") and app.state.zeroconf_service:
+        try:
+            app.state.zeroconf_service.stop()
+        except Exception as e:
+            logger.warning(f"Zeroconf shutdown notice: {e}")
+
+
     if hasattr(app.state, "clap_service") and app.state.clap_service:
         try:
             app.state.clap_service.stop()
@@ -855,6 +875,38 @@ async def get_live_mode_status_global(request: Request):
         "status": "active",
         "live_mode_enabled": True,
         "frame": frame.model_dump() if frame and hasattr(frame, "model_dump") else None
+    }
+
+
+@app.post("/api/live_mode/toggle")
+@app.post("/live_mode/toggle")
+@app.post("/api/v1/live_mode/toggle")
+@app.get("/api/live_mode/toggle")
+@app.get("/live_mode/toggle")
+@app.get("/api/v1/live_mode/toggle")
+async def toggle_live_mode_global(request: Request, enable: bool = True):
+    """Global API endpoint for toggling Live Mode perception loop."""
+    live_engine = ServiceManager.get_instance("live_mode_engine")
+    if not live_engine and hasattr(request.app.state, "live_mode_engine"):
+        live_engine = request.app.state.live_mode_engine
+    if not live_engine:
+        from backend.services.live_mode.live_engine import LiveModeEngine
+        live_engine = LiveModeEngine()
+        request.app.state.live_mode_engine = live_engine
+        ServiceManager.register_instance("live_mode_engine", live_engine)
+
+    greeting_msg = None
+    if enable:
+        live_engine.start(speak_greeting=True)
+        greeting_msg = live_engine.get_activation_greeting()
+    else:
+        live_engine.stop()
+
+    return {
+        "status": "ok",
+        "live_mode_enabled": live_engine.is_enabled,
+        "greeting": greeting_msg,
+        "message": f"Live Mode {'enabled' if enable else 'disabled'}"
     }
 
 

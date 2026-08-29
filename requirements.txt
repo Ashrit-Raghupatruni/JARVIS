@@ -55,3 +55,5 @@ playwright>=1.35.0
 pywin32>=306; sys_platform == "win32"
 pywinauto>=0.6.8; sys_platform == "win32"
 pycaw>=20230407; sys_platform == "win32"
+bleak>=3.0.0; sys_platform == "win32"
+

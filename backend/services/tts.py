@@ -44,6 +44,70 @@ class EdgeTTSProvider:
                 yield chunk["data"]
 
 
+class PiperTTSProvider:
+    """
+    Offline local neural voice provider using Piper ONNX models.
+    Produces natural neural voice locally with zero internet access,
+    acting as the primary offline neural fallback before legacy SAPI.
+    """
+
+    def __init__(self, model_path: Optional[str] = None, config_path: Optional[str] = None, rate: str = "+0%"):
+        self.rate = rate
+        self.model_path = model_path
+        self.config_path = config_path
+        self._voice = None
+        self._available = False
+        self._resolve_paths()
+
+    def _resolve_paths(self) -> None:
+        from pathlib import Path
+        default_dir = Path("data/models/piper")
+        if not self.model_path and default_dir.exists():
+            onnx_files = list(default_dir.glob("*.onnx"))
+            if onnx_files:
+                self.model_path = str(onnx_files[0])
+                cfg = self.model_path + ".json"
+                if os.path.exists(cfg):
+                    self.config_path = cfg
+
+        if self.model_path and os.path.exists(self.model_path):
+            try:
+                from piper.voice import PiperVoice
+                self._voice = PiperVoice.load(self.model_path, config_path=self.config_path)
+                self._available = True
+                logger.info("✓ Piper local neural TTS initialized with model: {}", os.path.basename(self.model_path))
+            except Exception as e:
+                logger.warning("Could not load Piper voice from {}: {}", self.model_path, e)
+                self._available = False
+        else:
+            self._available = False
+
+    def is_available(self) -> bool:
+        if not self._available or self._voice is None:
+            self._resolve_paths()
+        return self._available and self._voice is not None
+
+    def _synthesize_wav_sync(self, text: str) -> bytes:
+        import wave
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as wav_file:
+            self._voice.synthesize_wav(text, wav_file)
+        return buf.getvalue()
+
+    async def stream(self, text: str, cancel_flag_fn) -> AsyncGenerator[bytes, None]:
+        loop = asyncio.get_running_loop()
+        wav_data = await loop.run_in_executor(None, self._synthesize_wav_sync, text)
+
+        # Chunk synthesized WAV audio into 4KB stream packets
+        chunk_size = 4096
+        for i in range(0, len(wav_data), chunk_size):
+            if cancel_flag_fn():
+                logger.info("Piper neural TTS stream cancelled by user barge-in")
+                break
+            yield wav_data[i : i + chunk_size]
+            await asyncio.sleep(0.01)
+
+
 class LocalTTSProvider:
     """Offline Windows Native SAPI voice provider. Operates with zero internet connectivity."""
 
@@ -95,7 +159,10 @@ class LocalTTSProvider:
 
 class TTSService:
     """
-    Unified Text-to-Speech service with automatic Online Edge-TTS -> Offline SAPI failover.
+    Unified Text-to-Speech service with multi-tier failover:
+    Tier 1: Online Microsoft Edge-TTS (Streaming neural voice)
+    Tier 2: Offline Local Piper TTS (Local ONNX neural voice)
+    Tier 3: Offline Windows Native SAPI SpVoice (Guaranteed local fallback)
     Streams audio chunks asynchronously, supporting real-time playback and barge-in cancellation.
     """
 
@@ -104,16 +171,22 @@ class TTSService:
         self.rate = rate
         self._cancel_flag = False
         self.edge_provider = EdgeTTSProvider(voice=voice, rate=rate)
+        self.piper_provider = PiperTTSProvider(rate=rate)
         self.local_provider = LocalTTSProvider(rate=rate)
         self.last_provider_used = "edge-tts"
-        logger.info("TTSService initialised — voice={}, rate={}, offline_sapi=Ready", voice, rate)
+        logger.info(
+            "TTSService initialised — voice={}, rate={}, offline_piper={}, offline_sapi=Ready",
+            voice,
+            rate,
+            "Ready" if self.piper_provider.is_available() else "Standby",
+        )
 
     # ── Public API ───────────────────────────────────────────────────────
 
     async def stream_speech(self, text: str) -> AsyncGenerator[bytes, None]:
         """
-        Convert text to speech and yield audio chunks (MP3 for EdgeTTS, WAV for SAPI).
-        Falls back to local SAPI if EdgeTTS fails or internet is unreachable.
+        Convert text to speech and yield audio chunks (MP3 for EdgeTTS, WAV for Piper/SAPI).
+        Falls back to local Piper neural TTS or SAPI if EdgeTTS fails or offline.
         """
         if not text or not text.strip():
             logger.debug("TTS received empty text, skipping")
@@ -130,14 +203,31 @@ class TTSService:
                 self.last_provider_used = "edge-tts"
                 yield chunk
         except Exception as edge_err:
-            logger.warning("⚠️ Edge-TTS failed ({}: {}). Failing over to Offline Local SAPI Provider...", type(edge_err).__name__, edge_err)
+            logger.warning(
+                "⚠️ Edge-TTS failed ({}: {}). Failing over to Offline Neural Piper Provider...",
+                type(edge_err).__name__,
+                edge_err,
+            )
 
         if edge_success:
             logger.debug("✓ TTS stream completed via Edge-TTS")
             self._cancel_flag = False
             return
 
-        # Attempt 2: Resilient Offline SAPI Fallback
+        # Attempt 2: Resilient Local Neural Offline Piper Fallback
+        if self.piper_provider.is_available():
+            try:
+                logger.info("🎙️ Synthesizing speech via Local Offline Neural Piper Provider...")
+                self.last_provider_used = "piper"
+                async for chunk in self.piper_provider.stream(text, lambda: self._cancel_flag):
+                    yield chunk
+                logger.info("✓ TTS stream completed via Local Offline Neural Piper")
+                self._cancel_flag = False
+                return
+            except Exception as piper_err:
+                logger.warning("⚠️ Piper neural TTS failed ({}). Failing over to SAPI...", piper_err)
+
+        # Attempt 3: Resilient Offline Windows SAPI Fallback
         try:
             logger.info("🎙️ Synthesizing speech via Local Offline SAPI Provider...")
             self.last_provider_used = "sapi"
@@ -145,7 +235,7 @@ class TTSService:
                 yield chunk
             logger.info("✓ TTS stream completed via Local Offline SAPI")
         except Exception as local_err:
-            logger.error("❌ Both Edge-TTS and Local SAPI TTS failed: {}", local_err)
+            logger.error("❌ All TTS providers (Edge-TTS, Piper, SAPI) failed: {}", local_err)
         finally:
             self._cancel_flag = False
 

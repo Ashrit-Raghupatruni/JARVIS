@@ -56,6 +56,13 @@ class PlannerAgent:
     ):
         from backend.services.manager import ServiceManager
         self.llm = llm_service or ServiceManager.get_instance("llm_service")
+        if not self.llm:
+            try:
+                from backend.services.llm import LLMService
+                self.llm = LLMService()
+                ServiceManager.register_instance("llm_service", self.llm)
+            except Exception as llm_init_err:
+                logger.warning(f"Could not auto-initialize LLMService fallback: {llm_init_err}")
         self.automation = automation_service or ServiceManager.get_instance("automation_service")
         self.screen = screen_service or ServiceManager.get_instance("screen_service")
         self.browser = browser_service or ServiceManager.get_instance("browser_service")
@@ -226,6 +233,230 @@ class PlannerAgent:
         
         # 4. Out-of-Model Safety Gatekeeper Instance
         gatekeeper = SafetyGatekeeper()
+
+        from backend.services.safety import BLOCKED_COMMAND_PATTERNS, DANGEROUS_COMMAND_PATTERNS
+        for pat in BLOCKED_COMMAND_PATTERNS + DANGEROUS_COMMAND_PATTERNS:
+            if re.search(pat, user_message, re.IGNORECASE):
+                logger.warning("⛔ Dangerous command intercepted by SafetyGatekeeper: '{}'", user_message)
+                yield WSMessage(
+                    type="approval_required",
+                    data={
+                        "status": "pending_approval",
+                        "action": "system_command",
+                        "reason": f"Safety Policy Required: Command matches guarded pattern ('{pat}')",
+                        "risk_level": "destructive"
+                    }
+                )
+                _log_self_improving_trace(f"Blocked by safety policy: {pat}", success=False)
+                return
+
+        # ── HYBRID FAST-PATH EXECUTION GATE ──────────────────────────────
+        from backend.services.fast_intent_router import fast_intent_router
+        fast_intent = fast_intent_router.classify(user_message)
+        
+        if fast_intent.is_atomic and fast_intent.confidence >= 0.95 and fast_intent.tool_name:
+            logger.info("⚡ FastIntentRouter match: tool='{}' (confidence={:.2f}, router_time={:.2f}ms)", 
+                        fast_intent.tool_name, fast_intent.confidence, fast_intent.routing_time_ms)
+            
+            # Phase 1: Immediate Acknowledgment (Streamed in < 25ms)
+            if fast_intent.ack_phrase:
+                yield WSMessage(type="chat_response", data={"status": "executing", "text": fast_intent.ack_phrase})
+            
+            # Phase 2: Safety Gatekeeper Evaluation (Inviolable Gate)
+            target_win = ""
+            if hasattr(self, "world_model") and self.world_model and hasattr(self.world_model, "state"):
+                target_win = getattr(self.world_model.state, "window_title", "") or ""
+            
+            safety_decision = gatekeeper.evaluate_tool_call(
+                tool_name=fast_intent.tool_name,
+                arguments=fast_intent.tool_params
+            )
+            
+            if safety_decision.requires_user_approval or not safety_decision.allowed:
+                logger.warning("⛔ Fast path tool '{}' halted by Safety Gatekeeper: {}", fast_intent.tool_name, safety_decision.reason)
+                yield WSMessage(
+                    type="approval_required",
+                    data={
+                        "status": "pending_approval",
+                        "action": fast_intent.tool_name,
+                        "reason": safety_decision.reason,
+                        "risk_level": safety_decision.risk_level.value
+                    }
+                )
+                _log_self_improving_trace(f"Blocked by safety gate: {safety_decision.reason}", success=False)
+                return
+
+            # Phase 3: ToolRegistry Direct Execution
+            try:
+                tool_reg = getattr(self, "tool_registry", None)
+                if not tool_reg:
+                    from backend.services.tool_registry import ToolRegistry
+                    tool_reg = ToolRegistry()
+                    self.tool_registry = tool_reg
+                
+                exec_res = await tool_reg.execute_tool(fast_intent.tool_name, safety_decision.validated_args or fast_intent.tool_params)
+                
+                # Phase 4: ActionExecutionVerifier Verification
+                from backend.services.action_verifier import ActionExecutionVerifier
+                verifier = ActionExecutionVerifier()
+                is_verified = True
+                verification_note = "Verified execution"
+                
+                if fast_intent.tool_name == "open_application":
+                    app_target = (safety_decision.validated_args or fast_intent.tool_params).get("app_name", "")
+                    is_verified, verification_note = verifier.verify_application_launched(app_target)
+                elif exec_res.get("status") != "success":
+                    is_verified = False
+                    verification_note = exec_res.get("error", "Execution returned error status")
+
+                if is_verified:
+                    # Phase 5: Verified Response & Strategy Reward
+                    from backend.services.manager import ServiceManager
+                    strat_mem = ServiceManager.get_instance("strategy_memory")
+                    if strat_mem and hasattr(strat_mem, "record_task_strategy_outcome"):
+                        strat_mem.record_task_strategy_outcome(task=user_message, strategy="fast_path_direct_execution", success=True)
+                    
+                    completion_text = fast_intent.completion_phrase
+                    if not completion_text:
+                        res_val = exec_res.get("result")
+                        if isinstance(res_val, dict) and "summary" in res_val:
+                            completion_text = res_val["summary"]
+                        elif isinstance(res_val, str):
+                            completion_text = res_val
+                        else:
+                            completion_text = str(res_val or "Action completed successfully.")
+                    
+                    history.append({"role": "assistant", "content": completion_text})
+                    self._conversation_history = list(history[-self._max_history:])
+                    if active_conv_id and mem_svc:
+                        try:
+                            await mem_svc.add_message_to_conversation(active_conv_id, "assistant", completion_text)
+                        except Exception as m_err:
+                            logger.debug("Failed to persist assistant msg: {}", m_err)
+                    
+                    yield WSMessage(type="chat_response", data={"status": "completed", "text": completion_text})
+                    _log_self_improving_trace(completion_text, success=True)
+                    return
+                else:
+                    logger.warning("Fast path execution for '{}' unverified ({}). Falling back to PlannerAgent...", fast_intent.tool_name, verification_note)
+            except Exception as fast_err:
+                logger.error("Fast path execution error for '{}': {}. Falling back to PlannerAgent...", fast_intent.tool_name, fast_err)
+
+        # ── CONFIDENCE-BASED PRASH NEURAL REASONING GATE ───────────────────
+        try:
+            from backend.services.manager import ServiceManager
+            prash_eng = ServiceManager.get_instance("prash_engine")
+            if not prash_eng and hasattr(self, "prash_engine"):
+                prash_eng = self.prash_engine
+            if not prash_eng:
+                from backend.prash.engine import PrashEngine
+                prash_eng = PrashEngine()
+                asyncio.create_task(prash_eng.init())
+                ServiceManager.register_instance("prash_engine", prash_eng)
+                self.prash_engine = prash_eng
+
+            if prash_eng and getattr(prash_eng, "is_available", False):
+                prash_resp, is_confident, meta = await prash_eng.generate(user_message, max_tokens=128, temperature=0.1)
+                entropy = meta.get("entropy", 999.0) if isinstance(meta, dict) else 999.0
+
+                # Check confidence threshold (mean Shannon entropy <= 1.05 and validate_response passed)
+                if is_confident and entropy <= 1.05:
+                    from backend.services.prash_tool_validator import prash_tool_validator
+                    val_res = prash_tool_validator.validate_raw_response(prash_resp, user_message)
+
+                    if val_res.is_valid and val_res.tool_name:
+                        logger.info("🧠 Prash High-Confidence Tool Match: '{}' (entropy={:.3f}, params={})",
+                                    val_res.tool_name, entropy, val_res.parameters)
+
+                        # Phase 1: Safety Gatekeeper Evaluation (Inviolable Gate)
+                        safety_decision = gatekeeper.evaluate_tool_call(
+                            tool_name=val_res.tool_name,
+                            arguments=val_res.parameters
+                        )
+
+                        if safety_decision.requires_user_approval or not safety_decision.allowed:
+                            logger.warning("⛔ Prash proposed tool '{}' halted by Safety Gatekeeper: {}", val_res.tool_name, safety_decision.reason)
+                            yield WSMessage(
+                                type="approval_required",
+                                data={
+                                    "status": "pending_approval",
+                                    "action": val_res.tool_name,
+                                    "reason": safety_decision.reason,
+                                    "risk_level": safety_decision.risk_level.value
+                                }
+                            )
+                            _log_self_improving_trace(f"Blocked by safety gate: {safety_decision.reason}", success=False)
+                            return
+
+                        # Phase 2: ToolRegistry Execution
+                        tool_reg = getattr(self, "tool_registry", None)
+                        if not tool_reg:
+                            from backend.services.tool_registry import ToolRegistry
+                            tool_reg = ToolRegistry()
+                            self.tool_registry = tool_reg
+
+                        exec_res = await tool_reg.execute_tool(val_res.tool_name, safety_decision.validated_args or val_res.parameters)
+
+                        # Phase 3: ActionExecutionVerifier Verification
+                        from backend.services.action_verifier import ActionExecutionVerifier
+                        verifier = ActionExecutionVerifier()
+                        is_verified = True
+                        verification_note = "Verified execution"
+
+                        if val_res.tool_name == "open_application":
+                            app_target = (safety_decision.validated_args or val_res.parameters).get("app_name", "")
+                            is_verified, verification_note = verifier.verify_application_launched(app_target)
+                        elif exec_res.get("status") != "success":
+                            is_verified = False
+                            verification_note = exec_res.get("error", "Execution returned error status")
+
+                        if is_verified:
+                            # Record successful strategy outcome
+                            strat_mem = ServiceManager.get_instance("strategy_memory")
+                            if strat_mem and hasattr(strat_mem, "record_task_strategy_outcome"):
+                                strat_mem.record_task_strategy_outcome(task=user_message, strategy="prash_neural_execution", success=True)
+
+                            # Build completion response
+                            res_val = exec_res.get("result")
+                            if isinstance(res_val, dict) and "summary" in res_val:
+                                completion_text = res_val["summary"]
+                            elif isinstance(res_val, str):
+                                completion_text = res_val
+                            else:
+                                completion_text = f"Action '{val_res.tool_name}' executed and verified successfully."
+
+                            history.append({"role": "assistant", "content": completion_text})
+                            self._conversation_history = list(history[-self._max_history:])
+                            if active_conv_id and mem_svc:
+                                try:
+                                    await mem_svc.add_message_to_conversation(active_conv_id, "assistant", completion_text)
+                                except Exception as m_err:
+                                    logger.debug("Failed to persist assistant msg: {}", m_err)
+
+                            yield WSMessage(type="chat_response", data={"status": "completed", "text": completion_text})
+                            _log_self_improving_trace(completion_text, success=True)
+                            return
+                        else:
+                            logger.warning("Prash tool execution for '{}' unverified ({}). Falling back to PlannerAgent...", val_res.tool_name, verification_note)
+                    elif val_res.is_valid and val_res.is_conversational and val_res.conversational_text:
+                        if hier_category in (HierarchicalCategory.CONVERSATIONAL, HierarchicalCategory.KNOWLEDGE) and entropy < 0.75:
+                            completion_text = val_res.conversational_text
+                            history.append({"role": "assistant", "content": completion_text})
+                            self._conversation_history = list(history[-self._max_history:])
+                            if active_conv_id and mem_svc:
+                                try:
+                                    await mem_svc.add_message_to_conversation(active_conv_id, "assistant", completion_text)
+                                except Exception as m_err:
+                                    logger.debug("Failed to persist assistant msg: {}", m_err)
+                            yield WSMessage(type="chat_response", data={"status": "completed", "text": completion_text})
+                            _log_self_improving_trace(completion_text, success=True)
+                            return
+                    else:
+                        logger.info("Prash validation rejection: {}. Safely falling back to PlannerAgent...", val_res.rejection_reason)
+                else:
+                    logger.debug("Prash confidence check unfulfilled (entropy={:.3f}, confident={}). Falling back to PlannerAgent...", entropy, is_confident)
+        except Exception as prash_gate_err:
+            logger.debug("Prash reasoning gate notice: {}. Continuing to standard PlannerAgent...", prash_gate_err)
 
         # Legacy compatibility mapping
         from backend.agents.message_router import classify_request, RequestCategory
@@ -474,7 +705,6 @@ class PlannerAgent:
             return
 
         # Fast-Path 0E: Action & Job Execution Intercept (e.g. "Run AP24110011746", "launch notepad")
-        import re
         has_job_id = bool(re.search(r"\b[A-Z]{2,}\d{5,}\b", user_message))
         if lower_msg.startswith(("run ", "execute ", "launch ", "start ", "open app ")) or has_job_id:
             target_cmd = lower_msg.replace("run ", "").replace("execute ", "").replace("launch ", "").replace("start ", "").replace("open app ", "").strip()
@@ -485,8 +715,27 @@ class PlannerAgent:
             logger.info("⚡ Fast-Path Action Intercept executing target command: '{}'", target_cmd)
             yield WSMessage(type="status", data=StatusMessage(state=AssistantState.EXECUTING).model_dump())
 
+            # Evaluate via SafetyGatekeeper before running
+            safety_decision = gatekeeper.evaluate_tool_call(
+                tool_name="open_application",
+                arguments={"app_name": target_cmd}
+            )
+            if safety_decision.requires_user_approval or not safety_decision.allowed:
+                logger.warning("⛔ Fast-path action '{}' halted by Safety Gatekeeper: {}", target_cmd, safety_decision.reason)
+                yield WSMessage(
+                    type="approval_required",
+                    data={
+                        "status": "pending_approval",
+                        "action": "open_application",
+                        "reason": safety_decision.reason,
+                        "risk_level": safety_decision.risk_level.value
+                    }
+                )
+                _log_self_improving_trace(f"Blocked by safety gate: {safety_decision.reason}", success=False)
+                return
+
             # Attempt execution via ToolRegistry open_application tool
-            exec_res = await self.tool_registry.execute_tool("open_application", {"app_name": target_cmd})
+            exec_res = await self.tool_registry.execute_tool("open_application", safety_decision.validated_args or {"app_name": target_cmd})
             
             if exec_res.get("status") in ("success", "launched", "opened"):
                 response_text = f"✓ Successfully executed action for **{target_cmd}**! Application launched cleanly."
@@ -1566,6 +1815,14 @@ class PlannerAgent:
         """Route a tool call to the appropriate service and execute it."""
         try:
             logger.info(f"Executing tool: {func_name}({json.dumps(func_args)[:100]})")
+
+            # Out-of-Model SafetyGatekeeper Evaluation (Inviolable Policy Check)
+            from backend.services.safety_gatekeeper import SafetyGatekeeper
+            gatekeeper = SafetyGatekeeper()
+            safety_decision = gatekeeper.evaluate_tool_call(tool_name=func_name, arguments=func_args)
+            if safety_decision.requires_user_approval or not safety_decision.allowed:
+                logger.warning("⛔ Tool execution halted by Safety Gatekeeper: {}", safety_decision.reason)
+                return f"Action blocked by Safety Gatekeeper: {safety_decision.reason}"
 
             # Check dangerous permissions before execution
             if self.safety:

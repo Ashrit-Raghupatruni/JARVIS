@@ -197,7 +197,13 @@ class PrashInference:
         """
         # Encode prompt if it is a string
         if isinstance(prompt, str):
-            prompt_ids = self.tokenizer.encode(prompt)
+            encoded = self.tokenizer.encode(prompt)
+            bos_id = 1
+            sep_id = 4
+            if not encoded or encoded[0] != bos_id:
+                prompt_ids = [bos_id] + encoded + [sep_id]
+            else:
+                prompt_ids = encoded
         else:
             prompt_ids = prompt
 
@@ -299,7 +305,13 @@ class PrashInference:
         # Encode prompt
         # Encode prompt if it is a string
         if isinstance(prompt, str):
-            prompt_ids = self.tokenizer.encode(prompt)
+            encoded = self.tokenizer.encode(prompt)
+            bos_id = 1
+            sep_id = 4
+            if not encoded or encoded[0] != bos_id:
+                prompt_ids = [bos_id] + encoded + [sep_id]
+            else:
+                prompt_ids = encoded
         else:
             prompt_ids = prompt
 

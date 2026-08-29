@@ -100,8 +100,41 @@ class OAuth2Service:
             ],
             client_id_env="MICROSOFT_CLIENT_ID",
             client_secret_env="MICROSOFT_CLIENT_SECRET",
-            redirect_uri="http://localhost:8000/api/v1/oauth/microsoft/callback"
-        )
+            redirect_uri="http://localhost:8000/api/v1/oauth/microsoft/callback",
+        ),
+        "github": OAuthProviderConfig(
+            name="github",
+            display_name="GitHub (Repositories & Profile)",
+            auth_url="https://github.com/login/oauth/authorize",
+            token_url="https://github.com/login/oauth/access_token",
+            userinfo_url="https://api.github.com/user",
+            default_scopes=["read:user", "user:email", "repo", "notifications"],
+            client_id_env="GITHUB_CLIENT_ID",
+            client_secret_env="GITHUB_CLIENT_SECRET",
+            redirect_uri="http://localhost:8000/api/v1/oauth/github/callback",
+        ),
+        "slack": OAuthProviderConfig(
+            name="slack",
+            display_name="Slack (Channels & Messaging)",
+            auth_url="https://slack.com/oauth/v2/authorize",
+            token_url="https://slack.com/api/oauth.v2.access",
+            userinfo_url="https://slack.com/api/users.identity",
+            default_scopes=["channels:read", "chat:write", "users:read"],
+            client_id_env="SLACK_CLIENT_ID",
+            client_secret_env="SLACK_CLIENT_SECRET",
+            redirect_uri="http://localhost:8000/api/v1/oauth/slack/callback",
+        ),
+        "notion": OAuthProviderConfig(
+            name="notion",
+            display_name="Notion (Workspace Pages & Databases)",
+            auth_url="https://api.notion.com/v1/oauth/authorize",
+            token_url="https://api.notion.com/v1/oauth/token",
+            userinfo_url="https://api.notion.com/v1/users/me",
+            default_scopes=[],
+            client_id_env="NOTION_CLIENT_ID",
+            client_secret_env="NOTION_CLIENT_SECRET",
+            redirect_uri="http://localhost:8000/api/v1/oauth/notion/callback",
+        ),
     }
 
     def __init__(self, vault: Optional[CredentialVault] = None, config_path: str = "data/oauth_config.json"):
@@ -109,7 +142,10 @@ class OAuth2Service:
         self.config_path = config_path
         self._pending_states: Dict[str, Dict[str, Any]] = {}
         self._load_file_config()
-        logger.info("OAuth2Service initialized with Google Workspace and Microsoft 365 providers.")
+        logger.info(
+            "OAuth2Service initialized with providers: Google, Microsoft, GitHub, Slack, Notion."
+        )
+
 
     def _load_file_config(self) -> None:
         """Load optional client IDs and secrets from data/oauth_config.json."""
@@ -133,7 +169,8 @@ class OAuth2Service:
         Generate OAuth2 authorization URL with PKCE (Proof Key for Code Exchange) and CSRF state.
         """
         if provider not in self.PROVIDERS:
-            raise ValueError(f"Unsupported OAuth provider: '{provider}'. Must be 'google' or 'microsoft'.")
+            valid_provs = ", ".join(self.PROVIDERS.keys())
+            raise ValueError(f"Unsupported OAuth provider: '{provider}'. Must be one of: {valid_provs}.")
 
         cfg = self.PROVIDERS[provider]
         state = secrets.token_urlsafe(32)
@@ -233,7 +270,8 @@ class OAuth2Service:
             }
 
         async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.post(cfg.token_url, data=token_payload)
+            headers = {"Accept": "application/json"}
+            resp = await client.post(cfg.token_url, data=token_payload, headers=headers)
             if resp.status_code != 200:
                 logger.error(f"Failed to exchange token with {provider}: {resp.text}")
                 raise RuntimeError(f"Token exchange failed: {resp.text}")
@@ -269,7 +307,7 @@ class OAuth2Service:
         """Query provider user profile for primary email."""
         cfg = self.PROVIDERS[provider]
         try:
-            headers = {"Authorization": f"Bearer {access_token}"}
+            headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/json"}
             resp = await client.get(cfg.userinfo_url, headers=headers)
             if resp.status_code == 200:
                 data = resp.json()
@@ -277,9 +315,20 @@ class OAuth2Service:
                     return data.get("email", "unknown_google_user@gmail.com")
                 elif provider == "microsoft":
                     return data.get("mail") or data.get("userPrincipalName") or "unknown_ms_user@outlook.com"
+                elif provider == "github":
+                    return data.get("email") or f"{data.get('login', 'github_user')}@github.com"
+                elif provider == "slack":
+                    user = data.get("user", {})
+                    return user.get("email") or f"{user.get('name', 'slack_user')}@slack.com"
+                elif provider == "notion":
+                    owner = data.get("owner", {})
+                    user = owner.get("user", {})
+                    person = user.get("person", {})
+                    return person.get("email") or f"{data.get('name', 'notion_user')}@notion.so"
         except Exception as e:
             logger.warning(f"Failed to fetch {provider} user profile: {e}")
         return f"authenticated_user@{provider}.com"
+
 
     # ── Token Storage & Automatic Refresh Rotation ────────────────────────────
 

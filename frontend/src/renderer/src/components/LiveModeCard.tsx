@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Eye, Play, Square, RefreshCw, Layout, Layers, CheckCircle, ShieldAlert, Cpu } from 'lucide-react'
+import { Eye, Play, Square, RefreshCw, Layout, Layers, CheckCircle, ShieldAlert, Cpu, Zap, Send, StopCircle, CheckCircle2, AlertTriangle, ListOrdered } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { HandTracker, type TrackerTelemetry } from '../lib/handTracker'
@@ -52,6 +52,53 @@ export default function LiveModeCard() {
   ])
   const [newTopicInput, setNewTopicInput] = useState('')
   const [topicStatusMsg, setTopicStatusMsg] = useState<string | null>(null)
+
+  // Autonomous Multi-Step Goal Execution State
+  const [goalInput, setGoalInput] = useState('')
+  const [isGoalRunning, setIsGoalRunning] = useState(false)
+  const [goalPlan, setGoalPlan] = useState<any | null>(null)
+  const [goalMsg, setGoalMsg] = useState<string | null>(null)
+
+  const handleExecuteGoal = async () => {
+    const trimmed = goalInput.trim()
+    if (!trimmed) return
+
+    try {
+      setIsGoalRunning(true)
+      setGoalMsg(`Decomposing goal into autonomous plan: "${trimmed}"...`)
+      const res = await fetch('http://localhost:8000/api/v1/live_mode/goal/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goal: trimmed })
+      })
+      const data = await res.json()
+      if (data.status === 'success' || data.status === 'completed') {
+        setGoalPlan(data.plan || data)
+        setGoalMsg(`✓ Completed goal execution: ${data.message || 'All steps executed'}`)
+      } else if (data.status === 'awaiting_permission') {
+        setGoalPlan(data.plan || data)
+        setGoalMsg(`⚠️ Security Gate: Dangerous step requires user confirmation (${data.blocked_step?.tool || 'action'}).`)
+      } else {
+        setGoalMsg(`Goal status: ${data.status} — ${data.message || ''}`)
+      }
+    } catch (err) {
+      setGoalMsg(`Goal execution failed: ${err}`)
+    } finally {
+      setIsGoalRunning(false)
+    }
+  }
+
+  const handleCancelGoal = async () => {
+    try {
+      setGoalMsg('Cancelling autonomous goal...')
+      const res = await fetch('http://localhost:8000/api/v1/live_mode/goal/cancel', { method: 'POST' })
+      const data = await res.json()
+      setGoalMsg(`Goal cancelled: ${data.message || 'Halted'}`)
+      setIsGoalRunning(false)
+    } catch (err) {
+      setGoalMsg(`Cancel failed: ${err}`)
+    }
+  }
 
   useEffect(() => {
     fetchMonitoredTopics()
@@ -124,9 +171,9 @@ export default function LiveModeCard() {
     setTopicStatusMsg(`✓ Removed monitored topic: '${topicToRemove}'`)
   }
 
-  // Start/Stop Hand Tracker reactively (Gated strictly to Live Mode active + Hand Control enabled)
+  // Start/Stop Hand Tracker reactively
   useEffect(() => {
-    if (!isEnabled || !handControlEnabled) {
+    if (!handControlEnabled) {
       if (trackerRef.current) {
         trackerRef.current.stop()
         trackerRef.current = null
@@ -136,7 +183,10 @@ export default function LiveModeCard() {
 
     const video = videoRef.current
     const overlay = overlayRef.current
-    if (!video || !overlay) return
+    if (!video || !overlay) {
+      console.warn('[LiveModeCard] video or overlay ref not ready')
+      return
+    }
 
     const tracker = new HandTracker(video, overlay, {
       onHandAction: (action, params) => {
@@ -166,7 +216,7 @@ export default function LiveModeCard() {
       tracker.stop()
       trackerRef.current = null
     }
-  }, [isEnabled, handControlEnabled])
+  }, [handControlEnabled])
 
   // Watch for setting changes (sensitivity, smoothing, camera, etc.)
   useEffect(() => {
@@ -209,13 +259,17 @@ export default function LiveModeCard() {
     setLoading(true)
     try {
       const host = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.hostname : '127.0.0.1'
-      const res = await fetch(`http://${host}:8000/api/live_mode/toggle?enable=${enable}`, {
+      let res = await fetch(`http://${host}:8000/api/v1/live_mode/toggle?enable=${enable}`, {
         method: 'POST'
       })
+      if (!res.ok) {
+        res = await fetch(`http://${host}:8000/api/live_mode/toggle?enable=${enable}`, { method: 'POST' })
+      }
       const data = await res.json()
-      setIsEnabled(data.live_mode_enabled)
+      const isLive = Boolean(data.live_mode_enabled)
+      setIsEnabled(isLive)
 
-      if (data.live_mode_enabled) {
+      if (isLive) {
         useAppStore.getState().setAssistantState('listening')
         setStatusMsg('🎤 Hands-Free Voice Control Active')
       } else {
@@ -225,7 +279,7 @@ export default function LiveModeCard() {
 
       // Toggle Electron system-wide spotlight overlay
       if (typeof window !== 'undefined' && (window as any).electron?.ipcRenderer) {
-        ;(window as any).electron.ipcRenderer.invoke('live-mode:toggle-overlay', data.live_mode_enabled)
+        ;(window as any).electron.ipcRenderer.invoke('live-mode:toggle-overlay', isLive)
       }
 
       fetchStatus()
@@ -345,6 +399,84 @@ export default function LiveModeCard() {
         </div>
       </div>
 
+      {/* Autonomous Multi-Step Goal Execution Bar */}
+      <div className="relative z-40 flex flex-col gap-2 p-3 rounded-xl bg-slate-900/80 border border-cyan-500/30 shadow-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs font-mono font-bold text-cyan-300">
+            <Zap className="w-4 h-4 text-cyan-400 animate-pulse" />
+            <span>AUTONOMOUS MULTI-STEP GOAL ENGINE</span>
+          </div>
+          {isGoalRunning && (
+            <button
+              onClick={handleCancelGoal}
+              className="flex items-center gap-1 px-2.5 py-0.5 rounded bg-red-950/60 border border-red-500/40 text-red-300 hover:bg-red-900/60 text-[10px] font-mono transition"
+            >
+              <StopCircle className="w-3 h-3" /> CANCEL GOAL
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={goalInput}
+            onChange={(e) => setGoalInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && !isGoalRunning && handleExecuteGoal()}
+            placeholder="Enter autonomous goal (e.g. 'Open Chrome, search for latest AI papers, and save summary')..."
+            disabled={isGoalRunning}
+            className="flex-1 px-3 py-1.5 rounded-lg bg-slate-950 border border-cyan-500/20 text-xs text-slate-100 placeholder-slate-500 focus:border-cyan-400 focus:outline-none font-mono"
+          />
+          <button
+            onClick={handleExecuteGoal}
+            disabled={isGoalRunning || !goalInput.trim()}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-bold font-mono text-xs transition shadow-[0_0_10px_rgba(0,229,255,0.3)]"
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span>{isGoalRunning ? 'EXECUTING...' : 'DISPATCH'}</span>
+          </button>
+        </div>
+
+        {goalMsg && (
+          <div className="text-[11px] font-mono text-cyan-300 px-2 py-1 rounded bg-cyan-950/40 border border-cyan-500/20 truncate">
+            {goalMsg}
+          </div>
+        )}
+
+        {/* Step Progress Stepper */}
+        {goalPlan && goalPlan.steps && (
+          <div className="flex flex-col gap-1.5 mt-1 pt-2 border-t border-slate-800">
+            <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+              <span className="flex items-center gap-1">
+                <ListOrdered className="w-3 h-3 text-cyan-400" /> Plan Steps ({goalPlan.steps.length}):
+              </span>
+              <span>Status: <strong className="text-cyan-300 uppercase">{goalPlan.status || 'ACTIVE'}</strong></span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {goalPlan.steps.map((step: any, idx: number) => (
+                <div
+                  key={idx}
+                  className={`p-2 rounded-lg border text-[11px] font-mono flex flex-col gap-1 ${
+                    step.status === 'completed'
+                      ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                      : step.status === 'executing'
+                      ? 'bg-cyan-950/60 border-cyan-400 text-cyan-200 animate-pulse'
+                      : step.status === 'failed'
+                      ? 'bg-red-950/40 border-red-500/40 text-red-300'
+                      : 'bg-slate-950 border-slate-800 text-slate-400'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold">Step {idx + 1}: {step.tool || 'Action'}</span>
+                    <span className="text-[9px] uppercase font-bold">{step.status || 'pending'}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-300 truncate">{step.description || JSON.stringify(step.params || {})}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Grid: Scene Graph Context + Proactive Guidance + Workspaces + Telemetry Preview */}
       <div className="relative z-40 grid grid-cols-1 md:grid-cols-4 gap-4 flex-1 overflow-hidden">
         {/* Panel 1: Hand Gesture Control Telemetry */}
@@ -354,7 +486,6 @@ export default function LiveModeCard() {
             <span>Hand Telemetry HUD</span>
           </div>
 
-          {handControlEnabled ? (
             <div className="flex flex-col gap-3 flex-1">
               <div className="relative w-full h-[140px] rounded-lg overflow-hidden bg-slate-950 border border-cyan-500/20 flex items-center justify-center">
                 <video
@@ -362,104 +493,122 @@ export default function LiveModeCard() {
                   playsInline
                   muted
                   autoPlay
-                  className="absolute inset-0 w-full h-full object-cover scale-x-[-1] opacity-70"
+                  className={`absolute inset-0 w-full h-full object-cover scale-x-[-1] ${handControlEnabled ? 'opacity-70' : 'opacity-0 pointer-events-none'}`}
                 />
                 <canvas
                   ref={overlayRef}
                   width={320}
                   height={240}
-                  className="absolute inset-0 w-full h-full object-cover pointer-events-none z-10"
+                  className={`absolute inset-0 w-full h-full object-cover pointer-events-none z-10 ${handControlEnabled ? 'opacity-100' : 'opacity-0'}`}
                 />
-                <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-slate-950/80 text-[9px] font-mono text-cyan-400 border border-cyan-500/20 z-20 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
-                  LIVE PREVIEW
-                </div>
+                {!handControlEnabled && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-3 text-center bg-slate-950/90 z-20 gap-1.5">
+                    <Cpu className="w-6 h-6 text-slate-600 animate-pulse" />
+                    <span className="text-[11px] font-mono text-slate-400 font-bold">Hand Control Standby</span>
+                    <span className="text-[9px] font-mono text-slate-500">Click &apos;HAND CONTROL: ON&apos; to activate tracking</span>
+                  </div>
+                )}
+                {handControlEnabled && (
+                  <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-slate-950/80 text-[9px] font-mono text-cyan-400 border border-cyan-500/20 z-20 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                    LIVE PREVIEW
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-1.5 text-[11px] font-mono">
-                <div className="flex justify-between items-center border-b border-slate-800/60 pb-1">
-                  <span className="text-slate-400">Camera Device</span>
-                  <span className="text-cyan-400 font-bold">● ON</span>
-                </div>
-                <div className="flex justify-between items-center border-b border-slate-800/60 pb-1">
-                  <span className="text-slate-400">Hand Detection</span>
-                  <span className={telemetry.hands > 0 ? 'text-cyan-400 font-bold' : 'text-slate-500'}>
-                    {telemetry.hands > 0 ? '● TRACKED' : '○ NONE'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center border-b border-slate-800/60 pb-1">
-                  <span className="text-slate-400">Active Gesture</span>
-                  <span className={telemetry.activeGesture !== 'NONE' ? 'text-cyan-400 font-bold' : 'text-slate-500'}>
-                    {telemetry.activeGesture}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center border-b border-slate-800/60 pb-1">
-                  <span className="text-slate-400">Processor FPS</span>
-                  <span className="text-slate-200 font-bold">{telemetry.fps} FPS</span>
-                </div>
-                <div className="flex justify-between items-center border-b border-slate-800/60 pb-1">
-                  <span className="text-slate-400">Confidence Score</span>
-                  <span className="text-cyan-400 font-bold">{telemetry.confidence}%</span>
-                </div>
-              </div>
-
-              {/* Live Gesture Sensitivity & Smoothing Tuning Sliders */}
-              <div className="mt-2 pt-2 border-t border-slate-800/80 space-y-2 font-mono text-[10px]">
-                <div>
-                  <div className="flex justify-between text-slate-400 mb-1">
-                    <span>Sensitivity</span>
-                    <span className="text-cyan-300 font-bold">{(settings.handControl?.sensitivity ?? 1.6).toFixed(1)}x</span>
+              {handControlEnabled ? (
+                <>
+                  <div className="space-y-1.5 text-[11px] font-mono">
+                    <div className="flex justify-between items-center border-b border-slate-800/60 pb-1">
+                      <span className="text-slate-400">Camera Device</span>
+                      <span className="text-cyan-400 font-bold">● ON</span>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-slate-800/60 pb-1">
+                      <span className="text-slate-400">Hand Detection</span>
+                      <span className={telemetry.hands > 0 ? 'text-cyan-400 font-bold' : 'text-slate-500'}>
+                        {telemetry.hands > 0 ? '● TRACKED' : '○ NONE'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-slate-800/60 pb-1">
+                      <span className="text-slate-400">Active Gesture</span>
+                      <span className={telemetry.activeGesture !== 'NONE' ? 'text-cyan-400 font-bold' : 'text-slate-500'}>
+                        {telemetry.activeGesture}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-slate-800/60 pb-1">
+                      <span className="text-slate-400">Processor FPS</span>
+                      <span className="text-slate-200 font-bold">{telemetry.fps} FPS</span>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-slate-800/60 pb-1">
+                      <span className="text-slate-400">Confidence Score</span>
+                      <span className="text-cyan-400 font-bold">{telemetry.confidence}%</span>
+                    </div>
                   </div>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="3.0"
-                    step="0.1"
-                    value={settings.handControl?.sensitivity ?? 1.6}
-                    onChange={(e) => updateHandControlSettings({ sensitivity: parseFloat(e.target.value) })}
-                    className="w-full h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-cyan-400"
-                  />
-                </div>
 
-                <div>
-                  <div className="flex justify-between text-slate-400 mb-1">
-                    <span>Smoothing</span>
-                    <span className="text-cyan-300 font-bold">{(settings.handControl?.smoothing ?? 0.45).toFixed(2)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.05"
-                    max="0.95"
-                    step="0.05"
-                    value={settings.handControl?.smoothing ?? 0.45}
-                    onChange={(e) => updateHandControlSettings({ smoothing: parseFloat(e.target.value) })}
-                    className="w-full h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-cyan-400"
-                  />
-                </div>
+                  {/* Live Gesture Sensitivity & Smoothing Tuning Sliders */}
+                  <div className="mt-2 pt-2 border-t border-slate-800/80 space-y-2 font-mono text-[10px]">
+                    <div>
+                      <div className="flex justify-between text-slate-400 mb-1">
+                        <span>Sensitivity</span>
+                        <span className="text-cyan-300 font-bold">{(settings.handControl?.sensitivity ?? 1.6).toFixed(1)}x</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="3.0"
+                        step="0.1"
+                        value={settings.handControl?.sensitivity ?? 1.6}
+                        onChange={(e) => updateHandControlSettings({ sensitivity: parseFloat(e.target.value) })}
+                        className="w-full h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-cyan-400"
+                      />
+                    </div>
 
-                <div>
-                  <div className="flex justify-between text-slate-400 mb-1">
-                    <span>Pinch Threshold</span>
-                    <span className="text-cyan-300 font-bold">{(settings.handControl?.pinchThreshold ?? 0.32).toFixed(2)}</span>
+                    <div>
+                      <div className="flex justify-between text-slate-400 mb-1">
+                        <span>Smoothing</span>
+                        <span className="text-cyan-300 font-bold">{(settings.handControl?.smoothing ?? 0.45).toFixed(2)}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.05"
+                        max="0.95"
+                        step="0.05"
+                        value={settings.handControl?.smoothing ?? 0.45}
+                        onChange={(e) => updateHandControlSettings({ smoothing: parseFloat(e.target.value) })}
+                        className="w-full h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-cyan-400"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-slate-400 mb-1">
+                        <span>Pinch Threshold</span>
+                        <span className="text-cyan-300 font-bold">{(settings.handControl?.pinchThreshold ?? 0.32).toFixed(2)}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.15"
+                        max="0.55"
+                        step="0.01"
+                        value={settings.handControl?.pinchThreshold ?? 0.32}
+                        onChange={(e) => updateHandControlSettings({ pinchThreshold: parseFloat(e.target.value) })}
+                        className="w-full h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-cyan-400"
+                      />
+                    </div>
                   </div>
-                  <input
-                    type="range"
-                    min="0.15"
-                    max="0.55"
-                    step="0.01"
-                    value={settings.handControl?.pinchThreshold ?? 0.32}
-                    onChange={(e) => updateHandControlSettings({ pinchThreshold: parseFloat(e.target.value) })}
-                    className="w-full h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-cyan-400"
-                  />
+                </>
+              ) : (
+                <div className="space-y-1.5 text-[11px] font-mono text-slate-500">
+                  <div className="flex justify-between items-center border-b border-slate-800/60 pb-1">
+                    <span>Camera State</span>
+                    <span className="text-slate-500">STANDBY</span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-slate-800/60 pb-1">
+                    <span>Hand Tracking</span>
+                    <span className="text-slate-500">OFF</span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center flex-1 text-center p-4 border border-dashed border-slate-800 rounded-lg">
-              <span className="text-xs text-slate-500 mb-2 font-mono">Hand Gesture Control is disabled.</span>
-              <span className="text-[10px] text-slate-600 font-mono">Toggle hand control above or use voice: "Jarvis, enable hand control"</span>
-            </div>
-          )}
         </div>
 
         {/* Panel 2: Active App & Scene Graph */}

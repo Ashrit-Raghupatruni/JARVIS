@@ -128,16 +128,16 @@ class SafetyGatekeeper:
                     )
 
         # ── 3. Deep Inspection: Application Launches ──────────────────
-        elif tool_name == "open_app":
+        elif tool_name in ("open_app", "open_application"):
             app_name = str(sanitized_args.get("app_name", "")).strip()
-            dangerous_chars = ["&", ";", "|", ">", "<", "$", "`", "\n"]
-            if any(char in app_name for char in dangerous_chars):
-                logger.warning("SafetyGatekeeper: Intercepted malicious command injection in open_app: '{}'", app_name)
+            dangerous_chars = ["&", ";", "|", ">", "<", "$", "`", "\n", "rm ", "del ", "format ", "system32", "syswow64"]
+            if any(char in app_name.lower() for char in dangerous_chars):
+                logger.warning("SafetyGatekeeper: Intercepted malicious command injection in open_application: '{}'", app_name)
                 return SafetyDecision(
                     allowed=False,
                     risk_level=ActionRiskLevel.DESTRUCTIVE,
                     requires_user_approval=True,
-                    reason=f"Security Policy Rejected: Command injection detected in app_name '{app_name}'",
+                    reason=f"Security Policy Rejected: Command injection or dangerous path detected in app_name '{app_name}'",
                     validated_args={},
                 )
 

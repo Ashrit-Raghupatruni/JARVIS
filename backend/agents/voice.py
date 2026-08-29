@@ -393,9 +393,23 @@ class VoiceAgent:
             data=StatusMessage(state=AssistantState.PROCESSING).model_dump(),
         )
 
-        # Speech-to-text
+        # Speech-to-text with streaming interim tokens
         try:
-            transcript = await self.stt.transcribe(combined_audio)
+            transcript = ""
+            if hasattr(self.stt, "transcribe_stream"):
+                async for item in self.stt.transcribe_stream(combined_audio):
+                    if self._session_id != session_id:
+                        return
+                    if item.get("type") == "interim" and item.get("text"):
+                        yield WSMessage(
+                            type="transcript",
+                            data={"text": item["text"], "is_final": False}
+                        )
+                    elif item.get("type") == "final":
+                        transcript = item.get("text", "")
+            else:
+                transcript = await self.stt.transcribe(combined_audio)
+
             transcript = transcript.strip()
 
             if self._session_id != session_id:

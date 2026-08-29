@@ -670,12 +670,129 @@ class ToolRegistry:
                 "type": "object",
                 "properties": {
                     "auto_lock_enabled": {"type": "boolean", "description": "Enable or disable auto-locking on departure"},
-                    "debounce_seconds": {"type": "number", "description": "Sustained weak signal seconds before locking (default: 7.0s)"},
                     "lock_threshold_dbm": {"type": "integer", "description": "Signal threshold in dBm weaker than which triggers departure (e.g. -82)"},
                     "wake_threshold_dbm": {"type": "integer", "description": "Signal threshold in dBm stronger than which triggers biometric wake (e.g. -65)"}
                 }
             },
             handler=_proximity_config_handler
+        )
+
+        # ── Atomic Fast-Path Tools ─────────────────────────────────────
+        async def _lock_pc_handler():
+            import ctypes
+            try:
+                success = ctypes.windll.user32.LockWorkStation()
+                return {"status": "success", "locked": bool(success), "message": "Workstation locked."}
+            except Exception as e:
+                import subprocess
+                subprocess.run("rundll32.exe user32.dll,LockWorkStation", shell=True)
+                return {"status": "success", "locked": True, "message": "Workstation locked via rundll32 fallback."}
+
+        async def _screenshot_handler():
+            import os, time, pyautogui
+            os.makedirs("data/artifacts", exist_ok=True)
+            path = f"data/artifacts/screenshot_{int(time.time())}.png"
+            img = await asyncio.to_thread(pyautogui.screenshot)
+            img.save(path)
+            return {"status": "success", "file_path": os.path.abspath(path), "message": f"Screenshot saved to {path}."}
+
+        async def _system_status_handler():
+            import psutil
+            cpu = psutil.cpu_percent(interval=None)
+            mem = psutil.virtual_memory()
+            disk = psutil.disk_usage("/")
+            battery = psutil.sensors_battery()
+            bat_info = f"{battery.percent}% ({'Plugged In' if battery.power_plugged else 'Battery'})" if battery else "Desktop (AC Power)"
+            return {
+                "status": "success",
+                "cpu_percent": f"{cpu}%",
+                "ram_percent": f"{mem.percent}% (Used: {mem.used // (1024**2)} MB / {mem.total // (1024**2)} MB)",
+                "disk_percent": f"{disk.percent}%",
+                "battery": bat_info,
+                "summary": f"CPU: {cpu}% | RAM: {mem.percent}% | Disk: {disk.percent}% | Battery: {bat_info}"
+            }
+
+        async def _close_app_handler(app_name: str):
+            from backend.services.manager import ServiceManager
+            auto_svc = ServiceManager.get_instance("automation")
+            if auto_svc and hasattr(auto_svc, "close_application"):
+                return await auto_svc.close_application(app_name)
+            import subprocess
+            app_clean = app_name.lower().replace(".exe", "").strip()
+            subprocess.run(f"taskkill /F /IM {app_clean}.exe /T", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return f"Closed application '{app_name}'."
+
+        async def _media_control_handler(action: str = "play_pause"):
+            import ctypes
+            VK_MEDIA_NEXT_TRACK = 0xB0
+            VK_MEDIA_PREV_TRACK = 0xB1
+            VK_MEDIA_PLAY_PAUSE = 0xB3
+            VK_VOLUME_MUTE = 0xAD
+            
+            key_map = {
+                "play_pause": VK_MEDIA_PLAY_PAUSE,
+                "next_track": VK_MEDIA_NEXT_TRACK,
+                "prev_track": VK_MEDIA_PREV_TRACK,
+                "mute": VK_VOLUME_MUTE
+            }
+            vk = key_map.get(action, VK_MEDIA_PLAY_PAUSE)
+            ctypes.windll.user32.keybd_event(vk, 0, 0, 0)
+            ctypes.windll.user32.keybd_event(vk, 0, 2, 0)
+            return {"status": "success", "action": action, "message": f"Executed media control '{action}'."}
+
+        self.register(
+            name="lock_pc",
+            description="Locks the Windows workstation instantly using native Win32 LockWorkStation API.",
+            category="system",
+            risk_level="low",
+            parameters={"type": "object", "properties": {}},
+            handler=_lock_pc_handler
+        )
+
+        self.register(
+            name="take_screenshot",
+            description="Captures high-resolution primary display snapshot and saves to local artifacts.",
+            category="system",
+            risk_level="low",
+            parameters={"type": "object", "properties": {}},
+            handler=_screenshot_handler
+        )
+
+        self.register(
+            name="get_system_status",
+            description="Queries real-time hardware telemetry: CPU, RAM, Disk utilization, and Battery percentage.",
+            category="system",
+            risk_level="low",
+            parameters={"type": "object", "properties": {}},
+            handler=_system_status_handler
+        )
+
+        self.register(
+            name="close_application",
+            description="Gracefully terminates a running desktop application by process name.",
+            category="system",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {"app_name": {"type": "string", "description": "Name of the application to close"}},
+                "required": ["app_name"]
+            },
+            handler=_close_app_handler
+        )
+
+        self.register(
+            name="media_control",
+            description="Controls multimedia playback: play_pause, next_track, prev_track, or mute.",
+            category="media",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["play_pause", "next_track", "prev_track", "mute"]}
+                },
+                "required": ["action"]
+            },
+            handler=_media_control_handler
         )
 
 

@@ -88,6 +88,9 @@ class MobileApprovalRequest(BaseModel):
 class MobileApprovalDecision(BaseModel):
     approval_id: str
     decision: str = Field(..., description="approve, deny, always_allow, always_deny")
+    biometric_authenticated: bool = Field(False, description="Whether device biometric hardware (fingerprint/Face ID) verified the user")
+    biometric_signature: Optional[str] = Field(None, description="Optional cryptographic biometric proof or hardware token")
+
 
 
 class ScreenPreviewResponse(BaseModel):

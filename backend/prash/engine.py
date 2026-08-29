@@ -109,9 +109,9 @@ class PrashEngine:
             from backend.prash.memory import PrashMemory
 
             # ── Resolve Checkpoint & Config ───────────────────────────
-            checkpoint_path = self.model_dir / "prash_397m_model.pt"
+            checkpoint_path = self.model_dir / "checkpoint_latest.pt"
             if not checkpoint_path.exists():
-                checkpoint_path = self.model_dir / "checkpoint_latest.pt"
+                checkpoint_path = self.model_dir / "prash_397m_model.pt"
 
             ckpt_data = None
             if checkpoint_path.exists():
@@ -249,24 +249,40 @@ class PrashEngine:
                 max_turns=10,
                 max_tokens=max_seq_len - 64,  # leave headroom for generation
             )
+            from backend.prash.kv_cache import PrashMultiTurnMemory
+            self.kv_memory = PrashMultiTurnMemory(
+                n_layers=getattr(self.config, "n_layers", 6),
+                max_seq_len=getattr(self.config, "max_seq_len", 512),
+                device=str(self.device),
+            )
 
             # ── Load valid vocabulary from training data ──────────────
             self.valid_vocab = set()
-            train_data_path = self.model_dir / "train_data.jsonl"
-            if train_data_path.exists():
-                try:
-                    with open(train_data_path, "r", encoding="utf-8") as fh:
-                        for line in fh:
-                            if line.strip():
-                                data = json.loads(line)
-                                text = f"{data.get('instruction', '')} {data.get('response', '')}"
+            for cand_file in ["train_data.jsonl", "train_data_enhanced.jsonl", "synthetic_dataset_enhanced.json", "synthetic_dataset.json"]:
+                cand_path = self.model_dir / cand_file
+                if cand_path.exists():
+                    try:
+                        if cand_path.suffix == ".json":
+                            raw = json.loads(cand_path.read_text(encoding="utf-8"))
+                            for item in raw:
+                                text = f"{item.get('instruction', '')} {item.get('response', '')}"
                                 for w in text.lower().split():
-                                    w_clean = w.strip(".,!?\"'()[]{}")
+                                    w_clean = w.strip(".,!?\"'()[]{}:;")
                                     if w_clean:
                                         self.valid_vocab.add(w_clean)
-                    logger.info("Loaded {} unique valid vocabulary words from training data", len(self.valid_vocab))
-                except Exception as ve:
-                    logger.warning("Could not build valid vocabulary from training data: {}", ve)
+                        else:
+                            with open(cand_path, "r", encoding="utf-8") as fh:
+                                for line in fh:
+                                    if line.strip():
+                                        data = json.loads(line)
+                                        text = f"{data.get('instruction', '')} {data.get('response', '')}"
+                                        for w in text.lower().split():
+                                            w_clean = w.strip(".,!?\"'()[]{}:;")
+                                            if w_clean:
+                                                self.valid_vocab.add(w_clean)
+                    except Exception as ve:
+                        logger.warning("Could not read vocabulary from {}: {}", cand_file, ve)
+            logger.info("Loaded {} unique valid vocabulary words from training corpus", len(self.valid_vocab))
 
             self._available = True
             logger.info("✓ Prash engine initialised successfully")
@@ -276,6 +292,11 @@ class PrashEngine:
             logger.error("Prash engine init failed: {}", exc)
             self._available = False
             return False
+
+    @property
+    def is_available(self) -> bool:
+        """Returns True if the engine has been successfully initialised."""
+        return self._available
 
     # ── Heuristic Response Validation ────────────────────────────────────
 
@@ -293,7 +314,7 @@ class PrashEngine:
             return False
             
         words = response_text.lower().split()
-        cleaned_words = [w.strip(".,!?\"'()[]{}") for w in words]
+        cleaned_words = [w.strip(".,!?\"'()[]{}:;`~<>\\/") for w in words]
         cleaned_words = [w for w in cleaned_words if w]  # Filter out empty strings
         
         # 2. Reject single-letter gibberish words (except 'a' and 'i')
@@ -311,21 +332,21 @@ class PrashEngine:
         # 4. Reject highly repetitive responses (low unique word ratio)
         if len(cleaned_words) >= 5:
             unique_ratio = len(set(cleaned_words)) / len(cleaned_words)
-            if unique_ratio < 0.7:
+            if unique_ratio < 0.6:
                 logger.info(f"Prash validation failed: unique word ratio {unique_ratio:.2f} is too low")
                 return False
                 
         # 5. Check if all generated words and prompt words are in the training vocabulary
         if hasattr(self, "valid_vocab") and self.valid_vocab:
             # Check prompt words (if prompt contains unknown domain words, Prash cannot be confident)
-            query_words = [w.strip(".,!?\"'()[]{}") for w in query.lower().split() if len(w.strip(".,!?\"'()[]{}")) > 2]
+            query_words = [w.strip(".,!?\"'()[]{}:;`~<>\\/") for w in query.lower().split() if len(w.strip(".,!?\"'()[]{}:;`~<>\\/")) > 2]
             for qw in query_words:
                 if qw not in self.valid_vocab:
                     logger.info(f"Prash validation failed: prompt word '{qw}' is not in Prash vocabulary — switching to primary LLM")
                     return False
 
             for w in cleaned_words:
-                if w not in self.valid_vocab:
+                if w not in self.valid_vocab and not w.isdigit():
                     logger.info(f"Prash validation failed: generated word '{w}' is not in training vocabulary")
                     return False
                     
@@ -494,6 +515,43 @@ class PrashEngine:
         except Exception as exc:
             logger.error("Prash generate error: {}", exc)
             return ("", False, {"error": str(exc), "provider": "prash"})
+
+    async def generate_multi_turn(
+        self,
+        query: str,
+        session_id: str = "default",
+        max_new_tokens: int = 128,
+        temperature: float = 0.5,
+    ) -> Dict[str, Any]:
+        """
+        Executes multi-turn Prash generation retaining KV-cache states and conversation turns across dialogue turns.
+        """
+        session = self.kv_memory.get_or_create_session(session_id)
+        q_tokens = self.tokenizer.encode(query) if hasattr(self.tokenizer, "encode") else []
+        self.kv_memory.add_turn(session_id, role="user", content=query, token_ids=q_tokens)
+
+        # Build prompt incorporating historical dialogue
+        history = self.kv_memory.get_history(session_id)
+        context_prompt = "\n".join([f"{t['role'].capitalize()}: {t['content']}" for t in history])
+        context_prompt += "\nAssistant:"
+
+        response_text, confident, meta = await self.generate(
+            prompt=context_prompt,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+        )
+
+        resp_tokens = self.tokenizer.encode(response_text) if hasattr(self.tokenizer, "encode") else []
+        self.kv_memory.add_turn(session_id, role="assistant", content=response_text, token_ids=resp_tokens)
+
+        return {
+            "session_id": session_id,
+            "response": response_text,
+            "confident": confident,
+            "metadata": meta,
+            "turns_count": len(session["turns"]),
+        }
+
 
     # ── Streaming generation ─────────────────────────────────────────────
 

@@ -17,13 +17,16 @@ import {
 export interface QueuedTaskItem {
   id: string
   title: string
-  command: str
+  command: string
   priority: number
   status: 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled'
   progress: number
-  logs?: str[]
-  result?: str
+  logs?: string[]
+  result?: string
+  peak_memory_mb?: number
+  cpu_time_seconds?: number
 }
+
 
 interface TaskQueueManagerProps {
   tasks?: QueuedTaskItem[]
@@ -145,7 +148,37 @@ export default function TaskQueueManager({
         </button>
       </div>
 
+      {/* Sub-Agent Quota & Long-Horizon Checkpoint Status Bar */}
+      <div className="px-4 py-2 bg-slate-950/90 border-b border-cyan-500/10 flex items-center justify-between text-[10px] font-mono text-slate-400">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
+            <span>Sandbox Quota: <strong className="text-slate-200">512 MB RSS</strong> | <strong className="text-slate-200">30s CPU</strong></span>
+          </span>
+          <span className="text-slate-700">|</span>
+          <span className="flex items-center gap-1">
+            <span>Recovery Interlock: <strong className="text-cyan-300">Active Checkpoint</strong></span>
+          </span>
+        </div>
+        <button
+          onClick={async () => {
+            try {
+              const res = await fetch('http://127.0.0.1:8000/api/v1/developer/recover_interrupted_goals', { method: 'POST' });
+              if (res.ok) {
+                alert('✓ Scanned and recovered interrupted goal checkpoints.');
+              }
+            } catch (e) {
+              console.log('Recovery trigger notice:', e);
+            }
+          }}
+          className="px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-900/50 transition cursor-pointer"
+        >
+          Scan & Resume Goals
+        </button>
+      </div>
+
       {/* Add Task Drawer */}
+
       {showAdd && (
         <div className="p-3 bg-slate-900 border-b border-slate-800 flex flex-col gap-2">
           <input

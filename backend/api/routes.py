@@ -122,7 +122,11 @@ async def system_status(request: Request):
 
 
 @router.post("/live_mode/toggle")
+@router.post("/api/live_mode/toggle")
 @router.post("/api/v1/live_mode/toggle")
+@router.get("/live_mode/toggle")
+@router.get("/api/live_mode/toggle")
+@router.get("/api/v1/live_mode/toggle")
 async def toggle_live_mode_public(request: Request, enable: bool = True):
     """Public Desktop API endpoint for toggling Live Mode perception loop."""
     from backend.services.manager import ServiceManager
@@ -861,6 +865,22 @@ async def reject_developer_approval(approval_id: str):
     if not dev_service:
         return {"status": "error", "message": "Self development service offline."}
     return dev_service.reject_modification(approval_id)
+
+@router.post("/api/v1/developer/recover_interrupted_goals")
+async def recover_interrupted_goals_endpoint():
+    """Scans and recovers interrupted goal checkpoints on reboot/request."""
+    try:
+        from backend.services.long_horizon_checkpoint import long_horizon_manager
+        recovered = long_horizon_manager.recover_interrupted_goals()
+        return {
+            "status": "success",
+            "recovered_count": len(recovered),
+            "recovered_goals": [g.to_dict() for g in recovered]
+        }
+    except Exception as e:
+        logger.error(f"Error recovering interrupted goals: {e}")
+        return {"status": "error", "message": str(e)}
+
 
 # ── Monitored Topics Management ────────────────────────────────────────
 
