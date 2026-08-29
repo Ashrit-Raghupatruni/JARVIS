@@ -678,8 +678,11 @@ class PlannerAgent:
             yield WSMessage(type="status", data=StatusMessage(state=AssistantState.EXECUTING).model_dump())
             
             import sys, subprocess, os
-            suite_path = os.path.join(os.getcwd(), "scratch", "test_master_integration_suite.py")
+            suite_path = os.path.join(os.getcwd(), "backend", "tests", "test_master_integration_suite.py")
+            if not os.path.exists(suite_path):
+                suite_path = os.path.join(os.getcwd(), "scratch", "test_master_integration_suite.py")
             try:
+
                 proc = subprocess.run(
                     [sys.executable, suite_path],
                     capture_output=True,
