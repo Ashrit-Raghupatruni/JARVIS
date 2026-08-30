@@ -906,3 +906,70 @@ async def remove_monitored_topic(topic: str):
     engine = ProactiveEngine()
     return engine.remove_monitored_topic(topic)
 
+
+# ── Windows Explorer Context Action Endpoint ──────────────────────────
+
+class DesktopContextActionRequest(BaseModel):
+    action: str  # "analyze" or "summarize"
+    target_path: str
+
+
+@router.post("/api/v1/desktop/context_action")
+async def desktop_context_action(payload: DesktopContextActionRequest):
+    """
+    Handle Windows Explorer Right-Click Context Menu Actions ("Ask JARVIS").
+    Performs deep analysis or summarization on clicked files or folders.
+    """
+    import os
+    action = payload.action.lower().strip()
+    target_path = os.path.abspath(payload.target_path)
+
+    if not os.path.exists(target_path):
+        return {"status": "error", "message": f"Target path does not exist: {target_path}"}
+
+    is_dir = os.path.isdir(target_path)
+    logger.info(f"📁 Desktop Context Action: {action} on {'Directory' if is_dir else 'File'}: {target_path}")
+
+    # Read preview / structure
+    preview = ""
+    try:
+        if is_dir:
+            items = os.listdir(target_path)[:30]
+            preview = f"Directory contents ({len(items)} items shown):\n" + "\n".join(f"- {it}" for it in items)
+        else:
+            file_size = os.path.getsize(target_path)
+            if file_size > 10 * 1024 * 1024:  # > 10MB
+                preview = f"Large file ({file_size / (1024*1024):.1f} MB), reading first 16KB:\n"
+                with open(target_path, "r", encoding="utf-8", errors="ignore") as f:
+                    preview += f.read(16384)
+            else:
+                with open(target_path, "r", encoding="utf-8", errors="ignore") as f:
+                    preview = f.read(32768)
+    except Exception as e:
+        preview = f"Error reading content: {e}"
+
+    prompt = (
+        f"The user right-clicked a {'directory' if is_dir else 'file'} in Windows Explorer "
+        f"and selected '{action.upper()} WITH JARVIS'.\n\n"
+        f"Path: {target_path}\n\n"
+        f"Content Preview / Structure:\n{preview[:4000]}\n\n"
+        f"Please provide a concise, executive {'analysis' if action == 'analyze' else 'summary'}."
+    )
+
+    try:
+        from backend.services.llm import LLMService
+        llm = LLMService()
+        result_text = await asyncio.to_thread(llm.generate_response, prompt)
+    except Exception as err:
+        logger.warning(f"LLM generation fallback: {err}")
+        result_text = f"Processed {os.path.basename(target_path)}: {'Directory' if is_dir else 'File'} at {target_path}."
+
+    return {
+        "status": "ok",
+        "action": action,
+        "target_path": target_path,
+        "is_directory": is_dir,
+        "result": result_text
+    }
+
+

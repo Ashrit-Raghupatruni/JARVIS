@@ -47,9 +47,12 @@ function killPortOwner(port: number): void {
 let mainWindow: BrowserWindow | null = null
 let siriWindow: BrowserWindow | null = null
 let siriHideTimeout: NodeJS.Timeout | null = null
+let omniWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let backendProcess: ChildProcess | null = null
 let isQuitting = false
+let isLiveModeActive = false
+
 
 function createTrayIcon(): nativeImage {
   // Create a simple 16x16 cyan circle icon programmatically
@@ -194,12 +197,16 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    // Show the main dashboard window immediately on startup
-    mainWindow?.show()
-    mainWindow?.focus()
-    // Also briefly show the Siri greeting animation widget
-    showSiriWindowTemporarily(3000)
+    const isHiddenLaunch = process.argv.includes('--autostart') || process.argv.includes('--hidden') || process.argv.includes('--minimized')
+    if (!isHiddenLaunch) {
+      mainWindow?.show()
+      mainWindow?.focus()
+      showSiriWindowTemporarily(3000)
+    } else {
+      console.log('[Main] Started in background / minimized-to-tray mode.')
+    }
   })
+
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
@@ -226,24 +233,15 @@ async function requestMobileShutdownApproval(): Promise<boolean> {
   return false
 }
 
-  // Handle window close -> Intercept with Mobile Security Gatekeeper Approval!
-  mainWindow.on('close', async (event) => {
-    if (!isQuittingApproved) {
+  // Handle window close -> Minimize to system tray instead of terminating
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
       event.preventDefault()
-      console.log('[Security Gatekeeper] Intercepted window close! Awaiting mobile approval...')
-      const approved = await requestMobileShutdownApproval()
-      if (approved) {
-        console.log('[Security Gatekeeper] Mobile approved desktop shutdown. Closing app...')
-        isQuittingApproved = true
-        isQuitting = true
-        app.quit()
-      } else {
-        console.log('[Security Gatekeeper] Mobile DENIED desktop shutdown. Keeping JARVIS active.')
-        mainWindow?.show()
-        mainWindow?.focus()
-      }
+      mainWindow?.hide()
+      console.log('[Tray] Window minimized to system tray.')
     }
   })
+
 
   // When main window is focused, hide the Siri widget popup
   mainWindow.on('focus', () => {
@@ -380,10 +378,32 @@ function createTray(): void {
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Show JARVIS',
+      label: 'Open JARVIS',
       click: (): void => {
-        mainWindow?.show()
-        mainWindow?.focus()
+        if (mainWindow) {
+          if (mainWindow.isMinimized()) mainWindow.restore()
+          mainWindow.show()
+          mainWindow.focus()
+        }
+      }
+    },
+    {
+      label: 'Toggle Live Mode',
+      click: async (): Promise<void> => {
+        try {
+          const port = getBackendPort()
+          isLiveModeActive = !isLiveModeActive
+          await net.fetch(`http://127.0.0.1:${port}/api/v1/mobile/live_mode/toggle?enable=${isLiveModeActive}`, { method: 'POST' })
+          if (Notification.isSupported()) {
+            new Notification({
+              title: '👁️ JARVIS Live Mode',
+              body: `Live Mode ${isLiveModeActive ? 'Activated' : 'Deactivated'}`,
+              silent: false
+            }).show()
+          }
+        } catch (e) {
+          console.error('[Tray] Failed to toggle live mode:', e)
+        }
       }
     },
     {
@@ -396,7 +416,7 @@ function createTray(): void {
     },
     { type: 'separator' },
     {
-      label: 'Quit',
+      label: 'Quit JARVIS',
       click: (): void => {
         isQuitting = true
         app.quit()
@@ -408,8 +428,128 @@ function createTray(): void {
   tray.setContextMenu(contextMenu)
 
   tray.on('double-click', () => {
-    mainWindow?.show()
-    mainWindow?.focus()
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.show()
+      mainWindow.focus()
+    }
+  })
+
+  tray.on('click', () => {
+    if (mainWindow) {
+      if (mainWindow.isVisible()) {
+        mainWindow.hide()
+      } else {
+        mainWindow.show()
+        mainWindow.focus()
+      }
+    }
+  })
+}
+
+
+function createOmniWindow(): void {
+  const { screen } = require('electron')
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize
+
+  const width = 640
+  const height = 64
+
+  omniWindow = new BrowserWindow({
+    width,
+    height,
+    x: Math.round((screenWidth - width) / 2),
+    y: Math.round(screenHeight * 0.25),
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    show: false,
+    focusable: true,
+    webPreferences: {
+      sandbox: false,
+      contextIsolation: false,
+      nodeIntegration: true
+    }
+  })
+
+  const omniHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        html, body { background: transparent; width: 100%; height: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .omni-bar {
+          width: 100%; height: 100%;
+          background: rgba(3, 7, 18, 0.96);
+          border: 1.5px solid #00e5ff;
+          border-radius: 14px;
+          box-shadow: 0 10px 30px rgba(0, 229, 255, 0.25), 0 0 20px rgba(0, 0, 0, 0.9);
+          display: flex; align-items: center; padding: 0 16px; gap: 12px;
+        }
+        .icon { font-size: 18px; color: #00e5ff; text-shadow: 0 0 8px #00e5ff; }
+        input {
+          flex: 1; background: transparent; border: none; outline: none;
+          color: #f8fafc; font-size: 15px; font-weight: 500;
+        }
+        input::placeholder { color: #475569; font-size: 13px; }
+        .badge {
+          font-size: 10px; font-weight: bold; color: #64748b;
+          border: 1px solid #334155; padding: 3px 6px; border-radius: 4px;
+        }
+        .status-pill {
+          display: none; font-size: 11px; color: #10b981; font-weight: 600;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="omni-bar">
+        <span class="icon">⚡</span>
+        <input id="promptInput" type="text" placeholder="Ask JARVIS or type a command... (Esc to dismiss)" autofocus />
+        <span id="statusPill" class="status-pill">Routing...</span>
+        <span class="badge">ESC</span>
+      </div>
+      <script>
+        const { ipcRenderer } = require('electron');
+        const input = document.getElementById('promptInput');
+        const status = document.getElementById('statusPill');
+
+        window.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            ipcRenderer.send('omni-hide');
+          } else if (e.key === 'Enter') {
+            const val = input.value.trim();
+            if (val) {
+              status.style.display = 'inline';
+              status.innerText = 'Routing to Planner...';
+              ipcRenderer.send('omni-submit', val);
+              input.value = '';
+            }
+          }
+        });
+
+        ipcRenderer.on('omni-focus', () => {
+          input.value = '';
+          status.style.display = 'none';
+          input.focus();
+        });
+      </script>
+    </body>
+    </html>
+  `
+
+  omniWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(omniHtml)}`)
+
+  omniWindow.on('blur', () => {
+    omniWindow?.hide()
+  })
+
+  omniWindow.on('closed', () => {
+    omniWindow = null
   })
 }
 
@@ -418,7 +558,23 @@ function registerGlobalShortcuts(): void {
   globalShortcut.register('CommandOrControl+Space', () => {
     mainWindow?.webContents.send('push-to-talk-toggle')
   })
+
+  // Global Omni-Bar: Alt+Shift+Space (Conflict-free in Windows, avoids Alt+Space Win32 menu)
+  const omniShortcut = 'Alt+Shift+Space'
+  const ok = globalShortcut.register(omniShortcut, () => {
+    if (omniWindow) {
+      if (omniWindow.isVisible()) {
+        omniWindow.hide()
+      } else {
+        omniWindow.show()
+        omniWindow.focus()
+        omniWindow.webContents.send('omni-focus')
+      }
+    }
+  })
+  console.log(`[Main] Registered global Omni-Bar shortcut (${omniShortcut}):`, ok)
 }
+
 
 // IPC Handlers
 function setupIPC(): void {
@@ -533,7 +689,78 @@ function setupIPC(): void {
       mainWindow.focus()
     }
   })
+
+  // Omni-Bar IPC Handlers
+  ipcMain.on('omni-hide', () => {
+    omniWindow?.hide()
+  })
+
+  ipcMain.on('omni-submit', async (_event, prompt: string) => {
+    console.log('[OmniBar] Dispatched command:', prompt)
+    omniWindow?.hide()
+
+    try {
+      const port = getBackendPort()
+      const res = await net.fetch(`http://127.0.0.1:${port}/api/v1/mobile/system/command`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: 'natural_language', params: { prompt } })
+      })
+      const data = await res.json()
+      console.log('[OmniBar] Result:', data)
+      if (Notification.isSupported()) {
+        new Notification({
+          title: '⚡ JARVIS Omni-Bar',
+          body: data.message || data.response || `Executed: ${prompt.slice(0, 50)}`,
+          silent: false
+        }).show()
+      }
+    } catch (err) {
+      console.error('[OmniBar] Execution error:', err)
+      if (Notification.isSupported()) {
+        new Notification({
+          title: '⚠️ JARVIS Omni-Bar Error',
+          body: String(err),
+          silent: false
+        }).show()
+      }
+    }
+  })
 }
+
+function handleContextCommandLine(args: string[]): void {
+  for (let i = 0; i < args.length; i++) {
+    if (args[i].startsWith('--context-action=')) {
+      const action = args[i].split('=')[1]
+      const targetPath = args[i + 1] || ''
+      if (targetPath) {
+        dispatchContextAction(action, targetPath)
+      }
+    }
+  }
+}
+
+async function dispatchContextAction(action: string, targetPath: string): Promise<void> {
+  try {
+    const port = getBackendPort()
+    console.log(`[Explorer Context] Dispatching action '${action}' on: ${targetPath}`)
+    await net.fetch(`http://127.0.0.1:${port}/api/v1/desktop/context_action`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, target_path: targetPath })
+    })
+    if (Notification.isSupported()) {
+      new Notification({
+        title: '📁 Windows Explorer Action',
+        body: `Processing ${action} for ${targetPath}`,
+        silent: false
+      }).show()
+    }
+  } catch (err) {
+    console.error('[Main] Failed to dispatch context action:', err)
+  }
+}
+
 
 let overlayWindow: BrowserWindow | null = null
 
@@ -672,12 +899,13 @@ const gotTheLock = app.requestSingleInstanceLock()
 if (!gotTheLock) {
   app.quit()
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, commandLine) => {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore()
       mainWindow.show()
       mainWindow.focus()
     }
+    handleContextCommandLine(commandLine)
   })
 
   app.whenReady().then(() => {
@@ -690,9 +918,11 @@ if (!gotTheLock) {
     setupIPC()
     createWindow()
     createSiriWindow()
+    createOmniWindow()
     createTray()
     registerGlobalShortcuts()
     startBackendProcess()
+    handleContextCommandLine(process.argv)
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
@@ -700,6 +930,7 @@ if (!gotTheLock) {
       }
     })
   })
+
 }
 
 app.on('before-quit', () => {
