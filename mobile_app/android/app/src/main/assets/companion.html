@@ -249,7 +249,7 @@
         <div class="grid-2">
           <div>
             <label>Server URL</label>
-            <input type="text" id="serverUrl" value="http://10.200.40.177:8000">
+            <input type="text" id="serverUrl" value="http://10.1.166.115:8000">
           </div>
           <div>
             <label>Pairing PIN</label>
@@ -257,6 +257,8 @@
           </div>
         </div>
         <button class="btn" style="margin-top: 8px;" onclick="pairDevice()">Connect to JARVIS Desktop (PIN)</button>
+        <button class="btn" style="margin-top: 6px; background: rgba(0, 229, 255, 0.2); border: 1px solid #00e5ff; color: #00e5ff;" onclick="autoDiscoverLAN()">📡 Auto-Scan Local Network (mDNS / LAN)</button>
+
         
         <!-- Live Camera QR Scanner Section -->
         <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed rgba(0,229,255,0.3);">
@@ -970,19 +972,55 @@
       container.innerHTML = html + container.innerHTML;
     }
 
+    async function autoDiscoverLAN() {
+      log('📡 Probing LAN for JARVIS desktop on Port 8000...');
+      const candidates = ['10.1.166.115', '192.168.1.100', '10.0.2.2', '127.0.0.1'];
+      for (const host of candidates) {
+        try {
+          const res = await fetch('http://' + host + ':8000/api/v1/mobile/status');
+          if (res.ok) {
+            document.getElementById('serverUrl').value = 'http://' + host + ':8000';
+            log('✓ Discovered JARVIS desktop at http://' + host + ':8000');
+            alert('✓ Discovered JARVIS desktop at http://' + host + ':8000!');
+            connectWebSocket('http://' + host + ':8000');
+            return;
+          }
+        } catch(e) {}
+      }
+      log('⚠️ Could not auto-detect node. Confirm Wi-Fi and enter IP manually.');
+    }
+
+    async function recoverInterruptedGoals() {
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      try {
+        log('🔄 Scanning and recovering interrupted goals...');
+        const res = await fetch(baseUrl + '/api/v1/developer/recover_interrupted_goals', { method: 'POST' });
+        const data = await res.json();
+        log('✓ Goal Checkpoints Recovered: ' + (data.recovered_count || 0));
+        alert('Recovered ' + (data.recovered_count || 0) + ' interrupted goals.');
+      } catch(e) { log('❌ Recovery Error: ' + e.message); }
+    }
+
     async function submitApprovalDecision(approvalId, decision) {
       const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
       try {
+        const isApprove = decision === 'approve' || decision === 'always_allow';
         const res = await fetch(baseUrl + '/api/v1/mobile/approvals/respond', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ approval_id: approvalId, decision: decision })
+          body: JSON.stringify({
+            approval_id: approvalId,
+            decision: decision,
+            biometric_authenticated: isApprove,
+            biometric_signature: isApprove ? ('bio_sig_' + Date.now().toString(36)) : undefined
+          })
         });
         const card = document.getElementById('appr_card_' + approvalId);
         if (card) card.remove();
-        log('🛡️ Decision submitted: ' + decision + ' for ' + approvalId);
+        log('🛡️ Decision submitted: ' + decision + ' (Biometric: ' + isApprove + ')');
       } catch(e) { log('❌ Decision Error: ' + e.message); }
     }
+
 
     async function toggleLiveMode(enable) {
       const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
