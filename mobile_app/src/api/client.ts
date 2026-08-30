@@ -89,6 +89,15 @@ export class JarvisMobileClient {
     this.useSsl = useSsl;
   }
 
+  getHost(): string {
+    return this.serverHost;
+  }
+
+  getPort(): number {
+    return this.serverPort;
+  }
+
+
   setAuthToken(token: string) {
     this.token = token;
   }
@@ -177,14 +186,25 @@ export class JarvisMobileClient {
     return res.json();
   }
 
-  async submitApprovalDecision(approvalId: string, decision: 'approve' | 'deny' | 'always_allow' | 'always_deny') {
+  async submitApprovalDecision(
+    approvalId: string,
+    decision: 'approve' | 'deny' | 'always_allow' | 'always_deny',
+    biometricAuthenticated: boolean = false,
+    biometricSignature?: string
+  ) {
     const res = await fetch(`${this.baseUrl}/api/v1/mobile/approvals/respond`, {
       method: "POST",
       headers: this.getHeaders(),
-      body: JSON.stringify({ approval_id: approvalId, decision })
+      body: JSON.stringify({
+        approval_id: approvalId,
+        decision,
+        biometric_authenticated: biometricAuthenticated,
+        biometric_signature: biometricSignature || (biometricAuthenticated ? `bio_sig_${Date.now()}` : undefined)
+      })
     });
     return res.json();
   }
+
 
   async getScreenPreview() {
     const res = await fetch(`${this.baseUrl}/api/v1/mobile/screen/preview`, {
@@ -395,7 +415,63 @@ export class JarvisMobileClient {
       return { status: "error", error: String(e) };
     }
   }
+
+  // ── PART D: ADVANCED GOAL RECOVERY & OAUTH STATUS ──────────────────
+  async recoverInterruptedGoals() {
+
+    try {
+      const res = await fetch(`${this.baseUrl}/api/v1/developer/recover_interrupted_goals`, {
+        method: "POST",
+        headers: this.getHeaders()
+      });
+      return await res.json();
+    } catch (e) {
+      return { status: "error", message: String(e) };
+    }
+  }
+
+  async fetchOAuthStatus() {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/v1/oauth/status`, {
+        headers: this.getHeaders()
+      });
+      return await res.json();
+    } catch (e) {
+      return { status: "error", error: String(e) };
+    }
+  }
+
+  // ── PART E: mDNS LAN AUTO-DISCOVERY PROBE ───────────────────────────
+  async autoDiscoverServer(knownCandidates: string[] = []): Promise<{ host: string; port: number } | null> {
+    const candidates = Array.from(new Set([
+      this.serverHost,
+      ...knownCandidates,
+      "10.1.166.115",
+      "192.168.1.100",
+      "10.0.2.2",
+      "127.0.0.1"
+    ]));
+
+    for (const host of candidates) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1200);
+        const res = await fetch(`http://${host}:${this.serverPort}/api/v1/mobile/status`, {
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          this.setServerAddress(host, this.serverPort);
+          return { host, port: this.serverPort };
+        }
+      } catch {
+        // Continue probing next LAN candidate
+      }
+    }
+    return null;
+  }
 }
 
 export const mobileClient = new JarvisMobileClient();
+
 

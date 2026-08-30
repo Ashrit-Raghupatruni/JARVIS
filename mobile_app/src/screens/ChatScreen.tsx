@@ -7,10 +7,9 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
-  RefreshControl,
-  ScrollView
+  RefreshControl
 } from 'react-native';
-import { mobileClient, ConversationListItem, ConversationDetail } from '../api/client';
+import { mobileClient, ConversationListItem } from '../api/client';
 
 interface ChatMessage {
   id: string;
@@ -30,7 +29,6 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load conversation sessions from backend desktop SQLite API
   const loadConversations = async () => {
     try {
       setRefreshing(true);
@@ -49,7 +47,6 @@ export default function ChatScreen() {
     loadConversations();
   }, []);
 
-  // Filter conversations by search query
   const filteredConversations = useMemo(() => {
     if (!searchQuery.trim()) return conversations;
     const q = searchQuery.toLowerCase().trim();
@@ -60,10 +57,9 @@ export default function ChatScreen() {
     );
   }, [conversations, searchQuery]);
 
-  // Open single conversation thread
   const openConversation = async (conv: ConversationListItem) => {
     setActiveConvId(conv.id);
-    setActiveConvTitle(conv.title || `Conversation #${conv.id}`);
+    setActiveConvTitle(conv.title || `Session #${conv.id}`);
     setViewMode('thread');
     setLoading(true);
 
@@ -88,7 +84,6 @@ export default function ChatScreen() {
     }
   };
 
-  // Start fresh thread
   const startNewConversation = () => {
     setActiveConvId(null);
     setActiveConvTitle('New Session');
@@ -96,7 +91,6 @@ export default function ChatScreen() {
     setViewMode('thread');
   };
 
-  // Send message in current thread
   const sendMessage = async () => {
     if (!inputText.trim()) return;
 
@@ -114,7 +108,7 @@ export default function ChatScreen() {
 
     try {
       const res = await mobileClient.sendNaturalLanguageCommand(userMsgText, activeConvId);
-      const jarvisReply = res.response || res.message || res.text || 'Command executed, sir.';
+      const jarvisReply = res.response || res.message || res.text || 'Command acknowledged and executed.';
       const jarvisMsg: ChatMessage = {
         id: `msg_${Date.now() + 1}`,
         sender: 'jarvis',
@@ -123,7 +117,6 @@ export default function ChatScreen() {
       };
       setMessages((prev) => [...prev, jarvisMsg]);
 
-      // If this was a new conversation, refresh the list in background
       if (!activeConvId) {
         loadConversations();
       }
@@ -140,7 +133,6 @@ export default function ChatScreen() {
     }
   };
 
-  // Format relative timestamp
   const formatTime = (ts: string | number) => {
     try {
       const date = new Date(ts);
@@ -153,7 +145,7 @@ export default function ChatScreen() {
 
   return (
     <View style={styles.container}>
-      {/* ── Top Header Navigation Bar ── */}
+      {/* Top Header */}
       <View style={styles.headerBar}>
         {viewMode === 'thread' ? (
           <View style={styles.headerThreadRow}>
@@ -166,24 +158,25 @@ export default function ChatScreen() {
           </View>
         ) : (
           <View style={styles.headerListRow}>
-            <Text style={styles.headerTitle}>💬 CONVERSATION HISTORY</Text>
+            <View>
+              <Text style={styles.headerTitle}>MISSION CHAT THREADS</Text>
+              <Text style={styles.headerSubtitle}>MULTI-TURN CONVERSATIONS WITH JARVIS</Text>
+            </View>
             <TouchableOpacity style={styles.newChatBtn} onPress={startNewConversation}>
-              <Text style={styles.newChatBtnText}>➕ NEW CHAT</Text>
+              <Text style={styles.newChatBtnText}>+ NEW</Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
 
-      {/* ── Mode 1: SESSIONS / HISTORY BROWSER ── */}
+      {/* Mode 1: Sessions List */}
       {viewMode === 'sessions' && (
         <View style={styles.contentFlex}>
-          {/* Search Bar */}
           <View style={styles.searchContainer}>
-            <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
               style={styles.searchInput}
               placeholder="Search conversations by title or topic..."
-              placeholderTextColor="#557090"
+              placeholderTextColor="#475569"
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
@@ -194,19 +187,18 @@ export default function ChatScreen() {
             )}
           </View>
 
-          {/* Conversations List */}
           <FlatList
             data={filteredConversations}
             keyExtractor={(item) => String(item.id)}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={loadConversations} tintColor="#00ff66" />}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={loadConversations} tintColor="#00e5ff" />}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyIcon}>📂</Text>
                 <Text style={styles.emptyTitle}>
-                  {searchQuery ? 'No matching conversations' : 'No past conversations'}
+                  {searchQuery ? 'No matching conversations' : 'No past sessions recorded'}
                 </Text>
                 <Text style={styles.emptySub}>
-                  {searchQuery ? 'Try a different search term' : 'Start a chat session with JARVIS'}
+                  {searchQuery ? 'Try a different search term' : 'Start a new conversation thread with JARVIS'}
                 </Text>
               </View>
             }
@@ -217,7 +209,7 @@ export default function ChatScreen() {
                     {item.title || `Session #${item.id}`}
                   </Text>
                   <View style={styles.msgCountBadge}>
-                    <Text style={styles.msgCountText}>{item.message_count || 0} msgs</Text>
+                    <Text style={styles.msgCountText}>{item.message_count || 0} MSGS</Text>
                   </View>
                 </View>
                 {item.summary && (
@@ -227,7 +219,7 @@ export default function ChatScreen() {
                 )}
                 <View style={styles.convFooter}>
                   <Text style={styles.convTime}>{formatTime(item.updated_at || item.created_at)}</Text>
-                  <Text style={styles.convArrow}>Open →</Text>
+                  <Text style={styles.convArrow}>RESUME →</Text>
                 </View>
               </TouchableOpacity>
             )}
@@ -235,7 +227,7 @@ export default function ChatScreen() {
         </View>
       )}
 
-      {/* ── Mode 2: ACTIVE THREAD VIEWER ── */}
+      {/* Mode 2: Active Thread Viewer */}
       {viewMode === 'thread' && (
         <View style={styles.contentFlex}>
           <FlatList
@@ -245,8 +237,8 @@ export default function ChatScreen() {
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyIcon}>💬</Text>
-                <Text style={styles.emptyTitle}>Ready for Commands</Text>
-                <Text style={styles.emptySub}>Ask JARVIS or control desktop apps</Text>
+                <Text style={styles.emptyTitle}>Direct Assistant Channel</Text>
+                <Text style={styles.emptySub}>Send a query, command, or workflow plan to execute.</Text>
               </View>
             }
             renderItem={({ item }) => (
@@ -270,21 +262,26 @@ export default function ChatScreen() {
                       : styles.jarvisSenderText
                   ]}
                 >
-                  {item.sender === 'user' ? 'YOU' : item.sender === 'system' ? 'SYSTEM' : 'J.A.R.V.I.S.'}
+                  {item.sender === 'user' ? 'OPERATOR' : item.sender === 'system' ? 'SYSTEM' : 'JARVIS CORE'}
                 </Text>
                 <Text style={styles.messageText}>{item.text}</Text>
               </View>
             )}
           />
 
-          {loading && <ActivityIndicator color="#00ff66" style={{ marginVertical: 8 }} />}
+          {loading && (
+            <View style={styles.thinkingBox}>
+              <ActivityIndicator color="#00e5ff" size="small" />
+              <Text style={styles.thinkingText}>JARVIS is generating response...</Text>
+            </View>
+          )}
 
-          {/* Chat Input */}
+          {/* Chat Input Bar */}
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.textInput}
-              placeholder="Ask JARVIS or send desktop command..."
-              placeholderTextColor="#557090"
+              placeholder="Ask JARVIS or dispatch desktop command..."
+              placeholderTextColor="#475569"
               value={inputText}
               onChangeText={setInputText}
               onSubmitEditing={sendMessage}
@@ -300,46 +297,55 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#050d08', padding: 16 },
+  container: { flex: 1, backgroundColor: '#030712', padding: 16 },
   contentFlex: { flex: 1 },
-  headerBar: { marginBottom: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(0, 255, 102, 0.15)', paddingBottom: 10 },
+  headerBar: { marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#1e293b', paddingBottom: 10 },
   headerListRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerTitle: { color: '#00ff66', fontSize: 15, fontWeight: 'bold', fontFamily: 'monospace', letterSpacing: 1 },
-  newChatBtn: { backgroundColor: 'rgba(0, 255, 102, 0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#00ff66' },
-  newChatBtnText: { color: '#00ff66', fontSize: 11, fontWeight: 'bold', fontFamily: 'monospace' },
+  headerTitle: { color: '#f8fafc', fontSize: 16, fontWeight: 'bold', fontFamily: 'monospace', letterSpacing: 1 },
+  headerSubtitle: { color: '#64748b', fontSize: 9, fontFamily: 'monospace', marginTop: 2 },
+  newChatBtn: { backgroundColor: '#00e5ff', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  newChatBtnText: { color: '#030712', fontSize: 11, fontWeight: 'bold', fontFamily: 'monospace' },
   headerThreadRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  backBtn: { backgroundColor: '#0a1a0f', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0, 255, 102, 0.3)' },
-  backBtnText: { color: '#00ff66', fontSize: 11, fontWeight: 'bold', fontFamily: 'monospace' },
-  threadTitle: { color: '#ffffff', fontSize: 13, fontWeight: 'bold', fontFamily: 'monospace', flex: 1 },
-  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0a1a0f', borderRadius: 10, paddingHorizontal: 12, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(0, 255, 102, 0.2)' },
-  searchIcon: { fontSize: 14, marginRight: 8 },
-  searchInput: { flex: 1, color: '#ffffff', paddingVertical: 10, fontFamily: 'monospace', fontSize: 12 },
-  clearIcon: { color: '#557090', fontSize: 14, padding: 4 },
-  convCard: { backgroundColor: '#0a1a0f', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(0, 255, 102, 0.15)', marginBottom: 10 },
+  backBtn: { backgroundColor: '#0b1329', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#334155' },
+  backBtnText: { color: '#00e5ff', fontSize: 11, fontWeight: 'bold', fontFamily: 'monospace' },
+  threadTitle: { color: '#f8fafc', fontSize: 13, fontWeight: 'bold', fontFamily: 'monospace', flex: 1 },
+  
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0b1329', borderRadius: 10, paddingHorizontal: 12, marginBottom: 12, borderWidth: 1, borderColor: '#1e293b' },
+  searchInput: { flex: 1, color: '#f8fafc', paddingVertical: 10, fontFamily: 'monospace', fontSize: 12 },
+  clearIcon: { color: '#64748b', fontSize: 14, padding: 4 },
+
+  convCard: { backgroundColor: '#0b1329', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#1e293b', marginBottom: 10 },
   convHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  convTitle: { color: '#ffffff', fontSize: 13, fontWeight: 'bold', fontFamily: 'monospace', flex: 1, marginRight: 8 },
-  msgCountBadge: { backgroundColor: 'rgba(0, 255, 102, 0.1)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(0, 255, 102, 0.3)' },
-  msgCountText: { color: '#00ff66', fontSize: 10, fontFamily: 'monospace' },
-  convSummary: { color: '#88aa99', fontSize: 11, fontFamily: 'monospace', marginBottom: 8 },
-  convFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: 'rgba(0, 255, 102, 0.08)', paddingTop: 6 },
-  convTime: { color: '#557090', fontSize: 10, fontFamily: 'monospace' },
-  convArrow: { color: '#00cc52', fontSize: 11, fontWeight: 'bold', fontFamily: 'monospace' },
-  emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40 },
+  convTitle: { color: '#f8fafc', fontSize: 13, fontWeight: 'bold', fontFamily: 'monospace', flex: 1, marginRight: 8 },
+  msgCountBadge: { backgroundColor: '#030712', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#334155' },
+  msgCountText: { color: '#00e5ff', fontSize: 9, fontWeight: 'bold', fontFamily: 'monospace' },
+  convSummary: { color: '#94a3b8', fontSize: 11, fontFamily: 'monospace', marginBottom: 8, lineHeight: 16 },
+  convFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#1e293b', paddingTop: 8 },
+  convTime: { color: '#64748b', fontSize: 9, fontFamily: 'monospace' },
+  convArrow: { color: '#00e5ff', fontSize: 10, fontWeight: 'bold', fontFamily: 'monospace' },
+
+  emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 50 },
   emptyIcon: { fontSize: 32, marginBottom: 8 },
-  emptyTitle: { color: '#ffffff', fontSize: 14, fontWeight: 'bold', fontFamily: 'monospace' },
-  emptySub: { color: '#557090', fontSize: 11, fontFamily: 'monospace', marginTop: 4 },
+  emptyTitle: { color: '#f8fafc', fontSize: 14, fontWeight: 'bold', fontFamily: 'monospace' },
+  emptySub: { color: '#64748b', fontSize: 11, fontFamily: 'monospace', marginTop: 4 },
+
   messageList: { flex: 1, marginBottom: 12 },
-  bubble: { padding: 12, borderRadius: 12, marginVertical: 6, maxWidth: '85%' },
-  userBubble: { backgroundColor: '#0a2215', alignSelf: 'flex-end', borderWidth: 1, borderColor: '#00cc52' },
-  jarvisBubble: { backgroundColor: '#0a1a0f', alignSelf: 'flex-start', borderWidth: 1, borderColor: 'rgba(0, 255, 102, 0.2)' },
-  systemBubble: { backgroundColor: '#151520', alignSelf: 'center', borderWidth: 1, borderColor: 'rgba(100, 150, 255, 0.3)' },
-  senderText: { fontSize: 10, fontWeight: 'bold', fontFamily: 'monospace', marginBottom: 4 },
-  userSenderText: { color: '#00ff66' },
-  jarvisSenderText: { color: '#00e5ff' },
-  systemSenderText: { color: '#88aaff' },
-  messageText: { color: '#ffffff', fontSize: 13, fontFamily: 'monospace', lineHeight: 18 },
+  bubble: { padding: 12, borderRadius: 14, marginVertical: 6, maxWidth: '85%' },
+  userBubble: { backgroundColor: '#0b192e', alignSelf: 'flex-end', borderWidth: 1, borderColor: '#00e5ff50' },
+  jarvisBubble: { backgroundColor: '#0b1329', alignSelf: 'flex-start', borderWidth: 1, borderColor: '#1e293b' },
+  systemBubble: { backgroundColor: '#180d2b', alignSelf: 'center', borderWidth: 1, borderColor: '#a855f750' },
+  senderText: { fontSize: 9, fontWeight: 'bold', fontFamily: 'monospace', marginBottom: 4 },
+  userSenderText: { color: '#00e5ff' },
+  jarvisSenderText: { color: '#10b981' },
+  systemSenderText: { color: '#c084fc' },
+  messageText: { color: '#f8fafc', fontSize: 13, fontFamily: 'monospace', lineHeight: 18 },
+
+  thinkingBox: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
+  thinkingText: { color: '#64748b', fontSize: 11, fontFamily: 'monospace' },
+
   inputContainer: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  textInput: { flex: 1, backgroundColor: '#0a1a0f', color: '#ffffff', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: 'rgba(0, 255, 102, 0.3)', fontFamily: 'monospace', fontSize: 12 },
-  sendBtn: { backgroundColor: '#00cc52', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, justifyContent: 'center' },
-  sendBtnText: { color: '#ffffff', fontSize: 12, fontWeight: 'bold', fontFamily: 'monospace' }
+  textInput: { flex: 1, backgroundColor: '#0b1329', color: '#f8fafc', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#334155', fontFamily: 'monospace', fontSize: 12 },
+  sendBtn: { backgroundColor: '#00e5ff', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, justifyContent: 'center' },
+  sendBtnText: { color: '#030712', fontSize: 12, fontWeight: 'bold', fontFamily: 'monospace' }
 });
+
