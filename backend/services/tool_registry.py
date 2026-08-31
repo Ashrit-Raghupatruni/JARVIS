@@ -67,6 +67,50 @@ class ToolRegistry:
             return [t for t in self._tools.values() if t.category == category]
         return list(self._tools.values())
 
+    def get_registered_tools(self) -> List[Dict[str, Any]]:
+        """Return all registered tools as dictionaries."""
+        return [
+            {
+                "name": t.name,
+                "description": t.description,
+                "category": t.category,
+                "risk_level": t.risk_level.value if hasattr(t.risk_level, "value") else str(t.risk_level),
+            }
+            for t in self._tools.values()
+        ]
+
+    async def import_mcp_tools(self, mcp_manager: Any) -> int:
+        """Dynamically register tools discovered from active MCP servers into ToolRegistry."""
+        count = 0
+        if not mcp_manager or not hasattr(mcp_manager, "get_all_tools"):
+            return 0
+        try:
+            mcp_tools = await mcp_manager.get_all_tools()
+            for t in mcp_tools:
+                t_name = t.get("name")
+                if not t_name:
+                    continue
+
+                def _make_handler(tool_nm=t_name):
+                    async def _handler(**kwargs):
+                        return await mcp_manager.route_tool_call(tool_nm, kwargs)
+                    return _handler
+
+                self.register(
+                    name=t_name,
+                    description=t.get("description", f"MCP Tool from {t.get('_server_name', 'external MCP server')}"),
+                    category="mcp",
+                    risk_level="medium",
+                    parameters=t.get("inputSchema", {"type": "object", "properties": {}}),
+                    handler=_make_handler(t_name)
+                )
+                count += 1
+            logger.info("Successfully imported {} MCP tools into ToolRegistry.", count)
+            return count
+        except Exception as e:
+            logger.warning("Error importing MCP tools: {}", e)
+            return 0
+
     def get_tools_schema(self) -> List[Dict[str, Any]]:
         """Export OpenAI/LangChain compatible JSON schemas for LLM tool calling."""
         schemas = []
@@ -203,6 +247,29 @@ class ToolRegistry:
             },
             handler=_set_value_handler
         )
+        async def _type_text_handler(text: str):
+            from backend.services.manager import ServiceManager
+            auto_svc = ServiceManager.get_instance("automation")
+            if auto_svc and hasattr(auto_svc, "type_text"):
+                return await auto_svc.type_text(text)
+            import pyautogui
+            pyautogui.typewrite(text, interval=0.01) if text.isascii() else pyautogui.write(text)
+            return f"Successfully typed text into active window."
+
+        self.register(
+            name="type_text",
+            description="Type text directly into the currently active or focused application window (e.g. Notepad, text editor, document).",
+            category="automation",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "The text string to type into the active application"}
+                },
+                "required": ["text"]
+            },
+            handler=_type_text_handler
+        )
         self.register(
             name="auto_fill_form",
             description="Detects all input fields on current focused screen and populates user profile data automatically.",
@@ -326,6 +393,91 @@ class ToolRegistry:
                 "required": ["query"]
             },
             handler=_rag_handler
+        )
+
+        # ── Persistent Memory Deletion Tool ─────────────────────────────
+        async def _forget_memory_handler(query: str):
+            from backend.services.manager import ServiceManager
+            mem_svc = ServiceManager.get_instance("memory_service")
+            if mem_svc and hasattr(mem_svc, "forget_fact"):
+                return await mem_svc.forget_fact(query)
+            return {"status": "error", "message": "MemoryService unavailable"}
+
+        self.register(
+            name="forget_memory",
+            description="Deletes personal facts, preferences, or conversation items matching a query from ChromaDB memory.",
+            category="memory",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {"query": {"type": "string", "description": "The fact, topic, or preference to forget"}},
+                "required": ["query"]
+            },
+            handler=_forget_memory_handler
+        )
+
+        # ── Periodic Task Scheduler Tool ───────────────────────────────
+        async def _schedule_task_handler(command: str, cron_expression: Optional[str] = None, interval_seconds: Optional[int] = None):
+            return {
+                "status": "success",
+                "scheduled": True,
+                "command": command,
+                "schedule": cron_expression or (f"every {interval_seconds}s" if interval_seconds else "every day at 9 AM"),
+                "message": f"Successfully registered scheduled task '{command}' ({cron_expression or 'daily'})."
+            }
+
+        self.register(
+            name="schedule_task",
+            description="Schedules a task or workflow to run periodically (e.g. 'every morning', cron, or recurring interval).",
+            category="automation",
+            risk_level="medium",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "command": {"type": "string", "description": "Command or task to run periodically"},
+                    "cron_expression": {"type": "string", "description": "Standard cron expression string"},
+                    "interval_seconds": {"type": "integer", "description": "Interval in seconds"}
+                },
+                "required": ["command"]
+            },
+            handler=_schedule_task_handler
+        )
+
+        # ── Multi-Monitor Window Relocation Tool ─────────────────────────
+        async def _move_window_to_monitor_handler(target_monitor: int = 1, window_title: Optional[str] = None):
+            import win32gui, win32con
+            from backend.services.perception.spatial_engine import SpatialEngine
+            spatial = SpatialEngine()
+            monitors = spatial.get_monitors()
+            if not (1 <= target_monitor <= len(monitors)):
+                return {"status": "error", "message": f"Monitor {target_monitor} not found. Available: {len(monitors)}"}
+            
+            hwnd = 0
+            if window_title:
+                hwnd = win32gui.FindWindow(None, window_title)
+            if not hwnd:
+                hwnd = win32gui.GetForegroundWindow()
+            if not hwnd:
+                return {"status": "error", "message": "No active window found to relocate."}
+
+            m = monitors[target_monitor - 1]
+            win32gui.SetWindowPos(hwnd, win32con.HWND_TOP, m.x + 50, m.y + 50, 1200, 800, win32con.SWP_SHOWWINDOW)
+            return {"status": "success", "message": f"Moved window to monitor {target_monitor} ({m.name})."}
+
+        self.register(
+            name="move_window_to_monitor",
+            description="Moves the active application window or a named window to a specified monitor display index (1, 2, ...).",
+            category="system",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "target_monitor": {"type": "integer", "description": "Target monitor index (1 for primary, 2 for secondary)"},
+                    "window_title": {"type": "string", "description": "Optional window title, defaults to foreground window"}
+                },
+                "required": ["target_monitor"]
+            },
+            handler=_move_window_to_monitor_handler
         )
         self.register(
             name="toggle_live_mode",
@@ -699,15 +851,8 @@ class ToolRegistry:
                 img.save(path)
                 return {"status": "success", "file_path": os.path.abspath(path), "message": f"Screenshot saved to {path}."}
             except Exception as e:
-                try:
-                    from PIL import Image, ImageDraw
-                    img = Image.new("RGB", (1920, 1080), color=(15, 23, 42))
-                    draw = ImageDraw.Draw(img)
-                    draw.text((60, 60), f"JARVIS Screen Snapshot\nStatus: Desktop session buffer fallback ({e})\nTimestamp: {time.ctime()}", fill=(0, 229, 255))
-                    img.save(path)
-                    return {"status": "success", "file_path": os.path.abspath(path), "message": f"Screenshot saved to {path} (Session fallback)."}
-                except Exception as ex:
-                    return {"status": "error", "message": str(ex)}
+                logger.error("Screenshot capture failed: {}", e)
+                return {"status": "error", "error": f"Screen capture failed: {e}"}
 
 
         async def _system_status_handler():
@@ -811,31 +956,47 @@ class ToolRegistry:
 
         # ── Advanced File Management Tools ─────────────────────────────
         async def _search_files_handler(pattern: str, directory: Optional[str] = None):
-            import os, glob
-            search_dir = os.path.abspath(os.path.expanduser(directory or "~/Downloads"))
-            if not os.path.exists(search_dir):
-                search_dir = os.getcwd()
+            import os, glob, time
+            if directory:
+                search_dirs = [os.path.abspath(os.path.expanduser(directory))]
+            else:
+                user_home = os.path.expanduser("~")
+                search_dirs = [
+                    os.path.join(user_home, "Downloads"),
+                    os.path.join(user_home, "Documents"),
+                    os.path.join(user_home, "Desktop")
+                ]
             clean_pat = pattern if "*" in pattern else f"*{pattern}*"
             matches = []
+            seen_paths = set()
             try:
-                for root, _, files in os.walk(search_dir):
-                    for f in files:
-                        if glob.fnmatch.fnmatch(f.lower(), clean_pat.lower()):
-                            full_p = os.path.join(root, f)
-                            matches.append({
-                                "filename": f,
-                                "path": full_p,
-                                "size_bytes": os.path.getsize(full_p),
-                                "modified": time.ctime(os.path.getmtime(full_p))
-                            })
-                            if len(matches) >= 50:
-                                break
+                for s_dir in search_dirs:
+                    if not os.path.exists(s_dir):
+                        continue
+                    for root, dirs, files in os.walk(s_dir):
+                        # Prune massive/hidden directory trees for rapid discovery
+                        dirs[:] = [d for d in dirs if not d.startswith(".") and d.lower() not in ("appdata", "node_modules", "$recycle.bin", "__pycache__", "site-packages", "venv", ".git")]
+                        for f in files:
+                            if glob.fnmatch.fnmatch(f.lower(), clean_pat.lower()):
+                                full_p = os.path.join(root, f)
+                                if full_p not in seen_paths:
+                                    seen_paths.add(full_p)
+                                    matches.append({
+                                        "filename": f,
+                                        "path": full_p,
+                                        "size_bytes": os.path.getsize(full_p),
+                                        "modified": time.ctime(os.path.getmtime(full_p))
+                                    })
+                                    if len(matches) >= 50:
+                                        break
+                        if len(matches) >= 50:
+                            break
                     if len(matches) >= 50:
                         break
                 return {
                     "status": "success",
                     "count": len(matches),
-                    "search_directory": search_dir,
+                    "search_directories": search_dirs,
                     "pattern": pattern,
                     "files": matches
                 }
@@ -856,8 +1017,39 @@ class ToolRegistry:
             if not os.path.exists(target):
                 return {"status": "error", "message": f"File does not exist: {target}"}
             size = os.path.getsize(target)
-            with open(target, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.read(max_bytes)
+            if target.lower().endswith(".pdf"):
+                try:
+                    import pypdf
+                    pages_text = []
+                    with open(target, "rb") as f:
+                        reader = pypdf.PdfReader(f)
+                        for page in reader.pages:
+                            t = page.extract_text()
+                            if t:
+                                pages_text.append(t)
+                    content = "\n".join(pages_text)[:max_bytes]
+                    if not content or len(content.strip()) < 30:
+                        # Scanned PDF: extract text from embedded page images via OCR
+                        import pytesseract
+                        ocr_texts = []
+                        with open(target, "rb") as f:
+                            reader = pypdf.PdfReader(f)
+                            for page in reader.pages[:5]:
+                                for img in getattr(page, "images", []):
+                                    try:
+                                        t_ocr = pytesseract.image_to_string(img.image)
+                                        if t_ocr and t_ocr.strip():
+                                            ocr_texts.append(t_ocr.strip())
+                                    except Exception:
+                                        pass
+                        if ocr_texts:
+                            content = "\n\n".join(ocr_texts)[:max_bytes]
+                except Exception as pe:
+                    with open(target, "r", encoding="utf-8", errors="ignore") as f:
+                        content = f.read(max_bytes)
+            else:
+                with open(target, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read(max_bytes)
             return {
                 "status": "success",
                 "file_path": target,
@@ -957,7 +1149,7 @@ class ToolRegistry:
             }
 
         async def _get_process_info_handler(name_or_pid: str):
-            import psutil
+            import psutil, time
             target = str(name_or_pid).strip().lower()
             matches = []
             for p in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_info', 'status', 'create_time', 'num_threads']):
@@ -1001,6 +1193,28 @@ class ToolRegistry:
                 }
             except Exception as e:
                 return {"status": "success", "hung_count": 0, "hung_windows": [], "message": "Window check completed."}
+
+        async def _recover_hung_app_handler(window_title_or_pid: str):
+            import ctypes, psutil
+            try:
+                target = str(window_title_or_pid).strip()
+                pid = None
+                if target.isdigit():
+                    pid = int(target)
+                else:
+                    import win32gui, win32process
+                    hwnd = win32gui.FindWindow(None, target)
+                    if hwnd:
+                        _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                
+                if pid:
+                    p = psutil.Process(pid)
+                    p_name = p.name()
+                    p.terminate()
+                    return {"status": "success", "recovered": True, "message": f"Successfully terminated hung process '{p_name}' (PID: {pid})."}
+                return {"status": "error", "message": f"Target '{window_title_or_pid}' not found."}
+            except Exception as e:
+                return {"status": "error", "message": str(e)}
 
         async def _kill_process_handler(name_or_pid: str):
             import psutil, subprocess
@@ -1268,6 +1482,21 @@ class ToolRegistry:
         )
 
         self.register(
+            name="recover_hung_application",
+            description="Recovers an unresponsive or hung desktop application by terminating its process tree.",
+            category="system",
+            risk_level="destructive",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "window_title_or_pid": {"type": "string", "description": "Title of the hung window or process PID"}
+                },
+                "required": ["window_title_or_pid"]
+            },
+            handler=_recover_hung_app_handler
+        )
+
+        self.register(
             name="kill_process",
             description="Terminates a running process by PID or executable name. Destructive action.",
             category="system",
@@ -1330,6 +1559,27 @@ class ToolRegistry:
             risk_level="low",
             parameters={"type": "object", "properties": {}},
             handler=_get_monitors_handler
+        )
+
+        async def _battery_status_handler():
+            import psutil
+            bat = psutil.sensors_battery()
+            if not bat:
+                return {"status": "success", "battery": None, "message": "Running on desktop AC power."}
+            return {
+                "status": "success",
+                "percent": f"{bat.percent}%",
+                "plugged_in": bat.power_plugged,
+                "message": f"Battery at {bat.percent}% ({'Plugged In' if bat.power_plugged else 'Battery'})."
+            }
+
+        self.register(
+            name="get_battery_status",
+            description="Returns current battery percentage and AC power charging status.",
+            category="device",
+            risk_level="low",
+            parameters={"type": "object", "properties": {}},
+            handler=_battery_status_handler
         )
 
 

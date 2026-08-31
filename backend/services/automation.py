@@ -222,6 +222,20 @@ class AutomationService:
                     await asyncio.to_thread(os.startfile, path)
                     return f"Opened {app_name} successfully."
 
+                # Chromium accessibility tree support: exposes web DOM elements to Windows UIA
+                if any(b in app_name.lower() for b in ["chrome", "msedge", "edge", "brave"]):
+                    try:
+                        subprocess.Popen(
+                            [path, "--force-renderer-accessibility"],
+                            shell=False,
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
+                        )
+                        await asyncio.sleep(0.5)
+                        return f"Opened {app_name} with UIA accessibility tree enabled."
+                    except Exception as b_err:
+                        logger.debug("Failed launching browser with accessibility flag: {}", b_err)
+
                 # Handle paths with arguments
                 if " --" in path or " /" in path:
                     parts = path.split(" ", 1)
@@ -234,6 +248,7 @@ class AutomationService:
                 else:
                     # Use os.startfile for Windows to properly handle shortcuts (.lnk) and admin elevations
                     await asyncio.to_thread(os.startfile, path)
+                    await asyncio.sleep(0.5)
                 return f"Opened {app_name} successfully."
 
             else:
@@ -466,9 +481,12 @@ class AutomationService:
             Confirmation message.
         """
         try:
-            pyautogui.moveTo(x, y, duration=0.3)
-            logger.info("Moved mouse to ({}, {})", x, y)
-            return f"Moved mouse to ({x}, {y})"
+            # Safe clamping: prevent failsafe tripwire crash at (0, 0) corner
+            safe_x = max(2, int(x))
+            safe_y = max(2, int(y))
+            pyautogui.moveTo(safe_x, safe_y, duration=0.3)
+            logger.info("Moved mouse to ({}, {})", safe_x, safe_y)
+            return f"Moved mouse to ({safe_x}, {safe_y})"
         except Exception as e:
             logger.error("Error moving mouse: {}", e)
             return f"Error moving mouse: {e}"
@@ -493,10 +511,14 @@ class AutomationService:
         try:
             kwargs: Dict[str, Any] = {"button": button}
             if x is not None and y is not None:
-                kwargs["x"] = x
-                kwargs["y"] = y
+                safe_x = max(2, int(x))
+                safe_y = max(2, int(y))
+                kwargs["x"] = safe_x
+                kwargs["y"] = safe_y
+                pos = f"({safe_x}, {safe_y})"
+            else:
+                pos = "current position"
             pyautogui.click(**kwargs)
-            pos = f"({x}, {y})" if x is not None else "current position"
             logger.info("Clicked {} at {}", button, pos)
             return f"Clicked {button} button at {pos}"
         except Exception as e:

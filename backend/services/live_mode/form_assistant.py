@@ -23,14 +23,31 @@ class FormAssistant:
             "name": "Ashrit Raghupatruni",
             "first_name": "Ashrit",
             "last_name": "Raghupatruni",
-            "email": "ashrit@example.com",
-            "phone": "+1 555-0199",
-            "address": "123 Innovation Way, Suite 400",
-            "city": "San Francisco",
-            "state": "CA",
-            "zip": "94105",
-            "country": "United States"
+            "email": "ashritraghupatruni200407@gmail.com",
+            "phone": "8341797579",
+            "address": "Srikakulam / Vijayawada",
+            "city": "Vijayawada",
+            "state": "Andhra Pradesh",
+            "zip": "522502",
+            "country": "India",
+            "university": "SRM University AP",
+            "degree": "B.Tech Computer Science and Engineering"
         }
+
+    def get_dynamic_profile(self) -> Dict[str, str]:
+        """Fetch verified profile facts dynamically from MemoryService if available."""
+        profile = dict(self.default_profile)
+        try:
+            from backend.services.manager import ServiceManager
+            mem_svc = ServiceManager.get_instance("memory_service")
+            if mem_svc and hasattr(mem_svc, "get_user_preference"):
+                for key in ["email", "phone", "name", "city", "state", "country"]:
+                    pref_val = mem_svc.get_user_preference(key)
+                    if pref_val:
+                        profile[key] = str(pref_val)
+        except Exception:
+            pass
+        return profile
 
     def detect_form_fields(self, elements: List[SceneElement]) -> List[Dict[str, Any]]:
         """Identify form input fields and match them to profile keys."""
@@ -105,7 +122,7 @@ class FormAssistant:
 
     def auto_fill_map(self, form_fields: List[Dict[str, Any]], custom_profile: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
         """Generate automatic mapping pairs between active form fields and profile data."""
-        profile = custom_profile or self.default_profile
+        profile = custom_profile or self.get_dynamic_profile()
         actions = []
 
         for field in form_fields:

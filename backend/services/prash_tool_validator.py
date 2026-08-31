@@ -98,7 +98,7 @@ class PrashToolValidator:
 
     def __init__(self, tool_registry: Optional[ToolRegistry] = None) -> None:
         self.tool_registry = tool_registry or ToolRegistry()
-        self._registered_tools: Set[str] = set(self.tool_registry.list_tools().keys())
+        self._registered_tools: Set[str] = set(self.tool_registry._tools.keys())
 
     def validate_raw_response(self, raw_text: str, user_query: str) -> PrashValidationResult:
         """
@@ -124,15 +124,15 @@ class PrashToolValidator:
                 conversational_text=cleaned_text
             )
 
-        # 2. Extract tool name & params
-        tool_name = parsed_json.get("tool")
+        # 2. Extract tool name & params (supporting common schema aliases)
+        tool_name = parsed_json.get("tool") or parsed_json.get("name")
         if not tool_name or not isinstance(tool_name, str):
             return PrashValidationResult(
                 is_valid=False,
-                rejection_reason="JSON block missing 'tool' string key"
+                rejection_reason="JSON block missing 'tool' or 'name' string key"
             )
 
-        params = parsed_json.get("params", {})
+        params = parsed_json.get("params") or parsed_json.get("parameters") or parsed_json.get("arguments") or parsed_json.get("args") or {}
         if not isinstance(params, dict):
             return PrashValidationResult(
                 is_valid=False,
@@ -179,6 +179,42 @@ class PrashToolValidator:
                         tool_name=tool_name,
                         rejection_reason=f"Parameter '{param_key}' must be of type {expected_type.__name__}"
                     )
+
+        # 4b. Semantic Relevance Check (Anti-Hallucination Guard)
+        # Prevents model from proposing unrelated tools (e.g. 'calc' when user asked for 'chrome')
+        if tool_name == "open_application":
+            q_lower = user_query.lower()
+            if not any(k in q_lower for k in ["open", "start", "launch", "run", "switch to"]):
+                return PrashValidationResult(
+                    is_valid=False,
+                    tool_name=tool_name,
+                    rejection_reason=f"Semantic mismatch: 'open_application' proposed for non-launch query: '{user_query}'"
+                )
+            app_arg = str(params.get("app_name", "")).lower().replace(".exe", "").strip()
+            common_apps = ["chrome", "notepad", "calculator", "calc", "paint", "mspaint", "spotify", "cmd", "explorer"]
+            query_apps = [a for a in common_apps if a in q_lower]
+            if query_apps:
+                expected = query_apps[0]
+                if expected == "calculator":
+                    expected = "calc"
+                elif expected == "paint":
+                    expected = "mspaint"
+                if app_arg != expected and expected not in app_arg:
+                    logger.warning("Prash hallucination detected: query asked for '{}' but model targeted '{}'", expected, app_arg)
+                    return PrashValidationResult(
+                        is_valid=False,
+                        tool_name=tool_name,
+                        rejection_reason=f"Semantic hallucination mismatch: query asked for '{expected}' but model targeted '{app_arg}'"
+                    )
+
+        if tool_name in ("click_element_by_name", "set_control_value"):
+            q_lower = user_query.lower()
+            if not any(k in q_lower for k in ["click", "press", "tap", "type", "enter", "submit", "button", "field"]):
+                return PrashValidationResult(
+                    is_valid=False,
+                    tool_name=tool_name,
+                    rejection_reason=f"Semantic mismatch: UI tool generated for non-UI query: '{user_query}'"
+                )
 
         # 5. Passed all validation checks
         return PrashValidationResult(

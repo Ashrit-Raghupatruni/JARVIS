@@ -44,3 +44,24 @@ This document establishes the mandatory engineering rules, safety constraints, c
    - NEVER run `git push origin feature` or push commits to remote repositories without explicit user instruction.
 2. **Keep `jarvis.zip` Up-to-Date**:
    - Re-generate `jarvis.zip` incorporating modified code and `.glb` model assets locally.
+
+---
+
+## 5. Universal Tool & Computer Control Directives
+
+1. **Universal SafetyGatekeeper Inviolability**:
+   - Every actuation path (Fast-Path, ReAct Planner, Mobile API, n8n webhook) MUST evaluate `SafetyGatekeeper.evaluate_tool_call(tool_name, params)` before firing. Zero safety bypasses.
+2. **Grounded Desktop Computer Control**:
+   - NEVER fall back to blind `pyautogui.typewrite()` into foreground windows without confirmed focus or control bounds.
+   - All mouse coordinates MUST be clamped to `(max(2, x), max(2, y))` to prevent PyAutoGUI `(0, 0)` corner failsafe aborts.
+   - Application launches MUST enforce a minimum 0.5s settle delay before subsequent mouse/keyboard events.
+   - Chromium browser processes MUST launch with `--force-renderer-accessibility` to expose DOM nodes to Windows UIA.
+3. **No Mock Data in Production**:
+   - DO NOT fabricate fake mock workflows when services are offline.
+   - DO NOT return simulated mock profiles (e.g., San Francisco addresses); all personal facts MUST resolve dynamically through `MemoryService`.
+   - DO NOT return synthetic blue screens on screenshot capture failures; fail closed with explicit diagnostic errors.
+4. **Outcome-Based Post-Condition Verification**:
+   - Actions MUST verify real desktop state deltas (via `psutil` or `win32gui`) before yielding success responses or marking agent steps complete.
+5. **Documentation Integrity (Additive Only)**:
+   - Documentation updates MUST strictly add or update verified facts; NEVER delete existing documentation sections.
+

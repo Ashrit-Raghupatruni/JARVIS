@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -140,6 +140,13 @@ class ResponseMessage(BaseModel):
         description="Token usage stats: prompt_tokens, completion_tokens, total_tokens.",
     )
 
+    @field_validator("conversation_id", mode="before")
+    @classmethod
+    def coerce_conversation_id(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        return str(v)
+
 
 class ThinkingMessage(BaseModel):
     """Emitted while the assistant is reasoning / planning."""
@@ -192,6 +199,13 @@ class UserCommand(BaseModel):
 
     text: str = Field(..., min_length=1, description="The command text.")
     conversation_id: Optional[str] = Field(default=None, description="Conversation context ID.")
+
+    @field_validator("conversation_id", mode="before")
+    @classmethod
+    def coerce_conversation_id(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        return str(v)
 
 
 class CommandResult(BaseModel):

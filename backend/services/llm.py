@@ -122,6 +122,62 @@ def clean_function_calls_from_text(text: str) -> str:
     return text.strip()
 
 
+def extract_clean_user_request(messages_or_query: Any) -> str:
+    """
+    Extracts ONLY the actual raw user request text from whatever object is passed
+    (string, list of dicts, or other data structure).
+    Guarantees that system prompts, memory context, router metadata,
+    tool definitions, and internal instructions are NEVER leaked into search queries or fallbacks.
+    """
+    if not messages_or_query:
+        return ""
+        
+    raw_text = ""
+    if isinstance(messages_or_query, str):
+        raw_text = messages_or_query
+    elif isinstance(messages_or_query, list):
+        # Look backwards for the most recent message with role == 'user'
+        for msg in reversed(messages_or_query):
+            if isinstance(msg, dict) and msg.get("role") == "user":
+                raw_text = str(msg.get("content") or "")
+                break
+        if not raw_text and messages_or_query:
+            # If no user role was explicitly found, look for any dict with content
+            for msg in reversed(messages_or_query):
+                if isinstance(msg, dict) and msg.get("content"):
+                    raw_text = str(msg.get("content"))
+                    break
+    elif isinstance(messages_or_query, dict):
+        raw_text = str(messages_or_query.get("content") or messages_or_query.get("text") or "")
+    else:
+        raw_text = str(messages_or_query)
+
+    # Clean out any internal prefixes or prompt injections
+    internal_prefixes = [
+        r"^\[ROUTER INTENT CONTEXT\].*?\.\s*",
+        r"^\[LIVE MODE PERCEPTION CONTEXT\].*?\.\s*",
+        r"^\[LIVE DESKTOP WORLD MODEL\].*?\.\s*",
+        r"^Relevant context from memory:\s*",
+        r"^\[SYSTEM\].*?\s*",
+        r"^System:\s*",
+    ]
+    import re
+    cleaned = raw_text.strip()
+    for pattern in internal_prefixes:
+        cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE | re.DOTALL).strip()
+
+    # Never allow stringified message arrays to leak through
+    if cleaned.startswith("[{") or cleaned.startswith("({'") or "role': 'system" in cleaned or 'role": "system' in cleaned:
+        user_match = re.findall(r"['\"]role['\"]\s*:\s*['\"]user['\"]\s*,\s*['\"]content['\"]\s*:\s*['\"]([^'\"]+)['\"]", cleaned)
+        if user_match:
+            cleaned = user_match[-1].strip()
+        else:
+            cleaned = ""
+
+    return cleaned
+
+
+
 class StreamTextFilter:
     def __init__(self):
         self.buffer = ""
@@ -972,6 +1028,33 @@ class LLMService:
                     seen.add(name)
                     merged.append(t)
 
+        if len(merged) > 20:
+            core_priority = {
+                "search_files", "read_file", "write_file", "create_file",
+                "open_application", "click_element_by_name", "set_control_value", "type_text",
+                "get_process_info", "list_running_processes", "web_search",
+                "smart_file_search", "copy_file", "take_screenshot"
+            }
+            q_words = set(query.lower().split()) if query else set()
+
+            def _score_tool(tool_item):
+                fn = tool_item.get("function", {})
+                t_name = fn.get("name", "").lower()
+                t_desc = fn.get("description", "").lower()
+                score = 0
+                if t_name in core_priority:
+                    score += 15
+                for w in q_words:
+                    if len(w) > 2:
+                        if w in t_name:
+                            score += 10
+                        if w in t_desc:
+                            score += 5
+                return score
+
+            merged.sort(key=_score_tool, reverse=True)
+            merged = merged[:20]
+
         return merged
 
     def get_tools(self, query: str = "") -> List[Dict[str, Any]]:
@@ -1241,18 +1324,29 @@ class LLMService:
                 )
                 
         # If all providers failed, attempt automated Web Research recovery before giving up
-        logger.warning(f"All primary LLM providers failed. Attempting web research fallback for query: '{user_message[:60]}'")
-        try:
-            from backend.services.browser import BrowserService
-            b_service = BrowserService()
-            web_results = await b_service.search_web(user_message)
-            if web_results and len(web_results) > 50:
-                recovered_text = f"I retrieved the following information directly for your query:\n\n{web_results[:1200]}"
-                yield {"type": "text_delta", "content": recovered_text}
-                yield {"type": "text_done", "content": recovered_text}
-                return
-        except Exception as web_err:
-            logger.error(f"Web research recovery fallback also failed: {web_err}")
+        clean_query = extract_clean_user_request(user_message)
+        logger.warning(f"All primary LLM providers failed. Attempting web research fallback for query: '{clean_query[:60]}'")
+        
+        # Guard: Never search the public web for personal identity, location, or hardware status
+        skip_web_topics = [
+            "where am i", "my location", "current location", "who am i",
+            "my name", "my skills", "battery", "my screen", "tools you have",
+            "what tools", "my preferences", "resume"
+        ]
+        should_skip_web = any(topic in clean_query.lower() for topic in skip_web_topics)
+        
+        if clean_query and not should_skip_web:
+            try:
+                from backend.services.browser import BrowserService
+                b_service = BrowserService()
+                web_results = await b_service.search_web(clean_query)
+                if web_results and len(web_results) > 50:
+                    recovered_text = f"I retrieved the following information directly for your query:\n\n{web_results[:1200]}"
+                    yield {"type": "text_delta", "content": recovered_text}
+                    yield {"type": "text_done", "content": recovered_text}
+                    return
+            except Exception as web_err:
+                logger.error(f"Web research recovery fallback also failed: {web_err}")
 
         # Final graceful response if web recovery also fails
         final_fallback = "I was unable to establish a link with cloud AI engines or local models. Standing by for connection recovery."

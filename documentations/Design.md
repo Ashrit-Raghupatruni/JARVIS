@@ -41,3 +41,15 @@ The `AutonomousAgentStudio.tsx` component is accessible under `☰ Command Cente
 2. **IPC Message Stream**: Live log of inter-agent IPC requests, security audit approvals, and CEO responses.
 3. **Multi-Day Goal Checkpoints**: Timeline view of SQLite WAL goal states (`data/jarvis.db`) with step titles and progress tags.
 4. **KV-Cache Token Pruning Meter**: Real-time context compression statistics showing token savings, compression ratios, and total prune events.
+
+---
+
+## 4. HUD Telemetry & Native System Lock Controls Design
+
+### Native Lock & Security Control Tokens
+- **Quick-Lock Action**: Dedicated hardware lock trigger invoking native Win32 `LockWorkStation` API via `/api/system/lock`.
+- **Face Lock UI Indicator**: Visual lock state badges showing biometric verification confidence, camera worker FPS, and live enrollment status.
+- **Multi-Monitor Coordinate Visualizer**: Responsive topology mapping of active monitors, primary display indicators, and coordinate bounds `(x, y, w, h)`.
+- **System Diagnostics HUD**: Sub-second gauge indicators for Battery Charge %, AC Power Plugged state, CPU load, and RAM usage.
+- **Fail-Closed Confirmation Modals**: High-contrast amber/red warning dialogs for destructive actions (`kill_process`, `delete_file`, `recover_hung_application`) requiring explicit biometric or manual authorization.
+

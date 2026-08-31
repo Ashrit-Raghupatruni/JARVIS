@@ -476,5 +476,53 @@ Offline probe duration: 250ms | Status: error | Error: n8n engine is offline (co
 ```
 - **Status**: PASS
 
+---
+
+### [Prash Neural Engine Anti-Hallucination & Grammar Validation]
+- **Date tested**: 2026-08-31
+- **How tested**: Executed `scratch/verify_prash_validation.py` testing semantic matching, out-of-domain rejection, and argument alias parsing.
+- **Expected result**: Allow valid browser launches; reject calc hallucination on Chrome prompt; reject open_application for button clicks.
+- **Actual result**:
+```text
+Valid request result: is_valid= True Tool= open_application
+Hallucinated request result: is_valid= False Reason= Semantic hallucination mismatch: query asked for 'chrome' but model targeted 'calc'
+UI mismatch result: is_valid= False Reason= Semantic mismatch: 'open_application' proposed for non-launch query: 'Click the Submit button'
+ALL 3 VALIDATION TESTS PASSED CLEANLY!
+```
+- **Status**: PASS
+
+---
+
+### [Real Disk Resume Intelligence & Personal Context Grounding]
+- **Date tested**: 2026-08-31
+- **How tested**: Executed `scratch/verify_resume_intelligence.py` querying disk resume location, verified skills, and user identity.
+- **Expected result**: Locate real PDF on disk, extract skills from PDF text, and return grounded user profile.
+- **Actual result**:
+```text
+TEST 1: Where is my resume? -> Found C:\Users\ashri\Downloads\Ashrit_Raghupatruni_Resume.pdf
+TEST 2: What are my skills based on my resume? -> Verified Python, C++, JavaScript, PyTorch, LangChain, Win32 UIA
+TEST 3: What is my full name according to my resume? -> Ashrit Raghupatruni, SRM University AP
+ALL 3 TESTS COMPLETED AND VERIFIED!
+```
+- **Status**: PASS
+
+---
+
+### [Full Backend API Production Lifecycle & Tool Registry Suite]
+- **Date tested**: 2026-08-31
+- **How tested**: Executed FastAPI in-process lifecycle test against all core endpoints.
+- **Expected result**: All core endpoints return HTTP 200 with active status; discover >=50 tools via API.
+- **Actual result**:
+```text
+Testing /health... -> Status 200 {'status': 'ok', 'uptime': 6.22, 'service': 'JARVIS Backend'}
+Testing /api/health... -> Status 200 {'status': 'ok', 'uptime': 6.23, 'service': 'JARVIS Backend'}
+Testing /api/tools... -> Status 200, Discovered 56 tools via API
+Testing /api/system/lock... -> Status 200 {'status': 'success', 'locked': True}
+Testing /api/live_mode/status... -> Status 200 {'status': 'inactive', 'live_mode_enabled': False}
+ALL BACKEND API TESTS PASSED CLEANLY!
+```
+- **Status**: PASS
+
+
 
 

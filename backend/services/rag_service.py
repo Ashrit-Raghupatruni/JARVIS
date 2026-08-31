@@ -275,6 +275,21 @@ class RAGService:
         self._save_manifest()
         return indexed_count
 
+    def crawl_user_documents(self) -> int:
+        """Scan and incrementally index standard user document folders (Documents, Downloads)."""
+        total_indexed = 0
+        user_dirs = [
+            Path(os.path.expanduser("~\\Documents")),
+            Path(os.path.expanduser("~\\Downloads"))
+        ]
+        for d in user_dirs:
+            if d.exists():
+                try:
+                    total_indexed += self.scan_folder(d)
+                except Exception as e:
+                    logger.warning("Error indexing directory {}: {}", d, e)
+        return total_indexed
+
     def search(self, query: str, limit: int = 3) -> List[Dict[str, Any]]:
         """Perform semantic search using ChromaDB or fallback local TF-IDF matcher."""
         logger.info(f"RAG search query: '{query}'")

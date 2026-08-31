@@ -78,6 +78,8 @@ class WorldModelState(BaseModel):
     user_context: UserContextState = Field(default_factory=UserContextState)
 
     # Legacy flat compatibility fields
+    monitors: List[Dict[str, Any]] = Field(default_factory=list)
+    active_monitor_id: int = 1
     active_app: str = "Desktop"
     window_title: str = "Desktop"
     window_bounds: List[int] = Field(default_factory=list)
@@ -90,6 +92,7 @@ class WorldModelState(BaseModel):
     audio_playing: bool = False
     internet_online: bool = True
     current_workflow: str = "Idle Desktop Observation"
+    cursor_position: List[int] = Field(default_factory=lambda: [0, 0])
 
 
 class WorldModel:
@@ -102,6 +105,8 @@ class WorldModel:
         self.event_bus = event_bus
         self.spatial_engine = SpatialEngine()
         self.scene_graph_engine = UIASceneGraph()
+        self._last_online_check_time: float = 0.0
+        self._cached_is_online: bool = True
         self._state = WorldModelState()
         self.refresh()
         if self.event_bus:
@@ -154,6 +159,19 @@ class WorldModel:
         
         # 1. Capture Active Foreground Window
         hwnd = win32gui.GetForegroundWindow()
+        if not hwnd:
+            try:
+                top_windows = []
+                def _enum_cb(h, _):
+                    if win32gui.IsWindowVisible(h) and win32gui.GetWindowText(h):
+                        r = win32gui.GetWindowRect(h)
+                        if r[2] > r[0] and r[3] > r[1]:
+                            top_windows.append(h)
+                win32gui.EnumWindows(_enum_cb, None)
+                hwnd = top_windows[0] if top_windows else win32gui.GetDesktopWindow()
+            except Exception:
+                hwnd = 0
+
         window_title = "Desktop"
         process_id = None
         app_name = "explorer.exe"
@@ -161,7 +179,7 @@ class WorldModel:
 
         if hwnd:
             try:
-                window_title = win32gui.GetWindowText(hwnd) or "Active Window"
+                window_title = win32gui.GetWindowText(hwnd) or "Desktop"
                 _, pid = win32process.GetWindowThreadProcessId(hwnd)
                 process_id = pid
                 try:
@@ -192,15 +210,26 @@ class WorldModel:
                         browser_url = c.name
                         break
 
-        # 5. Dynamic Internet Online Check (socket ping)
-        is_online = True
-        try:
-            import socket
-            socket.create_connection(("8.8.8.8", 53), timeout=0.2).close()
-        except Exception:
-            is_online = False
+        # 5. Dynamic Internet Online Check (socket ping cached for 30s)
+        if now - self._last_online_check_time > 30.0:
+            try:
+                import socket
+                socket.create_connection(("8.8.8.8", 53), timeout=0.2).close()
+                self._cached_is_online = True
+            except Exception:
+                self._cached_is_online = False
+            self._last_online_check_time = now
+        is_online = self._cached_is_online
 
-        # 6. Dynamic Audio Session Probe
+        # 6. Read Real Cursor Position via Win32 API
+        cursor_pos = [0, 0]
+        try:
+            cur_x, cur_y = win32api.GetCursorPos()
+            cursor_pos = [int(cur_x), int(cur_y)]
+        except Exception:
+            pass
+
+        # 7. Dynamic Audio Session Probe
         is_audio_active = False
         try:
             from pycaw.pycaw import AudioUtilities
@@ -212,7 +241,7 @@ class WorldModel:
         except Exception:
             pass
 
-        # 7. Feed updates into WorkspaceIntelligenceService
+        # 8. Feed updates into WorkspaceIntelligenceService
         ws_workflow = scene.active_app or "General Desktop Automation"
         try:
             from backend.services.manager import ServiceManager
@@ -223,7 +252,7 @@ class WorldModel:
         except Exception:
             pass
 
-        # 8. Construct updated state
+        # 9. Construct updated state
         self._state = WorldModelState(
             timestamp=now,
             monitors=monitors_data,
@@ -238,7 +267,14 @@ class WorldModel:
             clipboard_text=clipboard_text,
             audio_playing=is_audio_active,
             internet_online=is_online,
-            current_workflow=ws_workflow
+            current_workflow=ws_workflow,
+            cursor_position=cursor_pos,
+            desktop=DesktopState(
+                active_window=window_title,
+                monitors=monitors_data,
+                active_monitor_id=1,
+                cursor_position=cursor_pos
+            )
         )
         return self._state
 
@@ -261,11 +297,21 @@ class WorldModel:
     def get_summary(self) -> Dict[str, Any]:
         """Returns concise dictionary summary for Planner context prompts."""
         st = self._state
+        disp_list = getattr(st, "monitors", []) or (st.desktop.monitors if hasattr(st, "desktop") else [])
+        disp_count = len(disp_list)
+        ctrl_count = st.scene_graph.get("total_elements", 0) if st.scene_graph else 0
+        pid = st.process_id
+
         return {
-            "active_window": st.window_title,
-            "monitors_count": len(getattr(st, "monitors", getattr(st, "displays", []))),
-            "control_nodes": st.scene_graph.get("total_elements", 0) if st.scene_graph else 0,
+            "active_window": st.window_title or "Desktop",
+            "foreground_pid": pid,
+            "process_id": pid,
+            "ui_control_count": ctrl_count,
+            "control_nodes": ctrl_count,
+            "display_count": disp_count,
+            "monitors_count": disp_count,
             "focused_control": st.scene_graph.get("focused_element") if st.scene_graph else None,
             "clipboard_has_text": bool(st.clipboard_text),
-            "workflow": st.current_workflow
+            "workflow": st.current_workflow,
+            "active_app": st.active_app
         }

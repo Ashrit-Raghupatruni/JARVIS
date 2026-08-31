@@ -206,6 +206,22 @@ class ProactiveEngine:
         title = state.window_title.lower()
         app = state.active_app.lower()
 
+        # 0a. Hung Application Proactive Alert via Win32 API
+        try:
+            import ctypes, win32gui
+            hwnd_fore = win32gui.GetForegroundWindow()
+            if hwnd_fore and ctypes.windll.user32.IsHungAppWindow(hwnd_fore):
+                hung_title = win32gui.GetWindowText(hwnd_fore) or "Active Window"
+                logger.info("ProactiveEngine: Detected hung foreground window '{}'", hung_title)
+                return ProactiveGuidance(
+                    guidance_type="hung_app_alert",
+                    title="Unresponsive Application Detected",
+                    message=f"I detected that '{hung_title}' has stopped responding.",
+                    action_suggestion="Say 'Recover hung application' to terminate the unresponsive process."
+                )
+        except Exception:
+            pass
+
         # 0. Repetitive Action Macro Nudge
         if len(self._action_history) >= 3:
             last_3 = self._action_history[-3:]

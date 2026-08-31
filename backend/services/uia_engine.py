@@ -34,6 +34,15 @@ class UIAEngine:
 
         try:
             hwnd = win32gui.GetForegroundWindow()
+            if not hwnd:
+                return {
+                    "status": "success",
+                    "foreground_hwnd": 0,
+                    "window_title": "Desktop / No Foreground Window",
+                    "window_bounds": {"left": 0, "top": 0, "right": 0, "bottom": 0},
+                    "control_count": 0,
+                    "controls": []
+                }
             title = win32gui.GetWindowText(hwnd)
             rect = win32gui.GetWindowRect(hwnd)
             
@@ -347,6 +356,20 @@ class UIAEngine:
         if ocr_result.get("status") == "clicked":
             return ocr_result
 
+        # Tier 4: Scroll-and-Search Adaptive Fallback (for content below viewport fold)
+        try:
+            import pyautogui
+            import time
+            for _ in range(2):
+                pyautogui.scroll(-500)
+                time.sleep(0.35)
+                ocr_scroll = self.click_element_by_ocr(element_name)
+                if ocr_scroll.get("status") == "clicked":
+                    ocr_scroll["method"] = "scroll_and_ocr"
+                    return ocr_scroll
+        except Exception:
+            pass
+
         return {"status": "not_found", "target": element_name}
 
     def invoke_control(self, automation_id_or_name: str) -> Dict[str, Any]:
@@ -403,13 +426,19 @@ class UIAEngine:
                 time.sleep(0.1)
                 import pyautogui
                 pyautogui.hotkey("ctrl", "a")
-                pyautogui.typewrite(value, interval=0.01)
+                pyautogui.typewrite(value, interval=0.01) if value.isascii() else pyautogui.write(value)
                 return {
                     "status": "value_set",
                     "field": field_name,
                     "value": value,
                     "focus_method": res.get("method", "native")
                 }
-            return res
+            # Fail-closed safety invariant: never type blindly into unknown windows
+            logger.warning("Target field '{}' not found on active window. Rejecting blind keystroke injection.", field_name)
+            return {
+                "status": "error",
+                "message": f"Target control field '{field_name}' not found on active window",
+                "field": field_name
+            }
         except Exception as e:
             return {"status": "error", "message": str(e)}

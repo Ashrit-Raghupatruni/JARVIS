@@ -912,6 +912,19 @@ async def toggle_live_mode_global(request: Request, enable: bool = True):
     }
 
 
+# ── Native System Lock Endpoint ────────────────────────────
+@app.post("/api/system/lock")
+@app.get("/api/system/lock")
+async def system_lock_global():
+    """Execute native Windows LockWorkStation."""
+    import ctypes
+    try:
+        res = ctypes.windll.user32.LockWorkStation()
+        return {"status": "success", "locked": bool(res), "message": "Workstation locked successfully."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 # ── Global Chat History Endpoints ───────────────────────────
 
 @app.get("/api/conversations")

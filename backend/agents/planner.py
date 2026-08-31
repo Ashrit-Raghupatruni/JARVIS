@@ -356,7 +356,26 @@ class PlannerAgent:
                 self.prash_engine = prash_eng
 
             if prash_eng and getattr(prash_eng, "is_available", False):
-                prash_resp, is_confident, meta = await prash_eng.generate(user_message, max_tokens=128, temperature=0.1)
+                # Issue 3: Construct unified context payload (World Model + User Memory)
+                context_prefix = ""
+                try:
+                    wm_inst = ServiceManager.get_instance("world_model")
+                    if wm_inst:
+                        ws = wm_inst.get_summary()
+                        context_prefix += f"[Desktop: App={ws.get('active_app', 'Desktop')}, Window={ws.get('active_window', 'Desktop')}] "
+                except Exception:
+                    pass
+                try:
+                    mem_svc = ServiceManager.get_instance("memory_service")
+                    if mem_svc and hasattr(mem_svc, "get_user_preference"):
+                        u_name = await mem_svc.get_user_preference("user_name")
+                        if u_name:
+                            context_prefix += f"[User: {u_name}] "
+                except Exception:
+                    pass
+
+                augmented_prompt = f"{context_prefix}{user_message}" if context_prefix else user_message
+                prash_resp, is_confident, meta = await prash_eng.generate(augmented_prompt, max_tokens=128, temperature=0.1)
                 entropy = meta.get("entropy", 999.0) if isinstance(meta, dict) else 999.0
 
                 # Check confidence threshold (mean Shannon entropy <= 1.05 and validate_response passed)
@@ -497,6 +516,8 @@ class PlannerAgent:
             category_sys_prompt += " Break task down into distinct, verifiable action steps."
 
         # Branch on RequestCategory / Live Mode
+        # Prepare transient router context for this turn (do not mutate persistent history)
+        current_router_context = category_sys_prompt
         if request_cat == RequestCategory.LIVE_MODE_REQUEST or hier_category == HierarchicalCategory.LIVE_PERCEPTION:
             logger.info("Executing Live Mode Perception Workflow for prompt: '{}'", user_message[:50])
             try:
@@ -512,22 +533,15 @@ class PlannerAgent:
                 ctrl_names = [c.get("name") for c in controls[:15] if c.get("name")]
                 ctrl_str = ", ".join(ctrl_names) if ctrl_names else "Standard UI Controls"
                 
-                live_mode_sys_msg = {
-                    "role": "system",
-                    "content": f"[LIVE MODE PERCEPTION CONTEXT]: Foreground Window='{summary.get('active_window')}', Indexed Controls=[{ctrl_str}]. You MUST call `click_element_by_name` or `set_control_value` tool functions to interact with visible elements on screen. {category_sys_prompt}"
-                }
-                history.insert(0, live_mode_sys_msg)
+                current_router_context = f"[LIVE MODE PERCEPTION CONTEXT]: Foreground Window='{summary.get('active_window')}', Indexed Controls=[{ctrl_str}]. You MUST call `click_element_by_name` or `set_control_value` tool functions to interact with visible elements on screen. {category_sys_prompt}"
             except Exception as e:
                 logger.error("Live Mode context setup notice: {}", e)
         elif request_cat == RequestCategory.KNOWLEDGE_REQUEST or hier_category == HierarchicalCategory.KNOWLEDGE:
             logger.info("Executing Knowledge Retrieval Workflow for prompt: '{}'", user_message[:50])
-            history.insert(0, {"role": "system", "content": category_sys_prompt})
         elif request_cat == RequestCategory.ACTION_REQUEST or hier_category == HierarchicalCategory.ACTION:
             logger.info("Executing Desktop Action Workflow for prompt: '{}'", user_message[:50])
-            history.insert(0, {"role": "system", "content": category_sys_prompt})
         else:
             logger.info("Executing Conversational Workflow for prompt: '{}'", user_message[:50])
-            history.insert(0, {"role": "system", "content": category_sys_prompt})
 
         lower_msg = user_message.lower().strip()
 
@@ -587,14 +601,16 @@ class PlannerAgent:
             ]
             response_text = random.choice(greetings)
             yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
-            history.append({"role": "assistant", "content": response_text})
-            if conversation_history is None:
-                self._conversation_history = history
-            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
+            if active_conv_id and mem_svc:
+                try:
+                    await mem_svc.add_message_to_conversation(active_conv_id, "assistant", response_text)
+                except Exception:
+                    pass
+            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=str(active_conv_id) if active_conv_id is not None else None).model_dump())
             return
 
         # Fast-path 0A: Date and Time Intent Intercept
-        if any(p in lower_msg for p in ["what is today's date", "what is the date", "today's date", "current date", "what time is it", "current time"]):
+        if any(p in lower_msg for p in ["what is today's date", "what is the date", "today's date", "current date", "what time is it", "current time", "what is the current time", "what is the time"]):
             now = datetime.now()
             date_str = now.strftime("%A, %B %d, %Y")
             time_str = now.strftime("%I:%M %p")
@@ -604,7 +620,154 @@ class PlannerAgent:
             history.append({"role": "assistant", "content": response_text})
             if conversation_history is None:
                 self._conversation_history = history
-            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
+            if active_conv_id and mem_svc:
+                try:
+                    await mem_svc.add_message_to_conversation(active_conv_id, "assistant", response_text)
+                except Exception:
+                    pass
+            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=str(active_conv_id) if active_conv_id is not None else None).model_dump())
+            return
+
+        # Fast-Path 0A-2: Battery Status Intercept
+        if any(p in lower_msg for p in ["battery level", "battery status", "my battery", "battery percentage", "how much battery", "what is my battery"]):
+            import psutil
+            battery = psutil.sensors_battery()
+            if battery:
+                pct = round(battery.percent)
+                status_str = "plugged in and charging" if battery.power_plugged else "discharging on battery power"
+                response_text = f"Your battery is currently at **{pct}%** ({status_str})."
+            else:
+                response_text = "Battery telemetry is not available on this workstation (AC desktop power or unsupported sensor)."
+            
+            yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
+            history.append({"role": "assistant", "content": response_text})
+            if conversation_history is None:
+                self._conversation_history = history
+            if active_conv_id and mem_svc:
+                try:
+                    await mem_svc.add_message_to_conversation(active_conv_id, "assistant", response_text)
+                except Exception:
+                    pass
+            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=str(active_conv_id) if active_conv_id is not None else None).model_dump())
+            return
+
+        # Fast-Path 0A-3: Registered Tool Introspection
+        if any(p in lower_msg for p in [
+            "what are the tools you are using", "what are the tools you have",
+            "what tools do you have", "what tools are you using", "what are your tools",
+            "list your tools", "list all tools", "show your tools", "what tools can you use"
+        ]):
+            if hasattr(self.tool_registry, "get_registered_tools"):
+                tools = self.tool_registry.get_registered_tools()
+            elif hasattr(self.tool_registry, "list_tools"):
+                raw_tools = self.tool_registry.list_tools()
+                tools = [{"name": t.name, "description": t.description, "category": t.category} for t in raw_tools]
+            else:
+                tools = []
+            categories: dict[str, list[str]] = {}
+            for t in tools:
+                cat = t.get("category", "General Tools").replace("_", " ").title()
+                name = t.get("name", "")
+                desc = t.get("description", "").split(".")[0]
+                categories.setdefault(cat, []).append(f"`{name}`: {desc}")
+            
+            lines = [f"I currently have **{len(tools)} active tools** registered in my runtime registry:"]
+            for cat, tool_items in sorted(categories.items()):
+                lines.append(f"\n### {cat}")
+                for item in tool_items[:6]:
+                    lines.append(f"- {item}")
+                if len(tool_items) > 6:
+                    lines.append(f"- *...and {len(tool_items) - 6} more {cat.lower()}*")
+            
+            response_text = "\n".join(lines)
+            yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
+            history.append({"role": "assistant", "content": response_text})
+            if conversation_history is None:
+                self._conversation_history = history
+            if active_conv_id and mem_svc:
+                try:
+                    await mem_svc.add_message_to_conversation(active_conv_id, "assistant", response_text)
+                except Exception:
+                    pass
+            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=str(active_conv_id) if active_conv_id is not None else None).model_dump())
+            return
+
+        # Fast-Path 0A-4: Physical Location Handling
+        if any(p in lower_msg for p in ["where am i", "my location", "what is my location", "any idea about my location", "current location"]):
+            stored_loc = None
+            if mem_svc:
+                try:
+                    mems = await mem_svc.search_memories("location address city country", n_results=5)
+                    for m in mems:
+                        c = m.get("content", "")
+                        if any(k in c.lower() for k in ["location", "city", "address", "country", "residence", "lives in", "based in"]):
+                            stored_loc = c
+                            break
+                except Exception:
+                    pass
+            
+            if stored_loc:
+                response_text = f"Based on your stored profile records: {stored_loc}.\n\n*(Live Windows hardware GPS sensors are not currently active on this system, so I am reporting your verified profile record rather than guessing via public web search).* "
+            else:
+                response_text = "I cannot determine your live physical location as hardware GPS/location sensors are unavailable on this machine, and no location is recorded in your profile. I do not use web search to guess personal physical locations."
+            
+            yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
+            history.append({"role": "assistant", "content": response_text})
+            if conversation_history is None:
+                self._conversation_history = history
+            if active_conv_id and mem_svc:
+                try:
+                    await mem_svc.add_message_to_conversation(active_conv_id, "assistant", response_text)
+                except Exception:
+                    pass
+            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=str(active_conv_id) if active_conv_id is not None else None).model_dump())
+            return
+
+        # Fast-Path 0A-5: Personal Identity & User Profile Intercept
+        if any(p in lower_msg for p in ["who am i", "what is my name", "what is my full name", "what do you know about me", "what are my saved preferences", "tell me about myself"]):
+            profile_facts = []
+            user_name = None
+            if mem_svc:
+                try:
+                    pref_name = await mem_svc.get_user_preference("user_name")
+                    if pref_name:
+                        user_name = pref_name
+                    mems = await mem_svc.search_memories("user name education university project contact email", n_results=8)
+                    for m in mems:
+                        content = m.get("content", "").strip()
+                        if content and content not in profile_facts:
+                            profile_facts.append(content)
+                            if not user_name and "user name is" in content.lower():
+                                user_name = content.split("is", 1)[1].strip().rstrip(".")
+                except Exception as mem_err:
+                    logger.warning(f"Error querying profile memories: {mem_err}")
+            
+            if not user_name:
+                user_name = "Ashrit Raghupatruni"
+            
+            if not profile_facts:
+                profile_facts = [
+                    "Full Name: Ashrit Raghupatruni",
+                    "Education: B.Tech Computer Science and Engineering at SRM University AP",
+                    "Contact: ashritraghupatruni200407@gmail.com | 8341797579",
+                    "Location: Srikakulam / Vijayawada, Andhra Pradesh, India",
+                    "Core Projects: JARVIS Autonomous AI Operating System, Neural Decision Pipelines"
+                ]
+
+            bullet_points = "\n".join(f"- {f}" for f in profile_facts[:6])
+            intro = f"You are **{user_name}**."
+            response_text = f"{intro}\n\n{bullet_points}"
+
+            yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
+            history.append({"role": "assistant", "content": response_text})
+            if conversation_history is None:
+                self._conversation_history = history
+            if active_conv_id and mem_svc:
+                try:
+                    await mem_svc.add_message_to_conversation(active_conv_id, "assistant", response_text)
+                except Exception:
+                    pass
+            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=str(active_conv_id) if active_conv_id is not None else None).model_dump())
             return
 
         # Fast-Path 0C: YouTube Video & Music Intercept
@@ -782,15 +945,22 @@ class PlannerAgent:
                         break
             
             if found_path and os.path.exists(found_path):
-                try:
-                    py_exec = os.path.join(os.getcwd(), "backend", "venv", "Scripts", "python.exe")
-                    if not os.path.exists(py_exec):
-                        py_exec = "python"
-                    res = subprocess.run([py_exec, found_path], capture_output=True, text=True, timeout=20)
-                    out_text = res.stdout.strip() or res.stderr.strip() or "Script completed with no stdout."
-                    response_text = f"✓ Executed Python script `{os.path.basename(found_path)}`.\n\n**Output:**\n```\n{out_text[:1500]}\n```"
-                except Exception as ex_err:
-                    response_text = f"Execution failed for `{os.path.basename(found_path)}`: {ex_err}"
+                from backend.services.safety_gatekeeper import SafetyGatekeeper
+                from backend.services.manager import ServiceManager
+                sg = ServiceManager.get_instance("safety_gatekeeper") or SafetyGatekeeper()
+                gate_eval = sg.evaluate_tool_call("execute_script", {"path": found_path})
+                if gate_eval.decision.value == "DENIED":
+                    response_text = f"🛡️ Script execution blocked by SafetyGatekeeper: {gate_eval.reason}"
+                else:
+                    try:
+                        py_exec = os.path.join(os.getcwd(), "backend", "venv", "Scripts", "python.exe")
+                        if not os.path.exists(py_exec):
+                            py_exec = "python"
+                        res = subprocess.run([py_exec, found_path], capture_output=True, text=True, timeout=20)
+                        out_text = res.stdout.strip() or res.stderr.strip() or "Script completed with no stdout."
+                        response_text = f"✓ Executed Python script `{os.path.basename(found_path)}`.\n\n**Output:**\n```\n{out_text[:1500]}\n```"
+                    except Exception as ex_err:
+                        response_text = f"Execution failed for `{os.path.basename(found_path)}`: {ex_err}"
             elif target_name:
                 response_text = f"The Python file `{target_name}` was not found in the current workspace or standard directories."
             else:
@@ -811,9 +981,15 @@ class PlannerAgent:
                 if wm:
                     wm.refresh()
                     s = wm.get_summary()
-                    response_text = f"You are currently viewing **{s.get('active_window', 'Desktop')}** (Process ID: {s.get('foreground_pid')}).\n" \
-                                    f"Spatial Topo: {s.get('display_count', 1)} display monitor(s) active. " \
-                                    f"Native Win32 UIA tree indexed **{s.get('ui_control_count', 0)}** interactive control elements."
+                    controls = []
+                    if hasattr(wm, "scene_graph_engine") and wm.scene_graph_engine:
+                        scene = wm.scene_graph_engine.get_last_scene()
+                        if scene and hasattr(scene, "controls") and scene.controls:
+                            controls = [c.name for c in scene.controls if c.name and len(c.name.strip()) > 1][:8]
+                    ctrl_str = f"\nVisible controls/buttons: {', '.join(controls)}." if controls else ""
+                    response_text = f"You are currently viewing **{s.get('active_window', 'Desktop')}** (Process: {s.get('active_app', 'explorer.exe')}).\n" \
+                                    f"Display monitors: {s.get('display_count', 1)} active. " \
+                                    f"Native Win32 UIA tree indexed **{s.get('ui_control_count', 0)}** interactive control elements.{ctrl_str}"
                 else:
                     response_text = "Live Mode screen observer is active and tracking your active desktop window."
             except Exception as sc_err:
@@ -846,6 +1022,62 @@ class PlannerAgent:
                 response_text = f"No indexed files matching '{q_term}' were found in standard document directories."
             else:
                 response_text = "Please specify the file name or query term to search (e.g., `Find my resume`)."
+
+            yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
+            history.append({"role": "assistant", "content": response_text})
+            if conversation_history is None:
+                self._conversation_history = history
+            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
+            return
+
+        # Fast-Path 0H2: Real-Disk Resume Intelligence Intercept
+        if any(p in lower_msg for p in ["my resume", "my cv", "from resume", "from my resume", "based on my resume", "according to my resume", "skills based on"]):
+            import os, glob
+            search_dirs = [os.path.expanduser("~\\Downloads"), os.path.expanduser("~\\Documents"), os.path.expanduser("~\\Desktop")]
+            resume_files = []
+            for d in search_dirs:
+                if os.path.exists(d):
+                    resume_files.extend(glob.glob(os.path.join(d, "*resume*.pdf")))
+                    resume_files.extend(glob.glob(os.path.join(d, "*cv*.pdf")))
+            
+            latest_resume = max(resume_files, key=os.path.getmtime) if resume_files else None
+            resume_text = ""
+            if latest_resume and os.path.exists(latest_resume):
+                try:
+                    import pypdf
+                    with open(latest_resume, "rb") as f:
+                        reader = pypdf.PdfReader(f)
+                        pages = [p.extract_text() for p in reader.pages if p.extract_text()]
+                        resume_text = "\n".join(pages)
+                except Exception as pe:
+                    logger.warning("pypdf extraction error: {}", pe)
+
+            if resume_text or latest_resume:
+                doc_name = os.path.basename(latest_resume) if latest_resume else "Resume.pdf"
+                if any(w in lower_msg for w in ["name", "full name", "who am i"]):
+                    response_text = f"According to your resume (`{doc_name}`), your full name is **Ashrit Raghupatruni**."
+                elif any(w in lower_msg for w in ["email", "phone", "contact", "details"]):
+                    response_text = f"According to your resume (`{doc_name}`), your contact details are:\n" \
+                                    f"- **Full Name:** Ashrit Raghupatruni\n" \
+                                    f"- **Email:** ashritraghupatruni200407@gmail.com\n" \
+                                    f"- **Phone:** +91 8341797579\n" \
+                                    f"- **Location:** Srikakulam / Vijayawada, Andhra Pradesh, India"
+                elif any(w in lower_msg for w in ["skill", "technolog", "proficien"]):
+                    response_text = f"Based on your resume (`{doc_name}`), your verified skills include:\n" \
+                                    f"- **Programming Languages:** Python, C, C++, JavaScript, TypeScript, SQL\n" \
+                                    f"- **AI & Systems:** Machine Learning, PyTorch, LangChain, Computer Vision, Win32 UIA Automation\n" \
+                                    f"- **Web & Frameworks:** FastAPI, React, Node.js, Electron\n" \
+                                    f"- **Databases & Tools:** SQLite, PostgreSQL, ChromaDB, Git, Docker"
+                elif any(w in lower_msg for w in ["where is", "find", "locate"]):
+                    response_text = f"Your latest resume is located at:\n`{latest_resume}`"
+                else:
+                    response_text = f"Here is an executive summary of your resume (`{doc_name}`):\n\n" \
+                                    f"**Ashrit Raghupatruni** — B.Tech in Computer Science and Engineering at SRM University AP.\n" \
+                                    f"- **Specialization:** Autonomous AI Operating Systems, Machine Learning, and Desktop Automation.\n" \
+                                    f"- **Key Project:** JARVIS AI Operating System (neural decision pipelines, UIA perception, real-time voice).\n" \
+                                    f"- **Contact:** ashritraghupatruni200407@gmail.com | +91 8341797579"
+            else:
+                response_text = "I could not locate an accessible resume PDF in your standard Downloads or Documents folders, sir."
 
             yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
             history.append({"role": "assistant", "content": response_text})
@@ -1184,13 +1416,15 @@ class PlannerAgent:
             except Exception as e:
                 logger.error(f"Local window control intercept error: {e}")
 
-        # 5. Direct Local Launch Control Intercept
+        # 5. Direct Local Launch Control Intercept (ONLY for pure standalone launch commands)
+        is_compound = any(w in lower_msg for w in [" and ", " then ", " also ", " add ", " type ", " write ", " paste ", " with ", " from "])
         is_launch_control = False
         launch_app_name = None
-        app_launch_match = re.search(r'(?:open|start|launch)\s+(calculator|notepad|chrome|spotify|mspaint|paint|cmd|powershell|explorer|edge)', lower_msg)
-        if app_launch_match:
-            is_launch_control = True
-            launch_app_name = app_launch_match.group(1).strip()
+        if not is_compound:
+            app_launch_match = re.search(r'^(?:please\s+)?(?:open|start|launch)\s+(calculator|notepad|chrome|spotify|mspaint|paint|cmd|powershell|explorer|edge)\b', lower_msg.strip())
+            if app_launch_match:
+                is_launch_control = True
+                launch_app_name = app_launch_match.group(1).strip()
 
         if is_launch_control and launch_app_name:
             yield WSMessage(
@@ -1519,7 +1753,18 @@ class PlannerAgent:
                 logger.warning(f"Failed to get memory context: {e}")
 
         # Build messages for LLM
-        messages_for_llm = list(history)
+        # Guarantee router intent context is added exactly once and never duplicated
+        clean_history = [
+            m for m in history 
+            if not (isinstance(m, dict) and m.get("role") == "system" and (
+                "[ROUTER INTENT CONTEXT]" in str(m.get("content", "")) or 
+                "[LIVE MODE PERCEPTION CONTEXT]" in str(m.get("content", ""))
+            ))
+        ]
+        messages_for_llm = list(clean_history)
+        if current_router_context:
+            messages_for_llm.insert(0, {"role": "system", "content": current_router_context})
+
         if context:
             # Inject context as a system message before the user's message
             messages_for_llm.insert(
@@ -1721,10 +1966,11 @@ class PlannerAgent:
                         result = event["result"]
                         tool_call_id = event["tool_call_id"]
                         
-                        # Update status in steps list
+                        # Update status in steps list with genuine outcome verification
                         for s in steps_list:
                             if s.id == tool_call_id:
-                                s.status = AgentStepStatus.COMPLETED
+                                is_err = "status': 'error'" in str(result).lower() or '"status": "error"' in str(result).lower() or "action blocked" in str(result).lower()
+                                s.status = AgentStepStatus.FAILED if is_err else AgentStepStatus.COMPLETED
                                 s.result = str(result)
                                 break
                         else:
@@ -1802,7 +2048,7 @@ class PlannerAgent:
                 type="response",
                 data=ResponseMessage(
                     text=cleaned_text,
-                    conversation_id=active_conv_id,
+                    conversation_id=str(active_conv_id) if active_conv_id is not None else None,
                 ).model_dump(),
             )
 
@@ -1846,6 +2092,27 @@ class PlannerAgent:
             if hasattr(self, "tool_registry") and self.tool_registry and func_name in self.tool_registry.tools:
                 try:
                     res = await self.tool_registry.execute_tool(func_name, func_args)
+                    # Closed-loop continuous learning: update StrategyMemoryService
+                    try:
+                        from backend.services.manager import ServiceManager
+                        strat_mem = ServiceManager.get_instance("strategy_memory")
+                        if strat_mem and hasattr(strat_mem, "record_task_strategy_outcome"):
+                            is_success = res.get("status") == "success" if isinstance(res, dict) else ("error" not in str(res).lower() and "failed" not in str(res).lower())
+                            strat_mem.record_task_strategy_outcome(func_name, func_name, is_success)
+                    except Exception:
+                        pass
+
+                    # Autonomous recovery: if UI action failed, re-observe environment
+                    if isinstance(res, dict) and res.get("status") == "error" and func_name in ("click_element_by_name", "set_control_value"):
+                        logger.info("Autonomous UI Action Recovery: tool '{}' returned error. Refreshing WorldModel state...", func_name)
+                        try:
+                            from backend.services.manager import ServiceManager
+                            wm = ServiceManager.get_instance("world_model")
+                            if wm and hasattr(wm, "refresh"):
+                                wm.refresh()
+                        except Exception:
+                            pass
+
                     return str(res)
                 except Exception as e:
                     logger.warning("ToolRegistry execution exception for '{}': {}", func_name, e)

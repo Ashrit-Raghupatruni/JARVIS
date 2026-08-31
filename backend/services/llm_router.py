@@ -344,7 +344,18 @@ class LLMRoutingEngine:
                     tokens = 0
                     model_name = self._get_model_name(p)
 
-                    if p == "gemini":
+                    if p == "prash":
+                        from backend.services.manager import ServiceManager
+                        prash_eng = ServiceManager.get_instance("prash_engine")
+                        if not prash_eng:
+                            continue
+                        if not getattr(prash_eng, "_initialized", False):
+                            await asyncio.to_thread(prash_eng.init)
+                        res = await asyncio.to_thread(prash_eng.generate, "Hi", max_tokens=1)
+                        if res is not None:
+                            success = True
+                            tokens = 1
+                    elif p == "gemini":
                         from google import genai
                         client = genai.Client(api_key=self.gemini_key)
                         response = await asyncio.wait_for(

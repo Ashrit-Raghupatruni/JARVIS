@@ -187,6 +187,59 @@ class MemoryService:
             logger.error(f"Memory search failed: {e}")
             return []
 
+    async def delete_memory(self, memory_id: str) -> bool:
+        """Delete a specific memory by ID from both ChromaDB and SQLite."""
+        deleted = False
+        try:
+            if self._knowledge_collection:
+                self._knowledge_collection.delete(ids=[memory_id])
+                deleted = True
+                logger.info(f"Deleted memory '{memory_id}' from ChromaDB knowledge collection")
+            if self._session_factory:
+                from sqlalchemy import select
+                async with self._session_factory() as session:
+                    res = await session.execute(select(MemoryLog).where(MemoryLog.id == memory_id))
+                    m = res.scalar_one_or_none()
+                    if m:
+                        await session.delete(m)
+                        await session.commit()
+                        deleted = True
+            return deleted
+        except Exception as e:
+            logger.error(f"Failed to delete memory '{memory_id}': {e}")
+            return False
+
+    async def forget_fact(self, query: str) -> Dict[str, Any]:
+        """Find and delete memories matching a semantic search query."""
+        if not self._knowledge_collection or self._knowledge_collection.count() == 0:
+            return {"status": "success", "deleted_count": 0, "message": "No memories found to delete."}
+
+        try:
+            results = self._knowledge_collection.query(
+                query_texts=[query],
+                n_results=5
+            )
+            ids = results.get("ids", [[]])[0]
+            docs = results.get("documents", [[]])[0]
+            if not ids:
+                return {"status": "success", "deleted_count": 0, "message": f"No memories found matching '{query}'."}
+
+            deleted_ids = []
+            for mid in ids:
+                if await self.delete_memory(mid):
+                    deleted_ids.append(mid)
+
+            return {
+                "status": "success",
+                "deleted_count": len(deleted_ids),
+                "deleted_ids": deleted_ids,
+                "deleted_facts": docs[:len(deleted_ids)],
+                "message": f"Successfully deleted {len(deleted_ids)} memory item(s) matching '{query}'."
+            }
+        except Exception as e:
+            logger.error(f"Error in forget_fact: {e}")
+            return {"status": "error", "error": str(e)}
+
     async def get_user_preference(self, key: str) -> Optional[str]:
         """Get user preference by key from SQLite."""
         if not self._session_factory:
@@ -669,6 +722,19 @@ Transcript:
             context_parts.append("\n[RELEVANT PREFERENCES & KNOWLEDGE]")
             for mem in memories:
                 context_parts.append(f"- {mem['content']}")
+
+        # 3b. Past Conversations (Inter-session continuity)
+        if self._conversations_collection and self._conversations_collection.count() > 0:
+            try:
+                c_results = self._conversations_collection.query(
+                    query_texts=[query], n_results=2
+                )
+                if c_results and c_results.get("documents") and c_results["documents"][0]:
+                    context_parts.append("\n[RELEVANT PAST CONVERSATIONS]")
+                    for doc in c_results["documents"][0]:
+                        context_parts.append(f"- {doc[:250]}...")
+            except Exception as ce:
+                logger.debug(f"Error querying conversation history: {ce}")
 
         # 4. Global structured preferences
         user_name = await self.get_user_preference("user_name")

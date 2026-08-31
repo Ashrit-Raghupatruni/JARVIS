@@ -118,3 +118,46 @@ flowchart TD
     H -->|Decode Failure / Expired / Tampered| I[Log Warning & Return None -> Reject 401 Unauthorized]
     H -->|Valid JWT & Registered Device| J[Authenticate Device Payload & Update last_active]
 ```
+
+---
+
+## 5. Master Unified Decision, Actuation, Verification & Learning Lifecycle Flow
+
+The complete closed-loop lifecycle connecting perception, decision, safety, execution, verification, and learning:
+
+```mermaid
+sequenceDiagram
+    participant User as User (Voice / Desktop / Mobile)
+    participant Router as FastIntentRouter (0.0083ms)
+    participant WorldModel as WorldModel (2.86ms State Refresh)
+    participant Decision as Prash Neural Engine / Cloud LLM Router
+    participant Safety as SafetyGatekeeper (Policy Interlock)
+    participant Tools as ToolRegistry (56 Audited Tools)
+    participant Verifier as ActionExecutionVerifier (27ms)
+    participant Strategy as StrategyMemoryService (Learning)
+    participant TTS as LocalTTSProvider (213ms SAPI)
+
+    User->>Router: Natural language request or spoken voice command
+    alt Deterministic Match
+        Router-->>Decision: Fast-Path Intent (0A - 0H2)
+    else Complex / Unseen Query
+        Router->>WorldModel: Query active application, window title & cursor pos
+        WorldModel-->>Decision: Inject real-time desktop state & personal memory facts
+        Decision->>Decision: Synthesize tool call + parameters
+    end
+
+    Decision->>Safety: evaluate_tool_call(tool_name, parameters)
+    alt Action Prohibited / High Risk Unconfirmed
+        Safety-->>User: Intercept action, block execution, request confirmation
+    else Action Allowed
+        Safety-->>Tools: Dispatched tool execution
+        Tools->>Tools: Execute Win32 UIA / Chromium accessibility / System API
+        Tools->>Verifier: execute_and_verify(tool_name, args)
+        Verifier->>Verifier: Observe post-condition desktop state delta (psutil & win32gui)
+        Verifier->>Strategy: record_task_strategy_outcome(tool_name, success)
+        Strategy-->>Decision: Update procedural confidence weights
+        Verifier-->>TTS: Stream response text
+        TTS-->>User: Local native SAPI speech synthesis (<250ms latency)
+    end
+```
+

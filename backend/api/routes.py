@@ -36,12 +36,34 @@ class SettingsUpdate(BaseModel):
 
 
 @router.get("/health")
+@router.get("/api/health")
+@router.get("/api/v1/health")
 async def health_check():
     """Basic health check endpoint."""
     return {
         "status": "ok",
         "uptime": round(time.time() - _start_time, 2),
         "service": "JARVIS Backend",
+    }
+
+
+@router.get("/tools")
+@router.get("/api/tools")
+@router.get("/api/v1/tools")
+async def list_tools_endpoint(request: Request):
+    """List all registered system tools in ToolRegistry."""
+    from backend.services.manager import ServiceManager
+    tr = ServiceManager.get_instance("tool_registry")
+    if not tr and hasattr(request.app.state, "tool_registry"):
+        tr = request.app.state.tool_registry
+    if not tr:
+        from backend.services.tool_registry import ToolRegistry
+        tr = ToolRegistry()
+    tools = tr.get_registered_tools()
+    return {
+        "status": "ok",
+        "count": len(tools),
+        "tools": tools
     }
 
 

@@ -37,11 +37,18 @@ if %errorlevel% neq 0 (
 )
 echo.
 
-:: Free port 8000 if occupied by dead/orphaned process
-echo [2/4] Verifying port 8000 availability...
+:: Verify backend status and check port 8000
+echo [2/4] Verifying backend status...
+curl -s --connect-timeout 1 http://127.0.0.1:8000/api/health >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [OK] Detected existing healthy JARVIS backend on port 8000. Attaching cleanly...
+    goto LAUNCH_FRONTEND
+)
+
+:: If occupied by an unresponsive or orphaned process, release it with full process tree
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":8000.*LISTENING" 2^>nul') do (
     echo   Releasing orphaned process PID %%a on port 8000...
-    taskkill /F /PID %%a >nul 2>&1
+    taskkill /T /F /PID %%a >nul 2>&1
 )
 echo [OK] Port 8000 ready.
 echo.
@@ -63,8 +70,11 @@ echo   - Initializing core services (attempt %ATTEMPTS%/30)...
 goto WAIT_LOOP
 
 :BACKEND_TIMEOUT
-echo [WARNING] Backend did not report health within 30s. Launching frontend anyway...
-goto LAUNCH_FRONTEND
+echo.
+echo [ERROR] Backend did not report healthy status within 30s.
+echo Check backend terminal output or logs\ for initialization errors.
+pause
+exit /b 1
 
 :BACKEND_READY
 echo [OK] Backend is healthy and listening on http://127.0.0.1:8000!
@@ -83,11 +93,11 @@ if %errorlevel% neq 0 (
     echo [ERROR] JARVIS exited with error code %errorlevel%.
 )
 
-:: Clean up background backend process when Electron quits
+:: Clean up background backend process tree when Electron quits
 echo.
 echo Shutting down background backend processes...
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":8000.*LISTENING" 2^>nul') do (
-    taskkill /F /PID %%a >nul 2>&1
+    taskkill /T /F /PID %%a >nul 2>&1
 )
 echo [OK] JARVIS shutdown complete.
 

@@ -338,12 +338,17 @@ async def websocket_endpoint(websocket: WebSocket):
                         if v_agent and hasattr(v_agent, "handle_interrupt"):
                             async for msg in v_agent.handle_interrupt():
                                 await manager.send_message(websocket, msg, client_id=client_id)
+                        # Actively cancel running execution task for true conversational barge-in
+                        if not worker_task.done():
+                            worker_task.cancel()
                         while not work_queue.empty():
                             try:
                                 work_queue.get_nowait()
                                 work_queue.task_done()
                             except (asyncio.QueueEmpty, ValueError):
                                 break
+                        # Re-instantiate background worker immediately for next command
+                        worker_task = asyncio.create_task(background_worker())
 
                     elif msg_type == "get_tasks":
                         t_q = getattr(app.state, "task_queue_service", None)

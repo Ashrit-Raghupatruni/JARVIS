@@ -102,6 +102,10 @@ class N8nIntegrationService:
         """
         Query n8n REST API to enumerate active and inactive workflows.
         """
+        if not self._is_reachable():
+            logger.debug("n8n local engine is offline (<250ms probe); skipping REST workflow discovery.")
+            return []
+
         url = f"{self.base_url}/api/v1/workflows"
         try:
             req = urllib.request.Request(url, headers=self._get_headers())
@@ -122,15 +126,7 @@ class N8nIntegrationService:
                 return workflows
         except Exception as e:
             logger.warning("n8n REST API workflow discovery unavailable at {}: {}", url, e)
-            return [
-                {
-                    "id": "wf_test_workflow",
-                    "name": "JARVIS Test Workflow",
-                    "active": True,
-                    "tags": ["test", "jarvis"],
-                    "note": "Fallback registration when n8n engine is starting"
-                }
-            ]
+            return []
 
     def get_workflow(self, workflow_id: str) -> Dict[str, Any]:
         """
@@ -159,6 +155,24 @@ class N8nIntegrationService:
         """
         payload = payload or {}
         start_t = time.time()
+
+        # Enforce SafetyGatekeeper check for external workflow execution
+        try:
+            from backend.services.safety_gatekeeper import SafetyGatekeeper
+            gatekeeper = SafetyGatekeeper()
+            decision = gatekeeper.evaluate_tool_call("n8n_execute_workflow", {"target": target, "payload": payload})
+            if decision.requires_user_approval or not decision.allowed:
+                logger.warning("⛔ n8n workflow execution halted by SafetyGatekeeper: {}", decision.reason)
+                return {
+                    "execution_id": f"exec_blocked_{int(time.time()*1000)}",
+                    "target": target,
+                    "status": "blocked",
+                    "reason": decision.reason,
+                    "risk_level": decision.risk_level.value,
+                    "error": f"Execution halted by SafetyGatekeeper: {decision.reason}"
+                }
+        except Exception as gate_err:
+            logger.debug("Safety gatekeeper check bypassed: {}", gate_err)
 
         # Handle direct webhook path vs workflow ID execute API
         if "/" in target or target.startswith("webhook"):
@@ -216,6 +230,26 @@ class N8nIntegrationService:
             }
             self.execution_history.append(record)
             return record
+
+    def verify_execution(self, execution_id: str) -> Dict[str, Any]:
+        """Verify execution status and final output from n8n executions API."""
+        if not self._is_reachable():
+            return {"status": "error", "error": "n8n engine is offline"}
+        url = f"{self.base_url}/api/v1/executions/{execution_id}"
+        try:
+            req = urllib.request.Request(url, headers=self._get_headers())
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                finished = data.get("finished", False)
+                status = "completed" if finished else ("running" if data.get("startedAt") else "pending")
+                return {
+                    "status": "success",
+                    "execution_status": status,
+                    "finished": finished,
+                    "execution_data": data
+                }
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
 
     def create_workflow(
         self,

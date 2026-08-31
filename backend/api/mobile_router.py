@@ -233,7 +233,18 @@ async def execute_remote_command(req: RemoteCommandRequest, gateway_svc=Depends(
         import subprocess
 
         if cmd in ("shutdown", "restart"):
-            logger.info("🛡️ Mobile Security Gatekeeper: Remote {} requested. Requesting approval...", cmd)
+            logger.info("🛡️ Mobile Security Gatekeeper: Remote {} requested. Enforcing safety gate...", cmd)
+            from backend.services.safety_gatekeeper import SafetyGatekeeper
+            from backend.services.manager import ServiceManager
+            sg = ServiceManager.get_instance("safety_gatekeeper") or SafetyGatekeeper()
+            gate_eval = sg.evaluate_tool_call(f"system_{cmd}", {"target": "host_pc"})
+            if gate_eval.decision.value == "DENIED":
+                return {
+                    "status": "denied",
+                    "command": cmd,
+                    "approved": False,
+                    "message": f"SecurityGatekeeper rejected {cmd}: {gate_eval.reason}"
+                }
             if gateway_svc:
                 decision = await gateway_svc.request_approval(
                     action_type=f"system_{cmd}",
@@ -249,6 +260,13 @@ async def execute_remote_command(req: RemoteCommandRequest, gateway_svc=Depends(
                         "decision": decision,
                         "message": f"Remote {cmd} request was denied or timed out by security gatekeeper"
                     }
+            else:
+                return {
+                    "status": "denied",
+                    "command": cmd,
+                    "approved": False,
+                    "message": "Gateway service approval unavailable; cannot execute critical system shutdown"
+                }
 
             flag = "/s" if cmd == "shutdown" else "/r"
             subprocess.Popen(["shutdown", flag, "/t", "5"], shell=False)

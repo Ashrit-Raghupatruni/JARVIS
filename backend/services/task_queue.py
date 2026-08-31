@@ -137,14 +137,25 @@ class TaskQueueManager:
         return self.tasks.get(task_id)
 
     def cancel_task(self, task_id: str) -> bool:
-        """Cancel a pending background task."""
-        if task_id in self.tasks and self.tasks[task_id]["status"] == TaskStatus.PENDING.value:
-            self.tasks[task_id]["status"] = TaskStatus.CANCELLED.value
-            if task_id in self.queue:
-                self.queue.remove(task_id)
-            logger.info("🚫 Cancelled task '{}'", task_id)
-            return True
+        """Cancel a pending or running background task."""
+        if task_id in self.tasks:
+            current_status = self.tasks[task_id]["status"]
+            if current_status in (TaskStatus.PENDING.value, TaskStatus.RUNNING.value):
+                self.tasks[task_id]["status"] = TaskStatus.CANCELLED.value
+                self.tasks[task_id]["completed_at"] = time.time()
+                if task_id in self.queue:
+                    self.queue.remove(task_id)
+                logger.info("🚫 Cancelled task '{}' (prior state: {})", task_id, current_status)
+                return True
         return False
+
+    def cancel_all(self) -> int:
+        """Cancel all pending and running background tasks."""
+        cancelled = 0
+        for tid in list(self.tasks.keys()):
+            if self.cancel_task(tid):
+                cancelled += 1
+        return cancelled
 
 
 # Global Singleton Task Queue Manager

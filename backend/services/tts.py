@@ -166,18 +166,20 @@ class TTSService:
     Streams audio chunks asynchronously, supporting real-time playback and barge-in cancellation.
     """
 
-    def __init__(self, voice: str = "en-US-GuyNeural", rate: str = "+0%") -> None:
+    def __init__(self, voice: str = "en-US-GuyNeural", rate: str = "+0%", prefer_local: Optional[bool] = None) -> None:
         self.voice = voice
         self.rate = rate
         self._cancel_flag = False
+        self.prefer_local = (os.getenv("PREFER_LOCAL_TTS", "true").lower() == "true") if prefer_local is None else prefer_local
         self.edge_provider = EdgeTTSProvider(voice=voice, rate=rate)
         self.piper_provider = PiperTTSProvider(rate=rate)
         self.local_provider = LocalTTSProvider(rate=rate)
-        self.last_provider_used = "edge-tts"
+        self.last_provider_used = "sapi" if self.prefer_local else "edge-tts"
         logger.info(
-            "TTSService initialised — voice={}, rate={}, offline_piper={}, offline_sapi=Ready",
+            "TTSService initialised — voice={}, rate={}, prefer_local={}, offline_piper={}, offline_sapi=Ready",
             voice,
             rate,
+            self.prefer_local,
             "Ready" if self.piper_provider.is_available() else "Standby",
         )
 
@@ -185,8 +187,8 @@ class TTSService:
 
     async def stream_speech(self, text: str) -> AsyncGenerator[bytes, None]:
         """
-        Convert text to speech and yield audio chunks (MP3 for EdgeTTS, WAV for Piper/SAPI).
-        Falls back to local Piper neural TTS or SAPI if EdgeTTS fails or offline.
+        Convert text to speech and yield audio chunks (WAV for local SAPI/Piper, MP3 for EdgeTTS).
+        Prioritizes ultra-fast local SAPI/Piper (<250ms) to eliminate cloud latency.
         """
         if not text or not text.strip():
             logger.debug("TTS received empty text, skipping")
@@ -195,7 +197,19 @@ class TTSService:
         self._cancel_flag = False
         logger.info("TTS synthesizing — text='{}'", text[:60])
 
-        # Attempt 1: Try Primary Online Edge TTS
+        # Priority Path: Ultra-Fast Local Synthesis (<250ms)
+        if self.prefer_local:
+            try:
+                self.last_provider_used = "sapi"
+                async for chunk in self.local_provider.stream(text, lambda: self._cancel_flag):
+                    yield chunk
+                logger.info("✓ TTS stream completed via Local Ultra-Fast SAPI")
+                self._cancel_flag = False
+                return
+            except Exception as sapi_err:
+                logger.warning("Local SAPI error: {}. Falling back to Edge-TTS/Piper...", sapi_err)
+
+        # Online Edge-TTS Path
         edge_success = False
         try:
             async for chunk in self.edge_provider.stream(text, lambda: self._cancel_flag):
