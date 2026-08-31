@@ -95,9 +95,21 @@ function writeBackendLog(message: string): void {
   }
 }
 
-function startBackendProcess(): void {
+async function startBackendProcess(): Promise<void> {
   const backendPath = join(__dirname, '..', '..', '..', 'backend')
   const port = getBackendPort()
+
+  // Check if backend is already running and healthy (e.g. launched via start.bat)
+  try {
+    const healthRes = await net.fetch(`http://127.0.0.1:${port}/api/health`)
+    if (healthRes.ok) {
+      console.log(`[Backend] Detected existing healthy backend on port ${port}. Attaching...`)
+      writeBackendLog(`[Backend] Detected existing healthy backend on port ${port}. Attaching to existing process.`)
+      return
+    }
+  } catch (_e) {
+    // Backend not responding, proceed to initialize
+  }
 
   writeBackendLog(`[Backend] Initializing backend process on port ${port}...`)
   console.log(`[Backend] Checking and freeing port ${port}...`)

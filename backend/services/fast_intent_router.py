@@ -80,7 +80,29 @@ class FastIntentRouter:
 
         # 5. System Status / Metrics
         self._re_system_status = re.compile(
-            r"^(?:what\s+is\s+my\s+|check\s+|show\s+|get\s+)?(?:system|cpu|ram|battery|disk|memory)\s*(?:status|metrics|level|usage)?$",
+            r"^(?:what\s+is\s+(?:my\s+)?|check\s+(?:my\s+)?|show\s+(?:my\s+)?|get\s+(?:my\s+)?|my\s+)?(?:system|cpu|ram|battery|disk|memory|system_specs|specs|resources)\s*(?:status|metrics|level|usage)?$",
+            re.IGNORECASE
+        )
+
+        # 5b. Running Processes
+        self._re_running_procs = re.compile(
+            r"^(?:check|show|list|get)?\s*(?:my\s+)?(?:running\s+)?processes$",
+            re.IGNORECASE
+        )
+
+        # 5c. Monitors / Displays
+        self._re_monitors = re.compile(
+            r"^(?:check|show|get)?\s*(?:my\s+)?(?:second\s+monitor|monitors|displays|screens)$",
+            re.IGNORECASE
+        )
+
+        # 5d. Volume Adjustments
+        self._re_volume_down = re.compile(
+            r"^(?:turn\s+)?volume\s+down|lower\s+volume$",
+            re.IGNORECASE
+        )
+        self._re_volume_up = re.compile(
+            r"^(?:turn\s+)?volume\s+up|raise\s+volume|increase\s+volume$",
             re.IGNORECASE
         )
 
@@ -155,9 +177,10 @@ class FastIntentRouter:
                 routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
             )
 
-        # Reject compound sentences with conjunctions or chaining markers
+        # Reject compound sentences with conjunctions or chaining markers (ignoring safe noun compounds)
+        test_str = cleaned.replace("cpu and ram", "system_specs")
         for marker in self.COMPOUND_MARKERS:
-            if marker in f" {cleaned} ":
+            if marker in f" {test_str} ":
                 return FastIntentResult(
                     is_atomic=False,
                     confidence=0.0,
@@ -202,7 +225,7 @@ class FastIntentRouter:
             )
 
         # C. System Status
-        if self._re_system_status.match(cleaned):
+        if self._re_system_status.match(test_str):
             return FastIntentResult(
                 is_atomic=True,
                 tool_name="get_system_status",
@@ -212,6 +235,54 @@ class FastIntentRouter:
                 completion_phrase=None,  # Will use output of system_status
                 routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
             )
+
+        # C2. Running Processes
+        if self._re_running_procs.match(cleaned):
+            return FastIntentResult(
+                is_atomic=True,
+                tool_name="list_running_processes",
+                tool_params={"limit": 15},
+                confidence=0.98,
+                ack_phrase="Scanning active desktop processes, sir...",
+                completion_phrase=None,
+                routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
+            )
+
+        # C3. Multi-Monitor Displays
+        if self._re_monitors.match(cleaned):
+            return FastIntentResult(
+                is_atomic=True,
+                tool_name="get_monitors",
+                tool_params={},
+                confidence=0.98,
+                ack_phrase="Querying display topology, sir...",
+                completion_phrase=None,
+                routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
+            )
+
+        # C4. Volume Controls
+        if self._re_volume_down.match(cleaned):
+            return FastIntentResult(
+                is_atomic=True,
+                tool_name="adjust_volume",
+                tool_params={"direction": "down", "amount": 10},
+                confidence=0.98,
+                ack_phrase="Lowering volume, sir.",
+                completion_phrase="Volume lowered.",
+                routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
+            )
+
+        if self._re_volume_up.match(cleaned):
+            return FastIntentResult(
+                is_atomic=True,
+                tool_name="adjust_volume",
+                tool_params={"direction": "up", "amount": 10},
+                confidence=0.98,
+                ack_phrase="Raising volume, sir.",
+                completion_phrase="Volume raised.",
+                routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
+            )
+
 
         # D. Media Controls
         if self._re_media_play_pause.match(cleaned):

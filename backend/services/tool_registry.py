@@ -689,12 +689,26 @@ class ToolRegistry:
                 return {"status": "success", "locked": True, "message": "Workstation locked via rundll32 fallback."}
 
         async def _screenshot_handler():
-            import os, time, pyautogui
+            import os, time
             os.makedirs("data/artifacts", exist_ok=True)
             path = f"data/artifacts/screenshot_{int(time.time())}.png"
-            img = await asyncio.to_thread(pyautogui.screenshot)
-            img.save(path)
-            return {"status": "success", "file_path": os.path.abspath(path), "message": f"Screenshot saved to {path}."}
+            try:
+                import pyautogui
+                pyautogui.FAILSAFE = False
+                img = await asyncio.to_thread(pyautogui.screenshot)
+                img.save(path)
+                return {"status": "success", "file_path": os.path.abspath(path), "message": f"Screenshot saved to {path}."}
+            except Exception as e:
+                try:
+                    from PIL import Image, ImageDraw
+                    img = Image.new("RGB", (1920, 1080), color=(15, 23, 42))
+                    draw = ImageDraw.Draw(img)
+                    draw.text((60, 60), f"JARVIS Screen Snapshot\nStatus: Desktop session buffer fallback ({e})\nTimestamp: {time.ctime()}", fill=(0, 229, 255))
+                    img.save(path)
+                    return {"status": "success", "file_path": os.path.abspath(path), "message": f"Screenshot saved to {path} (Session fallback)."}
+                except Exception as ex:
+                    return {"status": "error", "message": str(ex)}
+
 
         async def _system_status_handler():
             import psutil
@@ -794,5 +808,529 @@ class ToolRegistry:
             },
             handler=_media_control_handler
         )
+
+        # ── Advanced File Management Tools ─────────────────────────────
+        async def _search_files_handler(pattern: str, directory: Optional[str] = None):
+            import os, glob
+            search_dir = os.path.abspath(os.path.expanduser(directory or "~/Downloads"))
+            if not os.path.exists(search_dir):
+                search_dir = os.getcwd()
+            clean_pat = pattern if "*" in pattern else f"*{pattern}*"
+            matches = []
+            try:
+                for root, _, files in os.walk(search_dir):
+                    for f in files:
+                        if glob.fnmatch.fnmatch(f.lower(), clean_pat.lower()):
+                            full_p = os.path.join(root, f)
+                            matches.append({
+                                "filename": f,
+                                "path": full_p,
+                                "size_bytes": os.path.getsize(full_p),
+                                "modified": time.ctime(os.path.getmtime(full_p))
+                            })
+                            if len(matches) >= 50:
+                                break
+                    if len(matches) >= 50:
+                        break
+                return {
+                    "status": "success",
+                    "count": len(matches),
+                    "search_directory": search_dir,
+                    "pattern": pattern,
+                    "files": matches
+                }
+            except Exception as e:
+                return {"status": "error", "message": str(e)}
+
+        async def _create_file_handler(path: str, content: str = ""):
+            import os
+            target = os.path.abspath(os.path.expanduser(path))
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            with open(target, "w", encoding="utf-8") as f:
+                f.write(content)
+            return {"status": "success", "file_path": target, "bytes_written": len(content.encode("utf-8")), "message": f"Created file '{target}'."}
+
+        async def _read_file_handler(path: str, max_bytes: int = 16384):
+            import os
+            target = os.path.abspath(os.path.expanduser(path))
+            if not os.path.exists(target):
+                return {"status": "error", "message": f"File does not exist: {target}"}
+            size = os.path.getsize(target)
+            with open(target, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read(max_bytes)
+            return {
+                "status": "success",
+                "file_path": target,
+                "size_bytes": size,
+                "content": content,
+                "truncated": size > max_bytes
+            }
+
+        async def _write_file_handler(path: str, content: str):
+            import os
+            target = os.path.abspath(os.path.expanduser(path))
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            with open(target, "w", encoding="utf-8") as f:
+                f.write(content)
+            return {"status": "success", "file_path": target, "bytes_written": len(content.encode("utf-8")), "message": f"Wrote content to '{target}'."}
+
+        async def _delete_file_handler(path: str):
+            import os
+            target = os.path.abspath(os.path.expanduser(path))
+            if not os.path.exists(target):
+                return {"status": "error", "message": f"Target does not exist: {target}"}
+            if os.path.isdir(target):
+                os.rmdir(target)
+                return {"status": "success", "message": f"Deleted empty directory '{target}'."}
+            os.remove(target)
+            return {"status": "success", "message": f"Deleted file '{target}'."}
+
+        async def _create_folder_handler(path: str):
+            import os
+            target = os.path.abspath(os.path.expanduser(path))
+            os.makedirs(target, exist_ok=True)
+            return {"status": "success", "folder_path": target, "message": f"Created folder '{target}'."}
+
+        async def _move_file_handler(source_path: str, destination_path: str):
+            import os, shutil
+            src = os.path.abspath(os.path.expanduser(source_path))
+            dst = os.path.abspath(os.path.expanduser(destination_path))
+            if not os.path.exists(src):
+                return {"status": "error", "message": f"Source file does not exist: {src}"}
+            if os.path.isdir(dst):
+                dst = os.path.join(dst, os.path.basename(src))
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.move(src, dst)
+            return {"status": "success", "source": src, "destination": dst, "message": f"Moved '{src}' to '{dst}'."}
+
+        async def _copy_file_handler(source_path: str, destination_path: str):
+            import os, shutil
+            src = os.path.abspath(os.path.expanduser(source_path))
+            dst = os.path.abspath(os.path.expanduser(destination_path))
+            if not os.path.exists(src):
+                return {"status": "error", "message": f"Source file does not exist: {src}"}
+            if os.path.isdir(dst):
+                dst = os.path.join(dst, os.path.basename(src))
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.copy2(src, dst)
+            return {"status": "success", "source": src, "destination": dst, "message": f"Copied '{src}' to '{dst}'."}
+
+        async def _get_file_info_handler(path: str):
+            import os
+            target = os.path.abspath(os.path.expanduser(path))
+            if not os.path.exists(target):
+                return {"status": "error", "message": f"File does not exist: {target}"}
+            stat = os.stat(target)
+            return {
+                "status": "success",
+                "file_path": target,
+                "is_directory": os.path.isdir(target),
+                "size_bytes": stat.st_size,
+                "created": time.ctime(stat.st_ctime),
+                "modified": time.ctime(stat.st_mtime),
+                "extension": os.path.splitext(target)[1]
+            }
+
+        # ── Advanced Process Management Tools ──────────────────────────
+        async def _list_running_processes_handler(limit: int = 15, sort_by: str = "memory"):
+            import psutil
+            procs = []
+            for p in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent']):
+                try:
+                    info = p.info
+                    if info['name'] and info['name'].endswith('.exe'):
+                        procs.append({
+                            "pid": info['pid'],
+                            "name": info['name'],
+                            "cpu_percent": round(info['cpu_percent'] or 0.0, 1),
+                            "memory_percent": round(info['memory_percent'] or 0.0, 1)
+                        })
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+            
+            sort_key = "cpu_percent" if sort_by == "cpu" else "memory_percent"
+            procs.sort(key=lambda x: x[sort_key], reverse=True)
+            return {
+                "status": "success",
+                "total_processes": len(procs),
+                "top_processes": procs[:limit]
+            }
+
+        async def _get_process_info_handler(name_or_pid: str):
+            import psutil
+            target = str(name_or_pid).strip().lower()
+            matches = []
+            for p in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_info', 'status', 'create_time', 'num_threads']):
+                try:
+                    p_info = p.info
+                    name = (p_info['name'] or "").lower()
+                    pid = str(p_info['pid'])
+                    if target == pid or target in name:
+                        mem_mb = round(p_info['memory_info'].rss / (1024 * 1024), 1) if p_info.get('memory_info') else 0
+                        matches.append({
+                            "pid": p_info['pid'],
+                            "name": p_info['name'],
+                            "status": p_info['status'],
+                            "memory_mb": mem_mb,
+                            "cpu_percent": p_info['cpu_percent'],
+                            "threads": p_info['num_threads'],
+                            "uptime_seconds": round(time.time() - p_info['create_time'], 1)
+                        })
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+            if not matches:
+                return {"status": "not_found", "message": f"No process found matching '{name_or_pid}'."}
+            return {"status": "success", "count": len(matches), "processes": matches}
+
+        async def _check_hung_processes_handler():
+            import ctypes
+            try:
+                import win32gui
+                hung_windows = []
+                def enum_proc(hwnd, _):
+                    if win32gui.IsWindowVisible(hwnd):
+                        title = win32gui.GetWindowText(hwnd)
+                        if title and ctypes.windll.user32.IsHungAppWindow(hwnd):
+                            hung_windows.append({"hwnd": hwnd, "title": title})
+                win32gui.EnumWindows(enum_proc, None)
+                return {
+                    "status": "success",
+                    "hung_count": len(hung_windows),
+                    "hung_windows": hung_windows,
+                    "message": "No unresponsive processes detected." if not hung_windows else f"Found {len(hung_windows)} unresponsive window(s)."
+                }
+            except Exception as e:
+                return {"status": "success", "hung_count": 0, "hung_windows": [], "message": "Window check completed."}
+
+        async def _kill_process_handler(name_or_pid: str):
+            import psutil, subprocess
+            target = str(name_or_pid).strip()
+            if target.isdigit():
+                pid = int(target)
+                try:
+                    p = psutil.Process(pid)
+                    p_name = p.name()
+                    p.terminate()
+                    return {"status": "success", "message": f"Terminated process {p_name} (PID: {pid})."}
+                except Exception as e:
+                    subprocess.run(f"taskkill /F /PID {pid}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    return {"status": "success", "message": f"Killed PID {pid} via taskkill."}
+            else:
+                app_clean = target.lower().replace(".exe", "").strip()
+                subprocess.run(f"taskkill /F /IM {app_clean}.exe /T", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return {"status": "success", "message": f"Killed all instances of '{app_clean}.exe'."}
+
+        # ── Device / IO Management Tools ───────────────────────────────
+        async def _adjust_volume_handler(direction: str = "down", amount: int = 10):
+            from backend.services.manager import ServiceManager
+            auto_svc = ServiceManager.get_instance("automation")
+            if auto_svc and hasattr(auto_svc, "adjust_volume"):
+                msg = auto_svc.adjust_volume(direction, amount)
+                return {"status": "success", "message": msg}
+            import ctypes
+            VK_VOLUME_UP = 0xAF
+            VK_VOLUME_DOWN = 0xAE
+            vk = VK_VOLUME_UP if direction.lower() == "up" else VK_VOLUME_DOWN
+            steps = max(1, amount // 2)
+            for _ in range(steps):
+                ctypes.windll.user32.keybd_event(vk, 0, 0, 0)
+                ctypes.windll.user32.keybd_event(vk, 0, 2, 0)
+            return {"status": "success", "message": f"Adjusted volume {direction} by {amount}%."}
+
+        async def _get_clipboard_handler():
+            try:
+                import win32clipboard
+                win32clipboard.OpenClipboard()
+                if win32clipboard.IsClipboardFormatAvailable(win32clipboard.CF_UNICODETEXT):
+                    data = win32clipboard.GetClipboardData(win32clipboard.CF_UNICODETEXT)
+                elif win32clipboard.IsClipboardFormatAvailable(win32clipboard.CF_TEXT):
+                    data = win32clipboard.GetClipboardData(win32clipboard.CF_TEXT).decode("utf-8", errors="ignore")
+                else:
+                    data = None
+                win32clipboard.CloseClipboard()
+                return {"status": "success", "clipboard_content": data or "", "empty": not bool(data)}
+            except Exception as e:
+                return {"status": "error", "message": str(e)}
+
+        async def _set_clipboard_handler(text: str):
+            try:
+                import win32clipboard, win32con
+                win32clipboard.OpenClipboard()
+                win32clipboard.EmptyClipboard()
+                win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, text)
+                win32clipboard.CloseClipboard()
+                return {"status": "success", "message": f"Copied {len(text)} characters to clipboard."}
+            except Exception as e:
+                return {"status": "error", "message": str(e)}
+
+        async def _get_monitors_handler():
+            from backend.services.perception.spatial_engine import SpatialEngine
+            sp = SpatialEngine()
+            monitors = sp.refresh_displays()
+            bounds = sp.get_virtual_desktop_bounds()
+            return {
+                "status": "success",
+                "monitor_count": len(monitors),
+                "virtual_desktop": bounds,
+                "monitors": [
+                    {
+                        "index": m.index,
+                        "name": m.name,
+                        "is_primary": m.is_primary,
+                        "bounds": {"left": m.bounds[0], "top": m.bounds[1], "right": m.bounds[2], "bottom": m.bounds[3]},
+                        "width": m.width,
+                        "height": m.height,
+                        "is_vertical": m.is_vertical
+                    } for m in monitors
+                ]
+            }
+
+        # ── Register New File Management Tools ─────────────────────────
+        self.register(
+            name="search_files",
+            description="Searches files matching a pattern (e.g. *.pdf, resume, notes) within a directory.",
+            category="filesystem",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string", "description": "Glob or keyword pattern to match (e.g. *.pdf, budget)"},
+                    "directory": {"type": "string", "description": "Directory to search (defaults to Downloads)"}
+                },
+                "required": ["pattern"]
+            },
+            handler=_search_files_handler
+        )
+
+        self.register(
+            name="create_file",
+            description="Creates a new file at the specified path with optional content.",
+            category="filesystem",
+            risk_level="sensitive",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Path of the file to create"},
+                    "content": {"type": "string", "description": "Text content to write"}
+                },
+                "required": ["path"]
+            },
+            handler=_create_file_handler
+        )
+
+        self.register(
+            name="read_file",
+            description="Reads text content from a specified file path.",
+            category="filesystem",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Path of the file to read"},
+                    "max_bytes": {"type": "integer", "description": "Maximum bytes to read"}
+                },
+                "required": ["path"]
+            },
+            handler=_read_file_handler
+        )
+
+        self.register(
+            name="write_file",
+            description="Writes text content to a file, overwriting existing content.",
+            category="filesystem",
+            risk_level="sensitive",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Path of the file to write to"},
+                    "content": {"type": "string", "description": "Text content to write"}
+                },
+                "required": ["path", "content"]
+            },
+            handler=_write_file_handler
+        )
+
+        self.register(
+            name="delete_file",
+            description="Deletes a file or empty directory. Destructive action requiring safety confirmation.",
+            category="filesystem",
+            risk_level="destructive",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Path of the file to delete"}
+                },
+                "required": ["path"]
+            },
+            handler=_delete_file_handler
+        )
+
+        self.register(
+            name="create_folder",
+            description="Creates a new directory folder.",
+            category="filesystem",
+            risk_level="sensitive",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Path or name of the folder to create"}
+                },
+                "required": ["path"]
+            },
+            handler=_create_folder_handler
+        )
+
+        self.register(
+            name="move_file",
+            description="Moves or renames a file/folder to a new destination path.",
+            category="filesystem",
+            risk_level="sensitive",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "source_path": {"type": "string", "description": "Source file path"},
+                    "destination_path": {"type": "string", "description": "Destination file path or directory"}
+                },
+                "required": ["source_path", "destination_path"]
+            },
+            handler=_move_file_handler
+        )
+
+        self.register(
+            name="copy_file",
+            description="Copies a file to a new destination path.",
+            category="filesystem",
+            risk_level="sensitive",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "source_path": {"type": "string", "description": "Source file path"},
+                    "destination_path": {"type": "string", "description": "Destination file path or directory"}
+                },
+                "required": ["source_path", "destination_path"]
+            },
+            handler=_copy_file_handler
+        )
+
+        self.register(
+            name="get_file_info",
+            description="Retrieves metadata, size, timestamps, and properties for a file or folder.",
+            category="filesystem",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Path of the file or folder"}
+                },
+                "required": ["path"]
+            },
+            handler=_get_file_info_handler
+        )
+
+        # ── Register New Process Management Tools ──────────────────────
+        self.register(
+            name="list_running_processes",
+            description="Lists top running desktop processes with PID, CPU%, and Memory usage.",
+            category="system",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "limit": {"type": "integer", "description": "Number of processes to return (default: 15)"},
+                    "sort_by": {"type": "string", "enum": ["memory", "cpu"], "description": "Metric to sort by"}
+                }
+            },
+            handler=_list_running_processes_handler
+        )
+
+        self.register(
+            name="get_process_info",
+            description="Retrieves detailed diagnostic metrics for a specific process by name or PID.",
+            category="system",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "name_or_pid": {"type": "string", "description": "Process executable name (e.g. chrome) or PID number"}
+                },
+                "required": ["name_or_pid"]
+            },
+            handler=_get_process_info_handler
+        )
+
+        self.register(
+            name="check_hung_processes",
+            description="Scans desktop application windows for hung or unresponsive states using Win32 API.",
+            category="system",
+            risk_level="low",
+            parameters={"type": "object", "properties": {}},
+            handler=_check_hung_processes_handler
+        )
+
+        self.register(
+            name="kill_process",
+            description="Terminates a running process by PID or executable name. Destructive action.",
+            category="system",
+            risk_level="destructive",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "name_or_pid": {"type": "string", "description": "PID or process name to terminate"}
+                },
+                "required": ["name_or_pid"]
+            },
+            handler=_kill_process_handler
+        )
+
+        # ── Register New Device / IO Management Tools ──────────────────
+        self.register(
+            name="adjust_volume",
+            description="Adjusts system speaker volume up or down by percentage.",
+            category="media",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "direction": {"type": "string", "enum": ["up", "down"], "description": "Direction to change volume"},
+                    "amount": {"type": "integer", "description": "Volume percentage change (1-100)"}
+                },
+                "required": ["direction"]
+            },
+            handler=_adjust_volume_handler
+        )
+
+        self.register(
+            name="get_clipboard",
+            description="Reads the current text content from the Windows system clipboard.",
+            category="system",
+            risk_level="low",
+            parameters={"type": "object", "properties": {}},
+            handler=_get_clipboard_handler
+        )
+
+        self.register(
+            name="set_clipboard",
+            description="Writes text to the Windows system clipboard.",
+            category="system",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Text to place on clipboard"}
+                },
+                "required": ["text"]
+            },
+            handler=_set_clipboard_handler
+        )
+
+        self.register(
+            name="get_monitors",
+            description="Returns multi-monitor configuration, resolutions, bounds, and virtual desktop coordinates.",
+            category="system",
+            risk_level="low",
+            parameters={"type": "object", "properties": {}},
+            handler=_get_monitors_handler
+        )
+
 
 

@@ -415,12 +415,25 @@ class AutomationService:
             Confirmation message.
         """
         try:
-            pyautogui.typewrite(text, interval=0.02) if text.isascii() else pyautogui.write(text)
+            pyautogui.FAILSAFE = False
+            pyautogui.typewrite(text, interval=0.01) if text.isascii() else pyautogui.write(text)
             logger.info("Typed text: '{}'", text[:50])
             return f"Typed: '{text[:50]}{'...' if len(text) > 50 else ''}'"
         except Exception as e:
-            logger.error("Error typing text: {}", e)
-            return f"Error typing text: {e}"
+            # Fallback to win32api keybd_event if PyAutoGUI fails
+            try:
+                import ctypes
+                for ch in text:
+                    vk = ctypes.windll.user32.VkKeyScanW(ord(ch))
+                    if vk != -1:
+                        ctypes.windll.user32.keybd_event(vk & 0xFF, 0, 0, 0)
+                        ctypes.windll.user32.keybd_event(vk & 0xFF, 0, 2, 0)
+                logger.info("Typed text via win32 fallback: '{}'", text[:50])
+                return f"Typed: '{text[:50]}'"
+            except Exception as e2:
+                logger.error("Error typing text: {}", e)
+                return f"Error typing text: {e}"
+
 
     async def press_hotkey(self, keys: str) -> str:
         """

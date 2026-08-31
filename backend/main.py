@@ -684,6 +684,8 @@ async def lifespan(app: FastAPI):
             sync_service.start()
             app.state.sync_service = sync_service
         except Exception as e:
+            logger.warning("SyncService initialization notice: {}", e)
+
         # Zeroconf mDNS Service (Local Auto-Discovery)
         try:
             from backend.services.zeroconf_service import zeroconf_service

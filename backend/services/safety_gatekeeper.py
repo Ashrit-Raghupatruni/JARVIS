@@ -58,6 +58,13 @@ class SafetyGatekeeper:
             "get_system_telemetry": ActionRiskLevel.READ_ONLY,
             "list_windows": ActionRiskLevel.READ_ONLY,
             "search_files": ActionRiskLevel.READ_ONLY,
+            "read_file": ActionRiskLevel.READ_ONLY,
+            "get_file_info": ActionRiskLevel.READ_ONLY,
+            "list_running_processes": ActionRiskLevel.READ_ONLY,
+            "get_process_info": ActionRiskLevel.READ_ONLY,
+            "check_hung_processes": ActionRiskLevel.READ_ONLY,
+            "get_monitors": ActionRiskLevel.READ_ONLY,
+            "get_clipboard": ActionRiskLevel.READ_ONLY,
             "get_active_app": ActionRiskLevel.READ_ONLY,
             "get_page_content": ActionRiskLevel.READ_ONLY,
             "search_web": ActionRiskLevel.READ_ONLY,
@@ -65,11 +72,19 @@ class SafetyGatekeeper:
             "set_control_value": ActionRiskLevel.REVERSIBLE,
             "resize_window": ActionRiskLevel.REVERSIBLE,
             "minimize_window": ActionRiskLevel.REVERSIBLE,
+            "set_clipboard": ActionRiskLevel.REVERSIBLE,
+            "adjust_volume": ActionRiskLevel.REVERSIBLE,
             "open_app": ActionRiskLevel.SENSITIVE,
             "auto_fill_form": ActionRiskLevel.SENSITIVE,
+            "create_file": ActionRiskLevel.SENSITIVE,
             "write_file": ActionRiskLevel.SENSITIVE,
+            "create_folder": ActionRiskLevel.SENSITIVE,
+            "move_file": ActionRiskLevel.SENSITIVE,
+            "copy_file": ActionRiskLevel.SENSITIVE,
             "execute_terminal_command": ActionRiskLevel.SENSITIVE,
             "delete_file": ActionRiskLevel.DESTRUCTIVE,
+            "delete_folder": ActionRiskLevel.DESTRUCTIVE,
+            "kill_process": ActionRiskLevel.DESTRUCTIVE,
             "terminate_process": ActionRiskLevel.DESTRUCTIVE,
             "system_shutdown": ActionRiskLevel.DESTRUCTIVE,
         }
@@ -110,15 +125,15 @@ class SafetyGatekeeper:
                         validated_args=sanitized_args,
                     )
 
-        # ── 2. Deep Inspection: File Writes / Overwrites ───────────────
-        elif tool_name in ("write_file", "edit_file", "create_file", "save_file"):
-            target_path = str(sanitized_args.get("file_path") or sanitized_args.get("path") or "").strip()
+        # ── 2. Deep Inspection: File Writes / Overwrites / Deletes ───────
+        elif tool_name in ("write_file", "edit_file", "create_file", "save_file", "delete_file", "delete_folder", "move_file", "copy_file"):
+            target_path = str(sanitized_args.get("file_path") or sanitized_args.get("path") or sanitized_args.get("destination_path") or "").strip()
             
-            # Check for path traversal or writing to protected OS/system files
+            # Check for path traversal or operating on protected OS/system files
             target_norm = os.path.normpath(target_path).lower()
             for pattern in self.PROTECTED_PATH_PATTERNS:
                 if re.search(pattern, target_norm, re.IGNORECASE):
-                    logger.warning("SafetyGatekeeper: Intercepted write attempt to protected path: '{}'", target_path)
+                    logger.warning("SafetyGatekeeper: Intercepted write/delete attempt to protected path: '{}'", target_path)
                     return SafetyDecision(
                         allowed=False,
                         risk_level=ActionRiskLevel.DESTRUCTIVE,
