@@ -34,6 +34,7 @@ class WakeWordService:
         self.threshold = threshold
         self._model = None
         self._is_loaded = False
+        self._warned_not_loaded = False
         self._last_detection_time: float = 0.0
         self._cooldown_seconds: float = 2.0  # Prevent rapid re-triggers
         logger.info("WakeWordService created — threshold={}", threshold)
@@ -52,7 +53,7 @@ class WakeWordService:
 
         import asyncio
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop() if hasattr(asyncio, "get_running_loop") else asyncio.get_event_loop()
         await loop.run_in_executor(None, self._load_model_sync)
 
     def _load_model_sync(self, wakeword_name: str = "hey_jarvis") -> None:
@@ -72,15 +73,16 @@ class WakeWordService:
                 )
                 self.selected_model = wakeword_name
             except Exception as e:
-                logger.warning(f"Could not load specific wake word model '{wakeword_name}': {e}. Using default models.")
+                logger.warning("Could not load specific wake word model '{}': {}. Using default models.", wakeword_name, e)
                 self._model = Model(inference_framework="onnx")
                 self.selected_model = "default"
 
             self._is_loaded = True
+            self._warned_not_loaded = False
             logger.info("Wake word model loaded successfully — model={}", self.selected_model)
 
         except Exception as e:
-            logger.error("Failed to load wake word model: {}", e)
+            logger.debug("Failed to load preferred wake word model: {}", e)
             # Attempt fallback with any available model
             try:
                 import openwakeword
@@ -89,11 +91,13 @@ class WakeWordService:
                 openwakeword.utils.download_models()
                 self._model = Model(inference_framework="onnx")
                 self._is_loaded = True
+                self._warned_not_loaded = False
                 self.selected_model = "fallback"
                 logger.info("Wake word model loaded with default models (fallback)")
             except Exception as fallback_err:
-                logger.error("Wake word fallback also failed: {}", fallback_err)
-                raise
+                logger.warning("Wake word model not available: {}. Wake word detection disabled.", fallback_err)
+                self._is_loaded = False
+                self._model = None
 
     # ── Detection ────────────────────────────────────────────────────────
 
@@ -112,7 +116,9 @@ class WakeWordService:
             configured threshold; ``False`` otherwise.
         """
         if not self._is_loaded or self._model is None:
-            logger.warning("Wake word model not loaded")
+            if not self._warned_not_loaded:
+                logger.warning("Wake word model not loaded — wake word detection inactive.")
+                self._warned_not_loaded = True
             return False
 
         # Cooldown check
@@ -155,7 +161,9 @@ class WakeWordService:
             ``True`` if the wake word was detected.
         """
         if not self._is_loaded or self._model is None:
-            logger.warning("Wake word model not loaded")
+            if not self._warned_not_loaded:
+                logger.warning("Wake word model not loaded — wake word detection inactive.")
+                self._warned_not_loaded = True
             return False
 
         now = time.time()

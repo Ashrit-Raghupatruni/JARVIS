@@ -160,7 +160,14 @@ async def lifespan(app: FastAPI):
 
         def _make_wake_word_service():
             from backend.services.wake_word import WakeWordService
-            return WakeWordService()
+            ww = WakeWordService()
+            try:
+                import asyncio
+                loop = asyncio.get_running_loop()
+                loop.create_task(ww.load_model())
+            except (RuntimeError, AttributeError):
+                pass
+            return ww
         ServiceManager.register_factory("wake_word_service", _make_wake_word_service)
 
         def _make_clap_service():

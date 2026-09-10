@@ -229,7 +229,7 @@ class VoiceAgent:
                 total_bytes -= len(removed)
 
         # 1. Wake word detection in SLEEPING, IDLE, and PROCESSING states
-        if self.wake_word and self._state in [AssistantState.SLEEPING, AssistantState.IDLE, AssistantState.PROCESSING]:
+        if self.wake_word and getattr(self.wake_word, "is_loaded", False) and self._state in [AssistantState.SLEEPING, AssistantState.IDLE, AssistantState.PROCESSING]:
             try:
                 detected = self.wake_word.process_audio(chunk)
                 if detected:
