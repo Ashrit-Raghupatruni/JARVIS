@@ -36,21 +36,21 @@ class StrategyMemoryService:
             except Exception as e:
                 logger.warning("Could not load strategy memory JSON: {}", e)
         
-        # Default baseline strategy rankings
+        # Default baseline strategy rankings with genuine unlearned baseline counts (0)
         return {
             "ui_automation": [
-                {"strategy": "win32_uia", "name": "Native Win32 Accessibility HWND Tree", "confidence": 0.95, "success_count": 48, "fail_count": 2},
-                {"strategy": "browser_playwright", "name": "Playwright Browser Selector", "confidence": 0.92, "success_count": 35, "fail_count": 3},
-                {"strategy": "ocr_screen", "name": "Tesseract/OpenCV Screen Bounds OCR", "confidence": 0.70, "success_count": 12, "fail_count": 5},
-                {"strategy": "pixel_clicking", "name": "Hardcoded Pixel Coordinate Click", "confidence": 0.40, "success_count": 4, "fail_count": 6}
+                {"strategy": "win32_uia", "name": "Native Win32 Accessibility HWND Tree", "confidence": 0.95, "success_count": 0, "fail_count": 0},
+                {"strategy": "browser_playwright", "name": "Playwright Browser Selector", "confidence": 0.92, "success_count": 0, "fail_count": 0},
+                {"strategy": "ocr_screen", "name": "Tesseract/OpenCV Screen Bounds OCR", "confidence": 0.70, "success_count": 0, "fail_count": 0},
+                {"strategy": "pixel_clicking", "name": "Hardcoded Pixel Coordinate Click", "confidence": 0.40, "success_count": 0, "fail_count": 0}
             ],
             "file_search": [
-                {"strategy": "sqlite_fts5", "name": "SQLite FTS5 Natural Language Indexer", "confidence": 0.98, "success_count": 120, "fail_count": 0},
-                {"strategy": "python_os_walk", "name": "Python os.walk Recursive Search", "confidence": 0.85, "success_count": 15, "fail_count": 2}
+                {"strategy": "sqlite_fts5", "name": "SQLite FTS5 Natural Language Indexer", "confidence": 0.98, "success_count": 0, "fail_count": 0},
+                {"strategy": "python_os_walk", "name": "Python os.walk Recursive Search", "confidence": 0.85, "success_count": 0, "fail_count": 0}
             ],
             "app_launch": [
-                {"strategy": "shutil_which", "name": "PATH Executable Resolution", "confidence": 0.96, "success_count": 65, "fail_count": 1},
-                {"strategy": "win32_start", "name": "Windows Shell Execute", "confidence": 0.90, "success_count": 40, "fail_count": 4}
+                {"strategy": "shutil_which", "name": "PATH Executable Resolution", "confidence": 0.96, "success_count": 0, "fail_count": 0},
+                {"strategy": "win32_start", "name": "Windows Shell Execute", "confidence": 0.90, "success_count": 0, "fail_count": 0}
             ]
         }
 

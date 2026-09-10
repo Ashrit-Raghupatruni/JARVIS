@@ -68,17 +68,61 @@ class SelfHealingEngine:
         elif "element" in lower_err or "selector" in lower_err or "click" in lower_err:
             logger.info("🎯 Diagnosed: UI element selector changed. Cascade: Win32 UIA -> OCR Text Bounds...")
             uia = ServiceManager.get_instance("uia_engine")
+            if not uia:
+                try:
+                    from backend.services.uia_engine import UIAEngine
+                    uia = UIAEngine()
+                except Exception:
+                    pass
+
             if uia and hasattr(uia, "click_element_by_name"):
                 res = uia.click_element_by_name(target_name)
                 if res.get("status") == "clicked":
                     recovery_strategy = "win32_uia_accessibility"
                     success = True
             
-            if not success:
-                recovery_strategy = "ocr_screen_bounds"
-                success = True  # OCR fallback simulation
+            if not success and uia and hasattr(uia, "click_element_by_ocr"):
+                ocr_res = uia.click_element_by_ocr(target_name)
+                if ocr_res.get("status") == "clicked":
+                    recovery_strategy = "ocr_screen_bounds"
+                    success = True
+                    logger.info("✅ Self-Healing Recovered via OCR: Located and clicked '{}' at {}", target_name, ocr_res.get("coordinates"))
 
-        # 3. Default Recovery Fallback
+        # 3. Stale Window Handle (HWND) / Window Minimized or Hidden
+        elif "hwnd" in lower_err or "invalid window handle" in lower_err or "window not found" in lower_err:
+            logger.info("🪟 Diagnosed: Stale HWND / window state. Re-enumerating active top-level windows...")
+            try:
+                import win32gui
+                found_hwnd = None
+                def _win_enum_cb(hwnd, _):
+                    nonlocal found_hwnd
+                    if win32gui.IsWindowVisible(hwnd):
+                        w_title = win32gui.GetWindowText(hwnd)
+                        if lower_target in w_title.lower():
+                            found_hwnd = hwnd
+                win32gui.EnumWindows(_win_enum_cb, None)
+                if found_hwnd:
+                    win32gui.SetForegroundWindow(found_hwnd)
+                    recovery_strategy = "win32_hwnd_refresh"
+                    success = True
+                    logger.info("✅ Self-Healing Recovered: Re-focused window '{}' (HWND: {})", target_name, found_hwnd)
+            except Exception as e:
+                logger.warning("HWND recovery attempt failed: {}", e)
+
+        # 4. Permission / Access Denied
+        elif "permission denied" in lower_err or "access is denied" in lower_err or "error 5" in lower_err:
+            logger.info("🔒 Diagnosed: Access / Permission denied for '{}'. Checking user-writable sandbox fallback...", target_name)
+            recovery_strategy = "permission_sandbox_escalation_request"
+            # Permission issues cannot be silently bypassed without user gatekeeper approval
+            success = False
+
+        # 5. Missing Python Module / Package
+        elif "no module named" in lower_err or "importerror" in lower_err:
+            logger.info("📦 Diagnosed: Missing module dependency. Flagging for environment resolution...")
+            recovery_strategy = "missing_dependency_diagnosis"
+            success = False
+
+        # 6. Default Recovery Fallback (Fails closed if genuine recovery was not achieved)
         if not success:
             recovery_strategy = "mobile_gatekeeper_ask"
             logger.warning("⚠️ All local recovery cascades exhausted for '{}'. Requesting Mobile Gatekeeper confirmation.", target_name)

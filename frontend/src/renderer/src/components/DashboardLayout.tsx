@@ -1,32 +1,12 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+﻿import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react'
 import { useAppStore } from '../stores/appStore'
 import TitleBar from './TitleBar'
 import Orb from './Orb'
 import VoiceWave from './VoiceWave'
-import TranscriptView from './TranscriptView'
 import ChatPanel from './ChatPanel'
 import TaskProgress from './TaskProgress'
-import CommandHistory from './CommandHistory'
-import HardwareGauges from './HardwareGauges'
-import LLMProvidersCard from './LLMProvidersCard'
-import AgentOrchestratorCard from './AgentOrchestratorCard'
-import ComputerUseCard from './ComputerUseCard'
-import BrowserAutomationCard from './BrowserAutomationCard'
-import KnowledgeHubCard from './KnowledgeHubCard'
-import MCPServersCard from './MCPServersCard'
-import CommandPalette from './CommandPalette'
-import SettingsPanel from './SettingsPanel'
-import VisualWorkflowBuilder from './VisualWorkflowBuilder'
-import TaskQueueManager from './TaskQueueManager'
-import LiveModeCard from './LiveModeCard'
-import { DynamicContentPanel, SearchResultCard } from './DynamicContentPanel'
-import { MobileCompanionCard } from './MobileCompanionCard'
-import { LiveDebugInspector } from './LiveDebugInspector'
-import { LivePerceptionVisualizer } from './LivePerceptionVisualizer'
-import { AutonomousAgentStudio } from './AutonomousAgentStudio'
-import { DeveloperDashboard } from './DeveloperDashboard'
+import { DynamicContentPanel } from './DynamicContentPanel'
 import { ProactiveGuidanceCard } from './ProactiveGuidanceCard'
-import { ConversationSidebar } from './ConversationSidebar'
 import {
   Command,
   ChevronDown,
@@ -36,65 +16,101 @@ import {
   Trash2,
   Zap,
   ListOrdered,
-  Activity,
   Globe,
   Bot,
-  LayoutGrid,
+  Layers,
   Maximize2,
   X,
   Eye,
-  Terminal,
   GripVertical,
-  Cpu
+  Cpu,
+  Sparkles
 } from 'lucide-react'
+
+// Lazy load non-immediate tabs & heavy components
+const ConversationSidebar = lazy(() =>
+  import('./ConversationSidebar').then((m) => ({ default: m.ConversationSidebar }))
+)
+const TaskQueueManager = lazy(() => import('./TaskQueueManager'))
+const LiveModeCard = lazy(() => import('./LiveModeCard'))
+const LivePerceptionVisualizer = lazy(() =>
+  import('./LivePerceptionVisualizer').then((m) => ({ default: m.LivePerceptionVisualizer }))
+)
+const ComputerUseCard = lazy(() => import('./ComputerUseCard'))
+const BrowserAutomationCard = lazy(() => import('./BrowserAutomationCard'))
+const KnowledgeHubCard = lazy(() => import('./KnowledgeHubCard'))
+const MemoryGraphCard = lazy(() => import('./MemoryGraphCard'))
+const AdvancedHub = lazy(() =>
+  import('./AdvancedHub').then((m) => ({ default: m.AdvancedHub }))
+)
+const CommandPalette = lazy(() => import('./CommandPalette'))
+const SettingsPanel = lazy(() => import('./SettingsPanel'))
 
 interface DashboardLayoutProps {
   onSendMessage: (text: string) => void
   onOrbClick: () => void
 }
 
-type NavTab = 'command' | 'agents' | 'history' | 'workflows' | 'queue' | 'telemetry' | 'live' | 'automation' | 'debug' | 'developer'
+export type NavTab = 'command' | 'history' | 'queue' | 'live' | 'automation' | 'memory' | 'advanced'
 
 const NAV_ITEMS: { id: NavTab; label: string; icon: React.ReactNode }[] = [
   { id: 'command', label: 'Command Center', icon: <Bot className="w-4 h-4 text-cyan-400" /> },
-  { id: 'agents', label: 'Agent Studio', icon: <Cpu className="w-4 h-4 text-cyan-400" /> },
   { id: 'history', label: 'Chat History', icon: <MessageSquare className="w-4 h-4 text-cyan-400" /> },
-  { id: 'workflows', label: 'Workflow Studio', icon: <LayoutGrid className="w-4 h-4 text-cyan-400" /> },
   { id: 'queue', label: 'Task Queue', icon: <ListOrdered className="w-4 h-4 text-cyan-400" /> },
-  { id: 'telemetry', label: 'Telemetry', icon: <Activity className="w-4 h-4 text-cyan-400" /> },
   { id: 'live', label: 'Live Mode', icon: <Eye className="w-4 h-4 text-cyan-400" /> },
   { id: 'automation', label: 'Automation', icon: <Globe className="w-4 h-4 text-cyan-400" /> },
-  { id: 'developer', label: 'Developer Portal', icon: <Terminal className="w-4 h-4 text-cyan-400" /> },
-  { id: 'debug', label: 'Debug Inspector', icon: <Terminal className="w-4 h-4 text-cyan-400" /> }
+  { id: 'memory', label: 'Memory Hub', icon: <Layers className="w-4 h-4 text-cyan-400" /> },
+  { id: 'advanced', label: 'Advanced Hub', icon: <Cpu className="w-4 h-4 text-cyan-400" /> }
 ]
 
+const LoadingFallback: React.FC<{ label: string }> = ({ label }) => (
+  <div className="flex flex-col items-center justify-center h-full min-h-[300px] rounded-xl border border-cyan-500/20 bg-slate-900/40 backdrop-blur-md p-8 text-center animate-pulse">
+    <Sparkles className="w-8 h-8 text-cyan-400 mb-2 animate-spin" />
+    <span className="text-xs font-mono text-cyan-300 font-bold tracking-wider uppercase">
+      Loading {label}...
+    </span>
+    <span className="text-[10px] font-mono text-slate-500 mt-1">Initializing module on demand</span>
+  </div>
+)
+
 export default function DashboardLayout({ onSendMessage, onOrbClick }: DashboardLayoutProps) {
-  const { assistantState, showSettings, toggleSettings, clearMessages, activeConversationId, setActiveConversationId, setMessages } = useAppStore()
+  const {
+    showSettings,
+    toggleSettings,
+    clearMessages,
+    activeConversationId,
+    setActiveConversationId,
+    setMessages
+  } = useAppStore()
+
   const [isPaletteOpen, setIsPaletteOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<NavTab>('command')
   const [isNavOpen, setIsNavOpen] = useState(false)
 
-  const handleSelectConversation = useCallback(async (convId: string | number) => {
-    setActiveConversationId(convId)
-    try {
-      const res = await fetch(`http://127.0.0.1:8000/api/conversations/${convId}`)
-      if (res.ok) {
-        const data = await res.json()
-        const conv = data.conversation || data
-        if (conv && conv.messages) {
-          const formatted = conv.messages.map((m: any) => ({
-            id: String(m.id || Math.random()),
-            role: m.role,
-            content: m.content,
-            timestamp: m.timestamp || new Date().toISOString()
-          }))
-          setMessages(formatted)
+  const handleSelectConversation = useCallback(
+    async (convId: string | number) => {
+      setActiveConversationId(convId)
+      try {
+        const res = await fetch(`http://127.0.0.1:8000/api/conversations/${convId}`)
+        if (res.ok) {
+          const data = await res.json()
+          const conv = data.conversation || data
+          if (conv && conv.messages) {
+            const formatted = conv.messages.map((m: any) => ({
+              id: String(m.id || Math.random()),
+              role: m.role,
+              content: m.content,
+              timestamp: m.timestamp || new Date().toISOString()
+            }))
+            setMessages(formatted)
+          }
         }
+      } catch (e) {
+        console.error('Failed to load conversation history:', e)
       }
-    } catch (e) {
-      console.error('Failed to load conversation history:', e)
-    }
-  }, [setActiveConversationId, setMessages])
+    },
+    [setActiveConversationId, setMessages]
+  )
 
   const handleNewChat = useCallback(() => {
     setActiveConversationId(null)
@@ -261,7 +277,11 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
           >
             <Menu className="w-4 h-4 text-cyan-400" />
             <span>☰ {activeNavItem.label}</span>
-            <ChevronDown className={`w-3.5 h-3.5 text-cyan-400 transition-transform duration-200 ${isNavOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-cyan-400 transition-transform duration-200 ${
+                isNavOpen ? 'rotate-180' : ''
+              }`}
+            />
           </button>
 
           {/* Expanded Dropdown Menu items */}
@@ -311,7 +331,9 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
           >
             <Command className="w-3.5 h-3.5" />
             <span>Palette</span>
-            <kbd className="text-[10px] bg-slate-950 px-1 py-0.2 rounded border border-slate-700 text-slate-300">Ctrl+K</kbd>
+            <kbd className="text-[10px] bg-slate-950 px-1 py-0.2 rounded border border-slate-700 text-slate-300">
+              Ctrl+K
+            </kbd>
           </button>
 
           <button
@@ -351,7 +373,8 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
                   item={{
                     guidance_type: 'active_project',
                     title: 'Proactive Check-In: JARVIS AI OS',
-                    message: '[Morning Briefing] You have been working on JARVIS AI OS across the last 8 turns.',
+                    message:
+                      '[Morning Briefing] You have been working on JARVIS AI OS across the last 8 turns.',
                     action_suggestion: 'Run system integration tests'
                   }}
                   onActionClick={(suggestion) => onSendMessage(suggestion)}
@@ -386,85 +409,87 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
           </div>
         )}
 
-        {/* VIEW 2: AUTONOMOUS AGENT STUDIO */}
-        {activeTab === 'agents' && <AutonomousAgentStudio />}
-
-        {/* VIEW 3: CHAT HISTORY (Persistent Sidebar + Resumable Chat) */}
+        {/* VIEW 2: CHAT HISTORY (Persistent Sidebar + Resumable Chat) */}
         {activeTab === 'history' && (
-          <div className="h-full flex items-stretch gap-3 overflow-hidden rounded-xl border border-cyan-500/20 bg-slate-900/40 backdrop-blur-xl p-2">
-            <ConversationSidebar
-              activeId={activeConversationId}
-              onSelectConversation={handleSelectConversation}
-              onNewChat={handleNewChat}
-            />
-            <div className="flex-1 h-full min-w-0">
-              <ChatPanel onSendMessage={onSendMessage} />
+          <Suspense fallback={<LoadingFallback label="Chat History" />}>
+            <div className="h-full flex items-stretch gap-3 overflow-hidden rounded-xl border border-cyan-500/20 bg-slate-900/40 backdrop-blur-xl p-2">
+              <ConversationSidebar
+                activeId={activeConversationId}
+                onSelectConversation={handleSelectConversation}
+                onNewChat={handleNewChat}
+              />
+              <div className="flex-1 h-full min-w-0">
+                <ChatPanel onSendMessage={onSendMessage} />
+              </div>
             </div>
-          </div>
+          </Suspense>
         )}
 
-        {/* VIEW 3: VISUAL WORKFLOW STUDIO */}
-        {activeTab === 'workflows' && <VisualWorkflowBuilder />}
+        {/* VIEW 3: TASK QUEUE & SCHEDULER */}
+        {activeTab === 'queue' && (
+          <Suspense fallback={<LoadingFallback label="Task Queue" />}>
+            <TaskQueueManager />
+          </Suspense>
+        )}
 
-        {/* VIEW 4: TASK QUEUE & SCHEDULER */}
-        {activeTab === 'queue' && <TaskQueueManager />}
-
-        {/* VIEW 5: LIVE MODE */}
+        {/* VIEW 4: LIVE MODE */}
         {activeTab === 'live' && (
-          <div className="h-full overflow-y-auto space-y-4 custom-scrollbar">
-            <LiveModeCard />
-            <LivePerceptionVisualizer />
-          </div>
+          <Suspense fallback={<LoadingFallback label="Live Mode & Perception" />}>
+            <div className="h-full overflow-y-auto space-y-4 custom-scrollbar">
+              <LiveModeCard />
+              <LivePerceptionVisualizer />
+            </div>
+          </Suspense>
         )}
 
-        {/* VIEW 6: TELEMETRY & SYSTEM GAUGES */}
-        {activeTab === 'telemetry' && (
-          <div className="h-full overflow-y-auto space-y-3 custom-scrollbar">
-            <MobileCompanionCard />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-              <div className="lg:col-span-2">
-                <HardwareGauges />
-              </div>
-              <div>
-                <LLMProvidersCard />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              <AgentOrchestratorCard />
-              <MCPServersCard />
-            </div>
-          </div>
-        )}
-
-        {/* VIEW 7: DESKTOP & BROWSER AUTOMATION */}
+        {/* VIEW 5: DESKTOP & BROWSER AUTOMATION */}
         {activeTab === 'automation' && (
-          <div className="h-full overflow-y-auto space-y-3 custom-scrollbar">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              <ComputerUseCard />
-              <BrowserAutomationCard />
+          <Suspense fallback={<LoadingFallback label="Automations & Computer Use" />}>
+            <div className="h-full overflow-y-auto space-y-3 custom-scrollbar">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <ComputerUseCard />
+                <BrowserAutomationCard />
+              </div>
+              <KnowledgeHubCard />
             </div>
-            <KnowledgeHubCard />
-          </div>
+          </Suspense>
         )}
 
-        {/* VIEW 8: DEBUG INSPECTOR */}
-        {activeTab === 'debug' && <LiveDebugInspector />}
+        {/* VIEW 6: MEMORY & KNOWLEDGE HUB */}
+        {activeTab === 'memory' && (
+          <Suspense fallback={<LoadingFallback label="Memory & Knowledge Hub" />}>
+            <div className="h-full overflow-y-auto space-y-3 custom-scrollbar">
+              <KnowledgeHubCard />
+              <MemoryGraphCard />
+            </div>
+          </Suspense>
+        )}
 
-        {/* VIEW 9: DEVELOPER PORTAL */}
-        {activeTab === 'developer' && <DeveloperDashboard />}
+        {/* VIEW 7: ADVANCED HUB */}
+        {activeTab === 'advanced' && (
+          <Suspense fallback={<LoadingFallback label="Advanced Hub" />}>
+            <AdvancedHub />
+          </Suspense>
+        )}
       </div>
 
       {/* Global Command Palette Modal */}
       {isPaletteOpen && (
-        <CommandPalette
-          isOpen={isPaletteOpen}
-          onClose={() => setIsPaletteOpen(false)}
-          onSelectAction={handlePaletteAction}
-        />
+        <Suspense fallback={null}>
+          <CommandPalette
+            isOpen={isPaletteOpen}
+            onClose={() => setIsPaletteOpen(false)}
+            onSelectAction={handlePaletteAction}
+          />
+        </Suspense>
       )}
 
       {/* Global Settings Modal */}
-      {showSettings && <SettingsPanel />}
+      {showSettings && (
+        <Suspense fallback={null}>
+          <SettingsPanel />
+        </Suspense>
+      )}
     </div>
   )
 }

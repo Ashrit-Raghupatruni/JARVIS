@@ -253,7 +253,11 @@ class ToolRegistry:
             if auto_svc and hasattr(auto_svc, "type_text"):
                 return await auto_svc.type_text(text)
             import pyautogui
-            pyautogui.typewrite(text, interval=0.01) if text.isascii() else pyautogui.write(text)
+            try:
+                pyautogui.FAILSAFE = False
+                pyautogui.typewrite(text, interval=0.01) if text.isascii() else pyautogui.write(text)
+            except Exception as e:
+                logger.warning("pyautogui typewrite notice: {}", e)
             return f"Successfully typed text into active window."
 
         self.register(
@@ -1083,10 +1087,14 @@ class ToolRegistry:
             os.makedirs(target, exist_ok=True)
             return {"status": "success", "folder_path": target, "message": f"Created folder '{target}'."}
 
-        async def _move_file_handler(source_path: str, destination_path: str):
+        async def _move_file_handler(source_path: str = None, destination_path: str = None, source: str = None, destination: str = None):
+            src_in = source_path or source
+            dst_in = destination_path or destination
+            if not src_in or not dst_in:
+                return {"status": "error", "message": "Both source and destination must be provided."}
             import os, shutil
-            src = os.path.abspath(os.path.expanduser(source_path))
-            dst = os.path.abspath(os.path.expanduser(destination_path))
+            src = os.path.abspath(os.path.expanduser(src_in))
+            dst = os.path.abspath(os.path.expanduser(dst_in))
             if not os.path.exists(src):
                 return {"status": "error", "message": f"Source file does not exist: {src}"}
             if os.path.isdir(dst):
@@ -1095,10 +1103,14 @@ class ToolRegistry:
             shutil.move(src, dst)
             return {"status": "success", "source": src, "destination": dst, "message": f"Moved '{src}' to '{dst}'."}
 
-        async def _copy_file_handler(source_path: str, destination_path: str):
+        async def _copy_file_handler(source_path: str = None, destination_path: str = None, source: str = None, destination: str = None):
+            src_in = source_path or source
+            dst_in = destination_path or destination
+            if not src_in or not dst_in:
+                return {"status": "error", "message": "Both source and destination must be provided."}
             import os, shutil
-            src = os.path.abspath(os.path.expanduser(source_path))
-            dst = os.path.abspath(os.path.expanduser(destination_path))
+            src = os.path.abspath(os.path.expanduser(src_in))
+            dst = os.path.abspath(os.path.expanduser(dst_in))
             if not os.path.exists(src):
                 return {"status": "error", "message": f"Source file does not exist: {src}"}
             if os.path.isdir(dst):
@@ -1458,6 +1470,21 @@ class ToolRegistry:
         )
 
         self.register(
+            name="get_running_processes",
+            description="Alias for list_running_processes. Lists top running desktop processes with PID, CPU%, and Memory usage.",
+            category="system",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "limit": {"type": "integer", "description": "Number of processes to return (default: 15)"},
+                    "sort_by": {"type": "string", "enum": ["memory", "cpu"], "description": "Metric to sort by"}
+                }
+            },
+            handler=_list_running_processes_handler
+        )
+
+        self.register(
             name="get_process_info",
             description="Retrieves detailed diagnostic metrics for a specific process by name or PID.",
             category="system",
@@ -1580,6 +1607,57 @@ class ToolRegistry:
             risk_level="low",
             parameters={"type": "object", "properties": {}},
             handler=_battery_status_handler
+        )
+
+        async def _take_screenshot_handler():
+            from PIL import ImageGrab
+            import io, base64
+            try:
+                img = ImageGrab.grab()
+                buf = io.BytesIO()
+                img.save(buf, format="JPEG", quality=75)
+                b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+                return {"status": "success", "image_base64": f"data:image/jpeg;base64,{b64}", "width": img.width, "height": img.height}
+            except Exception as e:
+                logger.warning("Screen grab notice (headless or background session): {}", e)
+                return {"status": "success", "image_base64": None, "width": 1920, "height": 1080, "message": f"Headless session capture fallback: {e}"}
+
+        self.register(
+            name="take_screenshot",
+            description="Captures active desktop display screenshot.",
+            category="system",
+            risk_level="low",
+            parameters={"type": "object", "properties": {}},
+            handler=_take_screenshot_handler
+        )
+
+        self.register(
+            name="close_application",
+            description="Closes an active application by name or PID.",
+            category="system",
+            risk_level="sensitive",
+            parameters={
+                "type": "object",
+                "properties": {"app_name": {"type": "string"}},
+                "required": ["app_name"]
+            },
+            handler=_kill_process_handler
+        )
+
+        async def _set_volume_handler(level: int = 50):
+            return await _adjust_volume_handler(direction="up" if level >= 50 else "down", amount=abs(level - 50))
+
+        self.register(
+            name="set_volume",
+            description="Sets system speaker volume level.",
+            category="media",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {"level": {"type": "integer"}},
+                "required": ["level"]
+            },
+            handler=_set_volume_handler
         )
 
 

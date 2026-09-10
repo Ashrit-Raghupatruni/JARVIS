@@ -158,31 +158,43 @@ export default function App() {
     const canvas = globalCanvasRef.current
     if (!video || !canvas) return
 
-    import('./lib/handTracker').then(({ HandTracker }) => {
-      const tracker = new HandTracker(video, canvas, {
-        onHandAction: (action, params) => {
-          if (action === 'click') {
-            sendMessage('hand_action', {
-              action: 'click',
-              click_action: params.action || 'click',
-              button: params.button || 'left'
-            })
-          } else {
-            sendMessage('hand_action', { action, ...params })
+    let cancelled = false
+    // Delay camera start slightly (300ms) to ensure previous biometric camera stream teardown has completed
+    const timer = setTimeout(() => {
+      if (cancelled) return
+      import('./lib/handTracker').then(({ HandTracker }) => {
+        if (cancelled) return
+        const tracker = new HandTracker(video, canvas, {
+          onHandAction: (action, params) => {
+            if (action === 'click') {
+              sendMessage('hand_action', {
+                action: 'click',
+                click_action: params.action || 'click',
+                button: params.button || 'left'
+              })
+            } else {
+              sendMessage('hand_action', { action, ...params })
+            }
           }
-        }
-      })
+        })
 
-      tracker.updateConfigs(settings.handControl)
-      tracker.start().then(() => {
-        globalTrackerRef.current = tracker
-        console.log('[App] Laptop-Wide Global Hand Control Active')
-      }).catch((err) => {
-        console.error('[App] Global Hand Tracker notice:', err)
+        tracker.updateConfigs(settings.handControl)
+        tracker.start().then(() => {
+          if (!cancelled) {
+            globalTrackerRef.current = tracker
+            console.log('[App] Laptop-Wide Global Hand Control Active')
+          } else {
+            tracker.stop()
+          }
+        }).catch((err) => {
+          console.error('[App] Global Hand Tracker notice:', err)
+        })
       })
-    })
+    }, 300)
 
     return () => {
+      cancelled = true
+      clearTimeout(timer)
       if (globalTrackerRef.current) {
         globalTrackerRef.current.stop()
         globalTrackerRef.current = null

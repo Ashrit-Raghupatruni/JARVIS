@@ -55,6 +55,7 @@ echo.
 
 :: Launch Python AI Engine
 echo [3/4] Launching Python AI Engine (FastAPI backend on port 8000)...
+set "LAUNCHER_MANAGED=1"
 start "JARVIS Backend" /B /D "%PROJECT_ROOT%\backend" "%PROJECT_ROOT%\backend\venv\Scripts\python.exe" -m uvicorn main:app --host 0.0.0.0 --port 8000
 
 :: Wait for Backend to become fully healthy before starting frontend
@@ -88,9 +89,17 @@ set ELECTRON_RUN_AS_NODE=
 echo [4/4] Launching JARVIS Desktop UI...
 cd /d "%PROJECT_ROOT%\frontend"
 call npm run dev
-if %errorlevel% neq 0 (
-    echo.
-    echo [ERROR] JARVIS exited with error code %errorlevel%.
+set "EXIT_CODE=%errorlevel%"
+
+echo.
+if %EXIT_CODE% neq 0 (
+    echo ================================================================
+    echo [ERROR] JARVIS UI process exited with error code %EXIT_CODE%.
+    echo ================================================================
+) else (
+    echo ================================================================
+    echo [INFO] JARVIS Desktop UI session completed.
+    echo ================================================================
 )
 
 :: Clean up background backend process tree when Electron quits
@@ -100,6 +109,12 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":8000.*LISTENING" 2^>nul') d
     taskkill /T /F /PID %%a >nul 2>&1
 )
 echo [OK] JARVIS shutdown complete.
+
+echo.
+echo ================================================================
+echo Press any key to close launcher window...
+echo ================================================================
+pause
 
 popd
 endlocal

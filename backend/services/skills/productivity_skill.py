@@ -1,6 +1,7 @@
 """
 Productivity Skill for FastMCP & Skill Registry integration.
-Exposes Phase 12 tools: daily briefing, task manager, reminder queue, meeting summarizer, email drafter, calendar manager.
+Exposes tools: daily briefing, task manager, reminder queue, meeting summarizer,
+email drafter, calendar manager, local markdown note-taking, and marketing/sales copywriting.
 """
 
 from typing import Any, Dict, List, Optional
@@ -9,10 +10,10 @@ from backend.services.productivity_service import ProductivityService
 
 
 class ProductivitySkill(BaseSkill):
-    """Skill exposing Phase 12 Productivity Suite tools."""
+    """Skill exposing Productivity Suite, Note-Taking, and Copywriting tools."""
 
     name = "ProductivitySkill"
-    description = "Executive daily briefing synthesizer, TODO task manager, reminder queue, meeting transcript summarizer, email drafter, calendar event manager."
+    description = "Executive briefing, tasks, reminders, meeting summarizer, email drafter, note-taking, and marketing copy drafting."
 
     def __init__(self, productivity_service: Optional[ProductivityService] = None):
         self.productivity_service = productivity_service or ProductivityService()
@@ -89,6 +90,54 @@ class ProductivitySkill(BaseSkill):
                         "time_str": {"type": "string", "description": "Event time (e.g. '15:00')."}
                     }
                 }
+            },
+            {
+                "name": "take_note",
+                "description": "Save a structured markdown note into local data/notes/ storage with tags and metadata.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "title": {"type": "string", "description": "Title of note."},
+                        "content": {"type": "string", "description": "Markdown body content."},
+                        "tags": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Optional list of tags."
+                        }
+                    },
+                    "required": ["title", "content"]
+                }
+            },
+            {
+                "name": "list_notes",
+                "description": "List all markdown notes stored in data/notes/ with modification dates and previews.",
+                "parameters": {"type": "object", "properties": {}}
+            },
+            {
+                "name": "search_notes",
+                "description": "Search local markdown notes for keywords and terms.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Search query terms."}
+                    },
+                    "required": ["query"]
+                }
+            },
+            {
+                "name": "draft_copy",
+                "description": "Generate high-converting marketing, sales, ad, social, or customer support copy.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "goal": {"type": "string", "description": "Primary goal or topic of the copy."},
+                        "target_audience": {"type": "string", "description": "Target demographic or persona."},
+                        "channel": {"type": "string", "enum": ["email", "landing_page", "social", "ad", "support"]},
+                        "tone": {"type": "string", "description": "Tone preset (e.g. persuasive, professional, urgent)."},
+                        "product_context": {"type": "string", "description": "Optional product/service name or description."}
+                    },
+                    "required": ["goal", "target_audience"]
+                }
             }
         ]
 
@@ -120,6 +169,24 @@ class ProductivitySkill(BaseSkill):
                 parameters.get("action", "list"),
                 parameters.get("title"),
                 parameters.get("time_str", "15:00")
+            )
+        elif tool_name == "take_note":
+            return self.productivity_service.take_note(
+                parameters.get("title", ""),
+                parameters.get("content", ""),
+                parameters.get("tags")
+            )
+        elif tool_name == "list_notes":
+            return self.productivity_service.list_notes()
+        elif tool_name == "search_notes":
+            return self.productivity_service.search_notes(parameters.get("query", ""))
+        elif tool_name == "draft_copy":
+            return self.productivity_service.draft_copy(
+                parameters.get("goal", ""),
+                parameters.get("target_audience", ""),
+                channel=parameters.get("channel", "email"),
+                tone=parameters.get("tone", "persuasive"),
+                product_context=parameters.get("product_context")
             )
         else:
             raise ValueError(f"Unknown productivity tool: {tool_name}")

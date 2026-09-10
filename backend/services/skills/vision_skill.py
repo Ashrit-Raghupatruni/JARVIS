@@ -1,6 +1,7 @@
 """
 Vision Skill for FastMCP & Skill Registry integration.
-Provides tools for accessibility tree inspection, UI element grounding, multi-monitor mapping, and visual verification.
+Provides tools for accessibility tree inspection, UI element grounding, multi-monitor mapping,
+visual verification, local object recognition, and grounded image captioning.
 """
 
 from typing import Any, Dict, List, Optional
@@ -9,10 +10,10 @@ from backend.services.vision_service import VisionService
 
 
 class VisionSkill(BaseSkill):
-    """Skill exposing Phase 7 Vision-Based Computer Use tools."""
+    """Skill exposing Vision-Based Computer Use, Object Detection, and Scene Captioning tools."""
 
     name = "VisionSkill"
-    description = "Vision intelligence, accessibility tree parsing, UI grounding, and visual verification."
+    description = "Vision intelligence, accessibility tree parsing, UI grounding, object recognition, and grounded image captioning."
 
     def __init__(self, vision_service: Optional[VisionService] = None):
         self.vision_service = vision_service or VisionService()
@@ -49,6 +50,28 @@ class VisionSkill(BaseSkill):
                 "name": "get_multi_monitor_layout",
                 "description": "Get connected display monitors, primary display, and work area bounds.",
                 "parameters": {"type": "object", "properties": {}}
+            },
+            {
+                "name": "detect_objects_in_image",
+                "description": "Detect visual elements, UI containers, faces, and bounding boxes in an image or current desktop screen.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "image_path": {"type": "string", "description": "Optional file path to local image."},
+                        "confidence_threshold": {"type": "number", "description": "Detection confidence threshold (0.0 to 1.0)."}
+                    }
+                }
+            },
+            {
+                "name": "generate_image_caption",
+                "description": "Generate grounded visual description and structure caption for an image or desktop screen.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "image_path": {"type": "string", "description": "Optional file path to local image."},
+                        "style": {"type": "string", "enum": ["descriptive", "concise", "technical"]}
+                    }
+                }
             }
         ]
 
@@ -61,5 +84,15 @@ class VisionSkill(BaseSkill):
             return self.vision_service.ground_element_coordinates(parameters.get("query", ""))
         elif tool_name == "get_multi_monitor_layout":
             return self.vision_service.get_multi_monitor_layout()
+        elif tool_name == "detect_objects_in_image":
+            return self.vision_service.detect_objects_in_image(
+                image_path=parameters.get("image_path"),
+                confidence_threshold=parameters.get("confidence_threshold", 0.4)
+            )
+        elif tool_name == "generate_image_caption":
+            return self.vision_service.generate_image_caption(
+                image_path=parameters.get("image_path"),
+                style=parameters.get("style", "descriptive")
+            )
         else:
             raise ValueError(f"Unknown vision tool: {tool_name}")

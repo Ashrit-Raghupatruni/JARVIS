@@ -237,6 +237,7 @@ class FCMPushService:
         state: str,
         summary: str
     ) -> Dict[str, Any]:
+        """Broadcast live mode telemetry alert to all registered mobile companion devices."""
         title = f"👁️ JARVIS Live Mode: {state.upper()}"
         body = summary[:120]
         data = {
@@ -244,6 +245,13 @@ class FCMPushService:
             "summary": summary,
             "action": "open_control_screen"
         }
+        return await self.broadcast_push_notification(
+            title=title,
+            body=body,
+            notification_type="live_mode_alert",
+            data=data
+        )
+
     def get_status(self) -> Dict[str, Any]:
         """Returns the live operational status of the FCM service."""
         has_creds = bool(self.credentials_path and Path(self.credentials_path).exists())

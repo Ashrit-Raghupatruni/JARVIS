@@ -335,3 +335,56 @@ class DesktopAutomationService:
             "removed_files": removed,
             "current_files": current
         }
+
+    # ── 5. RPA Workflow & Macro Orchestrator ───────────────────────────
+
+    def execute_rpa_macro(self, steps: List[Dict[str, Any]], stop_on_error: bool = True) -> Dict[str, Any]:
+        """
+        Execute an RPA macro sequence of UI actions with error recovery.
+        """
+        results = []
+        for idx, step in enumerate(steps):
+            act = str(step.get("action", "")).lower()
+            status = "completed"
+            err = None
+            try:
+                if act in ("open", "open_app", "launch"):
+                    target = step.get("target") or step.get("app_name") or "notepad"
+                    import subprocess
+                    subprocess.Popen(["cmd", "/c", "start", "", target], shell=False)
+                elif act in ("type", "type_text"):
+                    text = step.get("text", "")
+                    import pyautogui
+                    pyautogui.FAILSAFE = False
+                    pyautogui.typewrite(text, interval=0.01) if text.isascii() else pyautogui.write(text)
+                elif act in ("wait", "sleep"):
+                    dur = float(step.get("seconds", 0.5))
+                    time.sleep(min(3.0, max(0.05, dur)))
+                elif act == "hotkey":
+                    keys = step.get("keys", [])
+                    import pyautogui
+                    pyautogui.FAILSAFE = False
+                    if keys:
+                        pyautogui.hotkey(*keys)
+                elif act == "click":
+                    # Simulated safe coordinate click or center click
+                    import pyautogui
+                    pyautogui.FAILSAFE = False
+                    x = step.get("x", 500)
+                    y = step.get("y", 500)
+                    pyautogui.click(x, y)
+            except Exception as e:
+                status = "failed"
+                err = str(e)
+                if stop_on_error:
+                    results.append({"step_index": idx + 1, "action": act, "status": status, "error": err})
+                    break
+            results.append({"step_index": idx + 1, "action": act, "status": status, "error": err})
+
+        return {
+            "status": "completed" if all(r["status"] == "completed" for r in results) else "partial_failure",
+            "total_steps": len(steps),
+            "executed_steps_count": len(results),
+            "step_results": results
+        }
+

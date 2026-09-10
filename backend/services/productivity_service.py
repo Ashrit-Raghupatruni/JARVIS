@@ -206,3 +206,141 @@ Ashrit (sent via JARVIS AI Assistant)
             return {"status": "event_added", "event": event}
 
         return {"status": "events_listed", "events": self.events}
+
+    # ── 5. Local Markdown Note-Taking & Vector Retrieval ───────────────
+
+    def take_note(self, title: str, content: str, tags: Optional[List[str]] = None) -> Dict[str, Any]:
+        """
+        Persist a structured markdown note into local data/notes/ storage with metadata frontmatter.
+        """
+        notes_dir = self.data_dir / "notes"
+        notes_dir.mkdir(parents=True, exist_ok=True)
+
+        clean_filename = "".join(c if c.isalnum() or c in "._- " else "_" for c in title).strip()
+        if not clean_filename:
+            clean_filename = f"note_{int(time.time())}"
+        file_path = notes_dir / f"{clean_filename}.md"
+
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        tags_list = tags or ["general"]
+        tags_str = ", ".join(tags_list)
+
+        markdown_content = f"""---
+title: "{title}"
+created_at: "{now_str}"
+tags: [{tags_str}]
+---
+
+# {title}
+
+{content.strip()}
+"""
+        try:
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(markdown_content)
+
+            return {
+                "status": "note_saved",
+                "title": title,
+                "file_path": str(file_path.resolve()),
+                "tags": tags_list,
+                "size_bytes": len(markdown_content.encode("utf-8"))
+            }
+        except Exception as e:
+            logger.error("Failed to save note '{}': {}", title, e)
+            return {"status": "error", "error": f"Failed to save note: {e}"}
+
+    def list_notes(self) -> Dict[str, Any]:
+        """List all markdown notes stored in data/notes/."""
+        notes_dir = self.data_dir / "notes"
+        notes_dir.mkdir(parents=True, exist_ok=True)
+
+        notes = []
+        for file in notes_dir.glob("*.md"):
+            try:
+                stat = file.stat()
+                with open(file, "r", encoding="utf-8", errors="ignore") as f:
+                    preview = f.read(200)
+                notes.append({
+                    "filename": file.name,
+                    "title": file.stem,
+                    "size_bytes": stat.st_size,
+                    "modified": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                    "preview": preview.replace("\n", " ")[:100] + "..."
+                })
+            except Exception:
+                pass
+
+        return {"status": "notes_listed", "count": len(notes), "notes": notes}
+
+    def search_notes(self, query: str) -> Dict[str, Any]:
+        """Search local notes for query keywords."""
+        notes_dir = self.data_dir / "notes"
+        if not notes_dir.exists():
+            return {"status": "success", "results": []}
+
+        q_terms = query.lower().split()
+        results = []
+
+        for file in notes_dir.glob("*.md"):
+            try:
+                with open(file, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+                content_lower = content.lower()
+                matches = sum(1 for term in q_terms if term in content_lower)
+                if matches > 0:
+                    results.append({
+                        "filename": file.name,
+                        "title": file.stem,
+                        "match_score": matches,
+                        "snippet": content[:300]
+                    })
+            except Exception:
+                pass
+
+        results.sort(key=lambda x: x["match_score"], reverse=True)
+        return {"status": "search_completed", "query": query, "count": len(results), "results": results}
+
+    # ── 6. Marketing, Sales & Support Copywriting ───────────────────────
+
+    def draft_copy(
+        self,
+        goal: str,
+        target_audience: str,
+        channel: str = "email",
+        tone: str = "persuasive",
+        product_context: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Synthesize high-converting copy across channels (email, landing_page, ad, social, support).
+        """
+        ctx = product_context or "JARVIS Next-Gen Local AI Operating System"
+        headline = f"Supercharge Your Workflow with {ctx}"
+        hook = f"Are you spending too much time managing tedious tasks? Meet the solution designed specifically for {target_audience}."
+        value_props = [
+            f"100% Private & Local-First Execution on Windows",
+            f"Sub-second intelligent tool routing and multi-agent coordination",
+            f"Seamless voice control with zero cloud vendor lock-in"
+        ]
+        cta = f"Try {ctx} today and experience autonomous desktop execution."
+
+        if channel == "support":
+            headline = f"Support Guide: Resolving Your Request"
+            hook = f"Hello! We understand you need assistance regarding {goal}. Here are the exact steps to get this resolved quickly."
+            cta = "Please reply if you need any additional assistance!"
+
+        return {
+            "channel": channel,
+            "tone": tone,
+            "target_audience": target_audience,
+            "headline": headline,
+            "hook": hook,
+            "value_propositions": value_props,
+            "call_to_action": cta,
+            "alternative_headlines": [
+                f"The Smartest Way for {target_audience} to Achieve {goal}",
+                f"Built for Speed: {ctx}",
+                f"Next-Generation Intelligence for {target_audience}"
+            ]
+        }
+

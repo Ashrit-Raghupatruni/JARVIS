@@ -113,4 +113,31 @@ All 60 critical audit issues systematically resolved and empirically verified ac
 - **Document & Personal Data Grounding**: Removed hardcoded San Francisco mock profile, connected dynamic user facts to `MemoryService`, implemented `forget_memory` / ChromaDB deletion, and added real-disk PDF resume intelligence.
 - **Continuous Learning Closed Loop**: Wired `StrategyMemoryService` feedback directly into tool execution and recovery paths.
 
+---
+
+## 🌟 Autonomous Multimodal & Domain Intelligence Expansion (September 8, 2026)
+
+All 5 expansion phases completed, integrated across backend skills, UI dashboards, and verified with **65/65 passing pytest test cases (100% pass rate in 20.15s)**:
+
+- **Phase 1 — Prompt Transformation, Task Specialization & Discipline**:
+  - `TransformationEngine` in [`backend/services/prompt_pipeline.py`](file:///c:/Users/ashri/JARVIS/backend/services/prompt_pipeline.py) supporting modes (`bullet_points`, `executive_summary`, `one_sentence`, `tldr`), style shifts (`executive`, `technical`, `casual`, `persuasive`, `concise`, `customer_support`), entity extraction, and sentiment scoring ($-1.0$ to $+1.0$).
+  - Token budget prompt constraints in [`backend/agents/planner.py`](file:///c:/Users/ashri/JARVIS/backend/agents/planner.py) enforcing concise 1–3 sentence defaults.
+  - Safe SQL query generation and AST read-only query execution rejecting `DROP`, `DELETE`, `UPDATE`, `INSERT`, `ALTER` in [`backend/services/developer_assistant.py`](file:///c:/Users/ashri/JARVIS/backend/services/developer_assistant.py).
+  - Python docstring generator in `DeveloperAssistant`.
+  - Persistent Markdown notes engine (`data/notes/`) and multi-channel marketing copywriting in [`backend/services/productivity_service.py`](file:///c:/Users/ashri/JARVIS/backend/services/productivity_service.py).
+- **Phase 2 — Chemoinformatics, UI/Web Scaffolding & Vision Intelligence**:
+  - Science & Chemoinformatics engine ([`backend/services/science_service.py`](file:///c:/Users/ashri/JARVIS/backend/services/science_service.py)): molecular weight calculator, equation stoichiometry balancing, NCBI PubChem compound REST queries, and biological process syntheses.
+  - Design & UI Scaffolder ([`backend/services/design_assistant.py`](file:///c:/Users/ashri/JARVIS/backend/services/design_assistant.py)): WCAG 2.1 accessibility critique, Tailwind palette generation, and standalone component scaffolding.
+  - Vision Intelligence engine ([`backend/services/vision_service.py`](file:///c:/Users/ashri/JARVIS/backend/services/vision_service.py)): OpenCV Haar cascade/contour object detection and grounded captioning.
+- **Phase 3 — Desktop RPA Macro Orchestrator & Edge-TTS Voice Intelligence**:
+  - `execute_rpa_macro` in [`backend/services/desktop_automation.py`](file:///c:/Users/ashri/JARVIS/backend/services/desktop_automation.py) with isolated step exception handling.
+  - Neural Edge-TTS voice synthesis, regional voice model listing, and procedural audio effect generator in [`backend/services/voice_intelligence.py`](file:///c:/Users/ashri/JARVIS/backend/services/voice_intelligence.py).
+- **Phases 4 & 5 — Asynchronous Multimodal Generation Queue & Fail-Closed Media Adapters**:
+  - `AsyncGenerationJobManager` in [`backend/services/async_generation_queue.py`](file:///c:/Users/ashri/JARVIS/backend/services/async_generation_queue.py) with UUID job tracking, SQLite database persistence (`data/generation_jobs.db`), background async task polling, and job history endpoints.
+  - Fail-closed media adapters: Image (`image_generator.py`), Video (`video_generator.py`), and 3D (`threed_generator.py`) with preflight hardware and API key validation.
+- **Frontend & UI Endpoints**:
+  - Added REST endpoints in [`backend/api/routes_ui.py`](file:///c:/Users/ashri/JARVIS/backend/api/routes_ui.py): `/api/ui/generation/status/{job_id}`, `/api/ui/generation/jobs`, and `/api/ui/notes`.
+  - Added `MULTIMODAL & NOTES` monitoring subtab in Developer Dashboard ([`DeveloperDashboard.tsx`](file:///c:/Users/ashri/JARVIS/frontend/src/renderer/src/components/DeveloperDashboard.tsx)) and updated `CapabilityRegistry.json`.
+
+
 

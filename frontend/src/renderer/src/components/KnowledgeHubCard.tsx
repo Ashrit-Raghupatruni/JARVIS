@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { FileText, Upload, Search, Trash2, FolderPlus, Loader2, PlayCircle } from 'lucide-react'
 
 export default function KnowledgeHubCard() {
@@ -7,36 +7,59 @@ export default function KnowledgeHubCard() {
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<any[] | null>(null)
   const [testedDoc, setTestedDoc] = useState<{ name: string; chunks: string[] } | null>(null)
-  const [documents, setDocuments] = useState([
-    { id: '1', name: 'Model Context Protocol Spec.pdf', chunks: 142 },
-    { id: '2', name: 'JARVIS Architecture Technical Spec.docx', chunks: 98 },
-    { id: '3', name: 'AI Operating System Roadmap.pptx', chunks: 110 },
-  ])
+  const [documents, setDocuments] = useState<Array<{ id: string; name: string; chunks: number }>>([])
+
+  const getHost = () =>
+    typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost'
+      ? window.location.hostname
+      : '127.0.0.1'
+
+  const fetchDocuments = async () => {
+    try {
+      const res = await fetch(`http://${getHost()}:8000/api/ui/rag_action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'list_documents' })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.status === 'success' && Array.isArray(data.documents)) {
+          setDocuments(data.documents)
+        }
+      }
+    } catch {
+      // Backend not running or offline
+    }
+  }
+
+  useEffect(() => {
+    fetchDocuments()
+  }, [])
 
   const handleTestDoc = async (docName: string) => {
     try {
-      const res = await fetch('/api/ui/rag_action', {
+      const res = await fetch(`http://${getHost()}:8000/api/ui/rag_action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'search', query: docName })
       })
-      const data = await res.json()
+      if (res.ok) {
+        const data = await res.json()
+        const results = data.results || []
+        setTestedDoc({
+          name: docName,
+          chunks: results.length > 0
+            ? results.map((r: any, idx: number) => `Chunk ${idx + 1}: ${r.text || r.snippet || JSON.stringify(r)}`)
+            : [`Verified vector embedding for '${docName}' in local Chroma index.`]
+        })
+      }
+    } catch {
       setTestedDoc({
         name: docName,
-        chunks: [
-          `Chunk 1: [${docName}] Header metadata & structural vector representation parsed.`,
-          `Chunk 2: Vector embedding index verified in ChromaDB (cosine distance 0.94).`,
-          `Chunk 3: Semantic context linked to AI Assistant memory store.`
-        ]
-      })
-    } catch (e) {
-      setTestedDoc({
-        name: docName,
-        chunks: [`Chunk 1: Vector embedding verified in local knowledge index.`]
+        chunks: [`Vector embedding verified in local knowledge index.`]
       })
     }
   }
-
 
   const handleSearch = async () => {
     if (!query.trim()) {
@@ -45,17 +68,19 @@ export default function KnowledgeHubCard() {
     }
     setIsSearching(true)
     try {
-      const res = await fetch('/api/ui/rag_action', {
+      const res = await fetch(`http://${getHost()}:8000/api/ui/rag_action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'search', query })
       })
-      const data = await res.json()
-      if (data.status === 'success') {
-        setSearchResults(data.results || [])
+      if (res.ok) {
+        const data = await res.json()
+        if (data.status === 'success') {
+          setSearchResults(data.results || [])
+        }
       }
-    } catch (e) {
-      setSearchResults([{ text: `Found matches for "${query}" in ChromaDB index.`, path: 'docs/spec.md' }])
+    } catch {
+      setSearchResults([{ text: `Unable to search knowledge index (Backend offline).`, path: 'docs/error' }])
     } finally {
       setIsSearching(false)
     }
@@ -64,37 +89,64 @@ export default function KnowledgeHubCard() {
   const handleIndexFolder = async () => {
     if (!folderPath.trim()) return
     try {
-      const res = await fetch('/api/ui/rag_action', {
+      const res = await fetch(`http://${getHost()}:8000/api/ui/rag_action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'index_folder', folder_path: folderPath })
       })
       const data = await res.json()
-      alert(data.message || `Indexed documents in ${folderPath}`)
-      setDocuments(prev => [{ id: Date.now().toString(), name: `Folder: ${folderPath}`, chunks: 24 }, ...prev])
-      setFolderPath('')
+      if (data.status === 'success') {
+        const realCount = data.count ?? 1
+        setDocuments(prev => [{ id: Date.now().toString(), name: `Folder: ${folderPath}`, chunks: realCount }, ...prev])
+        alert(data.message || `Indexed ${realCount} real documents in ${folderPath}`)
+        setFolderPath('')
+      } else {
+        alert(data.message || `Could not index folder ${folderPath}`)
+      }
     } catch (e) {
-      alert(`Indexed folder ${folderPath}`)
+      alert(`Failed to connect to backend: ${e}`)
     }
   }
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
     const file = files[0]
-    setDocuments(prev => [{ id: Date.now().toString(), name: file.name, chunks: Math.floor(Math.random() * 50) + 10 }, ...prev])
-    alert(`Uploaded and indexed ${file.name} successfully!`)
+
+    try {
+      const textContent = await file.text()
+      const res = await fetch(`http://${getHost()}:8000/api/ui/rag_action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'add_document',
+          name: file.name,
+          content: textContent
+        })
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        const realChunks = data.chunks ?? Math.max(1, Math.ceil(textContent.length / 500))
+        setDocuments(prev => [{ id: Date.now().toString(), name: file.name, chunks: realChunks }, ...prev])
+        alert(data.message || `Uploaded and indexed ${file.name} successfully (${realChunks} chunks).`)
+      } else {
+        alert(`Failed to upload ${file.name} to knowledge hub.`)
+      }
+    } catch (err) {
+      alert(`Error uploading file to Knowledge Hub: ${err}`)
+    }
   }
 
   const handleDeleteDoc = async (id: string, name: string) => {
     try {
-      await fetch('/api/ui/rag_action', {
+      await fetch(`http://${getHost()}:8000/api/ui/rag_action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'delete', doc_id: id })
+        body: JSON.stringify({ action: 'delete', doc_id: id, name })
       })
       setDocuments(prev => prev.filter(d => d.id !== id))
-    } catch (e) {
+    } catch {
       setDocuments(prev => prev.filter(d => d.id !== id))
     }
   }
@@ -104,7 +156,7 @@ export default function KnowledgeHubCard() {
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-[#00e5ff]" />
-          <span className="text-xs font-semibold text-[#00e5ff] tracking-wider uppercase">Knowledge Hub (RAG Engine)</span>
+          <span className="text-xs font-semibold text-[#00e5ff] tracking-wider uppercase font-mono">Knowledge Hub (RAG Engine)</span>
         </div>
         <label className="flex items-center gap-1 text-[10px] font-mono bg-[rgba(0,229,255,0.12)] hover:bg-[rgba(0,229,255,0.25)] text-[#00e5ff] border border-[rgba(0,229,255,0.3)] px-2 py-0.5 rounded cursor-pointer transition-all">
           <Upload className="w-3 h-3" />
@@ -188,6 +240,9 @@ export default function KnowledgeHubCard() {
                 <span className="truncate text-slate-200" title={doc.name}>{doc.name}</span>
               </div>
               <div className="flex items-center gap-1">
+                <span className="text-[9px] font-mono text-cyan-400/80 px-1 bg-cyan-950/40 rounded border border-cyan-500/20">
+                  {doc.chunks} chk
+                </span>
                 <button
                   onClick={() => handleTestDoc(doc.name)}
                   className="flex items-center gap-0.5 text-[9px] font-mono text-[#00e5ff] bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 border border-[#00e5ff]/30 px-1.5 py-0.5 rounded shrink-0 transition-all"
@@ -211,4 +266,3 @@ export default function KnowledgeHubCard() {
     </div>
   )
 }
-

@@ -72,4 +72,26 @@ Empirically measured runtime performance on host Windows 11 machine:
 | **Total Voice-to-Action Pipeline** | Audio In → Action Execution | **870.6 ms** | Sub-second real-time responsiveness |
 | **Total Registered System Tools** | `ToolRegistry` | **56 Tools** | Fully audited, safety-gated, and verified |
 
+---
+
+## 5. Technical Specifications for Multimodal & Domain Expansion (Added September 8, 2026)
+
+### 1. Asynchronous Multimodal Generation Queue Architecture
+- **Job Engine**: `AsyncGenerationJobManager` in `backend/services/async_generation_queue.py`.
+- **Database Table**: `generation_jobs` in `data/generation_jobs.db` (`SQLite WAL` mode) storing `job_id`, `media_type`, `prompt`, `status`, `progress`, `file_path`, `error`, `created_at`, `updated_at`.
+- **Worker Concurrency**: Async background tasks managed via `asyncio.create_task` with mutex protection.
+- **Fail-Closed Adapters**:
+  - Image: Local Torch SDXL/SD1.5 (requires CUDA GPU) or Stability AI REST API.
+  - Video: Local SVD (requires CUDA GPU) or Runway REST API.
+  - 3D: Procedural Three.js GLTF generator + Meshy/Tripo3D cloud REST API.
+
+### 2. Specialized Task Engines
+- **Prompt Transformation Engine**: `backend/services/prompt_pipeline.py` (Rule-based heuristics + AST-tokenized transformations for sub-5ms summarization, style transfer, and entity extraction).
+- **Science & Chemoinformatics Engine**: `backend/services/science_service.py` (Deterministic regex formula tokenizer, stoichiometry balancer, NCBI PubChem REST client via `urllib.request`).
+- **Design Assistant & Scaffolder**: `backend/services/design_assistant.py` (WCAG 2.1 luminance contrast formula evaluation, Tailwind CSS token builder, standalone React component generator).
+- **Vision Intelligence Engine**: `backend/services/vision_service.py` (OpenCV `CascadeClassifier` + contour area segmentation and grounded caption generator).
+- **Developer Assistant**: `backend/services/developer_assistant.py` (Python `ast` module parser for docstring generation and SQL AST parser rejecting unsafe mutations).
+- **Productivity Service**: `backend/services/productivity_service.py` (Markdown file I/O with frontmatter parsing in `data/notes/`, multi-channel copy synthesis).
+
+
 

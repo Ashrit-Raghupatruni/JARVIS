@@ -119,6 +119,74 @@
         "backend/tests/test_mobile_bridge.py"
       ],
       "dependencies": ["cryptography", "pyjwt"]
+    },
+    "multimodal_generation_engine": {
+      "name": "Multimodal Generative Media Engine",
+      "status": "IMPLEMENTED",
+      "description": "Async generation queue with SQLite persistence for Image (Stable Diffusion / DALL-E), Video (SVD / Runway), and 3D mesh (Three.js / Meshy) generation with fail-closed preflight adapters.",
+      "implementation_files": [
+        "backend/services/async_generation_queue.py",
+        "backend/services/image_generator.py",
+        "backend/services/video_generator.py",
+        "backend/services/threed_generator.py",
+        "backend/services/skills/multimodal_skill.py"
+      ],
+      "test_files": [
+        "backend/tests/test_capability_expansion_full.py"
+      ],
+      "dependencies": ["sqlite3", "aiohttp", "torch"]
+    },
+    "chemoinformatics_science_engine": {
+      "name": "Science & Chemoinformatics Engine",
+      "status": "IMPLEMENTED",
+      "description": "Chemical formula molecular weight calculator, stoichiometry equation balancer, PubChem compound lookup, and biological pathway explainer.",
+      "implementation_files": [
+        "backend/services/science_service.py",
+        "backend/services/skills/research_skill.py"
+      ],
+      "test_files": [
+        "backend/tests/test_capability_expansion_full.py"
+      ],
+      "dependencies": ["urllib", "re", "json"]
+    },
+    "design_ui_scaffolder": {
+      "name": "Design Assistant & Web App Scaffolder",
+      "status": "IMPLEMENTED",
+      "description": "WCAG contrast and UX hierarchy layout critique, Tailwind color palette generator, and standalone HTML/React component scaffolder.",
+      "implementation_files": [
+        "backend/services/design_assistant.py",
+        "backend/services/skills/ui_skill.py"
+      ],
+      "test_files": [
+        "backend/tests/test_capability_expansion_full.py"
+      ],
+      "dependencies": ["re", "json"]
+    },
+    "vision_intelligence_engine": {
+      "name": "Vision Intelligence & Object Detection",
+      "status": "IMPLEMENTED",
+      "description": "OpenCV Haar cascade and contour object detector with grounded visual captioning and aspect ratio analytics.",
+      "implementation_files": [
+        "backend/services/vision_service.py",
+        "backend/services/skills/vision_skill.py"
+      ],
+      "test_files": [
+        "backend/tests/test_capability_expansion_full.py"
+      ],
+      "dependencies": ["cv2", "numpy", "PIL"]
+    },
+    "productivity_notes_copywriter": {
+      "name": "Productivity Notes & Copywriting Suite",
+      "status": "IMPLEMENTED",
+      "description": "Markdown note persistence (take, list, search) in data/notes/ and multi-channel marketing copywriting generator (social, email, landing, ad).",
+      "implementation_files": [
+        "backend/services/productivity_service.py",
+        "backend/services/skills/productivity_skill.py"
+      ],
+      "test_files": [
+        "backend/tests/test_capability_expansion_phase1.py"
+      ],
+      "dependencies": ["pathlib", "json"]
     }
   }
 }

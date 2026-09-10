@@ -92,3 +92,7 @@ Tone Instruction: {tone_instruction}
 
         return txt
 
+    def format_response(self, response_text: str, mode: Optional[str] = None) -> str:
+        """Formats and enforces MCU J.A.R.V.I.S. personality and executive tone on output text."""
+        return self.enforce_executive_tone(response_text)
+

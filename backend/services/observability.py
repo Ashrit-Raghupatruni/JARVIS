@@ -23,7 +23,7 @@ TRACE_DIR.mkdir(parents=True, exist_ok=True)
 class SessionTraceLogger:
     """Session event logger recording structured execution steps for observability and replay."""
 
-    def __init__(self, session_id: str) -> None:
+    def __init__(self, session_id: str = "global") -> None:
         self.session_id = session_id
         self.trace_file = TRACE_DIR / f"session_{session_id}.jsonl"
 
@@ -74,3 +74,7 @@ class SessionTraceLogger:
         except Exception as err:
             logger.error(f"Error reading session trace '{session_id}': {err}")
         return events
+
+
+# Backward compatibility alias for ObservabilitySkill
+ObservabilityService = SessionTraceLogger

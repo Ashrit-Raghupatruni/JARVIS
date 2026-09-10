@@ -167,7 +167,13 @@ async def confirm_pairing(req: PairingConfirmRequest, auth_svc=Depends(get_mobil
     if not auth_svc:
         raise HTTPException(status_code=503, detail="Mobile auth service unavailable")
     
-    res = auth_svc.confirm_pairing(req.pairing_session_id, req.pairing_code, req.device_id)
+    res = auth_svc.confirm_pairing(
+        req.pairing_session_id,
+        req.pairing_code,
+        req.device_id,
+        client_public_key=req.client_public_key,
+        client_signature=req.client_signature
+    )
     if not res:
         raise HTTPException(status_code=401, detail="Invalid or expired pairing code")
     return res
@@ -187,6 +193,22 @@ async def pair_device_easy(req: Dict[str, Any], auth_svc=Depends(get_mobile_auth
     if not res:
         raise HTTPException(status_code=401, detail="Invalid pairing PIN")
     return res
+
+
+@mobile_router.get("/pair/status/{session_id}")
+async def check_pairing_status(session_id: str, auth_svc=Depends(get_mobile_auth_service)):
+    """Check if a pairing session has successfully completed and device is paired."""
+    if not auth_svc:
+        return {"paired": False, "active": False}
+    active = session_id in getattr(auth_svc, "_active_sessions", {})
+    is_paired = auth_svc.is_session_paired(session_id) if hasattr(auth_svc, "is_session_paired") else False
+    devices = auth_svc.get_trusted_devices()
+    return {
+        "session_id": session_id,
+        "active": active,
+        "paired": is_paired,
+        "device_count": len(devices)
+    }
 
 
 @mobile_router.get("/devices", response_model=List[DeviceInfo])

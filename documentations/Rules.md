@@ -65,3 +65,18 @@ This document establishes the mandatory engineering rules, safety constraints, c
 5. **Documentation Integrity (Additive Only)**:
    - Documentation updates MUST strictly add or update verified facts; NEVER delete existing documentation sections.
 
+---
+
+## 6. Capability Expansion & Generative Fail-Closed Directives (Added September 8, 2026)
+
+1. **Fail-Closed Generative Media Adapters**:
+   - Generative media adapters (`image_generator.py`, `video_generator.py`, `threed_generator.py`) MUST perform rigorous preflight verification (checking for local GPU VRAM / PyTorch CUDA or active API keys).
+   - If dependencies or keys are absent, adapters MUST immediately raise a descriptive `ResourceUnavailableError` or mark the async SQLite job as `failed`. Never return fabricated mock files or placeholder images.
+2. **Strict AST Read-Only SQL Policy**:
+   - `execute_safe_sql_query` MUST parse SQL queries into Python AST or tokenize statements, strictly rejecting `DROP`, `DELETE`, `UPDATE`, `INSERT`, `ALTER`, `TRUNCATE`, and multi-statement queries.
+3. **Isolated Error Handling in RPA Macros**:
+   - `execute_rpa_macro` MUST handle exceptions at the step level, recording failing step indices while ensuring mouse/keyboard inputs are released gracefully without locking up the OS.
+4. **Token Budget & Response Length Enforcement**:
+   - Default planner prompts MUST impose strict token limits (1–3 concise sentences or structured bullets) to eliminate unnecessary LLM verbosity unless the user explicitly prompts for extended detail.
+5. **No Model Weights in Code Archives**:
+   - Never commit `.pt` weights or training `.jsonl` datasets into `jarvis.zip`.

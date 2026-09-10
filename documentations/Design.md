@@ -53,3 +53,19 @@ The `AutonomousAgentStudio.tsx` component is accessible under `☰ Command Cente
 - **System Diagnostics HUD**: Sub-second gauge indicators for Battery Charge %, AC Power Plugged state, CPU load, and RAM usage.
 - **Fail-Closed Confirmation Modals**: High-contrast amber/red warning dialogs for destructive actions (`kill_process`, `delete_file`, `recover_hung_application`) requiring explicit biometric or manual authorization.
 
+---
+
+## 5. Multimodal Generation & Domain UI Extensions (Added September 8, 2026)
+
+### UI Components & Dashboard Integration
+- **`DeveloperDashboard.tsx` (`MULTIMODAL & NOTES` Subtab)**:
+  - Real-time generation job status card displaying UUID, media type badges (`image`, `video`, `3d`), status badges (`queued`, `processing`, `completed`, `failed`), progress bars, output paths, and fail-closed error diagnostics.
+  - Persistent Markdown notes explorer rendering notes from `data/notes/*.md` with titles, byte sizes, and markdown chips.
+- **REST Endpoints & Visual Badges**:
+  - `/api/ui/generation/status/{job_id}`: Sub-50ms JSON polling.
+  - `/api/ui/generation/jobs`: Recent job timeline.
+  - `/api/ui/notes`: Stored notes catalog.
+- **Fail-Closed Warning Dialogs**:
+  - Automatically highlights unconfigured API keys or hardware requirements (e.g. CUDA GPU for local Stable Diffusion / SVD) without presenting simulated completions.
+
+

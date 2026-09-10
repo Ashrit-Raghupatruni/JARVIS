@@ -16,44 +16,44 @@ export interface HardwareMetrics {
 
 export default function HardwareGauges() {
   const [metrics, setMetrics] = useState<HardwareMetrics>({
-    cpuUsage: 28.5,
-    ramUsage: 58.2,
-    ramUsedGb: 9.15,
-    ramTotalGb: 15.69,
-    gpuVramUsedGb: 1.9,
-    gpuVramTotalGb: 8.0,
-    gpuUsage: 24.0,
-    networkLatencyMs: 14,
-    status: 'ONLINE'
+    cpuUsage: 0,
+    ramUsage: 0,
+    ramUsedGb: 0,
+    ramTotalGb: 0,
+    gpuVramUsedGb: 0,
+    gpuVramTotalGb: 1,
+    gpuUsage: 0,
+    networkLatencyMs: 0,
+    status: 'CONNECTING'
   })
   const [showQRModal, setShowQRModal] = useState<boolean>(false)
 
-  // Poll hardware metrics from API if available
+  const getHost = () => typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost' ? window.location.hostname : '127.0.0.1'
+
+  // Poll real hardware metrics from API
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/ui/performance')
+        const res = await fetch(`http://${getHost()}:8000/api/ui/performance`)
         if (res.ok) {
           const data = await res.json()
           setMetrics({
-            cpuUsage: data.cpu_usage_percent || 30.2,
-            ramUsage: data.ram_usage_percent || 58.0,
-            ramUsedGb: data.ram_used_gb || 9.1,
-            ramTotalGb: data.ram_total_gb || 15.7,
-            gpuVramUsedGb: data.gpu_vram_used_gb || 1.9,
-            gpuVramTotalGb: data.gpu_vram_total_gb || 8.0,
-            gpuUsage: data.gpu_usage_percent || 22.0,
-            networkLatencyMs: data.network_latency_ms || 12,
+            cpuUsage: data.cpu_usage_percent ?? 0,
+            ramUsage: data.ram_usage_percent ?? 0,
+            ramUsedGb: data.ram_used_gb ?? 0,
+            ramTotalGb: data.ram_total_gb ?? 0,
+            gpuVramUsedGb: data.gpu_vram_used_gb ?? 0,
+            gpuVramTotalGb: data.gpu_vram_total_gb ?? 1,
+            gpuUsage: data.gpu_usage_percent ?? 0,
+            networkLatencyMs: data.network_latency_ms ?? 0,
             status: 'ONLINE'
           })
+        } else {
+          setMetrics(prev => ({ ...prev, status: 'OFFLINE' }))
         }
-      } catch (err) {
-        // Fallback to live simulated polling
-        setMetrics(prev => ({
-          ...prev,
-          cpuUsage: Math.min(95, Math.max(12, prev.cpuUsage + (Math.random() * 6 - 3))),
-          networkLatencyMs: Math.min(80, Math.max(8, prev.networkLatencyMs + (Math.random() * 4 - 2)))
-        }))
+      } catch {
+        // Genuine offline state indication, zero fake random animations
+        setMetrics(prev => ({ ...prev, status: 'OFFLINE' }))
       }
     }
 

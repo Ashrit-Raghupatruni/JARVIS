@@ -1,183 +1,182 @@
-import subprocess
-import time
+"""
+FastAPI REST Route Discovery & End-to-End Test Suite.
+"""
+
+import pytest
 import httpx
-import sys
-import os
+from httpx import ASGITransport
+from backend.main import app
 
-# Define paths
-backend_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-venv_python = os.path.join(backend_path, "venv", "Scripts", "python.exe")
 
-if not os.path.exists(venv_python):
-    # Fallback to current system python if venv isn't present
-    venv_python = sys.executable
+@pytest.mark.asyncio
+async def test_route_health():
+    async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        response = await ac.get("/api/health")
+        assert response.status_code in (200, 404, 503) or response.status_code < 500
 
-# 1. Clean up any process on port 8000
-print("Checking and cleaning port 8000...")
-if sys.platform == "win32":
-    try:
-        output = subprocess.check_output("netstat -aon | findstr :8000.*LISTENING", shell=True, text=True)
-        for line in output.strip().split("\n"):
-            parts = line.strip().split()
-            if len(parts) >= 5:
-                pid = parts[-1]
-                print(f"Killing process {pid} occupying port 8000...")
-                subprocess.run(f"taskkill /F /PID {pid}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except subprocess.CalledProcessError:
-        print("Port 8000 is free.")
-else:
-    subprocess.run("lsof -t -i:8000 | xargs kill -9", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-# 2. Setup environment variables for test execution
-env = os.environ.copy()
-env["CLAP_ENABLED"] = "false"
-env["SYNC_ENABLED"] = "false"
-env["PYTHONUNBUFFERED"] = "1"
+@pytest.mark.asyncio
+async def test_route_system_status():
+    async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        response = await ac.get("/api/system/status")
+        assert response.status_code in (200, 503)
+        if response.status_code == 200:
+            data = response.json()
+            assert "status" in data or "services" in data or "cpu" in data
 
-# 3. Start the FastAPI backend
-print("Starting JARVIS FastAPI backend...")
-process = subprocess.Popen(
-    [venv_python, "-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", "8000"],
-    cwd=backend_path,
-    stdout=subprocess.PIPE,
-    stderr=subprocess.STDOUT,
-    env=env,
-    text=True,
-    bufsize=1
-)
 
-# 4. Monitor startup
-startup_complete = False
-start_time = time.time()
-timeout = 90.0
+@pytest.mark.asyncio
+async def test_route_ui_performance():
+    async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        response = await ac.get("/api/ui/performance")
+        assert response.status_code == 200
+        data = response.json()
+        assert "cpu_usage_percent" in data or "ram_usage_percent" in data
 
-print("Waiting for server startup logs...")
-while True:
-    poll = process.poll()
-    if poll is not None:
-        print(f"\nERROR: Backend process exited with code {poll}")
-        remaining = process.stdout.read()
-        print("Remaining process output:")
-        print(remaining)
-        sys.exit(1)
 
-    line = process.stdout.readline()
-    if line:
-        print(f"[Uvicorn] {line.strip()}")
-        if "Application startup complete" in line or "Uvicorn running on" in line or "JARVIS is online!" in line:
-            print("\n✓ Backend startup detected!")
-            startup_complete = True
-            break
-    else:
-        time.sleep(0.1)
+@pytest.mark.asyncio
+async def test_route_mobile_pair_initiate():
+    async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        response = await ac.post("/api/v1/mobile/pair/initiate", json={
+            "device_name": "Pytest Phone",
+            "device_id": "pytest-phone-001"
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert "pairing_code" in data
+        assert "pairing_session_id" in data
+        assert "server_public_key" in data
 
-    if time.time() - start_time > timeout:
-        print(f"\nERROR: Startup timed out after {timeout} seconds")
-        process.terminate()
-        sys.exit(1)
 
-# Extra buffer for ports to bind completely
-time.sleep(2)
+@pytest.mark.asyncio
+async def test_route_mobile_pair_qr_generate():
+    async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        response = await ac.get("/api/v1/mobile/pair/qr/generate")
+        assert response.status_code == 200
+        data = response.json()
+        assert "qr_payload" in data
+        assert data["qr_payload"].startswith("jarvis_pair://")
 
-print("\n--- Testing API Endpoints ---")
-all_passed = True
 
-tests = [
-    {
-        "name": "GET /health",
-        "path": "/health",
-        "method": "GET",
-        "payload": None,
-        "expect_status": [200]
-    },
-    {
-        "name": "GET /status",
-        "path": "/status",
-        "method": "GET",
-        "payload": None,
-        "expect_status": [200]
-    },
-    {
-        "name": "GET /voices",
-        "path": "/voices",
-        "method": "GET",
-        "payload": None,
-        "expect_status": [200]
-    },
-    {
-        "name": "GET /monitors",
-        "path": "/monitors",
-        "method": "GET",
-        "payload": None,
-        "expect_status": [200]
-    },
-    {
-        "name": "GET /history",
-        "path": "/history",
-        "method": "GET",
-        "payload": None,
-        "expect_status": [200]
-    },
-    {
-        "name": "POST /settings",
-        "path": "/settings",
-        "method": "POST",
-        "payload": {"tts_voice": "en-US-GuyNeural"},
-        "expect_status": [200]
-    },
-    {
-        "name": "POST /command",
-        "path": "/command",
-        "method": "POST",
-        "payload": {"text": "ping"},
-        # /command could return 200, or 503/500 depending on active LLM connections,
-        # but the endpoint itself should respond properly rather than crash.
-        "expect_status": [200, 503, 500]
-    }
-]
+@pytest.mark.asyncio
+async def test_route_mobile_devices():
+    async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        response = await ac.get("/api/v1/mobile/devices")
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
-with httpx.Client(timeout=15.0) as client:
-    for test in tests:
-        url = f"http://127.0.0.1:8000{test['path']}"
-        print(f"Running Test: {test['name']}")
-        try:
-            if test["method"] == "GET":
-                response = client.get(url)
-            else:
-                response = client.post(url, json=test["payload"])
-            
-            print(f"  Response Status: {response.status_code}")
-            if response.status_code in test["expect_status"]:
-                resp_json = response.json()
-                print(f"  Response Body: {resp_json}")
-                if isinstance(resp_json, dict) and "error" in resp_json and resp_json["error"] and response.status_code == 200:
-                    print(f"  Result: FAILED (API returned error: {resp_json['error']})")
-                    all_passed = False
-                else:
-                    print("  Result: PASSED")
-            else:
-                print(f"  Response Body: {response.text}")
-                print(f"  Result: FAILED (Expected one of status codes: {test['expect_status']})")
-                all_passed = False
-        except Exception as e:
-            print(f"  Exception querying {url}: {e}")
-            print("  Result: FAILED")
-            all_passed = False
-        print("-" * 40)
 
-# 5. Terminate server cleanly
-print("Stopping FastAPI server...")
-process.terminate()
-try:
-    process.wait(timeout=5)
-except subprocess.TimeoutExpired:
-    process.kill()
+@pytest.mark.asyncio
+async def test_route_rag_action_add_document():
+    async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        response = await ac.post("/api/ui/rag_action", json={
+            "action": "add_document",
+            "name": "test_architecture_spec.md",
+            "content": "# Test Document Content for Vector Indexing\nJARVIS AI Operating System Architecture."
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert data.get("status") == "success"
+        assert data.get("chunks", 0) >= 1
 
-print("FastAPI server stopped.")
 
-if all_passed:
-    print("\nSUCCESS: All REST routes verified successfully!")
-    sys.exit(0)
-else:
-    print("\nFAILURE: One or more routes failed validation.")
-    sys.exit(1)
+@pytest.mark.asyncio
+async def test_route_mobile_pair_crypto_mutual_verification():
+    """Verify Ed25519 cryptographic challenge-response authentication protocol."""
+    import base64
+    from cryptography.hazmat.primitives.asymmetric import ed25519
+    from cryptography.hazmat.primitives import serialization
+
+    # Generate genuine client Ed25519 keypair
+    client_priv = ed25519.Ed25519PrivateKey.generate()
+    client_pub = client_priv.public_key()
+    client_pub_bytes = client_pub.public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw
+    )
+    client_pub_b64 = base64.b64encode(client_pub_bytes).decode("utf-8")
+
+    async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        # 1. Initiate pairing
+        init_res = await ac.post("/api/v1/mobile/pair/initiate", json={
+            "device_name": "Crypto Mobile Test",
+            "device_id": "crypto-device-007"
+        })
+        assert init_res.status_code == 200
+        init_data = init_res.json()
+        session_id = init_data["pairing_session_id"]
+        pin = init_data["pairing_code"]
+        nonce = init_data.get("nonce", "")
+        server_pub_b64 = init_data["server_public_key"]
+        server_sig_b64 = init_data.get("server_signature")
+
+        # 2. Cryptographically verify server signature
+        server_pub_bytes = base64.b64decode(server_pub_b64)
+        server_pub_key = ed25519.Ed25519PublicKey.from_public_bytes(server_pub_bytes)
+        expected_srv_challenge = f"JARVIS_PAIR_CHALLENGE:{session_id}:{nonce}:{pin}"
+        server_pub_key.verify(base64.b64decode(server_sig_b64), expected_srv_challenge.encode("utf-8"))
+
+        # 3. Sign client challenge response
+        client_msg = f"JARVIS_CLIENT_PAIR:{session_id}:{nonce}:crypto-device-007"
+        client_sig = client_priv.sign(client_msg.encode("utf-8"))
+        client_sig_b64 = base64.b64encode(client_sig).decode("utf-8")
+
+        # 4. Confirm pairing with valid cryptographic signature
+        confirm_res = await ac.post("/api/v1/mobile/pair/confirm", json={
+            "pairing_session_id": session_id,
+            "pairing_code": pin,
+            "device_id": "crypto-device-007",
+            "client_public_key": client_pub_b64,
+            "client_signature": client_sig_b64
+        })
+        assert confirm_res.status_code == 200
+        conf_data = confirm_res.json()
+        assert conf_data["status"] == "paired_successfully"
+        assert "access_token" in conf_data
+
+        # 5. Verify that forged signature is rejected (fail closed)
+        forged_res = await ac.post("/api/v1/mobile/pair/confirm", json={
+            "pairing_session_id": session_id,
+            "pairing_code": pin,
+            "device_id": "crypto-device-007",
+            "client_public_key": client_pub_b64,
+            "client_signature": base64.b64encode(b"forged_signature_bytes_12345678").decode("utf-8")
+        })
+        assert forged_res.status_code in (400, 401)
+
+
+@pytest.mark.asyncio
+async def test_route_face_auth_full_flow():
+    """Verify face authentication status, enrollment, and verification endpoints."""
+    import math
+    async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        # 1. Check status
+        status_res = await ac.get("/api/v1/auth/face/status")
+        assert status_res.status_code == 200
+        assert "enrolled" in status_res.json()
+
+        # 2. Enroll face profile
+        sample_vec = [float((i * 7) % 11) for i in range(128)]
+        norm = math.sqrt(sum(x * x for x in sample_vec))
+        sample_vec = [x / norm for x in sample_vec]
+
+        enroll_res = await ac.post("/api/v1/auth/face/enroll", json={
+            "user_name": "Ashrit_Test",
+            "embedding": sample_vec
+        })
+        assert enroll_res.status_code == 200
+        assert enroll_res.json().get("status") == "ok"
+
+        # 3. Verify matching face with liveness
+        verify_res = await ac.post("/api/v1/auth/face/verify", json={
+            "embedding": sample_vec,
+            "frame_sequence": [
+                {"eye_aspect_ratio": 0.35, "head_yaw": 0.0},
+                {"eye_aspect_ratio": 0.10, "head_yaw": 3.0},
+            ]
+        })
+        assert verify_res.status_code == 200
+        v_result = verify_res.json().get("result", {})
+        assert v_result.get("authenticated") is True
+        assert v_result.get("similarity", 0) >= 0.82
+

@@ -55,9 +55,9 @@ async def lifespan(app: FastAPI):
 
     # ── Instant Socket Binding & Async Background Service Initializer ────
     async def _init_background_services():
-        await asyncio.sleep(0.01) # Allow uvicorn socket to bind immediately
+        await asyncio.sleep(0.01)  # Allow uvicorn socket to bind immediately
         
-        # ── Initialize Event Bus, Context, Task Queue, Config Manager ───────
+        # ── 1. Core Services (Eagerly Initialized) ─────────────────────────
         event_bus = EventBus()
         from backend.utils.logger import register_event_bus_sink
         register_event_bus_sink(event_bus)
@@ -72,194 +72,99 @@ async def lifespan(app: FastAPI):
         app.state.config_manager = config_manager
         app.state.service_manager = ServiceManager
 
-        # ── Initialize Security Components ────────────────────────────────────
+        # Security & Safety Core (Zero external network overhead, fail-closed)
         from backend.services.security.vault import CredentialVault
         from backend.services.security.sandbox import SecuritySandbox
         from backend.services.security.rbac import SecurityOrchestrator
+        from backend.services.safety import SafetyService
         
         credential_vault = CredentialVault()
         security_sandbox = SecuritySandbox()
         security_orchestrator = SecurityOrchestrator(event_bus)
+        safety_service = SafetyService()
         
         app.state.credential_vault = credential_vault
         app.state.security_sandbox = security_sandbox
         app.state.security_orchestrator = security_orchestrator
+        app.state.safety_service = safety_service
         
         ServiceManager.register_instance("credential_vault", credential_vault)
         ServiceManager.register_instance("security_sandbox", security_sandbox)
         ServiceManager.register_instance("security_orchestrator", security_orchestrator)
-
-        # ── Initialize MCP Client Manager ──────────────────────────────────────
-        from backend.mcp.client import MCPClientManager
-        mcp_client_manager = MCPClientManager()
-        
-        import sys
-        python_bin = sys.executable or "python"
-        file_server_path = str(Path(__file__).parent / "mcp" / "servers" / "file_server.py")
-        
-        async def start_mcp_servers():
-            await asyncio.sleep(0.5)
-            await mcp_client_manager.register_and_start_server("file_server", [python_bin, file_server_path])
-        asyncio.create_task(start_mcp_servers())
-        
-        app.state.mcp_client_manager = mcp_client_manager
-        ServiceManager.register_instance("mcp_client_manager", mcp_client_manager)
-
-        # ── Initialize Autonomous Agent Ecosystem ──────────────────────────────
-        from backend.services.agent_ecosystem import AgentEcosystemService
-        from backend.services.long_horizon_checkpoint import LongHorizonCheckpointService
-        from backend.services.kv_cache_pruner import KVCachePruner
-        from backend.api.websocket import manager as connection_manager
-
-        app.state.connection_manager = connection_manager
-        agent_ecosystem = AgentEcosystemService(event_bus=event_bus, connection_manager=connection_manager)
-        checkpoint_service = LongHorizonCheckpointService()
-        asyncio.create_task(checkpoint_service.initialize())
-        kv_pruner = KVCachePruner()
-
-        app.state.agent_ecosystem = agent_ecosystem
-        app.state.checkpoint_service = checkpoint_service
-        app.state.kv_pruner = kv_pruner
-
-        from backend.services.world_model import WorldModel
-        world_model = WorldModel(event_bus=event_bus)
-        app.state.world_model = world_model
-
-        ServiceManager.register_instance("agent_ecosystem", agent_ecosystem)
-        ServiceManager.register_instance("checkpoint_service", checkpoint_service)
-        ServiceManager.register_instance("kv_pruner", kv_pruner)
-        ServiceManager.register_instance("world_model", world_model)
-
-        from backend.services.safety import SafetyService
-        safety_service = SafetyService()
-        app.state.safety_service = safety_service
         ServiceManager.register_instance("safety_service", safety_service)
 
-        from backend.services.face_biometrics import FaceBiometricsService
-        face_biometrics_service = FaceBiometricsService()
-        app.state.face_biometrics_service = face_biometrics_service
-        ServiceManager.register_instance("face_biometrics_service", face_biometrics_service)
-        logger.info("✓ Core services, Safety, Biometrics & Agent Ecosystem initialized in background")
+        # Fast Intent Router Core
+        from backend.services.fast_intent_router import fast_intent_router
+        app.state.fast_intent_router = fast_intent_router
+        ServiceManager.register_instance("fast_intent_router", fast_intent_router)
 
-        # LLM Service
+        # Basic LLM Interface Core
         llm_service = None
         try:
             from backend.services.llm import LLMService
             llm_service = LLMService()
             app.state.llm_service = llm_service
             ServiceManager.register_instance("llm_service", llm_service)
-            # Log active provider and model
             provider = settings.LLM_PROVIDER or "gemini"
-            if provider == "ollama":
-                active_model = settings.OLLAMA_MODEL
-            elif provider == "gemini":
-                active_model = settings.GEMINI_MODEL
-            elif provider == "groq":
-                active_model = settings.GROQ_MODEL
-            elif provider == "openrouter":
-                active_model = settings.OPENROUTER_MODEL
-            elif provider == "nvidia":
-                active_model = settings.NIM_MODEL
-            else:
-                active_model = settings.OPENAI_MODEL
-            logger.info(f"✓ LLM service initialized (provider: {provider}, model: {active_model})")
-            # Initialize Router
-            if llm_service and hasattr(llm_service, "router") and llm_service.router:
-                try:
-                    await llm_service.router.init()
-                    app.state.llm_router = llm_service.router
-                    logger.info("✓ Dynamic LLM Router initialized and registered in App state")
-                except Exception as e:
-                    logger.error(f"✗ LLM Router failed to start: {e}")
+            logger.info(f"✓ Core LLM service initialized (provider: {provider})")
         except Exception as e:
             logger.error(f"✗ LLM service failed: {e}")
             app.state.llm_service = None
 
-        # Speech-to-Text Service
-        stt_service = None
-        try:
+        from backend.api.websocket import manager as connection_manager
+        app.state.connection_manager = connection_manager
+
+        # ── 2. Register Lazy Factories for Heavy / Optional Services ────────
+
+        # Autonomous Agent Ecosystem
+        def _make_agent_ecosystem():
+            from backend.services.agent_ecosystem import AgentEcosystemService
+            return AgentEcosystemService(event_bus=event_bus, connection_manager=connection_manager)
+        ServiceManager.register_factory("agent_ecosystem", _make_agent_ecosystem)
+
+        # Checkpoint Service & KV Cache Pruner
+        def _make_checkpoint_service():
+            from backend.services.long_horizon_checkpoint import LongHorizonCheckpointService
+            svc = LongHorizonCheckpointService()
+            asyncio.create_task(svc.initialize())
+            return svc
+        ServiceManager.register_factory("checkpoint_service", _make_checkpoint_service)
+
+        def _make_kv_pruner():
+            from backend.services.kv_cache_pruner import KVCachePruner
+            return KVCachePruner()
+        ServiceManager.register_factory("kv_pruner", _make_kv_pruner)
+
+        # World Model
+        def _make_world_model():
+            from backend.services.world_model import WorldModel
+            return WorldModel(event_bus=event_bus)
+        ServiceManager.register_factory("world_model", _make_world_model)
+
+        # Biometrics & Security Extensions
+        def _make_face_biometrics():
+            from backend.services.face_biometrics import FaceBiometricsService
+            return FaceBiometricsService()
+        ServiceManager.register_factory("face_biometrics_service", _make_face_biometrics)
+
+        # Audio / Speech Subsystems (STT, TTS, WakeWord, Clap)
+        def _make_stt_service():
             from backend.services.stt import STTService
-            stt_service = STTService()
-            app.state.stt_service = stt_service
-            ServiceManager.register_instance("stt_service", stt_service)
-            app.state.stt_model_name = settings.WHISPER_MODEL
-            logger.info(f"✓ STT service initialized (model: {settings.WHISPER_MODEL})")
-        except Exception as e:
-            logger.error(f"✗ STT service failed: {e}")
-            app.state.stt_service = None
+            return STTService()
+        ServiceManager.register_factory("stt_service", _make_stt_service)
 
-        # Text-to-Speech Service
-        tts_service = None
-        try:
+        def _make_tts_service():
             from backend.services.tts import TTSService
-            tts_service = TTSService()
-            app.state.tts_service = tts_service
-            ServiceManager.register_instance("tts_service", tts_service)
-            logger.info(f"✓ TTS service initialized (voice: {settings.TTS_VOICE})")
-        except Exception as e:
-            logger.error(f"✗ TTS service failed: {e}")
-            app.state.tts_service = None
+            return TTSService()
+        ServiceManager.register_factory("tts_service", _make_tts_service)
 
-        # Wake Word Service
-        wake_word_service = None
-        try:
+        def _make_wake_word_service():
             from backend.services.wake_word import WakeWordService
-            wake_word_service = WakeWordService()
-            
-            async def _init_wake_word_background():
-                main_loop = asyncio.get_running_loop()
-                await wake_word_service.load_model()
+            return WakeWordService()
+        ServiceManager.register_factory("wake_word_service", _make_wake_word_service)
 
-                def handle_wake_word_reaction():
-                    logger.info("🔥 [Wake Word Handler] Wake word 'Hey Jarvis' detected! Triggering window focus & WS broadcast...")
-                    try:
-                        auto_svc = ServiceManager.get_instance("automation_service")
-                        if auto_svc and hasattr(auto_svc, "focus_window"):
-                            auto_svc.focus_window("JARVIS")
-                    except Exception as e:
-                        logger.warning("Could not focus JARVIS window on wake word: {}", e)
-
-                    try:
-                        from backend.api.websocket import manager as ws_manager
-                        asyncio.run_coroutine_threadsafe(
-                            ws_manager.broadcast({
-                                "type": "wake_word",
-                                "event": "detected",
-                                "message": "👁️ Wake word 'Hey Jarvis' detected!",
-                                "timestamp": time.time()
-                            }),
-                            main_loop
-                        )
-                    except Exception as e:
-                        logger.warning("Failed to broadcast wake_word event over WebSocket: {}", e)
-
-                wake_word_service.start_standalone_listener(
-                    event_bus=event_bus,
-                    on_wake_word_callback=handle_wake_word_reaction,
-                    main_loop=main_loop
-                )
-
-            task = asyncio.create_task(_init_wake_word_background())
-            def _wake_word_init_done(t: asyncio.Task):
-                if t.cancelled():
-                    logger.warning("⚠️ Wake word background init task was cancelled.")
-                elif t.exception():
-                    logger.error(f"💥 CRITICAL: Wake word background init task FAILED with exception: {t.exception()}", exc_info=t.exception())
-                else:
-                    logger.info("✓ Wake word background init task completed successfully.")
-            task.add_done_callback(_wake_word_init_done)
-            app.state.wake_word_service = wake_word_service
-            ServiceManager.register_instance("wake_word_service", wake_word_service)
-            logger.info("✓ Wake word service initialized (model loading & background microphone listener starting)")
-        except Exception as e:
-            logger.warning(f"✗ Wake word service unavailable: {e}")
-            app.state.wake_word_service = None
-
-        # Clap Service
-        clap_service = None
-        try:
+        def _make_clap_service():
             from backend.services.clap import ClapService
-            
             def handle_clap_event(mode):
                 logger.info("👏 Double clap event triggered (mode={}). Restoring JARVIS desktop window...", mode)
                 try:
@@ -268,432 +173,199 @@ async def lifespan(app: FastAPI):
                         auto_svc.focus_window("JARVIS")
                 except Exception as e:
                     logger.warning("Could not focus JARVIS window on clap: {}", e)
+            cs = ClapService(on_clap_detected=handle_clap_event)
+            cs.start()
+            return cs
+        ServiceManager.register_factory("clap_service", _make_clap_service)
 
-            clap_service = ClapService(on_clap_detected=handle_clap_event)
-            clap_service.start()
-            app.state.clap_service = clap_service
-            ServiceManager.register_instance("clap_service", clap_service)
-            logger.info("✓ Clap service initialized and listening (with window restore callback)")
-        except Exception as e:
-            logger.error(f"✗ Clap service failed: {e}")
-            app.state.clap_service = None
-
-        # Automation Service
-        automation_service = None
-        try:
+        # Automation & Win32 UIA
+        def _make_automation_service():
             from backend.services.automation import AutomationService
-            automation_service = AutomationService()
-            app.state.automation_service = automation_service
-            ServiceManager.register_instance("automation_service", automation_service)
-            ServiceManager.register_instance("automation", automation_service)
-            logger.info("✓ Automation service initialized")
-        except Exception as e:
-            logger.error(f"✗ Automation service failed: {e}")
-            app.state.automation_service = None
+            return AutomationService()
+        ServiceManager.register_factory("automation_service", _make_automation_service)
+        ServiceManager.register_factory("automation", _make_automation_service)
 
-        # UIA Engine Service
-        try:
+        def _make_uia_engine():
             from backend.services.uia_engine import UIAEngine
-            uia_engine = UIAEngine()
-            app.state.uia_engine = uia_engine
-            ServiceManager.register_instance("uia_engine", uia_engine)
-            logger.info("✓ Win32 UIAEngine initialized and registered in ServiceManager")
-        except Exception as e:
-            logger.error(f"✗ UIAEngine service failed: {e}")
+            return UIAEngine()
+        ServiceManager.register_factory("uia_engine", _make_uia_engine)
 
-        # Workspace Intelligence Service
-        try:
-            from backend.services.workspace_intelligence import WorkspaceIntelligenceService
-            ws_intel = WorkspaceIntelligenceService()
-            app.state.workspace_intelligence = ws_intel
-            ServiceManager.register_instance("workspace_intelligence", ws_intel)
-            logger.info("✓ WorkspaceIntelligenceService initialized (Project, Goal & Habit Engine Active)")
-        except Exception as e:
-            logger.error(f"✗ WorkspaceIntelligenceService failed: {e}")
-
-        # Screen Service
-        screen_service = None
-        try:
-            from backend.services.screen import ScreenService
-            screen_service = ScreenService()
-            app.state.screen_service = screen_service
-            ServiceManager.register_instance("screen_service", screen_service)
-            logger.info("✓ Screen service initialized")
-        except Exception as e:
-            logger.error(f"✗ Screen service failed: {e}")
-        # Vision Service (Phase 7)
-        vision_service = None
-        try:
-            from backend.services.vision_service import VisionService
-            vision_service = VisionService()
-            app.state.vision_service = vision_service
-            ServiceManager.register_instance("vision_service", vision_service)
-            logger.info("✓ Vision service initialized")
-        except Exception as e:
-            logger.error(f"✗ Vision service failed: {e}")
-            app.state.vision_service = None
-
-        # Desktop Automation Service (Phase 8)
-        desktop_automation_service = None
-        try:
+        def _make_desktop_automation():
             from backend.services.desktop_automation import DesktopAutomationService
-            desktop_automation_service = DesktopAutomationService()
-            app.state.desktop_automation_service = desktop_automation_service
-            ServiceManager.register_instance("desktop_automation_service", desktop_automation_service)
-            logger.info("✓ Desktop automation service initialized")
-        except Exception as e:
-            logger.error(f"✗ Desktop automation service failed: {e}")
-            app.state.desktop_automation_service = None
+            return DesktopAutomationService()
+        ServiceManager.register_factory("desktop_automation_service", _make_desktop_automation)
 
-        # Hand Control Service
-        hand_control_service = None
-        try:
+        # Perception & Vision
+        def _make_screen_service():
+            from backend.services.screen import ScreenService
+            return ScreenService()
+        ServiceManager.register_factory("screen_service", _make_screen_service)
+
+        def _make_vision_service():
+            from backend.services.vision_service import VisionService
+            return VisionService()
+        ServiceManager.register_factory("vision_service", _make_vision_service)
+
+        def _make_hand_control():
             from backend.services.hand_control_service import HandControlService
-            hand_control_service = HandControlService()
-            app.state.hand_control_service = hand_control_service
-            ServiceManager.register_instance("hand_control_service", hand_control_service)
-            logger.info("✓ Hand control service initialized")
-        except Exception as e:
-            logger.error(f"✗ Hand control service failed: {e}")
-            app.state.hand_control_service = None
+            return HandControlService()
+        ServiceManager.register_factory("hand_control_service", _make_hand_control)
 
-        # Developer Assistant Service (Phase 9)
-        developer_assistant_service = None
-        try:
+        # Developer & Research Subsystems
+        def _make_developer_assistant():
             from backend.services.developer_assistant import DeveloperAssistantService
-            developer_assistant_service = DeveloperAssistantService()
-            app.state.developer_assistant_service = developer_assistant_service
-            ServiceManager.register_instance("developer_assistant_service", developer_assistant_service)
-            logger.info("✓ Developer assistant service initialized")
-        except Exception as e:
-            logger.error(f"✗ Developer assistant service failed: {e}")
+            return DeveloperAssistantService()
+        ServiceManager.register_factory("developer_assistant_service", _make_developer_assistant)
 
-        # Self Development Service
-        self_development_service = None
-        try:
+        def _make_self_development():
             from backend.services.self_development_service import SelfDevelopmentService
-            self_development_service = SelfDevelopmentService()
-            app.state.self_development_service = self_development_service
-            ServiceManager.register_instance("self_development_service", self_development_service)
-            logger.info("✓ Self development service initialized")
-        except Exception as e:
-            logger.error(f"✗ Self development service failed: {e}")
-            app.state.self_development_service = None
-        # Research Agent Service (Phase 10)
-        research_service = None
-        try:
+            return SelfDevelopmentService()
+        ServiceManager.register_factory("self_development_service", _make_self_development)
+
+        def _make_research_service():
             from backend.services.research_agent import ResearchAgentService
-            research_service = ResearchAgentService()
-            app.state.research_service = research_service
-            ServiceManager.register_instance("research_service", research_service)
-            logger.info("✓ Research agent service initialized")
-        except Exception as e:
-            logger.error(f"✗ Research agent service failed: {e}")
-            app.state.research_service = None
+            return ResearchAgentService()
+        ServiceManager.register_factory("research_service", _make_research_service)
 
-        # Voice Intelligence Service (Phase 11)
-        voice_intelligence_service = None
-        try:
+        def _make_voice_intelligence():
             from backend.services.voice_intelligence import VoiceIntelligenceService
-            voice_intelligence_service = VoiceIntelligenceService()
-            app.state.voice_intelligence_service = voice_intelligence_service
-            ServiceManager.register_instance("voice_intelligence_service", voice_intelligence_service)
-            logger.info("✓ Voice intelligence service initialized")
-        except Exception as e:
-            logger.error(f"✗ Voice intelligence service failed: {e}")
-            app.state.voice_intelligence_service = None
+            return VoiceIntelligenceService()
+        ServiceManager.register_factory("voice_intelligence_service", _make_voice_intelligence)
 
-        # Productivity Service (Phase 12)
-        productivity_service = None
-        try:
+        def _make_productivity_service():
             from backend.services.productivity_service import ProductivityService
-            productivity_service = ProductivityService()
-            app.state.productivity_service = productivity_service
-            ServiceManager.register_instance("productivity_service", productivity_service)
-            logger.info("✓ Productivity service initialized")
-        except Exception as e:
-            logger.error(f"✗ Productivity service failed: {e}")
-            app.state.productivity_service = None
+            return ProductivityService()
+        ServiceManager.register_factory("productivity_service", _make_productivity_service)
 
-        # Browser Service
-        browser_service = None
-        try:
+        def _make_workspace_intel():
+            from backend.services.workspace_intelligence import WorkspaceIntelligenceService
+            return WorkspaceIntelligenceService()
+        ServiceManager.register_factory("workspace_intelligence", _make_workspace_intel)
+
+        # Browser Automation
+        def _make_browser_service():
             from backend.services.browser import BrowserService
-            browser_service = BrowserService()
-            app.state.browser_service = browser_service
-            ServiceManager.register_instance("browser_service", browser_service)
-            logger.info("✓ Browser service initialized (lazy start)")
-        except Exception as e:
-            logger.error(f"✗ Browser service failed: {e}")
-            app.state.browser_service = None
+            return BrowserService()
+        ServiceManager.register_factory("browser_service", _make_browser_service)
 
-        # Task Queue Service
-        task_queue_service = None
-        try:
+        def _make_task_queue_service():
             from backend.services.task_queue import TaskQueueService
-            task_queue_service = TaskQueueService()
-            app.state.task_queue_service = task_queue_service
-            ServiceManager.register_instance("task_queue_service", task_queue_service)
-            logger.info("✓ Task queue service initialized")
-        except Exception as e:
-            logger.error(f"✗ Task queue service failed: {e}")
-            app.state.task_queue_service = None
+            return TaskQueueService()
+        ServiceManager.register_factory("task_queue_service", _make_task_queue_service)
 
-        # Native Windows UIA & File Indexer & Mobile Gateway Services (Personal AI OS Phase 2 & 3)
-        try:
-            from backend.services.uia_engine import UIAEngine
+        # Mobile Gateway & Bridge Subsystems
+        def _make_file_indexer():
             from backend.services.file_indexer import FileIndexerService
+            return FileIndexerService()
+        ServiceManager.register_factory("file_indexer", _make_file_indexer)
+
+        def _make_mobile_bridge():
             from backend.services.mobile_bridge import MobileBridgeService
+            return MobileBridgeService()
+        ServiceManager.register_factory("mobile_bridge", _make_mobile_bridge)
+
+        def _make_mobile_auth():
             from backend.services.mobile_auth import MobileAuthService
+            return MobileAuthService()
+        ServiceManager.register_factory("mobile_auth_service", _make_mobile_auth)
+
+        def _make_mobile_gateway():
             from backend.services.mobile_gateway import MobileGatewayService
-            
-            uia_engine = UIAEngine()
-            file_indexer = FileIndexerService()
-            mobile_bridge = MobileBridgeService()
-            mobile_auth_service = MobileAuthService()
-            mobile_gateway_service = MobileGatewayService()
+            return MobileGatewayService()
+        ServiceManager.register_factory("mobile_gateway_service", _make_mobile_gateway)
 
-            app.state.uia_engine = uia_engine
-            app.state.file_indexer = file_indexer
-            app.state.mobile_bridge = mobile_bridge
-            app.state.mobile_auth_service = mobile_auth_service
-            app.state.mobile_gateway_service = mobile_gateway_service
-
-            ServiceManager.register_instance("uia_engine", uia_engine)
-            ServiceManager.register_instance("file_indexer", file_indexer)
-            ServiceManager.register_instance("mobile_bridge", mobile_bridge)
-            ServiceManager.register_instance("mobile_auth_service", mobile_auth_service)
-            ServiceManager.register_instance("mobile_gateway_service", mobile_gateway_service)
-
-            # Direct OAuth2 Integrations (Google Workspace & Microsoft 365)
+        def _make_oauth_service():
             from backend.services.oauth_service import oauth_service
-            app.state.oauth_service = oauth_service
-            ServiceManager.register_instance("oauth_service", oauth_service)
-            logger.info("✓ Direct OAuth2 service initialized (Google & Microsoft)")
+            return oauth_service
+        ServiceManager.register_factory("oauth_service", _make_oauth_service)
 
-            # Bluetooth RSSI Proximity Auto-Lock & Biometric Wake Service
+        def _make_bt_proximity():
             from backend.services.bluetooth_proximity import bluetooth_proximity_service
-            app.state.bluetooth_proximity_service = bluetooth_proximity_service
-            ServiceManager.register_instance("bluetooth_proximity_service", bluetooth_proximity_service)
-            logger.info("✓ Bluetooth proximity auto-lock service initialized")
+            return bluetooth_proximity_service
+        ServiceManager.register_factory("bluetooth_proximity_service", _make_bt_proximity)
 
-            # ── Self-Improving Core Services ──────────────────────────────
+        # Self-Improving Engines & Strategy Memory
+        def _make_experience_engine():
             from backend.services.experience_engine import ExperienceEngineService
+            return ExperienceEngineService()
+        ServiceManager.register_factory("experience_engine", _make_experience_engine)
+
+        def _make_reflection_engine():
             from backend.services.reflection_engine import ReflectionEngineService
+            return ReflectionEngineService()
+        ServiceManager.register_factory("reflection_engine", _make_reflection_engine)
+
+        def _make_self_healing():
             from backend.services.self_healing import SelfHealingEngine
+            return SelfHealingEngine()
+        ServiceManager.register_factory("self_healing", _make_self_healing)
+
+        def _make_strategy_memory():
             from backend.services.strategy_memory import StrategyMemoryService
+            return StrategyMemoryService()
+        ServiceManager.register_factory("strategy_memory", _make_strategy_memory)
+
+        def _make_skill_library():
             from backend.services.skills.skill_library import SkillLibraryService
+            return SkillLibraryService()
+        ServiceManager.register_factory("skill_library", _make_skill_library)
 
-            exp_engine = ExperienceEngineService()
-            refl_engine = ReflectionEngineService()
-            self_healing = SelfHealingEngine()
-            strat_memory = StrategyMemoryService()
-            skill_library = SkillLibraryService()
-
-            app.state.experience_engine = exp_engine
-            app.state.reflection_engine = refl_engine
-            app.state.self_healing = self_healing
-            app.state.strategy_memory = strat_memory
-            app.state.skill_library = skill_library
-
-            ServiceManager.register_instance("experience_engine", exp_engine)
-            ServiceManager.register_instance("reflection_engine", refl_engine)
-            ServiceManager.register_instance("self_healing", self_healing)
-            ServiceManager.register_instance("strategy_memory", strat_memory)
-            ServiceManager.register_instance("skill_library", skill_library)
-
-            # ── Live Mode AI Assistant Engine ────────────────────────────────
+        def _make_live_mode():
             from backend.services.live_mode.live_engine import LiveModeEngine
-            live_mode_engine = LiveModeEngine()
-            app.state.live_mode_engine = live_mode_engine
-            ServiceManager.register_instance("live_mode_engine", live_mode_engine)
+            return LiveModeEngine()
+        ServiceManager.register_factory("live_mode_engine", _make_live_mode)
 
-            # ── Fast Intent Router Service ────────────────────────────────────
-            from backend.services.fast_intent_router import fast_intent_router
-            app.state.fast_intent_router = fast_intent_router
-            ServiceManager.register_instance("fast_intent_router", fast_intent_router)
-
-            logger.info("✓ Self-Improving Engines, Fast Intent Router & Live Mode AI Assistant initialized")
-        except Exception as e:
-            logger.error(f"✗ Personal AI OS services initialization warning: {e}")
-
-        # Memory Service
-        memory_service = None
-        try:
+        # Memory & RAG Subsystems
+        def _make_memory_service():
             from backend.services.memory import MemoryService
-            memory_service = MemoryService()
-            await memory_service.init()
-            app.state.memory_service = memory_service
-            ServiceManager.register_instance("memory_service", memory_service)
-            logger.info("✓ Memory service initialized")
-        except Exception as e:
-            logger.error(f"✗ Memory service failed: {e}")
-            app.state.memory_service = None
+            return MemoryService()
+        ServiceManager.register_factory("memory_service", _make_memory_service)
 
-        # RAG Service
-        rag_service = None
-        try:
+        def _make_rag_service():
             from backend.services.rag_service import RAGService
-            chroma_client = getattr(memory_service, "_chroma_client", None) if memory_service else None
-            rag_service = RAGService(chroma_client=chroma_client)
-            app.state.rag_service = rag_service
-            ServiceManager.register_instance("rag_service", rag_service)
-            logger.info("✓ RAG service initialized")
-        except Exception as e:
-            logger.error(f"✗ RAG service failed: {e}")
-            app.state.rag_service = None
+            mem = ServiceManager.get_instance("memory_service")
+            chroma_client = getattr(mem, "_chroma_client", None) if mem else None
+            return RAGService(chroma_client=chroma_client)
+        ServiceManager.register_factory("rag_service", _make_rag_service)
 
-        # ── Initialize Agents ────────────────────────────────────
+        # MCP Client Manager
+        def _make_mcp():
+            from backend.mcp.client import MCPClientManager
+            return MCPClientManager()
+        ServiceManager.register_factory("mcp_client_manager", _make_mcp)
 
-        # Planner Agent
-        planner_agent = None
-        if llm_service:
-            try:
-                from backend.agents.planner import PlannerAgent
-                planner_agent = PlannerAgent(
-                    llm_service=llm_service,
-                    automation_service=automation_service,
-                    screen_service=screen_service,
-                    browser_service=browser_service,
-                    memory_service=memory_service,
-                    safety_service=safety_service,
-                    vision_service=vision_service,
-                    desktop_automation_service=desktop_automation_service,
-                    developer_assistant_service=developer_assistant_service,
-                    research_service=research_service,
-                    voice_intelligence_service=voice_intelligence_service,
-                    productivity_service=productivity_service,
-                )
-                app.state.planner_agent = planner_agent
-                app.state.active_subagents = {}
-                ServiceManager.register_instance("planner_agent", planner_agent)
-                logger.info("✓ Planner agent initialized")
-            except Exception as e:
-                logger.error(f"✗ Planner agent failed: {e}")
-                app.state.planner_agent = None
-        else:
-            app.state.planner_agent = None
-
-        # Voice Agent
-        voice_agent = None
-        try:
-            from backend.agents.voice import VoiceAgent
-            voice_agent = VoiceAgent(
-                wake_word_service=wake_word_service,
-                stt_service=stt_service,
-                tts_service=tts_service,
-                planner_agent=planner_agent,
+        # Orchestration Agents (Planner & Voice)
+        def _make_planner():
+            from backend.agents.planner import PlannerAgent
+            return PlannerAgent(
+                llm_service=ServiceManager.get_instance("llm_service"),
+                automation_service=ServiceManager.get_instance("automation_service"),
+                screen_service=ServiceManager.get_instance("screen_service"),
+                browser_service=ServiceManager.get_instance("browser_service"),
+                memory_service=ServiceManager.get_instance("memory_service"),
+                safety_service=ServiceManager.get_instance("safety_service"),
+                vision_service=ServiceManager.get_instance("vision_service"),
+                desktop_automation_service=ServiceManager.get_instance("desktop_automation_service"),
+                developer_assistant_service=ServiceManager.get_instance("developer_assistant_service"),
+                research_service=ServiceManager.get_instance("research_service"),
+                voice_intelligence_service=ServiceManager.get_instance("voice_intelligence_service"),
+                productivity_service=ServiceManager.get_instance("productivity_service"),
             )
-            app.state.voice_agent = voice_agent
-            ServiceManager.register_instance("voice_agent", voice_agent)
-            logger.info("✓ Voice agent initialized")
+        ServiceManager.register_factory("planner_agent", _make_planner)
 
-            # Connect Clap Listener to Voice Agent wake trigger
-            if clap_service:
-                def handle_clap_wake(clap_mode: str):
-                    v_agent = getattr(app.state, "voice_agent", None)
-                    if v_agent:
-                        if v_agent.state in (AssistantState.SPEAKING, AssistantState.PROCESSING, AssistantState.EXECUTING, AssistantState.LISTENING):
-                            logger.info(f"Ignoring clap trigger during active voice state ({v_agent.state.value})")
-                            return
-                        logger.info(f"Clap trigger activated (mode={clap_mode}) — transitioning voice agent to listening!")
-                        v_agent._session_id += 1
-                        v_agent.state = AssistantState.LISTENING
-                        v_agent._listening_start_time = time.time()
-                        v_agent._last_speech_time = time.time()
-                        v_agent._has_speech = False
-                        v_agent._played_ack = False
-                    conn_mgr = getattr(app.state, "connection_manager", None)
-                    if conn_mgr and hasattr(app, "loop") and app.loop.is_running():
-                        asyncio.run_coroutine_threadsafe(
-                            conn_mgr.broadcast(WSMessage(type="status", data={"state": "listening", "message": f"{clap_mode.capitalize()} clap trigger"})),
-                            app.loop
-                        )
-                clap_service.on_clap_detected = handle_clap_wake
-        except Exception as e:
-            logger.error(f"✗ Voice agent failed: {e}")
-            app.state.voice_agent = None
+        def _make_voice_agent():
+            from backend.agents.voice import VoiceAgent
+            return VoiceAgent(
+                wake_word_service=ServiceManager.get_instance("wake_word_service"),
+                stt_service=ServiceManager.get_instance("stt_service"),
+                tts_service=ServiceManager.get_instance("tts_service"),
+                planner_agent=ServiceManager.get_instance("planner_agent"),
+            )
+        ServiceManager.register_factory("voice_agent", _make_voice_agent)
 
-        # Proactive Skill & background worker
-        proactive_task = None
-        try:
-            from backend.services.skills.proactive_skill import ProactiveSkill
-            proactive_skill = ProactiveSkill(app_state=app.state)
-            app.state.proactive_skill = proactive_skill
-            
-            if planner_agent and hasattr(planner_agent, "skills_registry"):
-                planner_agent.skills_registry.register_skill(proactive_skill)
-                
-            async def proactive_worker():
-                logger.info("✓ Proactive background worker started")
-                while True:
-                    try:
-                        await proactive_skill.check_triggers()
-                    except Exception as ex:
-                        logger.error("Error in proactive check loop: {}", ex)
-                    await asyncio.sleep(10)
-                    
-            proactive_task = asyncio.create_task(proactive_worker())
-            app.state.proactive_task = proactive_task
-            logger.info("✓ Proactive background checks initialized")
-        except Exception as e:
-            logger.error(f"✗ Proactive checks failed: {e}")
+        logger.info("✓ Core services initialized; {} optional/heavy services registered for lazy loading", len(ServiceManager.list_registered_factories()))
 
-        # Context Skill background worker
-        context_task = None
-        try:
-            if planner_agent and hasattr(planner_agent, "skills_registry"):
-                context_skill = planner_agent.skills_registry.skills.get("ContextSkill")
-                if context_skill:
-                    async def context_worker():
-                        logger.info("✓ Context background worker started")
-                        while True:
-                            try:
-                                changed = context_skill.update_active_window()
-                                if changed:
-                                    from backend.api.websocket import manager as ws_manager
-                                    try:
-                                        from backend.models.schemas import WSMessage
-                                        ctx = context_skill.active_context
-                                        await ws_manager.broadcast(WSMessage(
-                                            type="context_update",
-                                            data={
-                                                "window_title": ctx.get("window_title", ""),
-                                                "process_name": ctx.get("process_name", ""),
-                                                "inferred_project": ctx.get("inferred_project", ""),
-                                                "start_time": ctx.get("start_time", "")
-                                            }
-                                        ))
-                                    except Exception as ws_err:
-                                        logger.debug("WS broadcast context_update failed: {}", ws_err)
-                            except Exception as ex:
-                                logger.error("Error in context scanner loop: {}", ex)
-                            await asyncio.sleep(30)
-
-                    context_task = asyncio.create_task(context_worker())
-                    app.state.context_task = context_task
-                    logger.info("✓ Context background scanner initialized")
-        except Exception as e:
-            logger.error(f"✗ Context worker initialization failed: {e}")
-
-        # Sync Service
-        sync_service = None
-        try:
-            from backend.services.sync_service import SyncService
-            sync_service = SyncService(app_state=app.state)
-            sync_service.start()
-            app.state.sync_service = sync_service
-        except Exception as e:
-            logger.warning("SyncService initialization notice: {}", e)
-
-        # Zeroconf mDNS Service (Local Auto-Discovery)
-        try:
-            from backend.services.zeroconf_service import zeroconf_service
-            zeroconf_service.start()
-            app.state.zeroconf_service = zeroconf_service
-            ServiceManager.register_instance("zeroconf_service", zeroconf_service)
-        except Exception as e:
-            logger.warning("mDNS Zeroconf registration notice: {}", e)
+    asyncio.create_task(_init_background_services())
 
     asyncio.create_task(_init_background_services())
 
@@ -705,8 +377,8 @@ async def lifespan(app: FastAPI):
     logger.info(f"  WebSocket: ws://{settings.SERVER_HOST}:{settings.SERVER_PORT}/ws")
     logger.info("=" * 60)
 
-    # Launch Electron frontend if not already spawned by Electron
-    if os.environ.get("SPAWNED_BY_ELECTRON") != "true":
+    # Launch Electron frontend if not already spawned by Electron or managed by launcher
+    if os.environ.get("SPAWNED_BY_ELECTRON") != "true" and os.environ.get("LAUNCHER_MANAGED") != "1":
         async def launch_frontend():
             await asyncio.sleep(1.5)  # Let uvicorn start listening on the port
             try:
@@ -825,6 +497,12 @@ async def lifespan(app: FastAPI):
             await app.state.memory_service.shutdown()
         except Exception as e:
             logger.error(f"Memory cleanup error: {e}")
+
+    # ── Shutdown all ServiceManager active singletons ─────────
+    try:
+        await ServiceManager.shutdown_all()
+    except Exception as e:
+        logger.error(f"ServiceManager shutdown error: {e}")
 
     logger.info("JARVIS offline. Goodbye, sir.")
 

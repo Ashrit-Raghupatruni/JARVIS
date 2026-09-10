@@ -69,3 +69,24 @@ JARVIS is a production-grade, local-first Personal AI Operating System designed 
 - **Universal Policy Enforcement**: Intercepts remote mobile shutdowns, local script executions, and n8n webhooks through fail-closed policy checks.
 - **Expanded Tool Catalog**: 56 production tools registered, verified, and exposed via REST (`/api/tools`) and WebSocket interfaces.
 
+---
+
+## 5. Expanded Multimodal & Domain Intelligence PRD Requirements (Added September 8, 2026)
+
+### 1. Asynchronous Multimodal Generation Infrastructure
+- **Job Lifecycle Queue**: Dedicated background asynchronous queue with SQLite WAL persistence (`data/generation_jobs.db`) and unique UUID tracking.
+- **Fail-Closed Adapters**: Strict preflight checking for Image (Local GPU / Stability AI), Video (SVD / Runway), and 3D mesh (Three.js / Meshy / Tripo3D) APIs. No decorative simulations allowed.
+- **Progress Tracking**: Sub-50ms polling endpoints (`/api/ui/generation/status/{id}`) and listing endpoints (`/api/ui/generation/jobs`).
+
+### 2. Specialized Intelligence Domains & Tools
+- **Chemoinformatics & Life Sciences**: Parsing molecular stoichiometry, molar masses, balancing chemical reactions, querying NCBI PubChem database, and biological pathway generation.
+- **Safe SQL & Developer Automation**: Read-only AST validation enforcing that natural language SQL translation never executes destructive operations (`DROP`, `DELETE`, `UPDATE`, `ALTER`). Python docstring generation across Google/NumPy/Sphinx styles.
+- **Productivity & Note Management**: Direct Markdown file persistence under `data/notes/` and multi-channel copywriting generation.
+- **UI Design & Web Scaffolding**: Layout critique against WCAG 2.1 standards, Tailwind palette generation, and standalone component scaffolding.
+- **Vision Intelligence**: Haar cascade / contour object detection with grounded image captioning.
+- **Desktop RPA & Audio Intelligence**: Step-isolated RPA macro playback, neural Edge-TTS voice generation, and procedural waveform SFX synthesis.
+
+### 3. Response-Length Discipline
+- Default LLM planner prompts enforce concise 1–3 sentence responses with structured bullet points for maximum operational efficiency, only expanding into detailed reports upon explicit user request.
+
+

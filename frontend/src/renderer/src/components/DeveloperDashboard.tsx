@@ -55,14 +55,35 @@ interface DeveloperMemory {
   }>
 }
 
+interface GenerationJobItem {
+  job_id: string
+  media_type: string
+  prompt: string
+  status: string
+  progress: number
+  file_path?: string
+  error?: string
+  created_at: number
+}
+
+interface NoteItem {
+  filename: string
+  title: string
+  path: string
+  size_bytes: number
+  modified_at: number
+}
+
 export function DeveloperDashboard() {
   const [registry, setRegistry] = useState<CapabilityRegistry | null>(null)
   const [diagnostic, setDiagnostic] = useState<DiagnosticReport | null>(null)
   const [memory, setMemory] = useState<DeveloperMemory | null>(null)
   const [approvals, setApprovals] = useState<Record<string, ModificationProposal>>({})
   const [workspaceData, setWorkspaceData] = useState<any | null>(null)
+  const [generationJobs, setGenerationJobs] = useState<GenerationJobItem[]>([])
+  const [notesList, setNotesList] = useState<NoteItem[]>([])
   const [loading, setLoading] = useState(false)
-  const [activeSubTab, setActiveSubTab] = useState<'capabilities' | 'diagnostics' | 'approvals' | 'memory' | 'workspace'>('capabilities')
+  const [activeSubTab, setActiveSubTab] = useState<'capabilities' | 'diagnostics' | 'approvals' | 'memory' | 'workspace' | 'multimodal'>('capabilities')
 
   const getBackendPort = () => {
     // In dev, usually 8000
@@ -120,21 +141,45 @@ export function DeveloperDashboard() {
     }
   }
 
+  const fetchMultimodalAndNotes = async () => {
+    try {
+      const jobsRes = await fetch(`http://${host}:${getBackendPort()}/api/ui/generation/jobs`)
+      if (jobsRes.ok) {
+        const data = await jobsRes.json()
+        if (data.jobs) setGenerationJobs(data.jobs)
+      }
+    } catch {
+      // Backend offline or route pending
+    }
+    try {
+      const notesRes = await fetch(`http://${host}:${getBackendPort()}/api/ui/notes`)
+      if (notesRes.ok) {
+        const data = await notesRes.json()
+        if (data.notes) setNotesList(data.notes)
+      }
+    } catch {
+      // Backend offline or route pending
+    }
+  }
+
   useEffect(() => {
     fetchRegistry()
     fetchDiagnostic()
     fetchMemory()
     fetchApprovals()
     fetchWorkspace()
+    fetchMultimodalAndNotes()
 
-    // Poll for approvals, diagnostics & workspace intelligence
+    // Poll at a healthy 10s cadence when tab is visible
     const interval = setInterval(() => {
+      if (document.hidden) return
       fetchApprovals()
       fetchMemory()
-      fetchWorkspace()
-    }, 4000)
+      if (activeSubTab === 'workspace') fetchWorkspace()
+      if (activeSubTab === 'multimodal') fetchMultimodalAndNotes()
+    }, 10000)
     return () => clearInterval(interval)
-  }, [])
+  }, [activeSubTab])
 
   const handleApprove = async (approvalId: string) => {
     try {
@@ -202,7 +247,7 @@ export function DeveloperDashboard() {
 
       {/* Sub Tabs */}
       <div className="flex gap-2 border-b border-slate-900 pb-2">
-        {(['capabilities', 'diagnostics', 'approvals', 'memory', 'workspace'] as const).map((tab) => (
+        {(['capabilities', 'diagnostics', 'approvals', 'memory', 'workspace', 'multimodal'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveSubTab(tab)}
@@ -212,9 +257,14 @@ export function DeveloperDashboard() {
                 : 'text-slate-400 hover:bg-slate-900 hover:text-slate-300'
             }`}
           >
-            {tab.toUpperCase()} {tab === 'approvals' && Object.keys(approvals).length > 0 && (
+            {tab === 'multimodal' ? 'MULTIMODAL & NOTES' : tab.toUpperCase()} {tab === 'approvals' && Object.keys(approvals).length > 0 && (
               <span className="ml-1.5 px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-bold text-[9px] animate-pulse">
                 {Object.keys(approvals).length}
+              </span>
+            )}
+            {tab === 'multimodal' && generationJobs.length > 0 && (
+              <span className="ml-1.5 px-1.5 py-0.2 rounded-full bg-cyan-500/30 text-cyan-300 font-bold text-[9px]">
+                {generationJobs.length}
               </span>
             )}
           </button>
@@ -532,6 +582,91 @@ export function DeveloperDashboard() {
                       <li>VS Code & Terminal Multi-Monitor Layout Lock</li>
                       <li>Proactive News & Tech Monitoring Stream (20-min cycle)</li>
                     </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* SUBTAB 6: MULTIMODAL GENERATION QUEUE & NOTES */}
+        {activeSubTab === 'multimodal' && (
+          <div className="h-full overflow-y-auto pr-1 grid grid-cols-1 lg:grid-cols-2 gap-4 custom-scrollbar">
+            {/* Multimodal Generation Jobs Queue */}
+            <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 flex flex-col gap-3">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h3 className="text-xs font-mono font-bold text-cyan-400">
+                  GENERATION QUEUE ({generationJobs.length})
+                </h3>
+                <span className="text-[10px] font-mono text-slate-500">Async SQLite Queue</span>
+              </div>
+
+              <div className="space-y-2 flex-1 overflow-y-auto custom-scrollbar text-xs font-mono">
+                {generationJobs.length > 0 ? (
+                  generationJobs.map((job) => (
+                    <div key={job.job_id} className="p-3 bg-slate-950 rounded-lg border border-slate-900 flex flex-col gap-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/30 text-cyan-300 font-bold uppercase">
+                          {job.media_type}
+                        </span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
+                          job.status === 'completed'
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                            : job.status === 'failed'
+                            ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
+                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/30 animate-pulse'
+                        }`}>
+                          {job.status} ({Math.round(job.progress * 100)}%)
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 line-clamp-2">"{job.prompt}"</p>
+                      {job.file_path && (
+                        <div className="text-[10px] text-slate-500 truncate">
+                          Output: <span className="text-cyan-400/90">{job.file_path}</span>
+                        </div>
+                      )}
+                      {job.error && (
+                        <div className="text-[10px] text-rose-400/90 truncate">
+                          Error: {job.error}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-6 text-center text-slate-500 font-mono">
+                    <p>No active or historical generation jobs.</p>
+                    <span className="text-[10px] text-slate-600">Dispatched image, video, and 3D jobs will queue here.</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Markdown Notes Library */}
+            <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 flex flex-col gap-3">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h3 className="text-xs font-mono font-bold text-cyan-400">
+                  PERSISTENT NOTES ({notesList.length})
+                </h3>
+                <span className="text-[10px] font-mono text-slate-500">data/notes/*.md</span>
+              </div>
+
+              <div className="space-y-2 flex-1 overflow-y-auto custom-scrollbar text-xs font-mono">
+                {notesList.length > 0 ? (
+                  notesList.map((note) => (
+                    <div key={note.filename} className="p-3 bg-slate-950 rounded-lg border border-slate-900 flex justify-between items-center">
+                      <div>
+                        <div className="text-slate-200 font-bold text-xs">{note.title}</div>
+                        <div className="text-[10px] text-slate-500">{note.filename} • {note.size_bytes} bytes</div>
+                      </div>
+                      <span className="text-[10px] text-cyan-400/80 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-500/20">
+                        Markdown
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-6 text-center text-slate-500 font-mono">
+                    <p>No stored notes yet.</p>
+                    <span className="text-[10px] text-slate-600">Use 'take_note' to save notes directly to data/notes/.</span>
                   </div>
                 )}
               </div>

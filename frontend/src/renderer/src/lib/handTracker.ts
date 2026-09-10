@@ -136,38 +136,61 @@ export class HandTracker {
       audio: false,
     };
 
-    try {
-      this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-    } catch (e) {
-      console.warn("Could not start camera with devices constraints, falling back to default video source.", e);
-      this.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    let streamObtained = false;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+        streamObtained = true;
+        break;
+      } catch (e) {
+        try {
+          this.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          streamObtained = true;
+          break;
+        } catch (innerErr) {
+          console.warn(`[HandTracker] Camera acquisition attempt ${attempt}/3 failed:`, innerErr);
+          if (attempt < 3) {
+            await new Promise((r) => setTimeout(r, 400));
+          }
+        }
+      }
     }
 
-    this.video.srcObject = this.stream;
-    await this.video.play();
-
-    const fileset = await FilesetResolver.forVisionTasks(WASM_CDN);
-    const options = {
-      baseOptions: { modelAssetPath: MODEL_URL, delegate: "GPU" as const },
-      runningMode: "VIDEO" as const,
-      numHands: 1, // Only track primary hand for desktop cursor control
-      minHandDetectionConfidence: 0.65,
-      minHandPresenceConfidence: 0.65,
-      minTrackingConfidence: 0.65,
-    };
-
-    try {
-      this.landmarker = await HandLandmarker.createFromOptions(fileset, options);
-    } catch {
-      this.landmarker = await HandLandmarker.createFromOptions(fileset, {
-        ...options,
-        baseOptions: { ...options.baseOptions, delegate: "CPU" as const },
-      });
+    if (!streamObtained || !this.stream) {
+      console.warn("[HandTracker] Camera hardware unavailable or locked by another process. Hand tracking disabled.");
+      return;
     }
 
-    this.running = true;
-    this.lastFpsTime = performance.now();
-    this.loop();
+    try {
+      this.video.srcObject = this.stream;
+      await this.video.play();
+
+      const fileset = await FilesetResolver.forVisionTasks(WASM_CDN);
+      const options = {
+        baseOptions: { modelAssetPath: MODEL_URL, delegate: "GPU" as const },
+        runningMode: "VIDEO" as const,
+        numHands: 1, // Only track primary hand for desktop cursor control
+        minHandDetectionConfidence: 0.65,
+        minHandPresenceConfidence: 0.65,
+        minTrackingConfidence: 0.65,
+      };
+
+      try {
+        this.landmarker = await HandLandmarker.createFromOptions(fileset, options);
+      } catch {
+        this.landmarker = await HandLandmarker.createFromOptions(fileset, {
+          ...options,
+          baseOptions: { ...options.baseOptions, delegate: "CPU" as const },
+        });
+      }
+
+      this.running = true;
+      this.lastFpsTime = performance.now();
+      this.loop();
+    } catch (err) {
+      console.warn("[HandTracker] Initialization notice:", err);
+      this.stop();
+    }
   }
 
   stop(): void {

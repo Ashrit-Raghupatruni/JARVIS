@@ -281,18 +281,24 @@ class UIAEngine:
         try:
             import pyautogui
             pyautogui.click(click_x, click_y)
+            return {
+                "status": "clicked",
+                "target": match["matched_text"],
+                "method": "ocr_fallback",
+                "engine": match["engine"],
+                "confidence": match["confidence"],
+                "coordinates": {"x": click_x, "y": click_y},
+                "bounds": match["bounds"]
+            }
         except Exception as click_err:
-            logger.debug(f"PyAutoGUI click simulated: {click_err}")
-
-        return {
-            "status": "clicked",
-            "target": match["matched_text"],
-            "method": "ocr_fallback",
-            "engine": match["engine"],
-            "confidence": match["confidence"],
-            "coordinates": {"x": click_x, "y": click_y},
-            "bounds": match["bounds"]
-        }
+            logger.warning(f"PyAutoGUI click execution failed: {click_err}")
+            return {
+                "status": "click_failed",
+                "error": str(click_err),
+                "target": match["matched_text"],
+                "method": "ocr_fallback",
+                "coordinates": {"x": click_x, "y": click_y}
+            }
 
     # ── Unified Control Interaction with Cascading OCR Fallback ───────────
 

@@ -161,3 +161,45 @@ sequenceDiagram
     end
 ```
 
+---
+
+## 6. Asynchronous Multimodal Generation & Specialized Domain Flow (Added September 8, 2026)
+
+```mermaid
+sequenceDiagram
+    participant User as User / Client
+    participant API as FastAPI /routes_ui
+    participant Queue as AsyncGenerationJobManager
+    participant SQLite as data/generation_jobs.db
+    participant Worker as Background Async Task
+    participant Adapter as Fail-Closed Media Adapter
+    participant Skill as Multimodal / Science / Developer Skill
+
+    User->>API: POST /api/ui/generation/jobs (or tool call generate_image_asset)
+    API->>Queue: enqueue_job(media_type, prompt, params)
+    Queue->>SQLite: INSERT INTO generation_jobs (job_id, status='queued', progress=0.0)
+    Queue->>Worker: asyncio.create_task(_process_job())
+    API-->>User: {status: "queued", job_id: "gen_uuid_..."}
+
+    loop Background Generation Worker
+        Worker->>Adapter: Preflight Check (API Keys / Torch GPU / Binary Availability)
+        alt Preflight Failed (No Mock Simulation)
+            Adapter-->>Worker: Raise ResourceUnavailableError
+            Worker->>SQLite: UPDATE generation_jobs SET status='failed', error=msg
+        else Preflight Succeeded
+            Worker->>Adapter: Execute Real Synthesis
+            Worker->>SQLite: UPDATE generation_jobs SET progress=0.5
+            Adapter-->>Worker: Artifact Saved (e.g. data/artifacts/image_*.png)
+            Worker->>SQLite: UPDATE generation_jobs SET status='completed', file_path=..., progress=1.0
+        end
+    end
+
+    User->>API: GET /api/ui/generation/status/{job_id}
+    API->>Queue: get_job_status(job_id)
+    Queue->>SQLite: SELECT * FROM generation_jobs WHERE job_id=?
+    SQLite-->>Queue: Record row
+    Queue-->>API: {job_id, status, progress, file_path, error}
+    API-->>User: JSON Status Response
+```
+
+

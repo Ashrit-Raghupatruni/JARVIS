@@ -523,6 +523,44 @@ ALL BACKEND API TESTS PASSED CLEANLY!
 ```
 - **Status**: PASS
 
+---
+
+### [Comprehensive Capability Expansion Phases 1–5 Verification Suite]
+- **Date tested**: 2026-09-08
+- **How tested**: Executed complete `pytest` test suite via `backend/venv/Scripts/python.exe -m pytest backend/tests/`.
+- **Expected result**: All capability expansion tests pass with 100% pass rate.
+- **Actual result**:
+```text
+============================= test session starts =============================
+platform win32 -- Python 3.10.11, pytest-8.3.5
+rootdir: c:\Users\ashri\JARVIS
+configfile: pytest.ini
+collected 65 items
+
+backend\tests\test_agent_ecosystem.py .....                                [  7%]
+backend\tests\test_all_11_os_capabilities.py ...........                   [ 24%]
+backend\tests\test_capability_expansion_full.py ..............             [ 46%]
+backend\tests\test_capability_expansion_phase1.py .......                  [ 56%]
+backend\tests\test_master_integration_suite.py ..................          [ 84%]
+backend\tests\test_routes.py ..........                                    [100%]
+
+============================= 65 passed in 20.15s ==============================
+```
+- **Status**: PASS (65/65, 100%)
+- **Components Verified**:
+  1. `TransformationEngine`: sentiment analysis, style transfer, entity extraction, summarization.
+  2. `Response Length Discipline`: prompt injection constraining token budget.
+  3. `DeveloperAssistant`: AST Python docstring generation, safe SQL query translation, and read-only AST SQL gate.
+  4. `ProductivityService`: Markdown notes CRUD in `data/notes/`, multi-channel copywriting.
+  5. `ScienceService`: Chemical formula stoichiometry, molecular weight calculation, PubChem compound lookup, biological pathway synthesis.
+  6. `DesignAssistant`: Layout WCAG 2.1 critique, Tailwind color palette generation, React component scaffolding.
+  7. `VisionService`: Haar cascade & contour object detection, grounded image captioning.
+  8. `DesktopAutomationService`: `execute_rpa_macro` step error isolation.
+  9. `VoiceIntelligence`: Edge-TTS neural speech synthesis and procedural waveform sound effects.
+  10. `AsyncGenerationJobManager`: SQLite job persistence (`data/generation_jobs.db`), background async task polling, and fail-closed media preflight adapters.
+  11. `UI Dashboard Endpoints`: `/api/ui/generation/status/{id}`, `/api/ui/generation/jobs`, `/api/ui/notes`.
+
+
 
 
 

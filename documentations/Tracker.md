@@ -142,4 +142,45 @@ All 60 critical audit issues systematically resolved and empirically verified ac
 - [x] **Native Workstation Lock**: Added `/api/system/lock` endpoint invoking `user32.LockWorkStation`.
 - [x] **Process Tree Hygiene in `start.bat`**: Added health check before releasing port 8000 and enforced `/T` tree kill flag on shutdown.
 
+---
+
+## 5. P0–P5 Code Review & Cryptographic Audit Hardening Milestone (September 5, 2026)
+
+All security and architectural items identified in the formal audit were resolved, verified, and sealed with 100% fail-closed mechanisms:
+
+- [x] **P0.1: Ed25519 Mutual Cryptographic Mobile Pairing Protocol (September 5, 2026)**: Implemented two-way Ed25519 signature exchange. Server signs challenge nonce `JARVIS_PAIR_CHALLENGE:{session_id}:{nonce}:{pin}`, client signs response `JARVIS_CLIENT_PAIR:{session_id}:{nonce}:{device_id}`, and server verifies with `pub_key.verify()`, storing device public key in trusted store.
+- [x] **P0.1: Session Disambiguation & Isolation (September 5, 2026)**: Added session-keyed completed device tracking (`is_session_paired(session_id)`) preventing false-positive pairing status across concurrent devices.
+- [x] **P0.2: Real Face Biometric Enrollment & Extraction (September 5, 2026)**: Implemented 16-block spatial pooling and discrete cosine projection (`extract_embedding_from_image_bytes`) with OpenCV Haar Cascade face ROI detection, normalized 128-d embedding storage, and dynamic EAR blink liveness verification.
+- [x] **P0.3: Standard Reed-Solomon QR Code Matrix (September 5, 2026)**: Replaced placeholder layout with official `react-qr-code` library generating standard SVG QR matrices on frontend and python `qrcode` library on backend.
+- [x] **P0.4: Dynamic Knowledge Hub Document Listing (September 5, 2026)**: Replaced hardcoded seed placeholder documents with live `action="list_documents"` query to `/api/ui/rag_action` in `KnowledgeHubCard.tsx`.
+- [x] **P0.7: Fail-Closed OCR Click Exception Handling (September 5, 2026)**: Updated `uia_engine.py:click_element_by_ocr` so exceptions during `pyautogui.click()` return `status: "click_failed"`, preventing `self_healing.py` from falsely claiming success on unclicked elements.
+- [x] **P1: Deep Empirical Pytest Suite (September 5, 2026)**: Upgraded all capability tests with behavioral invariants (spatial desktop bounds, priority queue dequeue order, forged signature rejection) achieving **43/43 tests passing**.
+- [x] **P5: Distribution Archive Inspection & Transparency (September 5, 2026)**: Programmatically verified zero `.pt` model weights and zero `.jsonl` datasets inside `jarvis.zip` and `jarvis_codebase_clean.zip`.
+
+---
+
+## 6. Capability Expansion & Multimodal Intelligence Milestone (September 8, 2026)
+
+Expanded JARVIS's capability surface across multimodal generation, specialized task domains, structured prompt transformation pipelines, and strict fail-closed hardware guards (**65/65 tests passing 100%**):
+
+- [x] **Phase 1: Centralized Prompt Transformation Pipeline (`TransformationEngine`) (September 8, 2026)**: Built `backend/services/prompt_pipeline.py` providing unified text summarization (modes: `bullet_points`, `executive_summary`, `one_sentence`, `tldr`), style rewriting (`executive`, `technical`, `casual`, `persuasive`, `concise`, `customer_support`), and semantic keyword & entity extraction (emails, URLs, dates, metrics, organizations).
+- [x] **Phase 1: Response-Length & Conciseness Discipline (September 8, 2026)**: Injected system prompt token budget constraints across Planner (`backend/agents/planner.py`), enforcing concise 1–3 sentence/bullet responses by default, switching to comprehensive mode only on explicit user request.
+- [x] **Phase 1: Sentiment & Aspect-Level Tone Analysis (September 8, 2026)**: Added `analyze_sentiment` in `ResearchSkill` scoring polarity from -1.0 to +1.0 with domain aspect breakdown (performance, security, UI, reliability).
+- [x] **Phase 1: AST Code Documentation Generator (September 8, 2026)**: Added `generate_docstrings` in `DeveloperSkill` parsing Python AST to generate Google/Sphinx style docstrings for functions, classes, and arguments.
+- [x] **Phase 1: Safe Text-to-SQL Engine (September 8, 2026)**: Implemented natural language SQL synthesizer (`generate_sql_query`) and read-only executor (`execute_safe_sql_query`) in `DeveloperSkill` with strict AST safety rejection of destructive commands (`DROP`, `DELETE`, `UPDATE`, `INSERT`, `ALTER`).
+- [x] **Phase 1: Local Markdown Note-Taking & Search (September 8, 2026)**: Built `take_note`, `list_notes`, and `search_notes` in `ProductivitySkill` persisting Markdown files with metadata frontmatter into `data/notes/`.
+- [x] **Phase 1: Multi-Channel Marketing & Sales Copywriting (September 8, 2026)**: Added `draft_copy` in `ProductivitySkill` generating structured copy (headline, hook, value propositions, call-to-action) across email, landing page, social, ad, and support channels.
+- [x] **Phase 2: Chemoinformatics & Biology Science Intelligence (September 8, 2026)**: Created `backend/services/science_service.py` providing chemical formula parsing (`parse_chemical_formula`), chemical equation balancing (`balance_chemical_equation`), NCBI PubChem compound REST database lookup (`query_pubchem_compound`), and biological pathway synthesis (`explain_biological_process`) in `ResearchSkill`.
+- [x] **Phase 2: Design Assistant & Web App Scaffolder (September 8, 2026)**: Created `backend/services/design_assistant.py` providing UI layout & WCAG accessibility critique (`critique_ui_layout`), Tailwind color palette generator (`generate_color_palette`), and standalone HTML/React component scaffolder (`scaffold_web_app`) in `UISkill`.
+- [x] **Phase 2: Local Object Recognition & Grounded Image Captioning (September 8, 2026)**: Implemented `detect_objects_in_image` and `generate_image_caption` in `VisionService` and `VisionSkill` using OpenCV Haar cascades and spatial color/layout analysis.
+- [x] **Phase 3: Desktop RPA Macro Orchestrator (September 8, 2026)**: Added `execute_rpa_macro` in `DesktopAutomationService` and `AutomationSkill` for executing sequential multi-step desktop actions (open, type, hotkey, wait, click) with step error isolation.
+- [x] **Phase 3: High-Fidelity Streaming Voice Synthesis (TTS) (September 8, 2026)**: Added `synthesize_voice` and `list_available_voices` in `VoiceIntelligenceService` and `VoiceSkill` supporting curated neural voices across locales (`en-US`, `en-GB`, `en-IN`).
+- [x] **Phase 3: Sound Effect Audio Generation with Hardware Preflight Guard (September 8, 2026)**: Added `generate_audio_effect` in `VoiceSkill` with strict fail-closed hardware checks (verifies CUDA GPU $\ge 3$GB VRAM or ElevenLabs API key).
+- [x] **Phase 4: Asynchronous Generation Queue & Job Manager (September 8, 2026)**: Built `backend/services/async_generation_queue.py` (`AsyncGenerationJobManager`) managing long-running multimodal synthesis with UUID tokens, SQLite job state persistence, and WebSocket progress push.
+- [x] **Phase 4: Dual-Backend Image Generation Engine (September 8, 2026)**: Created `backend/services/image_generator.py` supporting cloud API (OpenAI DALL-E 3 / Stability AI) and local GPU diffusion with strict fail-closed preflight checks.
+- [x] **Phase 5: Cloud Video Generation Adapter (September 8, 2026)**: Created `backend/services/video_generator.py` integrating cloud video APIs (Replicate CogVideoX/SVD, Runway Gen-3, Luma) via the Async Generation Queue.
+- [x] **Phase 5: 3D Scene & Asset Generator (September 8, 2026)**: Created `backend/services/threed_generator.py` providing procedural Three.js WebGL 3D scene code and cloud neural 3D mesh adapter (Meshy/Tripo3D).
+- [x] **Phase 5: Master Capability Expansion Test Suite (September 8, 2026)**: Built `backend/tests/test_capability_expansion_full.py` verifying all new capabilities across all 5 phases, achieving **65/65 tests passing (100% pass rate)**.
+
+
 

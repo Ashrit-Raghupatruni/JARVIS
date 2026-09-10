@@ -19,6 +19,8 @@ class PairingInitiateResponse(BaseModel):
     pairing_session_id: str
     pairing_code: str
     server_public_key: str
+    nonce: Optional[str] = None
+    server_signature: Optional[str] = None
     expires_in_seconds: int = 300
 
 
@@ -26,6 +28,8 @@ class PairingConfirmRequest(BaseModel):
     pairing_session_id: str
     pairing_code: str
     device_id: str
+    client_public_key: Optional[str] = None
+    client_signature: Optional[str] = None
 
 
 class PairingConfirmResponse(BaseModel):

@@ -94,8 +94,24 @@ class SubAgentInstance:
                 logger.warning(f"Failed to send IPC audit request: {ipc_err}")
 
         try:
-            # 3. Execute via PlannerAgent if available
-            if self.planner and hasattr(self.planner, "plan_and_execute"):
+            # 3. Check for dedicated domain agent in ecosystem
+            domain_agent = None
+            if self.ecosystem and hasattr(self.ecosystem, "get_domain_agent"):
+                domain_agent = self.ecosystem.get_domain_agent(self.role)
+
+            if domain_agent and hasattr(domain_agent, "execute_task") and not self.planner:
+                self.current_step = f"Executing {self.role} domain engine"
+                self.progress = 0.5
+                await self._broadcast_status()
+                
+                domain_res = await domain_agent.execute_task(self.task_description)
+                self.result = str(domain_res.get("response", "")) if domain_res.get("status") == "success" else str(domain_res.get("error", ""))
+                self.logs.append(f"[{datetime_now_str()}] Domain Result: {self.result[:100]}")
+                self.tokens_used += len(self.result) // 4
+                self.progress = 1.0
+
+            # 4. Execute via PlannerAgent if available
+            elif self.planner and hasattr(self.planner, "plan_and_execute"):
                 history: List[dict] = [{"role": "system", "content": self.system_prompt}]
 
                 async for update in self.planner.plan_and_execute(self.task_description, conversation_history=history):

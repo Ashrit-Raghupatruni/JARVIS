@@ -131,3 +131,67 @@ Managed by `MobileAuthService` ([`backend/services/mobile_auth.py`](file:///c:/U
 }
 ```
 
+---
+
+## 5. Schemas for Capability Expansion & Async Multimodal Queue (Added September 8, 2026)
+
+### 1. SQLite Multimodal Generation Job Schema (`data/generation_jobs.db`)
+```sql
+CREATE TABLE IF NOT EXISTS generation_jobs (
+    job_id TEXT PRIMARY KEY,
+    media_type TEXT NOT NULL,       -- image | video | 3d | audio
+    prompt TEXT NOT NULL,
+    parameters TEXT,                -- JSON encoded options (style, resolution, duration, format)
+    status TEXT NOT NULL,           -- queued | processing | completed | failed
+    progress REAL NOT NULL DEFAULT 0.0,
+    file_path TEXT,
+    error TEXT,
+    created_at REAL NOT NULL,
+    updated_at REAL NOT NULL
+);
+```
+
+### 2. Prompt Transformation Schema (`backend/services/prompt_pipeline.py`)
+```json
+{
+  "status": "success",
+  "original_length": 450,
+  "transformed_length": 120,
+  "mode": "bullet_points",
+  "result": "- Key finding 1\n- Key finding 2\n- Key finding 3",
+  "sentiment": {
+    "score": 0.85,
+    "label": "positive"
+  },
+  "entities": ["JARVIS AI OS", "Python 3.10", "FastAPI"]
+}
+```
+
+### 3. Science & Chemoinformatics Formula Analysis Schema (`backend/services/science_service.py`)
+```json
+{
+  "status": "success",
+  "formula": "C6H12O6",
+  "elements": {
+    "C": 6,
+    "H": 12,
+    "O": 6
+  },
+  "molecular_weight_g_mol": 180.156,
+  "total_atoms": 24
+}
+```
+
+### 4. Safe SQL Translation & Execution Schema (`backend/services/developer_assistant.py`)
+```json
+{
+  "status": "success",
+  "sql_query": "SELECT name, email FROM users WHERE active = 1;",
+  "is_safe": true,
+  "operation": "SELECT",
+  "rows_returned": 14,
+  "execution_time_ms": 1.45
+}
+```
+
+

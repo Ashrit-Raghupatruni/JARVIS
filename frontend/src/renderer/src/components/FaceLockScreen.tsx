@@ -29,6 +29,33 @@ export const FaceLockScreen: React.FC<FaceLockScreenProps> = ({ onUnlock }) => {
   const [enrollStatusText, setEnrollStatusText] = useState('Position face in center frame...')
   const [isEnrolling, setIsEnrolling] = useState(false)
 
+  const streamRef = useRef<MediaStream | null>(null)
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop())
+      streamRef.current = null
+    }
+    if (videoRef.current) {
+      if (videoRef.current.srcObject) {
+        try {
+          const s = videoRef.current.srcObject as MediaStream
+          s.getTracks().forEach((t) => t.stop())
+        } catch {
+          // Ignore track stop error
+        }
+        videoRef.current.srcObject = null
+      }
+      videoRef.current.pause()
+    }
+  }
+
+  const handleUnlockSequence = async () => {
+    stopCamera()
+    await new Promise((r) => setTimeout(r, 250))
+    onUnlock()
+  }
+
   // 1. Query initial face biometrics status with backend boot retry
   const checkStatus = async (retryCount = 0) => {
     try {
@@ -59,11 +86,10 @@ export const FaceLockScreen: React.FC<FaceLockScreenProps> = ({ onUnlock }) => {
   useEffect(() => {
     checkStatus()
 
-    let stream: MediaStream | null = null
     navigator.mediaDevices
       .getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } })
       .then((s) => {
-        stream = s
+        streamRef.current = s
         if (videoRef.current) {
           videoRef.current.srcObject = s
         }
@@ -74,9 +100,7 @@ export const FaceLockScreen: React.FC<FaceLockScreenProps> = ({ onUnlock }) => {
       })
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach((t) => t.stop())
-      }
+      stopCamera()
     }
   }, [])
 
@@ -101,7 +125,9 @@ export const FaceLockScreen: React.FC<FaceLockScreenProps> = ({ onUnlock }) => {
   useEffect(() => {
     if (status !== 'scanning' || showPinModal || showEnrollModal) return
 
-    const interval = setInterval(async () => {
+    let isSubscribed = true
+
+    const doVerify = async () => {
       const video = videoRef.current
       const canvas = canvasRef.current
       if (!video || !canvas || video.readyState !== 4) return
@@ -115,6 +141,7 @@ export const FaceLockScreen: React.FC<FaceLockScreenProps> = ({ onUnlock }) => {
       const frameBase64 = canvas.toDataURL('image/jpeg', 0.8)
 
       try {
+        if (!isSubscribed) return
         setStatus('verifying')
         setStatusText('VERIFYING 128-D BIOMETRIC EMBEDDING...')
 
@@ -124,13 +151,14 @@ export const FaceLockScreen: React.FC<FaceLockScreenProps> = ({ onUnlock }) => {
           body: JSON.stringify({ frame_base64: frameBase64 })
         })
         const data = await res.json()
+        if (!isSubscribed) return
 
         if (data.status === 'success' && data.verified) {
           setStatus('granted')
           setStatusText(`ACCESS GRANTED — WELCOME BACK, ${data.owner_name.toUpperCase()}`)
           setSimilarity(data.similarity_score || 0.92)
           setTimeout(() => {
-            onUnlock()
+            if (isSubscribed) handleUnlockSequence()
           }, 1200)
         } else {
           if (data.lockout_active) {
@@ -143,17 +171,22 @@ export const FaceLockScreen: React.FC<FaceLockScreenProps> = ({ onUnlock }) => {
             setStatus('denied')
             setStatusText(data.reason ? data.reason.toUpperCase() : 'BIOMETRIC IDENTITY MISMATCH — ACCESS DENIED')
             setTimeout(() => {
-              if (status !== 'lockout') setStatus('scanning')
+              if (isSubscribed && status !== 'lockout') setStatus('scanning')
             }, 1800)
           }
         }
       } catch (e) {
         console.error('Verification request failed:', e)
-        setStatus('scanning')
+        if (isSubscribed) setStatus('scanning')
       }
-    }, 2500)
+    }
 
-    return () => clearInterval(interval)
+    const interval = setInterval(doVerify, 2500)
+
+    return () => {
+      isSubscribed = false
+      clearInterval(interval)
+    }
   }, [status, showPinModal, showEnrollModal])
 
   // Handle Backup PIN Verification
@@ -172,7 +205,7 @@ export const FaceLockScreen: React.FC<FaceLockScreenProps> = ({ onUnlock }) => {
         setStatusText('MASTER SECURITY PIN VERIFIED — ACCESS GRANTED')
         setShowPinModal(false)
         setTimeout(() => {
-          onUnlock()
+          handleUnlockSequence()
         }, 1000)
       } else {
         setPinError('Invalid Security PIN.')

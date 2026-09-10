@@ -86,10 +86,11 @@ class FaceBiometricsService:
         except Exception:
             pass
 
-        # 2. Try OpenCV FaceDetectorYN
-        if len(faces) == 0 and hasattr(cv2, 'FaceDetectorYN_create'):
+        # 2. Try OpenCV FaceDetectorYN (only if valid model file exists on disk)
+        yunet_path = getattr(self, "yunet_model_path", None)
+        if len(faces) == 0 and hasattr(cv2, 'FaceDetectorYN_create') and yunet_path and os.path.exists(str(yunet_path)):
             try:
-                detector = cv2.FaceDetectorYN_create("", "", (w, h))
+                detector = cv2.FaceDetectorYN_create(str(yunet_path), "", (w, h))
                 if detector is not None:
                     _, det = detector.detect(img)
                     if det is not None and len(det) > 0:

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react'
-import { QrCode, RefreshCw, Smartphone, CheckCircle, ShieldCheck, X } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { QrCode, RefreshCw, CheckCircle, ShieldCheck, X, AlertCircle } from 'lucide-react'
+import QRCode from 'react-qr-code'
 
 interface QRPairingModalProps {
   isOpen: boolean
@@ -10,45 +11,70 @@ export const QRPairingModal: React.FC<QRPairingModalProps> = ({ isOpen, onClose 
   const [pairingData, setPairingData] = useState<{ session_id: string; code: string; payload: string } | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [isPaired, setIsPaired] = useState<boolean>(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const pollingRef = useRef<NodeJS.Timeout | null>(null)
+
+  const getHost = () =>
+    typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost'
+      ? window.location.hostname
+      : '127.0.0.1'
 
   const fetchQRPayload = async () => {
     setIsLoading(true)
+    setErrorMessage(null)
     setIsPaired(false)
     try {
-      const res = await fetch('/api/v1/mobile/pair/qr/generate')
+      const res = await fetch(`http://${getHost()}:8000/api/v1/mobile/pair/qr/generate`)
       if (res.ok) {
         const data = await res.json()
         setPairingData({
           session_id: data.pairing_session_id,
           code: data.pairing_code,
-          payload: data.qr_payload
+          payload: data.qr_payload || `jarvis_pair://${data.pairing_session_id}:${data.pairing_code}`
         })
       } else {
-        // Mock fallback if offline/local dev
-        const mockSession = 'sess_' + Math.random().toString(36).substring(2, 9)
-        const mockCode = Math.floor(100000 + Math.random() * 900000).toString()
-        setPairingData({
-          session_id: mockSession,
-          code: mockCode,
-          payload: `jarvis_pair://${mockSession}:${mockCode}`
-        })
+        setErrorMessage('Backend refused QR generation. Ensure JARVIS Python backend is running.')
       }
     } catch {
-      const mockSession = 'sess_' + Math.random().toString(36).substring(2, 9)
-      const mockCode = Math.floor(100000 + Math.random() * 900000).toString()
-      setPairingData({
-        session_id: mockSession,
-        code: mockCode,
-        payload: `jarvis_pair://${mockSession}:${mockCode}`
-      })
+      setErrorMessage('Failed to connect to backend on port 8000.')
     } finally {
       setIsLoading(false)
     }
   }
 
+  // Poll pairing status to detect real pairing success
+  useEffect(() => {
+    if (!isOpen || !pairingData?.session_id || isPaired) {
+      if (pollingRef.current) clearInterval(pollingRef.current)
+      return
+    }
+
+    const checkStatus = async () => {
+      try {
+        const res = await fetch(`http://${getHost()}:8000/api/v1/mobile/pair/status/${pairingData.session_id}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data.paired) {
+            setIsPaired(true)
+            if (pollingRef.current) clearInterval(pollingRef.current)
+          }
+        }
+      } catch {
+        // Continue polling silently
+      }
+    }
+
+    pollingRef.current = setInterval(checkStatus, 2000)
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current)
+    }
+  }, [isOpen, pairingData?.session_id, isPaired])
+
   useEffect(() => {
     if (isOpen) {
       fetchQRPayload()
+    } else {
+      if (pollingRef.current) clearInterval(pollingRef.current)
     }
   }, [isOpen])
 
@@ -70,41 +96,48 @@ export const QRPairingModal: React.FC<QRPairingModalProps> = ({ isOpen, onClose 
             <QrCode className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-100">QR Mobile Companion Pairing</h3>
-            <p className="text-xs text-slate-400">Scan code with JARVIS Mobile App to establish encrypted bridge</p>
+            <h3 className="text-base font-bold text-slate-100 font-mono">Mobile Companion Pairing</h3>
+            <p className="text-xs text-slate-400">Scan QR Code or enter PIN to establish authenticated bridge</p>
           </div>
         </div>
 
         {/* QR Code Canvas Box */}
-        <div className="bg-slate-950 border border-slate-800 rounded-xl p-6 flex flex-col items-center justify-center relative overflow-hidden">
+        <div className="bg-slate-950 border border-slate-800 rounded-xl p-6 flex flex-col items-center justify-center relative overflow-hidden min-h-[260px]">
           {isLoading ? (
             <div className="w-48 h-48 flex items-center justify-center text-cyan-400 animate-spin">
               <RefreshCw className="w-8 h-8" />
             </div>
           ) : isPaired ? (
-            <div className="w-48 h-48 flex flex-col items-center justify-center text-emerald-400 space-y-2">
-              <CheckCircle className="w-16 h-16" />
-              <span className="text-sm font-semibold">Device Paired!</span>
+            <div className="w-48 h-48 flex flex-col items-center justify-center text-emerald-400 space-y-3">
+              <CheckCircle className="w-16 h-16 animate-bounce" />
+              <div className="text-center font-mono">
+                <span className="text-sm font-bold text-emerald-400 block">Device Paired!</span>
+                <span className="text-[11px] text-slate-400">Encrypted token issued to companion</span>
+              </div>
+            </div>
+          ) : errorMessage ? (
+            <div className="w-48 h-48 flex flex-col items-center justify-center text-rose-400 space-y-2 p-2 text-center">
+              <AlertCircle className="w-10 h-10" />
+              <span className="text-xs font-mono">{errorMessage}</span>
             </div>
           ) : (
             <div className="flex flex-col items-center space-y-3">
-              {/* SVG Visual Matrix Generator */}
-              <div className="w-44 h-44 bg-slate-900 p-3 rounded-lg border border-cyan-500/40 flex flex-col justify-between items-center shadow-inner">
-                <div className="grid grid-cols-5 gap-1.5 w-full h-full p-2 bg-slate-950 rounded">
-                  {Array.from({ length: 25 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`rounded-xs ${
-                        i % 2 === 0 || i % 7 === 0 ? 'bg-cyan-400 shadow-[0_0_6px_rgba(0,229,255,0.6)]' : 'bg-slate-800/40'
-                      }`}
-                    />
-                  ))}
+              {/* Real Standard QR Code Matrix SVG */}
+              {pairingData?.payload && (
+                <div className="p-3 bg-white rounded-xl shadow-lg flex items-center justify-center">
+                  <QRCode
+                    value={pairingData.payload}
+                    size={160}
+                    bgColor="#ffffff"
+                    fgColor="#090d16"
+                    level="M"
+                  />
                 </div>
-              </div>
+              )}
 
-              <div className="text-center font-mono">
-                <span className="text-[11px] text-slate-500 block uppercase tracking-wider">Pairing Payload</span>
-                <span className="text-xs text-cyan-300 font-bold tracking-widest">{pairingData?.code}</span>
+              <div className="text-center font-mono mt-1">
+                <span className="text-[11px] text-slate-400 block uppercase tracking-wider">Pairing PIN</span>
+                <span className="text-xl text-cyan-300 font-extrabold tracking-widest">{pairingData?.code}</span>
               </div>
             </div>
           )}
@@ -114,7 +147,7 @@ export const QRPairingModal: React.FC<QRPairingModalProps> = ({ isOpen, onClose 
         <div className="mt-5 flex items-center justify-between pt-4 border-t border-slate-800">
           <div className="flex items-center space-x-1.5 text-xs text-emerald-400 font-mono">
             <ShieldCheck className="w-4 h-4" />
-            <span>Fail-Closed JWT Protected</span>
+            <span>Ed25519 & JWT Protected</span>
           </div>
 
           <button

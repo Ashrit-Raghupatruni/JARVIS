@@ -97,4 +97,42 @@ This document outlines the concrete code modules, service integration patterns, 
 - Fast-Path 0H2 directly discovers and extracts structured resume facts from real disk PDFs with OCR fallback.
 - Replaced hardcoded mock profiles with dynamic user profile memory resolution.
 
+---
+
+## 6. Capability Expansion Implementation Details (Added September 8, 2026)
+
+### 1. Prompt Pipeline & Transformation Engine ([`backend/services/prompt_pipeline.py`](file:///c:/Users/ashri/JARVIS/backend/services/prompt_pipeline.py))
+- `TransformationEngine`: Provides fast rule-based and regex-driven text transformations:
+  - Modes: `bullet_points`, `executive_summary`, `one_sentence`, `tldr`.
+  - Style Shifts: `executive`, `technical`, `casual`, `persuasive`, `concise`, `customer_support`.
+  - Information Extraction: Structured entity and keyword identification.
+  - Sentiment Analysis: Normalized sentiment scoring ($-1.0$ to $+1.0$) with polarity detection.
+
+### 2. Developer Assistant & Safe SQL Engine ([`backend/services/developer_assistant.py`](file:///c:/Users/ashri/JARVIS/backend/services/developer_assistant.py))
+- `generate_docstrings`: Parses Python code using `ast.parse` and constructs structured docstrings (Google, NumPy, Sphinx) with parameter types.
+- `generate_sql_query` & `execute_safe_sql_query`: Enforces strict AST read-only validation rejecting any mutating SQL statements (`DROP`, `DELETE`, `UPDATE`, `INSERT`, `ALTER`).
+
+### 3. Productivity & Copywriting Service ([`backend/services/productivity_service.py`](file:///c:/Users/ashri/JARVIS/backend/services/productivity_service.py))
+- Manages Markdown notes persisted directly on disk in `data/notes/` (`take_note`, `list_notes`, `search_notes`).
+- Provides multi-channel copywriting synthesis (`social_post`, `email_newsletter`, `landing_page_hero`, `ad_copy`, `press_release`).
+
+### 4. Science & Chemoinformatics Engine ([`backend/services/science_service.py`](file:///c:/Users/ashri/JARVIS/backend/services/science_service.py))
+- Regex formula tokenizer calculating molecular weights from standard atomic weights.
+- Stoichiometric reaction balancing solver.
+- REST client integrating NCBI PubChem compound lookup.
+- Biological pathway synthesis generator.
+
+### 5. Design Assistant & Web App Scaffolder ([`backend/services/design_assistant.py`](file:///c:/Users/ashri/JARVIS/backend/services/design_assistant.py))
+- Layout evaluator checking WCAG 2.1 contrast and visual hierarchy.
+- Tailwind color palette generator with semantic alert shades.
+- Single-file HTML5/React component code scaffolder.
+
+### 6. Vision Intelligence Engine ([`backend/services/vision_service.py`](file:///c:/Users/ashri/JARVIS/backend/services/vision_service.py))
+- OpenCV Haar cascade object detection (`haarcascade_frontalface_default.xml`, body/contour segmentation) and aspect-ratio grounded captioner.
+
+### 7. Asynchronous Generation Queue ([`backend/services/async_generation_queue.py`](file:///c:/Users/ashri/JARVIS/backend/services/async_generation_queue.py))
+- `AsyncGenerationJobManager`: Enqueues media synthesis tasks into `data/generation_jobs.db`, tracking UUIDs, statuses (`queued`, `processing`, `completed`, `failed`), progress, and artifact paths.
+- Integrates fail-closed adapters: `image_generator.py`, `video_generator.py`, `threed_generator.py`.
+
+
 

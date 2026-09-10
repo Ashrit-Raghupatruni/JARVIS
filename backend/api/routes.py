@@ -12,7 +12,7 @@ from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.models.schemas import SystemStatus, UserCommand
 
@@ -68,6 +68,9 @@ async def list_tools_endpoint(request: Request):
 
 
 @router.get("/status")
+@router.get("/api/status")
+@router.get("/api/system/status")
+@router.get("/api/v1/status")
 async def system_status(request: Request):
     """Get detailed system status including all services."""
     app = request.app
@@ -904,6 +907,80 @@ async def recover_interrupted_goals_endpoint():
         return {"status": "error", "message": str(e)}
 
 
+# ── Prash Teacher-Student Distillation & Benchmarking REST APIs ─────────────
+
+class PrashDistillRequest(BaseModel):
+    teacher_model: str = "qwen3:8b"
+    epochs: int = 5
+    learning_rate: float = 5e-4
+
+class PrashGuardedExecRequest(BaseModel):
+    tool_name: str
+    parameters: Dict[str, Any] = Field(default_factory=dict)
+    source: str = "qwen3:8b"
+    user_confirmed: bool = False
+
+@router.post("/api/v1/prash/distill")
+async def run_prash_distillation_endpoint(req: PrashDistillRequest, request: Request):
+    """Triggers Teacher-Student distillation cycle for Prash using qwen3:8b."""
+    try:
+        from backend.prash.distillation import PrashDistillationEngine
+        from backend.services.manager import ServiceManager
+        engine = ServiceManager.get_instance("prash_engine")
+        if not engine:
+            from backend.prash.engine import PrashEngine
+            engine = PrashEngine()
+            await engine.init()
+
+        distill_engine = PrashDistillationEngine()
+        result = await distill_engine.run_distillation_cycle(
+            engine=engine,
+            epochs=req.epochs,
+            learning_rate=req.learning_rate,
+            teacher_model=req.teacher_model,
+        )
+        return {"status": "success", **result}
+    except Exception as err:
+        logger.error(f"Prash distillation endpoint failed: {err}")
+        return {"status": "error", "message": str(err)}
+
+@router.post("/api/v1/prash/benchmark")
+async def run_prash_benchmark_endpoint(request: Request):
+    """Runs standard 7-metric evaluation benchmark on Prash engine."""
+    try:
+        from backend.prash.benchmark import PrashBenchmarkSuite
+        from backend.services.manager import ServiceManager
+        engine = ServiceManager.get_instance("prash_engine")
+        if not engine:
+            from backend.prash.engine import PrashEngine
+            engine = PrashEngine()
+            await engine.init()
+
+        suite = PrashBenchmarkSuite()
+        metrics = await suite.evaluate_engine(engine)
+        return {"status": "success", "metrics": metrics.to_dict()}
+    except Exception as err:
+        logger.error(f"Prash benchmark endpoint failed: {err}")
+        return {"status": "error", "message": str(err)}
+
+@router.post("/api/v1/prash/guarded_execute")
+async def run_guarded_execution_endpoint(req: PrashGuardedExecRequest):
+    """Executes a candidate tool call through 3 mandatory safety gates prior to Win32 action."""
+    try:
+        from backend.services.safe_action_executor import SafeActionExecutor
+        executor = SafeActionExecutor()
+        res = await executor.execute_guarded(
+            tool_name=req.tool_name,
+            parameters=req.parameters,
+            source=req.source,
+            user_confirmed=req.user_confirmed,
+        )
+        return {"status": "success", "result": res.model_dump()}
+    except Exception as err:
+        logger.error(f"Guarded execution endpoint failed: {err}")
+        return {"status": "error", "message": str(err)}
+
+
 # ── Monitored Topics Management ────────────────────────────────────────
 
 @router.get("/api/v1/monitored_topics")
@@ -993,5 +1070,79 @@ async def desktop_context_action(payload: DesktopContextActionRequest):
         "is_directory": is_dir,
         "result": result_text
     }
+
+
+# ── Face Biometrics & Security API Endpoints ─────────────────────────────────
+
+@router.get("/api/v1/auth/face/status")
+async def get_face_auth_status():
+    """Retrieve current biometric face profile enrollment status."""
+    from backend.services.security.face_auth_engine import face_auth_engine
+    enrolled = face_auth_engine.load_enrolled_profile()
+    return {
+        "status": "ok",
+        "enrolled": enrolled,
+        "owner_name": face_auth_engine._enrolled_user or "None",
+        "embedding_dimension": len(face_auth_engine._reference_embedding) if face_auth_engine._reference_embedding else 0,
+        "profile_path": str(face_auth_engine.profile_path)
+    }
+
+
+@router.post("/api/v1/auth/face/enroll")
+async def enroll_face_profile(payload: Dict[str, Any]):
+    """
+    Enrolls a genuine face biometric profile from an image (base64) or embedding vector.
+    """
+    import base64
+    from backend.services.security.face_auth_engine import face_auth_engine
+    user_name = str(payload.get("user_name", "Ashrit")).strip()
+    image_b64 = payload.get("image_base64")
+    embedding = payload.get("embedding")
+    metadata = payload.get("metadata", {})
+
+    if image_b64:
+        try:
+            raw_bytes = base64.b64decode(image_b64)
+            res = face_auth_engine.enroll_from_image(user_name, raw_bytes, metadata)
+            if not res.get("success"):
+                raise HTTPException(status_code=400, detail=res.get("error", "Enrollment failed"))
+            return {"status": "ok", "message": f"Successfully enrolled face for {user_name}", "data": res}
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Image decoding or enrollment failed: {e}")
+
+    elif embedding and isinstance(embedding, list):
+        ok = face_auth_engine.enroll_user(user_name, embedding, metadata)
+        if not ok:
+            raise HTTPException(status_code=400, detail="Invalid embedding vector or dimension < 64")
+        return {"status": "ok", "message": f"Successfully enrolled face embedding for {user_name}"}
+
+    raise HTTPException(status_code=400, detail="Either image_base64 or embedding list must be provided")
+
+
+@router.post("/api/v1/auth/face/verify")
+async def verify_face_profile(payload: Dict[str, Any]):
+    """
+    Verifies a face image or embedding with multi-frame liveness detection.
+    """
+    import base64
+    from backend.services.security.face_auth_engine import face_auth_engine
+    image_b64 = payload.get("image_base64")
+    embedding = payload.get("embedding")
+    frame_sequence = payload.get("frame_sequence")
+
+    if image_b64:
+        try:
+            raw_bytes = base64.b64decode(image_b64)
+            res = face_auth_engine.verify_face_image(raw_bytes, frame_sequence)
+            return {"status": "ok", "result": res}
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Face verification failed: {e}")
+
+    elif embedding and isinstance(embedding, list):
+        res = face_auth_engine.verify_face(embedding, frame_sequence)
+        return {"status": "ok", "result": res}
+
+    raise HTTPException(status_code=400, detail="Either image_base64 or embedding list must be provided")
+
 
 

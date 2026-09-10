@@ -145,42 +145,80 @@ class RequestRouter:
         logger.info("HierarchicalRouter: Classified Tier 8 KNOWLEDGE")
         return category, assignment
 
-    def _select_model(
-        self, category: HierarchicalCategory, force_offline: bool, complexity: str
-    ) -> TargetModelAssignment:
-        if force_offline:
-            return TargetModelAssignment(
-                provider="prash",
-                model_name="prash-local-3b",
-                reasoning_complexity=complexity,
-                use_tools=category in (
-                    HierarchicalCategory.ACTION,
-                    HierarchicalCategory.AUTOMATION,
-                    HierarchicalCategory.WORKFLOW,
-                    HierarchicalCategory.SYSTEM,
-                    HierarchicalCategory.RESEARCH,
-                    HierarchicalCategory.MULTI_STEP_TASK
-                ),
-            )
+class RequestCategory(str, Enum):
+    ACTION_REQUEST = "action_request"
+    LIVE_MODE_REQUEST = "live_mode_request"
+    WORKFLOW_REQUEST = "workflow_request"
+    RESEARCH_REQUEST = "research_request"
+    SYSTEM_REQUEST = "system_request"
+    KNOWLEDGE_REQUEST = "knowledge_request"
+    CONVERSATION = "conversation"
+    GENERAL_QUERY = "general_query"
+    CODING = "coding"
+    AUTOMATION = "automation"
 
-        if category in (HierarchicalCategory.CHAT, HierarchicalCategory.CONVERSATION):
-            return TargetModelAssignment(
-                provider="groq",
-                model_name="llama-3.3-70b-versatile",
-                reasoning_complexity="low",
-                use_tools=False,
-            )
-        elif category == HierarchicalCategory.KNOWLEDGE:
-            return TargetModelAssignment(
-                provider="groq",
-                model_name="llama-3.3-70b-versatile",
-                reasoning_complexity="medium",
-                use_tools=False,
-            )
-        else:
-            return TargetModelAssignment(
-                provider="groq",
-                model_name="llama-3.3-70b-versatile",
-                reasoning_complexity="medium",
-                use_tools=True,
-            )
+
+def classify_request(user_message: str) -> RequestCategory:
+    """
+    Code-level deterministic request classifier.
+    Intersects regex fast-path and keyword classification before calling heavy models.
+    """
+    msg_lower = user_message.lower().strip()
+
+    # 1. Live Mode / Perception
+    live_mode_keywords = [
+        "what am i seeing", "what's on my screen", "what is on my screen",
+        "read screen", "see screen", "click button", "click that", "click the", "click on",
+        "tap ", "press button", "hit button", "select button", "fill form", "fill this form",
+        "describe screen", "screen context", "what should i do next", "active window", "on screen"
+    ]
+    if any(kw in msg_lower for kw in live_mode_keywords) or msg_lower.startswith(("click", "tap", "fill", "press button")):
+        logger.info("⚡ IntentRouter classified: LIVE_MODE_REQUEST for prompt '{}'", user_message[:60])
+        return RequestCategory.LIVE_MODE_REQUEST
+
+    # 2. Workflow Automation
+    if any(kw in msg_lower for kw in ["n8n", "workflow", "canvas", "trigger workflow", "run workflow"]):
+        logger.info("⚡ IntentRouter classified: WORKFLOW_REQUEST for prompt '{}'", user_message[:60])
+        return RequestCategory.WORKFLOW_REQUEST
+
+    # 3. Online Research
+    if any(kw in msg_lower for kw in ["search online", "search web", "google", "find online", "http://", "https://"]):
+        logger.info("⚡ IntentRouter classified: RESEARCH_REQUEST for prompt '{}'", user_message[:60])
+        return RequestCategory.RESEARCH_REQUEST
+
+    # 4. System Control
+    if any(kw in msg_lower for kw in ["shutdown", "restart", "lock screen", "set volume", "mute", "unmute"]):
+        logger.info("⚡ IntentRouter classified: SYSTEM_REQUEST for prompt '{}'", user_message[:60])
+        return RequestCategory.SYSTEM_REQUEST
+
+    # 5. Coding & Software Engineering
+    if any(kw in msg_lower for kw in ["docstring", "generate sql", "safe sql", "git ", "refactor", "ast ", "python script"]):
+        logger.info("⚡ IntentRouter classified: CODING for prompt '{}'", user_message[:60])
+        return RequestCategory.CODING
+
+    # 6. Action / Desktop OS / Script / Job ID Execution Triggers
+    action_keywords = [
+        "open ", "launch ", "run ", "execute ", "find ", "search file", "locate ",
+        "delete ", "clean ", "clear ", "play ", "pause ", "close ", "kill ",
+        "type ", "press ", "move ", "copy ", "rename ", "spotify", "youtube",
+        "chrome", "notepad", "calculator", "python", ".py", ".exe", ".pdf", "script"
+    ]
+    is_action_start = msg_lower.startswith(("open", "run", "play", "find", "delete", "clean", "execute", "launch", "search", "start"))
+    has_job_id = bool(re.search(r"\b[A-Z]{2,}\d{5,}\b", user_message))
+
+    if any(kw in msg_lower for kw in action_keywords) or is_action_start or has_job_id:
+        logger.info("⚡ IntentRouter classified: ACTION_REQUEST for prompt '{}'", user_message[:60])
+        return RequestCategory.ACTION_REQUEST
+
+    # 7. Conversational Chat
+    if msg_lower in ("hi", "hello", "hey", "jarvis", "ping", "test", "who are you", "greetings") or "joke" in msg_lower:
+        logger.info("⚡ IntentRouter classified: CONVERSATION for prompt '{}'", user_message[:60])
+        return RequestCategory.CONVERSATION
+
+    # 8. Knowledge / Conversational Reasoning Triggers
+    logger.info("⚡ IntentRouter classified: KNOWLEDGE_REQUEST for prompt '{}'", user_message[:60])
+    return RequestCategory.KNOWLEDGE_REQUEST
+
+
+# Alias IntentRouter to RequestRouter for unified naming
+IntentRouter = RequestRouter

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Eye, Play, Square, RefreshCw, Layout, Layers, CheckCircle, ShieldAlert, Cpu, Zap, Send, StopCircle, CheckCircle2, AlertTriangle, ListOrdered } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useWebSocket } from '../hooks/useWebSocket'
-import { HandTracker, type TrackerTelemetry } from '../lib/handTracker'
+import type { HandTracker, TrackerTelemetry } from '../lib/handTracker'
 
 export interface LiveFrame {
   is_live_mode_enabled: boolean
@@ -188,33 +188,50 @@ export default function LiveModeCard() {
       return
     }
 
-    const tracker = new HandTracker(video, overlay, {
-      onHandAction: (action, params) => {
-        if (action === 'click') {
-          sendMessage('hand_action', {
-            action: 'click',
-            click_action: params.action || 'click',
-            button: params.button || 'left'
-          })
-        } else {
-          sendMessage('hand_action', { action, ...params })
-        }
-      },
-      onTelemetry: (tel) => {
-        setTelemetry(tel)
-      }
-    })
+    let isMounted = true
+    let activeTracker: HandTracker | null = null
 
-    tracker.updateConfigs(settings.handControl)
-    tracker.start().then(() => {
-      trackerRef.current = tracker
-    }).catch((err) => {
-      console.error('[LiveModeCard] Failed to start hand landmarker:', err)
+    import('../lib/handTracker').then(({ HandTracker }) => {
+      if (!isMounted) return
+      const tracker = new HandTracker(video, overlay, {
+        onHandAction: (action, params) => {
+          if (action === 'click') {
+            sendMessage('hand_action', {
+              action: 'click',
+              click_action: params.action || 'click',
+              button: params.button || 'left'
+            })
+          } else {
+            sendMessage('hand_action', { action, ...params })
+          }
+        },
+        onTelemetry: (tel) => {
+          if (isMounted) setTelemetry(tel)
+        }
+      })
+
+      tracker.updateConfigs(settings.handControl)
+      tracker.start().then(() => {
+        if (isMounted) {
+          activeTracker = tracker
+          trackerRef.current = tracker
+        } else {
+          tracker.stop()
+        }
+      }).catch((err) => {
+        console.error('[LiveModeCard] Failed to start hand landmarker:', err)
+      })
     })
 
     return () => {
-      tracker.stop()
-      trackerRef.current = null
+      isMounted = false
+      if (activeTracker) {
+        activeTracker.stop()
+      }
+      if (trackerRef.current) {
+        trackerRef.current.stop()
+        trackerRef.current = null
+      }
     }
   }, [handControlEnabled])
 

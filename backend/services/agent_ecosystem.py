@@ -52,12 +52,12 @@ class IPCMessage:
         }
 
 
-from backend.agents.micro_agents.base_agent import BaseMicroAgent, MicroAgentMessage
-from backend.agents.micro_agents.mcu_agents import ALL_MCU_AGENTS, VoiceAgent, ConversationAgent, SecurityAgent
+from backend.agents.subagent import SubAgentInstance
+from backend.agents.domain import DOMAIN_AGENTS, GeneralAgent, ResearchAgent, DeveloperAgent, AutomationAgent
 
 
 class AgentEcosystemService:
-    """Master Multi-Agent Orchestration & IPC Engine driving real 21 MCU J.A.R.V.I.S. Micro-Agents."""
+    """Master Multi-Agent Orchestration & IPC Engine driving strong domain agents."""
 
     def __init__(self, event_bus=None, connection_manager=None, app_state=None) -> None:
         self.event_bus = event_bus
@@ -65,36 +65,47 @@ class AgentEcosystemService:
         self.app_state = app_state
         
         self.active_agents: Dict[str, Any] = {}
-        self.mcu_micro_agents: Dict[str, BaseMicroAgent] = {}
+        self.domain_agents: Dict[str, Any] = {}
         self.ipc_messages: List[IPCMessage] = []
         
-        # Instantiate and register all 21 MCU J.A.R.V.I.S. Micro-Agents
-        self._init_mcu_agents()
+        # Initialize the 4 strong domain agents
+        self._init_domain_agents()
 
         self.role_prompts = {
-            "CodeAgent": "You are CodeAgent, a specialized software engineering AI. Analyze AST, write clean Python/JS code, and execute sandbox tests.",
+            "DeveloperAgent": "You are DeveloperAgent, a specialized software engineering AI. Analyze AST, write clean code, and execute sandbox tests.",
+            "CodeAgent": "You are DeveloperAgent (CodeAgent), a specialized software engineering AI. Analyze AST, write clean code, and execute sandbox tests.",
             "ResearchAgent": "You are ResearchAgent, a specialized research AI. Perform web searches, query RAG vector stores, and summarize technical papers.",
+            "AutomationAgent": "You are AutomationAgent, a specialized desktop automation AI. Perform Win32 UIA actions, RPA macros, and browser navigation.",
+            "GeneralAgent": "You are GeneralAgent, a general reasoning AI with Tony Stark's Marvel J.A.R.V.I.S. personality. Handle conversations, memory, and system tasks.",
             "SecurityAgent": "You are SecurityAgent, a specialized security auditor AI. Inspect commands against SafetyService policy rules and verify sandbox safety."
         }
 
-    def _init_mcu_agents(self) -> None:
-        """Instantiate all 21 MCU Micro-Agents."""
-        for AgentCls in ALL_MCU_AGENTS:
-            try:
-                agent_inst = AgentCls(event_bus=self.event_bus)
-                self.mcu_micro_agents[agent_inst.name] = agent_inst
-            except Exception as e:
-                logger.error("Could not instantiate micro-agent {}: {}", AgentCls, e)
-        logger.info("✓ Initialized 21 MCU J.A.R.V.I.S. Micro-Agents: {}", list(self.mcu_micro_agents.keys()))
+    def _init_domain_agents(self) -> None:
+        """Instantiate the 4 strong domain agents."""
+        self.domain_agents = {
+            "GeneralAgent": GeneralAgent(event_bus=self.event_bus),
+            "ResearchAgent": ResearchAgent(event_bus=self.event_bus),
+            "DeveloperAgent": DeveloperAgent(event_bus=self.event_bus),
+            "AutomationAgent": AutomationAgent(event_bus=self.event_bus),
+        }
+        logger.info("✓ Initialized 4 Strong Domain Agents: {}", list(self.domain_agents.keys()))
+
+    def get_domain_agent(self, role: str) -> Optional[Any]:
+        """Lookup domain agent by name or alias."""
+        target_cls = DOMAIN_AGENTS.get(role)
+        if target_cls:
+            name = target_cls.__name__
+            return self.domain_agents.get(name)
+        return self.domain_agents.get(role)
 
     def spawn_subagent(self, role: str, task_goal: str, planner_agent=None) -> Dict[str, Any]:
-        """Spawns a specialized sub-agent (CodeAgent, ResearchAgent, SecurityAgent) executing real PlannerAgent loops."""
-        valid_roles = ["CodeAgent", "ResearchAgent", "SecurityAgent"]
+        """Spawns a specialized sub-agent (DeveloperAgent, ResearchAgent, AutomationAgent, GeneralAgent, SecurityAgent)."""
+        valid_roles = ["DeveloperAgent", "CodeAgent", "ResearchAgent", "AutomationAgent", "GeneralAgent", "SecurityAgent"]
         if role not in valid_roles:
-            role = "CodeAgent"
+            role = "DeveloperAgent"
 
         agent_id = f"ag_{role.lower()}_{uuid.uuid4().hex[:6]}"
-        system_prompt = self.role_prompts.get(role, self.role_prompts["CodeAgent"])
+        system_prompt = self.role_prompts.get(role, self.role_prompts["DeveloperAgent"])
 
         planner = planner_agent
         if not planner and self.app_state and hasattr(self.app_state, "planner_agent"):
@@ -113,7 +124,7 @@ class AgentEcosystemService:
         self.active_agents[agent_id] = sub_agent
         sub_agent.start()
 
-        logger.info(f"[AgentEcosystem] Spawned real sub-agent '{agent_id}' ({role}) for goal: '{task_goal[:40]}'")
+        logger.info(f"[AgentEcosystem] Spawned sub-agent '{agent_id}' ({role}) for goal: '{task_goal[:40]}'")
         self._broadcast_event("agent.spawned", sub_agent.to_dict())
         return sub_agent.to_dict()
 
@@ -178,10 +189,10 @@ class AgentEcosystemService:
 
     def _broadcast_event(self, event_name: str, payload: Dict[str, Any]) -> None:
         """Emits WebSocket telemetry updates to connected clients."""
-        if self.connection_manager and hasattr(self.connection_manager, "broadcast_json"):
-            asyncio.create_task(
-                self.connection_manager.broadcast_json({
-                    "type": event_name,
-                    "data": payload
-                })
-            )
+        if not self.connection_manager:
+            return
+        if hasattr(self.connection_manager, "broadcast_json"):
+            asyncio.create_task(self.connection_manager.broadcast_json({
+                "type": event_name,
+                "data": payload
+            }))
