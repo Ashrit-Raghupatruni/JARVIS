@@ -221,70 +221,94 @@ class MemoryManager:
         return await self.long_term.forget_fact(query_or_id)
 
     async def get_context(self, query: str, max_items: int = 3) -> str:
-        """Consolidate context from all memory layers for LLM injection."""
+        """Consolidate context from memory layers with non-blocking parallel lookups."""
         if not self._initialized:
             await self.init()
 
         context_parts = []
 
-        # 1. Lessons Learned / Mistakes to Avoid (from Episodic Memory)
-        if self._lessons_learned_collection and self._lessons_learned_collection.count() > 0:
+        # Fast non-blocking query tasks
+        async def _query_lessons():
+            if self._lessons_learned_collection:
+                try:
+                    count = await asyncio.to_thread(self._lessons_learned_collection.count)
+                    if count > 0:
+                        results = await asyncio.to_thread(
+                            self._lessons_learned_collection.query,
+                            query_texts=[query],
+                            n_results=2
+                        )
+                        if results and results.get("documents") and results["documents"][0]:
+                            return [f"- {doc}" for doc in results["documents"][0]]
+                except Exception:
+                    pass
+            return []
+
+        async def _query_workflows():
+            if self._workflows_collection:
+                try:
+                    count = await asyncio.to_thread(self._workflows_collection.count)
+                    if count > 0:
+                        results = await asyncio.to_thread(
+                            self._workflows_collection.query,
+                            query_texts=[query],
+                            n_results=1
+                        )
+                        if results and results.get("documents") and results["documents"][0]:
+                            out = []
+                            for i, doc in enumerate(results["documents"][0]):
+                                meta = results["metadatas"][0][i] if results.get("metadatas") else {}
+                                out.append(f"- {doc}")
+                                if meta.get("opt_prompt"):
+                                    out.append(f"  * Suggested Prompting: {meta['opt_prompt']}")
+                            return out
+                except Exception:
+                    pass
+            return []
+
+        async def _query_knowledge():
             try:
-                results = self._lessons_learned_collection.query(
-                    query_texts=[query], n_results=2
-                )
-                if results and results.get("documents") and results["documents"][0]:
-                    context_parts.append("\n[PAST LESSONS & USER CORRECTIONS (MISTAKES TO AVOID)]")
-                    for doc in results["documents"][0]:
-                        context_parts.append(f"- {doc}")
-            except Exception as e:
-                logger.error("Error querying lessons learned: {}", e)
+                memories = await self.long_term.search_memories(query, n_results=max_items)
+                if memories:
+                    return [f"- {mem['content']}" for mem in memories]
+            except Exception:
+                pass
+            return []
 
-        # 2. Successful Workflows & Strategies (from Episodic Memory)
-        if self._workflows_collection and self._workflows_collection.count() > 0:
-            try:
-                results = self._workflows_collection.query(
-                    query_texts=[query], n_results=1
-                )
-                if results and results.get("documents") and results["documents"][0]:
-                    context_parts.append("\n[REUSABLE WORKFLOWS & SUCCESSFUL STRATEGIES]")
-                    for i, doc in enumerate(results["documents"][0]):
-                        meta = results["metadatas"][0][i] if results.get("metadatas") else {}
-                        context_parts.append(f"- {doc}")
-                        if meta.get("opt_prompt"):
-                            context_parts.append(f"  * Suggested Prompting: {meta['opt_prompt']}")
-            except Exception as e:
-                logger.error("Error querying successful workflows: {}", e)
+        # Query in parallel with a strict 0.5s timeout to guarantee instant response speed
+        try:
+            import asyncio
+            lessons, workflows, knowledge = await asyncio.wait_for(
+                asyncio.gather(_query_lessons(), _query_workflows(), _query_knowledge()),
+                timeout=0.5
+            )
+            if lessons:
+                context_parts.append("\n[PAST LESSONS & USER CORRECTIONS (MISTAKES TO AVOID)]")
+                context_parts.extend(lessons)
+            if workflows:
+                context_parts.append("\n[REUSABLE WORKFLOWS & SUCCESSFUL STRATEGIES]")
+                context_parts.extend(workflows)
+            if knowledge:
+                context_parts.append("\n[RELEVANT PREFERENCES & KNOWLEDGE]")
+                context_parts.extend(knowledge)
+        except Exception as e:
+            logger.debug("Memory context gather note: {}", e)
 
-        # 3. Preferences & Knowledge (from Long-Term Memory)
-        memories = await self.long_term.search_memories(query, n_results=max_items)
-        if memories:
-            context_parts.append("\n[RELEVANT PREFERENCES & KNOWLEDGE]")
-            for mem in memories:
-                context_parts.append(f"- {mem['content']}")
+        # Global structured preferences
+        try:
+            user_name = await self.long_term.get_user_preference("user_name")
+            if user_name:
+                context_parts.insert(0, f"User name: {user_name}")
+        except Exception:
+            pass
 
-        # 4. Past Conversations (Inter-session continuity)
-        if self._conversations_collection and self._conversations_collection.count() > 0:
-            try:
-                c_results = self._conversations_collection.query(
-                    query_texts=[query], n_results=2
-                )
-                if c_results and c_results.get("documents") and c_results["documents"][0]:
-                    context_parts.append("\n[RELEVANT PAST CONVERSATIONS]")
-                    for doc in c_results["documents"][0]:
-                        context_parts.append(f"- {doc[:250]}...")
-            except Exception as ce:
-                logger.debug("Error querying conversation history: {}", ce)
-
-        # 5. Global structured preferences
-        user_name = await self.long_term.get_user_preference("user_name")
-        if user_name:
-            context_parts.insert(0, f"User name: {user_name}")
-
-        # 6. Silent language instruction
-        lang_prompt = self.working.language.get_system_prompt_instruction()
-        if lang_prompt:
-            context_parts.insert(0, lang_prompt)
+        # Silent language instruction
+        try:
+            lang_prompt = self.working.language.get_system_prompt_instruction()
+            if lang_prompt:
+                context_parts.insert(0, lang_prompt)
+        except Exception:
+            pass
 
         return "\n".join(context_parts) if context_parts else ""
 

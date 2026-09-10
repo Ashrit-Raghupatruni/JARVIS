@@ -145,6 +145,60 @@ class RequestRouter:
         logger.info("HierarchicalRouter: Classified Tier 8 KNOWLEDGE")
         return category, assignment
 
+    def _select_model(
+        self,
+        category: HierarchicalCategory,
+        force_offline: bool = False,
+        complexity: str = "medium"
+    ) -> TargetModelAssignment:
+        """Select optimal provider and model based on category and configured settings."""
+        from backend.config import get_settings
+        settings = get_settings()
+
+        provider = (getattr(settings, "LLM_PROVIDER", None) or "gemini").lower()
+        if force_offline or provider == "ollama":
+            return TargetModelAssignment(
+                provider="ollama",
+                model_name=getattr(settings, "OLLAMA_MODEL", "qwen2.5-coder:3b"),
+                reasoning_complexity=complexity,
+                use_tools=True
+            )
+        elif provider == "groq" and getattr(settings, "GROQ_API_KEY", None):
+            return TargetModelAssignment(
+                provider="groq",
+                model_name=getattr(settings, "GROQ_MODEL", "llama-3.3-70b-versatile"),
+                reasoning_complexity=complexity,
+                use_tools=True
+            )
+        elif provider == "openrouter" and getattr(settings, "OPENROUTER_API_KEY", None):
+            return TargetModelAssignment(
+                provider="openrouter",
+                model_name=getattr(settings, "OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free"),
+                reasoning_complexity=complexity,
+                use_tools=True
+            )
+        elif provider == "openai" and getattr(settings, "OPENAI_API_KEY", None):
+            return TargetModelAssignment(
+                provider="openai",
+                model_name=getattr(settings, "OPENAI_MODEL", "gpt-4o"),
+                reasoning_complexity=complexity,
+                use_tools=True
+            )
+        elif provider == "nvidia" and getattr(settings, "NVIDIA_API_KEY", None):
+            return TargetModelAssignment(
+                provider="nvidia",
+                model_name=getattr(settings, "NIM_MODEL", "meta/llama-3.1-8b-instruct"),
+                reasoning_complexity=complexity,
+                use_tools=True
+            )
+        else:
+            return TargetModelAssignment(
+                provider="gemini",
+                model_name=getattr(settings, "GEMINI_MODEL", "gemini-1.5-flash"),
+                reasoning_complexity=complexity,
+                use_tools=True
+            )
+
 class RequestCategory(str, Enum):
     ACTION_REQUEST = "action_request"
     LIVE_MODE_REQUEST = "live_mode_request"

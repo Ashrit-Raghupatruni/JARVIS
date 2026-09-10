@@ -203,29 +203,43 @@ async def websocket_endpoint(websocket: WebSocket):
                 planner = getattr(app.state, "planner_agent", None) or getattr(app.state, "planner", None) or ServiceManager.get_instance("planner_agent")
 
                 if action_type == "text_command":
+                    t_start = time.time()
                     text_cmd = payload.get("text", "") if isinstance(payload, dict) else str(payload)
                     conv_id_arg = payload.get("conversation_id") if isinstance(payload, dict) else None
                     collected_texts = []
+                    logger.info("📩 [Incoming Message]: '{}'", text_cmd)
 
-                    if v_agent and hasattr(v_agent, "handle_text_command"):
-                        async for response_msg in v_agent.handle_text_command(text_cmd):
-                            await manager.send_message(websocket, response_msg, client_id=client_id)
-                            if hasattr(response_msg, "data") and isinstance(response_msg.data, dict) and response_msg.data.get("text"):
-                                collected_texts.append(response_msg.data["text"])
-                    elif planner and hasattr(planner, "plan_and_execute"):
-                        async for msg in planner.plan_and_execute(text_cmd, conversation_id=conv_id_arg):
-                            await manager.send_message(websocket, msg, client_id=client_id)
-                            if hasattr(msg, "data") and isinstance(msg.data, dict) and msg.data.get("text"):
-                                collected_texts.append(msg.data["text"])
+                    try:
+                        if planner and hasattr(planner, "plan_and_execute"):
+                            async for msg in planner.plan_and_execute(text_cmd, conversation_id=conv_id_arg):
+                                await manager.send_message(websocket, msg, client_id=client_id)
+                                if hasattr(msg, "data") and isinstance(msg.data, dict) and msg.data.get("text"):
+                                    collected_texts.append(msg.data["text"])
+                        elif v_agent and hasattr(v_agent, "handle_text_command"):
+                            async for response_msg in v_agent.handle_text_command(text_cmd):
+                                await manager.send_message(websocket, response_msg, client_id=client_id)
+                                if hasattr(response_msg, "data") and isinstance(response_msg.data, dict) and response_msg.data.get("text"):
+                                    collected_texts.append(response_msg.data["text"])
+                        else:
+                            logger.warning("No agent or planner available to process text command: {}", payload)
+                    except Exception as exec_err:
+                        logger.error("Execution error for '{}': {}", text_cmd, exec_err)
+                        err_msg = WSMessage(type="response", data={"text": f"I apologize, sir. An error occurred: {exec_err}"})
+                        await manager.send_message(websocket, err_msg, client_id=client_id)
+                        collected_texts.append(f"Error: {exec_err}")
+
+                    elapsed = time.time() - t_start
+                    full_resp = "\n\n".join(collected_texts).strip()
+                    if full_resp:
+                        logger.info("🤖 [JARVIS Response] ({:.2f}s): {}", elapsed, full_resp[:300])
                     else:
-                        logger.warning("No agent or planner available to process text command: {}", payload)
+                        logger.info("🤖 [JARVIS Response] ({:.2f}s): <action completed>", elapsed)
 
                     # Persist interaction into MemoryService (SQLite & ChromaDB)
                     if collected_texts:
                         mem_svc = ServiceManager.get_instance("memory_service") or getattr(app.state, "memory_service", None)
                         if mem_svc:
                             try:
-                                full_resp = "\n\n".join(collected_texts)
                                 conv_id = str(int(time.time() * 1000))
                                 title = text_cmd[:45].strip() or "Chat Session"
                                 await mem_svc.store_conversation(
@@ -236,7 +250,7 @@ async def websocket_endpoint(websocket: WebSocket):
                                     ],
                                     title=title
                                 )
-                                logger.info("✓ Chat History saved to database for query: '{}'", title)
+                                logger.debug("✓ Chat History saved to database for query: '{}'", title)
                             except Exception as save_err:
                                 logger.warning("Failed to persist conversation history: {}", save_err)
 
