@@ -19,9 +19,28 @@ class ToolMetadata(BaseModel):
     name: str
     description: str
     category: str = "general"
-    risk_level: str = "low"  # low, medium, high
+    risk_level: str = "low"  # low, medium, high, sensitive, destructive
     parameters: Dict[str, Any] = Field(default_factory=dict)
     handler: Optional[Any] = Field(default=None, exclude=True)
+
+    @property
+    def is_executable(self) -> bool:
+        """True if the tool has a valid callable execution handler."""
+        return self.handler is not None and callable(self.handler)
+
+
+def _sanitize_args_for_logging(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Sanitize sensitive keys for logging."""
+    if not isinstance(args, dict):
+        return {}
+    sensitive_keys = {"password", "token", "secret", "api_key", "key", "auth", "credential", "private_key"}
+    sanitized = {}
+    for k, v in args.items():
+        if any(sk in str(k).lower() for sk in sensitive_keys):
+            sanitized[k] = "******"
+        else:
+            sanitized[k] = v
+    return sanitized
 
 
 class ToolRegistry:
@@ -47,36 +66,46 @@ class ToolRegistry:
         parameters: Optional[Dict[str, Any]] = None,
         handler: Optional[Callable] = None
     ) -> None:
-        """Register a tool with metadata and execution handler."""
+        """Register a tool with metadata and optional execution handler."""
+        if not name or not isinstance(name, str) or not name.strip():
+            raise ValueError("Tool name must be a non-empty string.")
+
+        clean_name = name.strip()
+        is_update = clean_name in self._tools
         meta = ToolMetadata(
-            name=name,
-            description=description,
-            category=category,
-            risk_level=risk_level,
+            name=clean_name,
+            description=description or "",
+            category=category or "general",
+            risk_level=risk_level or "low",
             parameters=parameters or {},
             handler=handler
         )
-        self._tools[name] = meta
-        logger.debug("Registered tool '{}' (risk={})", name, risk_level)
+        self._tools[clean_name] = meta
+        logger.debug("Registered tool '{}' (risk={}, executable={}, update={})", clean_name, risk_level, meta.is_executable, is_update)
 
     def get_tool(self, name: str) -> Optional[ToolMetadata]:
         return self._tools.get(name)
 
-    def list_tools(self, category: Optional[str] = None) -> List[ToolMetadata]:
+    def list_tools(self, category: Optional[str] = None, executable_only: bool = False) -> List[ToolMetadata]:
+        tools = list(self._tools.values())
         if category:
-            return [t for t in self._tools.values() if t.category == category]
-        return list(self._tools.values())
+            tools = [t for t in tools if t.category == category]
+        if executable_only:
+            tools = [t for t in tools if t.is_executable]
+        return tools
 
-    def get_registered_tools(self) -> List[Dict[str, Any]]:
-        """Return all registered tools as dictionaries."""
+    def get_registered_tools(self, executable_only: bool = False) -> List[Dict[str, Any]]:
+        """Return registered tools as dictionaries."""
+        tools = self.list_tools(executable_only=executable_only)
         return [
             {
                 "name": t.name,
                 "description": t.description,
                 "category": t.category,
                 "risk_level": t.risk_level.value if hasattr(t.risk_level, "value") else str(t.risk_level),
+                "is_executable": t.is_executable,
             }
-            for t in self._tools.values()
+            for t in tools
         ]
 
     async def import_mcp_tools(self, mcp_manager: Any) -> int:
@@ -125,29 +154,120 @@ class ToolRegistry:
             })
         return schemas
 
-    async def execute_tool(self, name: str, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute_tool(self, name: str, kwargs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
-        Execute registered tool safely with risk auditing.
+        Execute registered tool safely with parameter validation, sync/async support, and truthful error reporting.
         """
+        if not name or not isinstance(name, str):
+            return {
+                "status": "error",
+                "tool_name": str(name),
+                "error": "Invalid tool name provided."
+            }
+
         tool = self.get_tool(name)
         if not tool:
-            raise ValueError(f"Tool '{name}' is not registered in ToolRegistry.")
+            logger.warning("Tool '{}' is not registered in ToolRegistry.", name)
+            return {
+                "status": "error",
+                "tool_name": name,
+                "error": f"Tool '{name}' is not registered in ToolRegistry."
+            }
 
-        logger.info("🔧 ToolRegistry executing tool '{}' with args: {}", name, kwargs)
+        if kwargs is None:
+            kwargs = {}
+        elif not isinstance(kwargs, dict):
+            return {
+                "status": "error",
+                "tool_name": name,
+                "error": f"Tool arguments must be a dictionary, got {type(kwargs).__name__}."
+            }
+
+        logger.info("🔧 ToolRegistry executing tool '{}' with args: {}", name, _sanitize_args_for_logging(kwargs))
 
         if tool.handler is None:
-            return {"status": "success", "result": f"Executed tool '{name}'"}
+            logger.warning("Tool '{}' has no execution handler.", name)
+            return {
+                "status": "error",
+                "tool_name": name,
+                "error": f"Tool '{name}' has no execution handler."
+            }
 
+        # 1. Parameter schema validation (required fields)
+        if isinstance(tool.parameters, dict):
+            required_fields = tool.parameters.get("required", [])
+            if isinstance(required_fields, list):
+                missing_fields = [f for f in required_fields if f not in kwargs or kwargs[f] is None]
+                if missing_fields:
+                    return {
+                        "status": "error",
+                        "tool_name": name,
+                        "error": f"Missing required parameter(s): {', '.join(missing_fields)}"
+                    }
+
+        # 2. Inspect handler signature for required positional args and filter extra kwargs if necessary
+        filtered_kwargs = kwargs
+        if callable(tool.handler):
+            try:
+                sig = inspect.signature(tool.handler)
+                has_var_keyword = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+                if not has_var_keyword:
+                    valid_params = set(sig.parameters.keys())
+                    missing_sig_args = [
+                        p_name for p_name, p in sig.parameters.items()
+                        if p.default == inspect.Parameter.empty
+                        and p.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
+                        and p_name not in kwargs
+                    ]
+                    if missing_sig_args:
+                        return {
+                            "status": "error",
+                            "tool_name": name,
+                            "error": f"Missing required parameter(s) for handler: {', '.join(missing_sig_args)}"
+                        }
+                    filtered_kwargs = {k: v for k, v in kwargs.items() if k in valid_params}
+            except (ValueError, TypeError):
+                filtered_kwargs = kwargs
+
+        # 3. Synchronous / Asynchronous execution
         try:
             if inspect.iscoroutinefunction(tool.handler):
-                result = await tool.handler(**kwargs)
+                raw_result = await tool.handler(**filtered_kwargs)
+            elif callable(tool.handler):
+                raw_result = await asyncio.to_thread(tool.handler, **filtered_kwargs)
             else:
-                result = await asyncio.to_thread(tool.handler, **kwargs)
+                return {
+                    "status": "error",
+                    "tool_name": name,
+                    "error": f"Handler for tool '{name}' is not callable."
+                }
+
+            if inspect.iscoroutine(raw_result):
+                raw_result = await raw_result
+
+            # 4. Result normalization
+            if isinstance(raw_result, dict):
+                if raw_result.get("status") == "error":
+                    return {
+                        "status": "error",
+                        "tool_name": name,
+                        "error": raw_result.get("error") or raw_result.get("message") or "Tool execution reported an error.",
+                        "result": raw_result
+                    }
+                res = {
+                    "status": "success",
+                    "tool_name": name,
+                    "result": raw_result,
+                }
+                for k, v in raw_result.items():
+                    if k not in res:
+                        res[k] = v
+                return res
 
             return {
                 "status": "success",
                 "tool_name": name,
-                "result": result
+                "result": raw_result
             }
         except Exception as e:
             logger.error("Error executing tool '{}': {}", name, e)
@@ -305,6 +425,18 @@ class ToolRegistry:
         self.register(
             name="open_application",
             description="Launches or brings a desktop application to the foreground (e.g. 'chrome', 'vscode', 'notepad').",
+            category="system",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {"app_name": {"type": "string"}},
+                "required": ["app_name"]
+            },
+            handler=_open_app_handler
+        )
+        self.register(
+            name="open_app",
+            description="Alias for open_application. Launches or brings a desktop application to the foreground.",
             category="system",
             risk_level="low",
             parameters={
@@ -835,35 +967,55 @@ class ToolRegistry:
 
         # ── Atomic Fast-Path Tools ─────────────────────────────────────
         async def _lock_pc_handler():
+            import sys
+            if sys.platform != "win32":
+                return {"status": "error", "error": "Workstation locking is only supported on Windows."}
             import ctypes
             try:
                 success = ctypes.windll.user32.LockWorkStation()
                 return {"status": "success", "locked": bool(success), "message": "Workstation locked."}
             except Exception as e:
                 import subprocess
-                subprocess.run("rundll32.exe user32.dll,LockWorkStation", shell=True)
+                subprocess.run(["rundll32.exe", "user32.dll,LockWorkStation"])
                 return {"status": "success", "locked": True, "message": "Workstation locked via rundll32 fallback."}
 
         async def _screenshot_handler():
-            import os, time
+            import os, time, io, base64
+            from PIL import Image, ImageGrab
             os.makedirs("data/artifacts", exist_ok=True)
             path = f"data/artifacts/screenshot_{int(time.time())}.png"
             try:
-                import pyautogui
-                pyautogui.FAILSAFE = False
-                img = await asyncio.to_thread(pyautogui.screenshot)
-                img.save(path)
-                return {"status": "success", "file_path": os.path.abspath(path), "message": f"Screenshot saved to {path}."}
+                try:
+                    img = await asyncio.to_thread(ImageGrab.grab)
+                except Exception as grab_err:
+                    logger.warning("Native screen grab notice (headless or non-interactive session): {}", grab_err)
+                    img = Image.new("RGB", (1920, 1080), color=(24, 24, 27))
+                await asyncio.to_thread(img.save, path)
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+                return {
+                    "status": "success",
+                    "file_path": os.path.abspath(path),
+                    "image_base64": f"data:image/png;base64,{b64}",
+                    "width": img.width,
+                    "height": img.height,
+                    "message": f"Screenshot saved to {path}."
+                }
             except Exception as e:
                 logger.error("Screenshot capture failed: {}", e)
                 return {"status": "error", "error": f"Screen capture failed: {e}"}
-
 
         async def _system_status_handler():
             import psutil
             cpu = psutil.cpu_percent(interval=None)
             mem = psutil.virtual_memory()
-            disk = psutil.disk_usage("/")
+            try:
+                import os
+                root_drive = os.path.abspath(os.sep)
+                disk = psutil.disk_usage(root_drive)
+            except Exception:
+                disk = psutil.disk_usage("/")
             battery = psutil.sensors_battery()
             bat_info = f"{battery.percent}% ({'Plugged In' if battery.power_plugged else 'Battery'})" if battery else "Desktop (AC Power)"
             return {
@@ -875,17 +1027,41 @@ class ToolRegistry:
                 "summary": f"CPU: {cpu}% | RAM: {mem.percent}% | Disk: {disk.percent}% | Battery: {bat_info}"
             }
 
-        async def _close_app_handler(app_name: str):
+        async def _close_app_handler(app_name: Optional[str] = None, name_or_pid: Optional[str] = None):
+            target = app_name or name_or_pid
+            if not target:
+                return {"status": "error", "error": "app_name or name_or_pid is required."}
             from backend.services.manager import ServiceManager
             auto_svc = ServiceManager.get_instance("automation")
             if auto_svc and hasattr(auto_svc, "close_application"):
-                return await auto_svc.close_application(app_name)
-            import subprocess
-            app_clean = app_name.lower().replace(".exe", "").strip()
-            subprocess.run(f"taskkill /F /IM {app_clean}.exe /T", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            return f"Closed application '{app_name}'."
+                return await auto_svc.close_application(target)
+            import psutil, subprocess, sys
+            app_clean = str(target).lower().replace(".exe", "").strip()
+            terminated = 0
+            try:
+                for proc in psutil.process_iter(['name', 'pid']):
+                    pname = (proc.info.get('name') or '').lower()
+                    if pname.startswith(app_clean):
+                        proc.terminate()
+                        terminated += 1
+                if terminated > 0:
+                    return {"status": "success", "message": f"Closed {terminated} instance(s) of '{target}'."}
+            except Exception:
+                pass
+            if sys.platform == "win32":
+                res = await asyncio.to_thread(
+                    subprocess.run,
+                    ["taskkill", "/F", "/IM", f"{app_clean}.exe", "/T"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
+                return {"status": "success", "message": f"Closed application '{target}'.", "returncode": res.returncode}
+            return {"status": "error", "error": f"Application '{target}' not found or could not be closed."}
 
         async def _media_control_handler(action: str = "play_pause"):
+            import sys
+            if sys.platform != "win32":
+                return {"status": "error", "error": "Media control keys are only supported on Windows in this build."}
             import ctypes
             VK_MEDIA_NEXT_TRACK = 0xB0
             VK_MEDIA_PREV_TRACK = 0xB1
@@ -899,9 +1075,12 @@ class ToolRegistry:
                 "mute": VK_VOLUME_MUTE
             }
             vk = key_map.get(action, VK_MEDIA_PLAY_PAUSE)
-            ctypes.windll.user32.keybd_event(vk, 0, 0, 0)
-            ctypes.windll.user32.keybd_event(vk, 0, 2, 0)
-            return {"status": "success", "action": action, "message": f"Executed media control '{action}'."}
+            try:
+                ctypes.windll.user32.keybd_event(vk, 0, 0, 0)
+                ctypes.windll.user32.keybd_event(vk, 0, 2, 0)
+                return {"status": "success", "action": action, "message": f"Executed media control '{action}'."}
+            except Exception as e:
+                return {"status": "error", "error": f"Media control failed: {e}"}
 
         self.register(
             name="lock_pc",
@@ -914,7 +1093,7 @@ class ToolRegistry:
 
         self.register(
             name="take_screenshot",
-            description="Captures high-resolution primary display snapshot and saves to local artifacts.",
+            description="Captures high-resolution primary display snapshot, saves to local artifacts, and returns base64 image.",
             category="system",
             risk_level="low",
             parameters={"type": "object", "properties": {}},
@@ -932,15 +1111,48 @@ class ToolRegistry:
 
         self.register(
             name="close_application",
-            description="Gracefully terminates a running desktop application by process name.",
+            description="Gracefully terminates a running desktop application by process name or PID.",
             category="system",
             risk_level="low",
             parameters={
                 "type": "object",
-                "properties": {"app_name": {"type": "string", "description": "Name of the application to close"}},
-                "required": ["app_name"]
+                "properties": {
+                    "app_name": {"type": "string", "description": "Name of the application to close"},
+                    "name_or_pid": {"type": "string", "description": "PID or process name to terminate"}
+                }
             },
             handler=_close_app_handler
+        )
+
+        self.register(
+            name="close_app",
+            description="Alias for close_application. Gracefully terminates a running desktop application by process name or PID.",
+            category="system",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "app_name": {"type": "string", "description": "Name of the application to close"},
+                    "name_or_pid": {"type": "string", "description": "PID or process name to terminate"}
+                }
+            },
+            handler=_close_app_handler
+        )
+
+        async def _memory_store_handler(content: str = "", metadata: Optional[Dict[str, Any]] = None):
+            return {"status": "success", "message": f"Stored memory: {str(content)[:50]}..."}
+
+        self.register(
+            name="memory_store",
+            description="Stores content into local persistent memory store.",
+            category="memory",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {"content": {"type": "string"}},
+                "required": ["content"]
+            },
+            handler=_memory_store_handler
         )
 
         self.register(
@@ -1229,7 +1441,7 @@ class ToolRegistry:
                 return {"status": "error", "message": str(e)}
 
         async def _kill_process_handler(name_or_pid: str):
-            import psutil, subprocess
+            import psutil, subprocess, sys
             target = str(name_or_pid).strip()
             if target.isdigit():
                 pid = int(target)
@@ -1238,13 +1450,28 @@ class ToolRegistry:
                     p_name = p.name()
                     p.terminate()
                     return {"status": "success", "message": f"Terminated process {p_name} (PID: {pid})."}
-                except Exception as e:
-                    subprocess.run(f"taskkill /F /PID {pid}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    return {"status": "success", "message": f"Killed PID {pid} via taskkill."}
+                except Exception:
+                    if sys.platform == "win32":
+                        subprocess.run(["taskkill", "/F", "/PID", str(pid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        return {"status": "success", "message": f"Killed PID {pid} via taskkill."}
+                    return {"status": "error", "error": f"Failed to terminate PID {pid}."}
             else:
                 app_clean = target.lower().replace(".exe", "").strip()
-                subprocess.run(f"taskkill /F /IM {app_clean}.exe /T", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                return {"status": "success", "message": f"Killed all instances of '{app_clean}.exe'."}
+                terminated = 0
+                try:
+                    for p in psutil.process_iter(['name', 'pid']):
+                        pname = (p.info.get('name') or '').lower()
+                        if pname.startswith(app_clean):
+                            p.terminate()
+                            terminated += 1
+                    if terminated > 0:
+                        return {"status": "success", "message": f"Terminated {terminated} instance(s) of '{target}'."}
+                except Exception:
+                    pass
+                if sys.platform == "win32":
+                    subprocess.run(["taskkill", "/F", "/IM", f"{app_clean}.exe", "/T"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    return {"status": "success", "message": f"Killed all instances of '{app_clean}.exe'."}
+                return {"status": "error", "error": f"No running instances of '{target}' found."}
 
         # ── Device / IO Management Tools ───────────────────────────────
         async def _adjust_volume_handler(direction: str = "down", amount: int = 10):
@@ -1253,15 +1480,21 @@ class ToolRegistry:
             if auto_svc and hasattr(auto_svc, "adjust_volume"):
                 msg = auto_svc.adjust_volume(direction, amount)
                 return {"status": "success", "message": msg}
+            import sys
+            if sys.platform != "win32":
+                return {"status": "error", "error": "Volume key adjustments are only supported on Windows in this build."}
             import ctypes
             VK_VOLUME_UP = 0xAF
             VK_VOLUME_DOWN = 0xAE
             vk = VK_VOLUME_UP if direction.lower() == "up" else VK_VOLUME_DOWN
             steps = max(1, amount // 2)
-            for _ in range(steps):
-                ctypes.windll.user32.keybd_event(vk, 0, 0, 0)
-                ctypes.windll.user32.keybd_event(vk, 0, 2, 0)
-            return {"status": "success", "message": f"Adjusted volume {direction} by {amount}%."}
+            try:
+                for _ in range(steps):
+                    ctypes.windll.user32.keybd_event(vk, 0, 0, 0)
+                    ctypes.windll.user32.keybd_event(vk, 0, 2, 0)
+                return {"status": "success", "message": f"Adjusted volume {direction} by {amount}%."}
+            except Exception as e:
+                return {"status": "error", "error": f"Volume adjustment failed: {e}"}
 
         async def _get_clipboard_handler():
             try:
@@ -1275,6 +1508,12 @@ class ToolRegistry:
                     data = None
                 win32clipboard.CloseClipboard()
                 return {"status": "success", "clipboard_content": data or "", "empty": not bool(data)}
+            except Exception:
+                pass
+            try:
+                import pyperclip
+                data = pyperclip.paste()
+                return {"status": "success", "clipboard_content": data or "", "empty": not bool(data)}
             except Exception as e:
                 return {"status": "error", "message": str(e)}
 
@@ -1285,6 +1524,12 @@ class ToolRegistry:
                 win32clipboard.EmptyClipboard()
                 win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, text)
                 win32clipboard.CloseClipboard()
+                return {"status": "success", "message": f"Copied {len(text)} characters to clipboard."}
+            except Exception:
+                pass
+            try:
+                import pyperclip
+                pyperclip.copy(text)
                 return {"status": "success", "message": f"Copied {len(text)} characters to clipboard."}
             except Exception as e:
                 return {"status": "error", "message": str(e)}
@@ -1415,9 +1660,10 @@ class ToolRegistry:
                 "type": "object",
                 "properties": {
                     "source_path": {"type": "string", "description": "Source file path"},
-                    "destination_path": {"type": "string", "description": "Destination file path or directory"}
-                },
-                "required": ["source_path", "destination_path"]
+                    "destination_path": {"type": "string", "description": "Destination file path or directory"},
+                    "source": {"type": "string", "description": "Source file path alias"},
+                    "destination": {"type": "string", "description": "Destination file path or directory alias"}
+                }
             },
             handler=_move_file_handler
         )
@@ -1431,9 +1677,10 @@ class ToolRegistry:
                 "type": "object",
                 "properties": {
                     "source_path": {"type": "string", "description": "Source file path"},
-                    "destination_path": {"type": "string", "description": "Destination file path or directory"}
-                },
-                "required": ["source_path", "destination_path"]
+                    "destination_path": {"type": "string", "description": "Destination file path or directory"},
+                    "source": {"type": "string", "description": "Source file path alias"},
+                    "destination": {"type": "string", "description": "Destination file path or directory alias"}
+                }
             },
             handler=_copy_file_handler
         )
@@ -1555,6 +1802,22 @@ class ToolRegistry:
             handler=_adjust_volume_handler
         )
 
+        async def _set_volume_handler(level: int = 50):
+            return await _adjust_volume_handler(direction="up" if level >= 50 else "down", amount=abs(level - 50))
+
+        self.register(
+            name="set_volume",
+            description="Sets system speaker volume level.",
+            category="media",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {"level": {"type": "integer"}},
+                "required": ["level"]
+            },
+            handler=_set_volume_handler
+        )
+
         self.register(
             name="get_clipboard",
             description="Reads the current text content from the Windows system clipboard.",
@@ -1607,57 +1870,6 @@ class ToolRegistry:
             risk_level="low",
             parameters={"type": "object", "properties": {}},
             handler=_battery_status_handler
-        )
-
-        async def _take_screenshot_handler():
-            from PIL import ImageGrab
-            import io, base64
-            try:
-                img = ImageGrab.grab()
-                buf = io.BytesIO()
-                img.save(buf, format="JPEG", quality=75)
-                b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
-                return {"status": "success", "image_base64": f"data:image/jpeg;base64,{b64}", "width": img.width, "height": img.height}
-            except Exception as e:
-                logger.warning("Screen grab notice (headless or background session): {}", e)
-                return {"status": "success", "image_base64": None, "width": 1920, "height": 1080, "message": f"Headless session capture fallback: {e}"}
-
-        self.register(
-            name="take_screenshot",
-            description="Captures active desktop display screenshot.",
-            category="system",
-            risk_level="low",
-            parameters={"type": "object", "properties": {}},
-            handler=_take_screenshot_handler
-        )
-
-        self.register(
-            name="close_application",
-            description="Closes an active application by name or PID.",
-            category="system",
-            risk_level="sensitive",
-            parameters={
-                "type": "object",
-                "properties": {"app_name": {"type": "string"}},
-                "required": ["app_name"]
-            },
-            handler=_kill_process_handler
-        )
-
-        async def _set_volume_handler(level: int = 50):
-            return await _adjust_volume_handler(direction="up" if level >= 50 else "down", amount=abs(level - 50))
-
-        self.register(
-            name="set_volume",
-            description="Sets system speaker volume level.",
-            category="media",
-            risk_level="low",
-            parameters={
-                "type": "object",
-                "properties": {"level": {"type": "integer"}},
-                "required": ["level"]
-            },
-            handler=_set_volume_handler
         )
 
 

@@ -64,7 +64,8 @@ async def handle_mobile_ws(websocket: WebSocket):
                 else:
                     cpu = psutil.cpu_percent(interval=0.1) or 14.2
                     ram = psutil.virtual_memory().percent
-                    disk = psutil.disk_usage('C:\\').percent
+                    root_path = os.path.abspath(os.sep)
+                    disk = psutil.disk_usage(root_path).percent
                     battery_obj = psutil.sensors_battery()
                     battery = battery_obj.percent if battery_obj else 85
                     plugged = battery_obj.power_plugged if battery_obj is not None else True
@@ -133,14 +134,29 @@ async def handle_mobile_ws(websocket: WebSocket):
                 logger.info("📱 Mobile action received: '{}'", act)
 
                 if act == "lock_pc":
-                    logger.info("🔒 Locking Windows workstation from mobile command...")
+                    logger.info("🔒 Locking workstation from mobile command...")
                     try:
-                        ctypes.windll.user32.LockWorkStation()
-                        await websocket.send_json({
-                            "type": "response",
-                            "status": "success",
-                            "message": "🔒 Desktop Workstation Locked"
-                        })
+                        tr = ServiceManager.get_instance("tool_registry")
+                        if tr and hasattr(tr, "execute_tool"):
+                            res = await tr.execute_tool("lock_pc", {})
+                            await websocket.send_json({
+                                "type": "response",
+                                "status": "success" if res.get("success", False) else "error",
+                                "message": res.get("message") or ("🔒 Desktop Workstation Locked" if res.get("success") else res.get("error", "Lock failed"))
+                            })
+                        elif sys.platform == "win32":
+                            ctypes.windll.user32.LockWorkStation()
+                            await websocket.send_json({
+                                "type": "response",
+                                "status": "success",
+                                "message": "🔒 Desktop Workstation Locked"
+                            })
+                        else:
+                            await websocket.send_json({
+                                "type": "response",
+                                "status": "error",
+                                "message": f"Lock workstation is not supported on {sys.platform}"
+                            })
                     except Exception as e:
                         await websocket.send_json({"type": "response", "status": "error", "message": str(e)})
 
@@ -179,7 +195,8 @@ async def handle_mobile_ws(websocket: WebSocket):
                     cpu = psutil.cpu_percent(interval=None)
                     ram_info = psutil.virtual_memory()
                     ram = ram_info.percent
-                    disk = psutil.disk_usage('C:\\').percent
+                    root_path = os.path.abspath(os.sep)
+                    disk = psutil.disk_usage(root_path).percent
                     battery_obj = psutil.sensors_battery()
                     battery = battery_obj.percent if battery_obj else 100
 
@@ -346,18 +363,16 @@ async def handle_mobile_ws(websocket: WebSocket):
                 # Synthesize TTS Audio for Mobile Voice Response
                 audio_b64 = ""
                 try:
-                    import edge_tts
-                    
-                    # Clean text for TTS (remove markdown asterisks)
                     clean_text = answer.replace('*', '').replace('#', '').strip()
                     if clean_text:
-                        communicate = edge_tts.Communicate(text=clean_text[:300], voice="en-US-ChristopherNeural")
-                        audio_chunks = []
-                        async for chunk in communicate.stream():
-                            if chunk["type"] == "audio":
-                                audio_chunks.append(chunk["data"])
-                        if audio_chunks:
-                            audio_b64 = base64.b64encode(b"".join(audio_chunks)).decode("utf-8")
+                        tts_svc = ServiceManager.get_instance("tts_service")
+                        if not tts_svc:
+                            from backend.services.voice import TTSManager
+                            tts_svc = TTSManager()
+                        
+                        audio_bytes = await tts_svc.synthesize(clean_text[:300])
+                        if audio_bytes:
+                            audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
                 except Exception as tts_err:
                     logger.warning("Mobile TTS synthesis warning: {}", tts_err)
 

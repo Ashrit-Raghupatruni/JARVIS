@@ -8,8 +8,6 @@ import socket
 import asyncio
 from typing import Dict, Any, Optional
 from loguru import logger
-from zeroconf import ServiceInfo
-from zeroconf.asyncio import AsyncZeroconf
 
 
 class ZeroConfDiscoveryService:
@@ -20,8 +18,8 @@ class ZeroConfDiscoveryService:
     def __init__(self, port: int = 8000, name: str = "JARVIS AI OS") -> None:
         self.port = port
         self.name = name
-        self._azc: Optional[AsyncZeroconf] = None
-        self._service_info: Optional[ServiceInfo] = None
+        self._azc: Optional[Any] = None
+        self._service_info: Optional[Any] = None
         self._is_active = False
 
     def _get_local_ip(self) -> str:
@@ -42,6 +40,13 @@ class ZeroConfDiscoveryService:
             return True
 
         try:
+            try:
+                from zeroconf import ServiceInfo
+                from zeroconf.asyncio import AsyncZeroconf
+            except ImportError:
+                logger.warning("zeroconf package not installed — local mDNS discovery disabled.")
+                return False
+
             local_ip = self._get_local_ip()
             hostname = socket.gethostname()
             service_name = f"{self.name} ({hostname}).{self.SERVICE_TYPE}"

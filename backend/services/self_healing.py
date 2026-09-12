@@ -46,16 +46,28 @@ class SelfHealingEngine:
 
         # 1. Executable / Application Path Moved or Renamed
         if "not found" in lower_err or "system cannot find the file" in lower_err or "no such file" in lower_err:
-            logger.info("🔍 Diagnosed: Executable/File path issue for '{}'. Searching system paths...", target_name)
             found_path = shutil.which(target_name) or shutil.which(f"{target_name}.exe")
             if not found_path:
-                # Search Common Program Files
-                for search_root in ["C:\\Program Files", "C:\\Program Files (x86)", os.path.expanduser("~\\AppData\\Local")]:
+                # Search Common Program directories
+                search_roots = []
+                if sys.platform == "win32":
+                    pf = os.environ.get("ProgramFiles", r"C:\Program Files")
+                    pf86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
+                    local_app = os.environ.get("LOCALAPPDATA", os.path.expanduser("~\\AppData\\Local"))
+                    search_roots.extend([pf, pf86, local_app])
+                else:
+                    search_roots.extend(["/usr/bin", "/usr/local/bin", "/opt", os.path.expanduser("~/.local/bin")])
+
+                for search_root in search_roots:
                     if os.path.exists(search_root):
-                        matches = list(Path(search_root).glob(f"**/{target_name}.exe"))
-                        if matches:
-                            found_path = str(matches[0])
-                            break
+                        pattern = f"**/{target_name}.exe" if sys.platform == "win32" else f"**/{target_name}"
+                        try:
+                            matches = list(Path(search_root).glob(pattern))
+                            if matches:
+                                found_path = str(matches[0])
+                                break
+                        except Exception:
+                            continue
             
             if found_path:
                 recovered_path = found_path

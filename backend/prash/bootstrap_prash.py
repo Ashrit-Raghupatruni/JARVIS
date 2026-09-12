@@ -3,7 +3,8 @@ from pathlib import Path
 import json
 
 # Add project root to python path
-sys.path.insert(0, r"c:\Users\ashri\JARVIS")
+project_root = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 from backend.prash.tokenizer import PrashTokenizer
 from backend.prash.model import PrashConfig, PrashTransformer
@@ -13,7 +14,7 @@ def main():
     print("=== Bootstrapping Prash AI Engine ===")
     
     # Paths
-    prash_dir = Path(r"c:\Users\ashri\JARVIS\data\prash")
+    prash_dir = project_root / "data" / "prash"
     prash_dir.mkdir(parents=True, exist_ok=True)
     
     # 1. Generate Synthetic Training Data (JARVIS Q&A)

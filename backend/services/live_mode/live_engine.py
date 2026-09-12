@@ -37,32 +37,83 @@ class LiveContextFrame(BaseModel):
 class LiveModeEngine:
     """
     Real-time Continuous Observation and Co-Pilot Collaboration Engine.
+    Operates on an event-driven, adaptive differential perception loop.
+    Completely zero overhead when disabled.
     """
 
     def __init__(self, on_context_update: Optional[Callable[[LiveContextFrame], None]] = None) -> None:
         self.is_enabled: bool = False
-        self.perception_interval: float = 1.0  # 1 FPS scanning loop
+        self.min_interval: float = 0.5   # Active change scan rate (2 Hz)
+        self.max_interval: float = 2.5   # Idle static scan rate (0.4 Hz)
+        self.current_interval: float = 0.5
         self.on_context_update = on_context_update
 
-        self.scene_extractor = UIASceneGraph()
-        self.spatial_engine = SpatialEngine()
-        self.form_assistant = FormAssistant()
-
-        # Live Mode 2.0 Intelligent Collaborator Engines
-        from backend.services.world_model import WorldModel
-        from backend.services.proactive_engine import ProactiveEngine
-        from backend.services.perception.spatial_ref_parser import SpatialRefParser
-        from backend.services.workspace_memory import WorkspaceMemory
-
-        self.world_model = WorldModel()
-        self.proactive_engine = ProactiveEngine()
-        self.spatial_parser = SpatialRefParser()
-        self.workspace_memory = WorkspaceMemory()
+        # Lazy Collaborator Handles
+        self._world_model = None
+        self._scene_extractor = None
+        self._spatial_engine = None
+        self._form_assistant = None
+        self._proactive_engine = None
+        self._spatial_parser = None
+        self._workspace_memory = None
 
         self._task: Optional[asyncio.Task] = None
         self.latest_frame: Optional[LiveContextFrame] = None
         self._last_window_title: str = ""
         self._last_win_bounds: Optional[Dict[str, int]] = None
+        self._last_hwnd: int = 0
+        self._consecutive_static_ticks: int = 0
+
+    @property
+    def world_model(self):
+        if self._world_model is None:
+            from backend.services.manager import ServiceManager
+            self._world_model = ServiceManager.get_instance("world_model")
+            if self._world_model is None:
+                from backend.services.world_model import WorldModel
+                self._world_model = WorldModel()
+        return self._world_model
+
+    @property
+    def scene_extractor(self):
+        if self._scene_extractor is None:
+            from backend.services.perception.uia_scene_graph import UIASceneGraph
+            self._scene_extractor = UIASceneGraph()
+        return self._scene_extractor
+
+    @property
+    def spatial_engine(self):
+        if self._spatial_engine is None:
+            from backend.services.perception.spatial_engine import SpatialEngine
+            self._spatial_engine = SpatialEngine()
+        return self._spatial_engine
+
+    @property
+    def form_assistant(self):
+        if self._form_assistant is None:
+            self._form_assistant = FormAssistant()
+        return self._form_assistant
+
+    @property
+    def proactive_engine(self):
+        if self._proactive_engine is None:
+            from backend.services.proactive_engine import ProactiveEngine
+            self._proactive_engine = ProactiveEngine()
+        return self._proactive_engine
+
+    @property
+    def spatial_parser(self):
+        if self._spatial_parser is None:
+            from backend.services.perception.spatial_ref_parser import SpatialRefParser
+            self._spatial_parser = SpatialRefParser()
+        return self._spatial_parser
+
+    @property
+    def workspace_memory(self):
+        if self._workspace_memory is None:
+            from backend.services.workspace_memory import WorkspaceMemory
+            self._workspace_memory = WorkspaceMemory()
+        return self._workspace_memory
 
     def get_activation_greeting(self) -> str:
         """Get human-readable spoken greeting for Live Mode activation."""
@@ -100,8 +151,10 @@ class LiveModeEngine:
         if self.is_enabled:
             return
         self.is_enabled = True
+        self.current_interval = self.min_interval
+        self._consecutive_static_ticks = 0
         self._task = asyncio.create_task(self._perception_loop())
-        logger.info("✓ Live Mode AI Assistant started (1.0 FPS perception loop active).")
+        logger.info("✓ Live Mode AI Assistant started (Event-driven adaptive perception active).")
 
         asyncio.create_task(self._broadcast_live_mode_status(is_active=True))
 
@@ -115,7 +168,7 @@ class LiveModeEngine:
             from backend.services.manager import ServiceManager
             tts = ServiceManager.get_instance("tts_service")
             ws_mgr = ServiceManager.get_instance("connection_manager")
-            
+
             audio_bytes = None
             if tts and hasattr(tts, "synthesize"):
                 audio_bytes = await tts.synthesize(greeting_text)
@@ -145,26 +198,69 @@ class LiveModeEngine:
             logger.warning(f"Live Mode activation greeting broadcast notice: {err}")
 
     def stop(self) -> None:
-        """Stop the background Live Mode perception loop."""
+        """Stop the background Live Mode perception loop and cleanly release resources."""
         self.is_enabled = False
         if self._task:
             self._task.cancel()
             self._task = None
+
+        # Cleanly stop any active hand tracking / camera worker
+        try:
+            from backend.services.manager import ServiceManager
+            hc = ServiceManager.get_instance("hand_control_service")
+            if hc and getattr(hc, "_tracking_active", False):
+                hc.stop_background_tracking()
+        except Exception as hc_err:
+            logger.debug("Hand control cleanup notice: {}", hc_err)
+
         try:
             asyncio.create_task(self._broadcast_live_mode_status(is_active=False))
         except Exception:
             pass
-        logger.info("Live Mode AI Assistant stopped.")
+
+        self._last_window_title = ""
+        self._last_win_bounds = None
+        self._last_hwnd = 0
+        self._consecutive_static_ticks = 0
+        logger.info("Live Mode AI Assistant stopped (Perception resources released).")
 
     async def _perception_loop(self) -> None:
-        """Background streaming perception loop driven by WorldModel single source of truth."""
+        """Adaptive differential streaming perception loop."""
+        import win32gui
+
         while self.is_enabled:
             try:
                 start_t = time.time()
+
+                # Fast Probe: Check active foreground window (<0.1ms)
+                hwnd = win32gui.GetForegroundWindow()
+                current_title = win32gui.GetWindowText(hwnd) if hwnd else "Desktop"
                 
-                # Single Source of Truth: Refresh World Model
-                wm_state = await asyncio.to_thread(self.world_model.refresh)
-                
+                # Fast Window Bounds
+                win_bounds = None
+                try:
+                    if hwnd:
+                        rect = win32gui.GetWindowRect(hwnd)
+                        win_bounds = {"x": rect[0], "y": rect[1], "w": rect[2] - rect[0], "h": rect[3] - rect[1]}
+                except Exception:
+                    pass
+
+                has_window_changed = (hwnd != self._last_hwnd or current_title != self._last_window_title or win_bounds != self._last_win_bounds)
+
+                if has_window_changed:
+                    self._consecutive_static_ticks = 0
+                    self.current_interval = self.min_interval  # High responsiveness (0.5s)
+                    force_refresh = True
+                else:
+                    self._consecutive_static_ticks += 1
+                    # Dynamic backoff if nothing changed
+                    if self._consecutive_static_ticks >= 4:
+                        self.current_interval = min(self.max_interval, self.current_interval + 0.5)
+                    force_refresh = False
+
+                # Refresh World Model (uses cached scene graph if not forced)
+                wm_state = await asyncio.to_thread(self.world_model.refresh, force=force_refresh)
+
                 # Extract details from unified state
                 window_title = wm_state.window_title
                 app_name = wm_state.window_title.lower()
@@ -183,29 +279,20 @@ class LiveModeEngine:
                 elif any(w in app_name for w in ["excel", "spreadsheet"]):
                     workflow = "Data Analysis & Spreadsheet Mode"
 
-                # Check active scene graph controls for form fields
+                # Check active scene graph controls for form fields only when window changed
                 form_fields = []
-                try:
-                    controls = (wm_state.scene_graph or {}).get("controls", [])
-                    from backend.services.perception.uia_scene_graph import SceneElement
-                    elements = [SceneElement(**c) for c in controls if "control_type" in c]
-                    form_fields = self.form_assistant.detect_form_fields(elements)
-                    if form_fields and not suggestion:
-                        suggestion = f"Detected {len(form_fields)} form field(s). Say 'Fill form' to auto-complete."
-                except Exception as f_err:
-                    logger.debug("Form field detection notice: {}", f_err)
+                if has_window_changed:
+                    try:
+                        controls = (wm_state.scene_graph or {}).get("controls", [])
+                        from backend.services.perception.uia_scene_graph import SceneElement
+                        elements = [SceneElement(**c) for c in controls if "control_type" in c]
+                        form_fields = self.form_assistant.detect_form_fields(elements)
+                        if form_fields and not suggestion:
+                            suggestion = f"Detected {len(form_fields)} form field(s). Say 'Fill form' to auto-complete."
+                    except Exception as f_err:
+                        logger.debug("Form field detection notice: {}", f_err)
 
-                # Capture active window screen bounds for Live Mode Spotlight Overlay
-                win_bounds = None
-                try:
-                    import pyautogui
-                    win = pyautogui.getActiveWindow()
-                    if win and win.width > 0 and win.height > 0:
-                        win_bounds = {"x": win.left, "y": win.top, "w": win.width, "h": win.height}
-                except Exception:
-                    pass
-
-                # Construct Frame off WorldModel state
+                # Construct Frame
                 frame = LiveContextFrame(
                     is_live_mode_enabled=self.is_enabled,
                     active_app=wm_state.active_app,
@@ -221,9 +308,11 @@ class LiveModeEngine:
                 )
 
                 self.latest_frame = frame
-                
+
                 # Broadcast live status & window bounds if focus or geometry shifted
-                if window_title != self._last_window_title or win_bounds != self._last_win_bounds:
+                if has_window_changed:
+                    self._last_hwnd = hwnd
+                    self._last_window_title = window_title
                     self._last_win_bounds = win_bounds
                     await self._broadcast_live_mode_status(
                         is_active=True,
@@ -233,8 +322,7 @@ class LiveModeEngine:
                     )
 
                 # Event-driven callback trigger: notify when window changes or proactive suggestion is generated
-                if self.on_context_update and (window_title != self._last_window_title or suggestion):
-                    self._last_window_title = window_title
+                if self.on_context_update and (has_window_changed or suggestion):
                     try:
                         if asyncio.iscoroutinefunction(self.on_context_update):
                             await self.on_context_update(frame)
@@ -244,11 +332,11 @@ class LiveModeEngine:
                         logger.error(f"Error in Live Mode callback: {cb_err}")
 
                 elapsed = time.time() - start_t
-                sleep_t = max(0.1, self.perception_interval - elapsed)
+                sleep_t = max(0.05, self.current_interval - elapsed)
                 await asyncio.sleep(sleep_t)
 
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"Error in Live Mode perception loop: {e}")
-                await asyncio.sleep(2.0)
+                await asyncio.sleep(1.0)

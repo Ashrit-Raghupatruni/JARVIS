@@ -17,9 +17,10 @@ const testScript = path.resolve(backendDir, 'tests', 'test_routes.py');
 console.log(`Running route tests using python: ${pythonPath}`);
 console.log(`Test script: ${testScript}`);
 
-const child = spawn(pythonPath, [testScript], {
+const child = spawn(pythonPath, ['-m', 'pytest', testScript], {
   stdio: 'inherit',
-  cwd: backendDir,
+  cwd: rootDir,
+  env: { ...process.env, PYTHONPATH: rootDir },
   shell: true
 });
 

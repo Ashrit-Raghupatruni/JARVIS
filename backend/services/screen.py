@@ -192,16 +192,17 @@ class ScreenService:
         # Try Google Gemini Vision first
         if settings.GEMINI_API_KEY:
             try:
-                import google.generativeai as genai
+                from google import genai
+                from google.genai import types
                 # Convert PIL image to bytes
                 buffer = io.BytesIO()
                 image.save(buffer, format="PNG")
                 img_bytes = buffer.getvalue()
 
-                # Set up generative AI model
-                genai.configure(api_key=settings.GEMINI_API_KEY)
-                model = genai.GenerativeModel(
-                    model_name=settings.GEMINI_MODEL or "gemini-1.5-flash",
+                client = genai.Client(api_key=settings.GEMINI_API_KEY)
+                model_name = settings.GEMINI_MODEL or "gemini-1.5-flash"
+                config = types.GenerateContentConfig(
+                    max_output_tokens=1024,
                     system_instruction=(
                         "You are JARVIS, an AI desktop assistant analyzing a screenshot. "
                         "Describe what you see accurately and concisely. If there are errors, "
@@ -209,14 +210,15 @@ class ScreenService:
                     )
                 )
 
-                logger.info("Analyzing screen using Google Gemini Vision...")
+                logger.info("Analyzing screen using Google Gemini Vision (google-genai SDK)...")
                 try:
-                    response = await model.generate_content_async(
+                    response = await client.aio.models.generate_content(
+                        model=model_name,
                         contents=[
                             question,
-                            {"mime_type": "image/png", "data": img_bytes}
+                            types.Part.from_bytes(data=img_bytes, mime_type="image/png")
                         ],
-                        generation_config={"max_output_tokens": 1024}
+                        config=config
                     )
                 except Exception as e:
                     if settings.GEMINI_API_KEY_ALT:
@@ -225,26 +227,19 @@ class ScreenService:
                         settings.GEMINI_API_KEY = settings.GEMINI_API_KEY_ALT
                         settings.GEMINI_API_KEY_ALT = old_key
 
-                        genai.configure(api_key=settings.GEMINI_API_KEY)
-                        model = genai.GenerativeModel(
-                            model_name=settings.GEMINI_MODEL or "gemini-1.5-flash",
-                            system_instruction=(
-                                "You are JARVIS, an AI desktop assistant analyzing a screenshot. "
-                                "Describe what you see accurately and concisely. If there are errors, "
-                                "warnings, or notable UI elements, highlight them. Be helpful and direct."
-                            )
-                        )
-                        response = await model.generate_content_async(
+                        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+                        response = await client.aio.models.generate_content(
+                            model=model_name,
                             contents=[
                                 question,
-                                {"mime_type": "image/png", "data": img_bytes}
+                                types.Part.from_bytes(data=img_bytes, mime_type="image/png")
                             ],
-                            generation_config={"max_output_tokens": 1024}
+                            config=config
                         )
                     else:
                         raise e
 
-                result = response.text
+                result = response.text or ""
                 logger.info(f"Gemini Vision analysis completed: {len(result)} chars")
                 return result
             except Exception as e:

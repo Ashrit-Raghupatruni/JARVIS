@@ -396,7 +396,8 @@ async def get_self_diagnostics():
     
     cpu = psutil.cpu_percent()
     ram = psutil.virtual_memory().percent
-    disk = psutil.disk_usage('C:\\').percent
+    root_path = os.path.abspath(os.sep)
+    disk = psutil.disk_usage(root_path).percent
 
     llm_status = "Online"
     router = ServiceManager.get_instance("llm_router")

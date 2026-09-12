@@ -105,28 +105,21 @@ class ResearchAgentService:
         page_count = 1
 
         try:
-            # Try PyPDF2 / pypdf if available
+            # Parse PDF using standard pypdf
             import pypdf
             reader = pypdf.PdfReader(path)
             page_count = len(reader.pages)
             text_runs = [page.extract_text() for page in reader.pages[:5]]
             extracted_text = "\n".join(text_runs)
-        except Exception:
+        except Exception as e:
+            logger.debug("pypdf parsing fallback: {}", e)
+            # Raw text scan fallback
             try:
-                import PyPDF2
-                reader = PyPDF2.PdfReader(path)
-                page_count = len(reader.pages)
-                text_runs = [page.extract_text() for page in reader.pages[:5]]
-                extracted_text = "\n".join(text_runs)
-            except Exception as e:
-                logger.debug("PyPDF fallback failed: {}", e)
-                # Raw text scan fallback
-                try:
-                    with open(path, "rb") as f:
-                        raw = f.read(10000)
-                        extracted_text = raw.decode("latin1", errors="ignore")[:1000]
-                except Exception:
-                    extracted_text = f"Sample text extracted from PDF document '{path.name}'."
+                with open(path, "rb") as f:
+                    raw = f.read(10000)
+                    extracted_text = raw.decode("latin1", errors="ignore")[:1000]
+            except Exception:
+                extracted_text = f"Sample text extracted from PDF document '{path.name}'."
 
         headings = [line.strip() for line in extracted_text.split("\n") if line.strip() and len(line.strip()) < 80][:5]
 

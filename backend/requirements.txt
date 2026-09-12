@@ -1,47 +1,64 @@
 # JARVIS Personal AI Operating System - Backend Requirements (Mirror of Root requirements.txt)
 
+# ── Core Server & Async Framework ──────────────────────────
 fastapi>=0.115.0
 uvicorn[standard]>=0.34.0
 python-dotenv>=1.0.0
 pydantic>=2.10.0
 pydantic-settings>=2.9.0
 websockets>=15.0.0
+
+# ── Database & Structured Storage ──────────────────────────
 sqlalchemy>=2.0.0
 aiosqlite>=0.20.0
+
+# ── Memory, Vector RAG & Knowledge Graph ───────────────────
 chromadb>=1.0.0
 sentence-transformers>=4.0.0
+networkx>=3.0
+
+# ── Logging, Telemetry & Core Utilities ────────────────────
 loguru>=0.7.0
 httpx>=0.24.0
 aiofiles>=24.0.0
 psutil>=6.0.0
 numpy>=1.24.0
-networkx>=3.0
 beautifulsoup4>=4.12.0
-PyPDF2>=3.0.0
+
+# ── Document Parsing & Media Formats ───────────────────────
 pypdf>=3.10.0
 Pillow>=9.5.0
-pytesseract>=0.3.10
+
+# ── Security, Auth & Safe Storage ──────────────────────────
 cryptography>=41.0.0
 PyJWT>=2.7.0
 keyring>=24.0.0
 send2trash>=1.8.0
 qrcode>=8.0.0
+
+# ── AI Orchestration, Local Inference & LLM Clients ────────
 torch>=2.0.0
-langchain-core>=0.1.0
-langgraph>=0.1.0
 openai>=1.0.0
 google-genai>=0.1.0
-google-generativeai>=0.3.0
+langchain-core>=0.1.0
+langgraph>=0.1.0
+
+# ── Voice, Audio & Speech Intelligence ─────────────────────
 faster-whisper>=1.0.0
 sounddevice>=0.4.6
 openwakeword>=0.5.0
 edge-tts>=6.1.9
 elevenlabs>=0.2.27
+
+# ── Desktop, OCR & Browser Automation ──────────────────────
 pyautogui>=0.9.54
 keyboard>=0.13.5
 pyperclip>=1.8.2
+pytesseract>=0.3.10
 pywhatkit>=5.4
 playwright>=1.35.0
+
+# ── Windows Platform-Specific Interlocks ───────────────────
 pywin32>=306; sys_platform == "win32"
 pywinauto>=0.6.8; sys_platform == "win32"
 pycaw>=20230407; sys_platform == "win32"

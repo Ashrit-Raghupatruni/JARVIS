@@ -293,3 +293,29 @@
 - **Solution**: Created `scratch/test_outcome_based_verification.py` verifying both Level 1 technical execution and Level 2 real-world user outcomes.
 - **Verification**: `backend/venv/Scripts/python.exe scratch/test_outcome_based_verification.py` passed 6/6 checks (100% success).
 
+---
+
+## 📍 Modern Architecture & Consolidation Milestones (Phases 10–17)
+
+| Phase | Subsystem / Objective | Status | Implementation | Automated Test | Outcome Verified |
+| :---: | :--- | :---: | :---: | :---: | :---: |
+| **Phase 10** | **Unified 4-Tier Memory Package** | **COMPLETED** | ✅ Done | ✅ `test_memory_architecture.py` | ✅ Working, Long-Term, Episodic & Semantic vector RAG |
+| **Phase 11** | **Startup Optimization & Service Container** | **COMPLETED** | ✅ Done | ✅ `test_service_manager_startup.py` | ✅ 46 lazy factories, circular dependency guard, fast boot |
+| **Phase 12** | **Live Mode Perception Optimization** | **COMPLETED** | ✅ Done | ✅ `test_live_perception_optimization.py` | ✅ Differential UIA scene graph cache, adaptive backoff |
+| **Phase 13** | **Consolidated Voice Architecture** | **COMPLETED** | ✅ Done | ✅ `test_voice_architecture.py` | ✅ 3-tier TTS fallback, lazy Whisper STT, openwakeword |
+| **Phase 14** | **Consolidated Automation Architecture** | **COMPLETED** | ✅ Done | ✅ `test_automation_architecture.py` | ✅ Desktop, Playwright browser, UIA & ActionVerifier |
+| **Phase 15** | **Truthful Tool Registry Hardening** | **COMPLETED** | ✅ Done | ✅ `test_tool_registry_hardening.py` | ✅ 61 executable tools, normalized errors, parameter checks |
+| **Phase 16** | **Python Dependency Stack Cleanup** | **COMPLETED** | ✅ Done | ✅ `test_master_integration_suite.py` | ✅ Standardized pypdf & google-genai, 8 dependency tiers |
+| **Phase 17** | **Repository Artifact Cleanup & Hygiene** | **COMPLETED** | ✅ Done | ✅ Full Master Pytest Suite | ✅ Clean .gitignore, untracked logs/traces & local.properties |
+
+---
+
+### Master Test Suite Status
+```powershell
+backend\venv\Scripts\python.exe -m pytest backend/tests/ -q
+```
+```text
+116 passed in 53.87s (100% Pass Rate · 0 Failures · 0 Regressions)
+```
+
+

@@ -2,128 +2,135 @@
   "project_name": "JARVIS Personal AI Operating System",
   "version": "1.0.0",
   "capabilities": {
-    "rag_memory": {
-      "name": "RAG & Memory Context Engine",
+    "core_service_container": {
+      "name": "Core Service Container & Dependency Injection",
       "status": "IMPLEMENTED",
-      "description": "ChromaDB-based vector store and SQLAlchemy WAL persistent SQLite database. Ingests docx, pptx, pdf with TF-IDF fallback.",
+      "description": "Unified thread-safe ServiceManager with lifecycle management, circular dependency protection, and 46 registered lazy factories.",
       "implementation_files": [
-        "backend/services/rag_service.py",
-        "backend/services/memory.py"
+        "backend/services/manager.py",
+        "backend/services/bootstrap.py"
       ],
       "test_files": [
-        "backend/tests/test_rag.py",
-        "backend/tests/test_memory.py"
+        "backend/tests/test_service_manager_startup.py",
+        "backend/tests/test_platform_isolation.py"
       ],
-      "dependencies": ["chromadb", "sentence-transformers", "sqlalchemy"]
+      "dependencies": ["fastapi", "pydantic", "loguru"]
     },
-    "local_ai_reasoner": {
-      "name": "Prash Local AI Engine",
+    "intent_planning_orchestration": {
+      "name": "Intent Classification & Planning Orchestration",
       "status": "IMPLEMENTED",
-      "description": "Decoder-only GPT-style transformer built from scratch in PyTorch, loaded dynamically for offline reasoning tasks.",
+      "description": "Hierarchical intent classification with fast-path deterministic intercepts, plan validation, and structured step tracking.",
       "implementation_files": [
-        "backend/prash/model.py",
-        "backend/prash/engine.py"
+        "backend/agents/router.py",
+        "backend/agents/planner/planner.py",
+        "backend/agents/planner/task_decomposer.py",
+        "backend/agents/planner/plan_validator.py",
+        "backend/agents/planner/execution_plan.py"
       ],
       "test_files": [
-        "backend/tests/test_prash.py"
+        "backend/tests/test_agent_ecosystem.py",
+        "backend/tests/test_master_integration_suite.py"
       ],
-      "dependencies": ["torch", "numpy"]
+      "dependencies": ["pydantic", "loguru"]
+    },
+    "domain_agents_ecosystem": {
+      "name": "Domain Specialized Agents & Multi-Agent IPC",
+      "status": "IMPLEMENTED",
+      "description": "Four specialized domain agents (General, Research, Developer, Automation) with inter-agent message passing and state management.",
+      "implementation_files": [
+        "backend/agents/domain/general_agent.py",
+        "backend/agents/domain/research_agent.py",
+        "backend/agents/domain/developer_agent.py",
+        "backend/agents/domain/automation_agent.py",
+        "backend/services/agent_ecosystem.py"
+      ],
+      "test_files": [
+        "backend/tests/test_agent_ecosystem.py"
+      ],
+      "dependencies": ["pydantic", "loguru"]
+    },
+    "unified_memory_system": {
+      "name": "Unified 4-Tier Memory System",
+      "status": "IMPLEMENTED",
+      "description": "Coordinated memory management across Working Memory (sliding window), Long-Term Memory (ChromaDB + NetworkX), Episodic Memory (SQLite WAL), and Semantic Memory (vector RAG).",
+      "implementation_files": [
+        "backend/services/memory/manager.py",
+        "backend/services/memory/working_memory.py",
+        "backend/services/memory/long_term_memory.py",
+        "backend/services/memory/episodic_memory.py",
+        "backend/services/memory/semantic_memory.py"
+      ],
+      "test_files": [
+        "backend/tests/test_memory_architecture.py"
+      ],
+      "dependencies": ["chromadb", "sentence-transformers", "sqlalchemy", "networkx", "aiosqlite"]
+    },
+    "consolidated_automation": {
+      "name": "Consolidated Desktop & Browser Automation Suite",
+      "status": "IMPLEMENTED",
+      "description": "Unified automation orchestrator with Win32/PyAutoGUI desktop execution, Playwright browser navigation, UIA control tree perception, and pre/post action verification.",
+      "implementation_files": [
+        "backend/services/automation/orchestrator.py",
+        "backend/services/automation/desktop_executor.py",
+        "backend/services/automation/browser_executor.py",
+        "backend/services/automation/uia_perception.py",
+        "backend/services/automation/verifier.py"
+      ],
+      "test_files": [
+        "backend/tests/test_automation_architecture.py",
+        "backend/tests/test_all_11_os_capabilities.py"
+      ],
+      "dependencies": ["pyautogui", "playwright", "pywin32", "pywinauto"]
+    },
+    "voice_speech_intelligence": {
+      "name": "Voice Pipeline & Multi-Tier Speech Synthesis",
+      "status": "IMPLEMENTED",
+      "description": "Voice coordinator with Faster-Whisper local STT, OpenWakeWord listener, 3-tier TTS fallback (Edge-TTS -> Piper Local ONNX -> SAPI SpVoice), and real-time barge-in cancellation.",
+      "implementation_files": [
+        "backend/services/voice/voice_manager.py",
+        "backend/services/voice/stt_manager.py",
+        "backend/services/voice/tts_manager.py",
+        "backend/services/voice/wake_word_manager.py",
+        "backend/services/voice/audio_device_manager.py",
+        "backend/services/voice/intelligence.py"
+      ],
+      "test_files": [
+        "backend/tests/test_voice_architecture.py"
+      ],
+      "dependencies": ["faster-whisper", "openwakeword", "edge-tts", "sounddevice", "numpy"]
+    },
+    "truthful_tool_registry": {
+      "name": "Truthful Tool Registry & Safety Gates",
+      "status": "IMPLEMENTED",
+      "description": "Centralized registry with 61 executable system tools, strict error normalization, parameter validation, risk classification, and sensitive argument redaction.",
+      "implementation_files": [
+        "backend/services/tool_registry.py"
+      ],
+      "test_files": [
+        "backend/tests/test_tool_registry_hardening.py",
+        "backend/tests/test_all_11_os_capabilities.py"
+      ],
+      "dependencies": ["pydantic", "loguru", "psutil"]
     },
     "live_mode_perception": {
-      "name": "Live Mode Screen Perception",
+      "name": "Live Mode Screen & Desktop Perception",
       "status": "IMPLEMENTED",
-      "description": "Continuous background desktop UIA scene graph observer, sending focus overlays and proactive suggestions.",
+      "description": "Event-driven adaptive perception loop with differential UIA scene graph caching, throttled WorldModel inspection, and zero LLM calls during static observation.",
       "implementation_files": [
         "backend/services/live_mode/live_engine.py",
-        "frontend/src/renderer/src/components/LivePerceptionVisualizer.tsx"
+        "backend/services/perception/uia_scene_graph.py",
+        "backend/services/world_model.py",
+        "backend/services/perception/spatial_engine.py"
       ],
       "test_files": [
-        "backend/tests/test_live_mode.py"
+        "backend/tests/test_live_perception_optimization.py"
       ],
-      "dependencies": ["pywin32", "pywinauto"]
-    },
-    "speech_voice_pipeline": {
-      "name": "Speech Recognition & Wake Word",
-      "status": "IMPLEMENTED",
-      "description": "Bidirectional voice processing with faster-whisper STT, openwakeword wake word detector, and edge-tts text-to-speech.",
-      "implementation_files": [
-        "backend/agents/voice.py",
-        "backend/services/speech.py"
-      ],
-      "test_files": [
-        "backend/tests/test_speech.py"
-      ],
-      "dependencies": ["faster-whisper", "openwakeword", "edge-tts"]
-    },
-    "desktop_automation": {
-      "name": "Desktop & Browser Automation",
-      "status": "IMPLEMENTED",
-      "description": "Simulates keyboard strokes, hotkeys, mouse clicks, and Playwright browser orchestration.",
-      "implementation_files": [
-        "backend/services/automation.py",
-        "backend/services/browser.py"
-      ],
-      "test_files": [
-        "backend/tests/test_automation.py"
-      ],
-      "dependencies": ["pyautogui", "playwright"]
-    },
-    "hand_gesture_control": {
-      "name": "Hand Gesture Cursor & Desktop Control",
-      "status": "IMPLEMENTED",
-      "description": "Camera perception cursor controls using MediaPipe landmarker, tracking clicks, scrolling, and dragging.",
-      "implementation_files": [
-        "frontend/src/renderer/src/lib/handTracker.ts",
-        "backend/services/hand_control_service.py"
-      ],
-      "test_files": [
-        "backend/tests/test_hand_control.py"
-      ],
-      "dependencies": ["@mediapipe/tasks-vision", "pywin32", "pyautogui"]
-    },
-    "self_development_agent": {
-      "name": "Self-Development Developer Agent",
-      "status": "IMPLEMENTED",
-      "description": "Backend engine capable of scanning codebases, detecting lint/build errors, applying AST patches, and executing repairs.",
-      "implementation_files": [
-        "backend/services/self_development_service.py",
-        "backend/services/developer_assistant.py"
-      ],
-      "test_files": [
-        "backend/tests/test_self_development.py"
-      ],
-      "dependencies": ["ast", "subprocess"]
-    },
-    "self_healing_pipeline": {
-      "name": "Self-Healing Runtime Recovery",
-      "status": "IMPLEMENTED",
-      "description": "Intercepts runtime execution faults, diagnoses root cause, executes recovery scripts, and stores experience lessons.",
-      "implementation_files": [
-        "backend/services/self_healing.py",
-        "backend/services/experience.py"
-      ],
-      "test_files": [
-        "backend/tests/test_self_healing.py"
-      ],
-      "dependencies": ["shutil", "os"]
-    },
-    "mobile_companion_sync": {
-      "name": "Mobile Companion Gateway & Lockscreen",
-      "status": "IMPLEMENTED",
-      "description": "FastAPI WebSockets sync with secure Lockscreen face authentication and mobile remote shutdowns.",
-      "implementation_files": [
-        "frontend/src/renderer/src/components/FaceLockScreen.tsx",
-        "backend/services/mobile_bridge.py"
-      ],
-      "test_files": [
-        "backend/tests/test_mobile_bridge.py"
-      ],
-      "dependencies": ["cryptography", "pyjwt"]
+      "dependencies": ["pywin32", "pywinauto", "psutil"]
     },
     "multimodal_generation_engine": {
       "name": "Multimodal Generative Media Engine",
       "status": "IMPLEMENTED",
-      "description": "Async generation queue with SQLite persistence for Image (Stable Diffusion / DALL-E), Video (SVD / Runway), and 3D mesh (Three.js / Meshy) generation with fail-closed preflight adapters.",
+      "description": "Async media generation queue with SQLite persistence for Image, Video, and 3D mesh synthesis with fail-closed preflight adapters.",
       "implementation_files": [
         "backend/services/async_generation_queue.py",
         "backend/services/image_generator.py",
@@ -134,7 +141,7 @@
       "test_files": [
         "backend/tests/test_capability_expansion_full.py"
       ],
-      "dependencies": ["sqlite3", "aiohttp", "torch"]
+      "dependencies": ["sqlite3", "torch", "httpx"]
     },
     "chemoinformatics_science_engine": {
       "name": "Science & Chemoinformatics Engine",
@@ -147,7 +154,7 @@
       "test_files": [
         "backend/tests/test_capability_expansion_full.py"
       ],
-      "dependencies": ["urllib", "re", "json"]
+      "dependencies": ["httpx", "re", "json"]
     },
     "design_ui_scaffolder": {
       "name": "Design Assistant & Web App Scaffolder",
@@ -173,20 +180,64 @@
       "test_files": [
         "backend/tests/test_capability_expansion_full.py"
       ],
-      "dependencies": ["cv2", "numpy", "PIL"]
+      "dependencies": ["numpy", "Pillow", "pytesseract"]
     },
     "productivity_notes_copywriter": {
-      "name": "Productivity Notes & Copywriting Suite",
+      "name": "Productivity Notes, Copywriting & Prompt Pipeline",
       "status": "IMPLEMENTED",
-      "description": "Markdown note persistence (take, list, search) in data/notes/ and multi-channel marketing copywriting generator (social, email, landing, ad).",
+      "description": "Markdown note persistence (take, list, search) in data/notes/, multi-channel copywriting generator, and prompt transformation pipeline (summarization, style rewrite, sentiment, entity extraction).",
       "implementation_files": [
         "backend/services/productivity_service.py",
-        "backend/services/skills/productivity_skill.py"
+        "backend/services/skills/productivity_skill.py",
+        "backend/services/prompt_pipeline.py"
       ],
       "test_files": [
         "backend/tests/test_capability_expansion_phase1.py"
       ],
-      "dependencies": ["pathlib", "json"]
+      "dependencies": ["pathlib", "json", "pydantic"]
+    },
+    "security_sandbox_gatekeeper": {
+      "name": "Security Sandbox & Approval Gatekeeper",
+      "status": "IMPLEMENTED",
+      "description": "AST allowlist sandbox, encrypted credential vault, face authentication liveness detection, and fail-closed mobile/desktop approval intercept.",
+      "implementation_files": [
+        "backend/services/security/sandbox.py",
+        "backend/services/security/face_auth_engine.py",
+        "backend/services/security/vault.py",
+        "backend/services/mobile_bridge.py"
+      ],
+      "test_files": [
+        "backend/tests/test_master_integration_suite.py"
+      ],
+      "dependencies": ["cryptography", "pyjwt", "keyring"]
+    },
+    "mobile_companion_gateway": {
+      "name": "Mobile Companion Gateway & Remote Control",
+      "status": "IMPLEMENTED",
+      "description": "FastAPI WebSockets sync with JWT authentication, telemetry streaming, remote approval cards, and lockscreen coordination.",
+      "implementation_files": [
+        "backend/api/mobile_router.py",
+        "backend/api/mobile_ws.py",
+        "backend/services/mobile_bridge.py"
+      ],
+      "test_files": [
+        "backend/tests/test_routes.py",
+        "backend/tests/test_master_integration_suite.py"
+      ],
+      "dependencies": ["fastapi", "websockets", "pyjwt"]
+    },
+    "local_ai_reasoner": {
+      "name": "Prash Local AI Reasoner & Transformer",
+      "status": "IMPLEMENTED",
+      "description": "Decoder-only GPT-style transformer in PyTorch with token prediction entropy gating for instant offline execution.",
+      "implementation_files": [
+        "backend/prash/model.py",
+        "backend/prash/engine.py"
+      ],
+      "test_files": [
+        "backend/tests/test_master_integration_suite.py"
+      ],
+      "dependencies": ["torch", "numpy"]
     }
   }
 }

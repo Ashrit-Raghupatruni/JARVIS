@@ -17,7 +17,6 @@ from email.header import decode_header
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-import pywhatkit
 
 from backend.services.skills.base import BaseSkill, skill_tool
 from backend.utils.logger import logger
@@ -178,6 +177,7 @@ class CommunicationSkill(BaseSkill):
     def send_whatsapp_message(self, phone_number: str, message: str) -> str:
         clean_num = phone_number.replace(" ", "").strip()
         try:
+            import pywhatkit
             logger.info("Sending WhatsApp message to {}", clean_num)
             # sendwhatmsg_instantly opens a browser page. WaitTime defines loading buffer.
             pywhatkit.sendwhatmsg_instantly(clean_num, message, wait_time=15, tab_close=True, close_time=3)

@@ -181,6 +181,13 @@ Expanded JARVIS's capability surface across multimodal generation, specialized t
 - [x] **Phase 5: Cloud Video Generation Adapter (September 8, 2026)**: Created `backend/services/video_generator.py` integrating cloud video APIs (Replicate CogVideoX/SVD, Runway Gen-3, Luma) via the Async Generation Queue.
 - [x] **Phase 5: 3D Scene & Asset Generator (September 8, 2026)**: Created `backend/services/threed_generator.py` providing procedural Three.js WebGL 3D scene code and cloud neural 3D mesh adapter (Meshy/Tripo3D).
 - [x] **Phase 5: Master Capability Expansion Test Suite (September 8, 2026)**: Built `backend/tests/test_capability_expansion_full.py` verifying all new capabilities across all 5 phases, achieving **65/65 tests passing (100% pass rate)**.
+- [x] **Phase 6: Master Architecture Consolidation & Ground-Truth Audit (September 12, 2026)**:
+  - Rebuilt and validated `backend/CapabilityRegistry.json` mapping all 16 capabilities to active disk implementation and test suites.
+  - Enforced strict execution truthfulness across all 61 executable tools in `ToolRegistry` (zero fake mock successes).
+  - Consolidated 3-tier TTS fallback architecture (`Edge-TTS` -> `Piper Local ONNX` -> `SAPI SpVoice`).
+  - Implemented lazy-loaded `ServiceManager` with fast startup and deterministic lifecycle.
+  - Verified full master test suite of 12 test files with **116/116 tests passing (100% pass rate)**.
+
 
 
 

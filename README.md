@@ -17,15 +17,15 @@
 ## ✨ Features
 
 ### 🎤 Voice Control, Mobile Companion & Live Mode AI Co-Pilot
-- **Dual-Provider Offline TTS Engine** — Abstracted voice architecture featuring `EdgeTTSProvider` (online Microsoft streaming neural audio) with seamless, zero-exception automatic failover to `LocalTTSProvider` (offline Windows Native SAPI `SpVoice` / `SpFileStream`). Preserves real-time barge-in and cancellation.
-- **Dedicated Live Mode (AI Screen Assistant)** — Real-time continuous desktop observation operating mode. Extracts structured Win32 UIA Scene Graphs (~15ms Win32 UIA tree capture), offers step-by-step next logical guidance, smart form auto-fill with pre-submission validation, and multi-monitor workspace layout restorer (**Coding** & **Research** layouts).
+- **3-Tier Neural & Offline TTS Pipeline** — Multi-tier voice architecture featuring Microsoft Edge-TTS streaming neural audio with seamless automatic fallback to offline local Piper ONNX neural synthesis and tertiary Windows Native SAPI `SpVoice` / `SpFileStream`. Preserves real-time barge-in and cancellation.
+- **Dedicated Live Mode (AI Screen Assistant)** — Real-time continuous desktop observation operating mode. Differential Win32 UIA Scene Graph caching, adaptive backoff observation loop (0.5s active to 2.5s static), next logical guidance, and multi-monitor workspace layout restorer.
 - **Persistent Chat History (Claude/GPT-Style)** — Browsable, persistent conversation sessions stored in SQLite (`jarvis.db`) with automatic first-message title generation, session sidebar (`ConversationSidebar.tsx`), inline renaming, deletion, and transcript restoration.
 - **Live Mode Browser Automation Engine** — Native multi-step perceive-decide-act-observe agent loop (`run_browser_agent` in `BrowserService`) and `browser_agent_task` tool for autonomous web research.
 - **Proactive Desktop Intelligence Suite** — Instant TTS interrupt barge-in (`cancel_playback`), exponential backoff retry decorator, 3.0s vision rate-limiter, Windows Registry boot auto-start (`system_autostart.py`), Clipboard Quick-Action Intelligence (`clipboard_intelligence.py`), session memory continuity (`session_memory.json`), background topic monitoring with content safety filters, and Proactive 2.0 with a 20-minute interjection cooldown timer.
 - **Structured Layout & Table OCR Engine** — Bounding box, structured table, and layout extraction in `VisionService` with PP-StructureV3 deep vision, pytesseract, and PIL grid fallback.
 - **Fail-Closed Mobile & Telegram Gatekeeper Intercept** — Strictly fail-closed permission gatekeeper. Intercepts laptop window close, terminal exit, or dangerous system commands (`rm -rf`, `shutdown`). Broadcasts high-priority approval cards over WebSocket and Telegram with 1-click `[Approve]` / `[Deny]` control. Fails closed (denies action) if transport is offline.
 - **Standalone Backend Hand Tracking CV Worker** — Background `CameraWorker` thread capturing OpenCV frames, classifying landmarks via `GestureEngine` (`PINCH`, `OPEN_PALM`, `FIST`, `SWIPE`), filtering by confidence (`0.7`), and applying `150ms` debouncing. Works even when the Electron window is minimized.
-- **Sub-250ms Fast n8n Integration** — Pre-flight TCP socket probing reduces n8n offline failure latency from 4.12s to ~250ms. Bi-directional Visual Canvas <-> n8n graph translation and 6 LLM tools.
+- **Fast Non-Blocking n8n Integration** — Pre-flight TCP socket probing eliminates connection timeout stalls when n8n is offline. Bi-directional Visual Canvas <-> n8n graph translation and 6 LLM tools.
 - **Real Mobile Voice Input & Companion App** — Live microphone audio recording streaming base64 chunks over WebSocket to backend `faster-whisper` STT in `mobile_ws.py`. Companion Android app features 8 modular tabs, real-time telemetry HUD streaming, remote screen preview, and dynamic approval cards.
 - **Laptop Battery Level Mobile Alerts** — Automatic push & WebSocket notifications sent to phone at 30% (Warning) and 20% (Critical) unplugged battery levels.
 - **Double Clap Detection Engine** — Acoustic Peak-to-Average Power Ratio (PAPR > 3.2) transient filter with TTS speaker activity guard; double clapping when JARVIS is minimized or sleeping instantly restores and focuses the desktop window.
@@ -39,20 +39,20 @@
 - **SQLite FTS5 Natural Language File Indexer** — Sub-second natural language file search engine (`FileIndexerService`).
 - **Visual Workflow Builder** — Node-based visual workflow editor (`VisualWorkflowBuilder.tsx`) with interactive Bezier SVG connectors, node library, parameter tuning, and reusable workflow templates.
 - **Task Queue & Command Scheduler** — Thread-safe task queue visualizer (`TaskQueueManager.tsx`) supporting priority reordering, pause, resume, cancellation, and task persistence.
-- **Live Execution Timeline Pipeline** — 9-stage visual execution pipeline component (`TaskProgress.tsx`) rendering live status indicators across `Intent Detection` → `Planner` → `Memory` → `Tool Selection` → `RAG` → `Web Research` → `LLM` → `Validation` → `Response`.
+- **Live Execution Timeline Pipeline** — Visual execution pipeline rendering live status indicators across `Intent Detection` → `Planner` → `Memory` → `Tool Selection` → `RAG` → `Web Research` → `LLM` → `Validation` → `Response`.
 - **3D WebGL Arc Reactor Focal Core** — Procedural 3D wireframe centerpiece with 6 animated state transitions (Idle, Listening, Thinking, Speaking, Executing, Error).
 - **Command Palette (`Ctrl+K`)** — Instant keyboard shortcut palette for quick actions, system benchmarks, and screen inspection.
 
 ### 🧠 AI Brain, Prash Engine & Resilient Fallback Routing (100% Verified)
-- **Prash Local AI Engine** — Custom 0.70M-parameter Transformer model evaluating token prediction entropy for instant local responses; seamlessly handoffs to cloud cascade when entropy threshold is exceeded.
-- **Multi-Provider Fallback Cascade** — Dynamic routing across Ollama (#1 Local), Gemini, Groq, OpenRouter, and OpenAI with 5-minute circuit-breaker recovery.
+- **Prash Local AI Engine** — Custom Transformer model evaluating token prediction entropy for instant local responses; seamlessly handoffs to cloud cascade when entropy threshold is exceeded.
+- **Multi-Provider Fallback Cascade** — Dynamic routing across Ollama (#1 Local), Gemini, Groq, OpenRouter, and OpenAI with circuit-breaker recovery.
 - **Response Quality Evaluator & Web Recovery** — Automatically triggers autonomous web research if LLM outputs fail or return incomplete answers.
-- **Instant Factual Fast-Paths** — Sub-0.01s Date/Time, System Control, Volume, and Hardware Telemetry intercepts preventing LLM latency.
+- **Instant Factual Fast-Paths** — Deterministic Date/Time, System Control, Volume, and Hardware Telemetry intercepts preventing LLM latency.
 - **Interactive Vision & Screen Inspector** — Real-time win32 foreground window HWND inspection and desktop screenshot capture.
 - **Playwright Browser Research** — Interactive URL navigation, web search, page summarization, and one-click RAG indexing.
 - **RAG Knowledge Hub** — Drag & drop file uploads, folder indexer, live vector search, and document chunk management.
-- **6-Scope Memory Explorer** — Working, Conversational, Vector (ChromaDB), and Knowledge Graph scopes with search, pin, delete, and clear controls.
-- **Multi-Agent Orchestrator** — Real-time agent status grid with Pause, Resume, and Task Dispatch controls.
+- **4-Tier Memory Explorer** — Working, Long-Term (ChromaDB + NetworkX), Episodic (experiences.db), and Semantic RAG scopes with search, pin, delete, and clear controls.
+- **Multi-Agent Orchestrator** — 4 strong domain agents (General, Research, Developer, Automation) with task delegation and IPC state management.
 - **Workflow & Macro Manager** — Custom workflow recorder, macro playback, and deletion.
 
 
@@ -104,34 +104,22 @@
 
 ---
 
-## 🧩 Registered Skills & Capabilities
+## 🧩 Registered Skills & Truthful Tool Registry
 
-JARVIS uses a modular **Skill Registry** — each skill is a self-contained plugin providing one or more AI-callable tools. The planner agent automatically selects the right tool based on natural language intent.
+JARVIS employs a **Truthful Tool Registry** combined with a modular **Skill Plugin Architecture**. Each tool is strictly verified for executable handlers, parameter schemas, and risk tiers.
 
-> **20 skills · 106 tools** registered at runtime
+> **61 Executable Tools** registered in `ToolRegistry` and modular skills
 
-| # | Skill | Tools | Purpose |
-|---|-------|-------|---------|
-| 1 | 📁 FileSkill | 9 | File system operations |
-| 2 | 📬 CommunicationSkill | 9 | Email, chat, calendar, Android |
-| 3 | 🖥️ SystemSkill | 10 | Processes, network, power, clipboard |
-| 4 | 🪟 AppControlSkill | 6 | Desktop application automation |
-| 5 | 🧠 ContextSkill | 3 | Active window & focus tracking |
-| 6 | 🤖 AgentSkill | 3 | Multi-agent task delegation |
-| 7 | 📰 NewsSkill | 6 | News, digest, deep research |
-| 8 | 👁️ VisionSkill | 4 | Screen analysis & UI grounding |
-| 9 | ⚙️ AutomationSkill | 7 | Macros, workflows, desktop automation |
-| 10 | 💻 DeveloperSkill | 5 | Code analysis, git, dev assistant |
-| 11 | 🔍 ResearchSkill | 5 | Web research, PDF analysis, fact checking |
-| 12 | 🎤 VoiceSkill | 4 | STT, TTS, wake-word, speaker identity |
-| 13 | 📋 ProductivitySkill | 6 | Tasks, reminders, meetings, email drafts |
-| 14 | 🔌 PluginSkill | 6 | Plugin marketplace management |
-| 15 | 🎨 UISkill | 4 | Dashboard HUD & agent monitoring |
-| 16 | 📊 ObservabilitySkill | 4 | Cache, VRAM, telemetry, health |
-| 17 | 🌐 CrossPlatformSkill | 4 | OS compatibility & device sync |
-| 18 | 🚀 DeploymentSkill | 4 | Benchmarks, backup, restore |
-| 19 | 🧬 AutonomousSkill | 4 | Habit learning, goal management |
-| 20 | 🔮 ProactiveSkill | 3 | Scheduled reminders & proactive alerts |
+| Category | Primary Tools | Purpose |
+|---|---|---|
+| 🖥️ **System & Desktop** | `open_application`, `close_application`, `lock_pc`, `get_system_status`, `list_running_processes`, `kill_process`, `get_monitors`, `set_volume` | Windows system controls, process management & hardware telemetry |
+| 📁 **Filesystem** | `read_file`, `write_file`, `delete_file`, `create_file`, `copy_file`, `move_file`, `search_files`, `get_file_info` | Safe filesystem operations and file search |
+| 🌐 **Web & Browser** | `web_search`, `browser_agent_task`, `play_youtube_video`, `deep_research` | Web searching, Playwright autonomous navigation & research |
+| 🪟 **Automation & UI** | `type_text`, `click_element_by_name`, `set_control_value`, `resize_window`, `auto_fill_form`, `execute_rpa_macro` | Desktop RPA, UIA element targeting & form automation |
+| 🧠 **Memory & RAG** | `memory_store`, `rag_knowledge_search`, `forget_memory` | 4-tier memory indexing, recall & ChromaDB search |
+| 🔌 **Integrations** | `n8n_list_workflows`, `n8n_execute_workflow`, `gmail_list_messages`, `google_calendar_list_events`, `outlook_list_messages` | n8n workflow execution, Google Workspace & Microsoft 365 OAuth |
+| 📚 **Learning & Productivity** | `explain_concept`, `generate_quiz`, `take_note`, `list_notes`, `search_notes`, `draft_copy` | Socratic learning, Markdown notes & copy drafting |
+| 🧬 **Science & Multimodal** | `balance_chemical_equation`, `calculate_molecular_weight`, `generate_image`, `generate_video`, `generate_3d_asset` | Chemoinformatics, PubChem queries & async media generation |
 
 ---
 
@@ -621,14 +609,19 @@ npm run dev
 
 ### Running Automated Tests
 
-To verify that all REST endpoints are working correctly, run the automated route test suite:
+#### 1. Backend Master Pytest Suite (12 Suites · 116 Tests)
+```powershell
+# Run the complete verified backend test suite
+backend\venv\Scripts\python.exe -m pytest backend/tests/ -q
+```
+*Executes all 12 master test suites covering service container, intent routing, domain agents, 4-tier memory, automation executors, voice pipeline, truthful tool registry, live mode perception, and capability expansion.*
 
+#### 2. Frontend & Route Integration Tests
 ```bash
 cd frontend
 npm test
 ```
-
-This spins up the FastAPI backend, tests all 7 REST routes (including health checks, system status, voices list, monitor detection, history, settings management, and commands), and automatically shuts down the server.
+*Validates Electron/React frontend components and REST routes.*
 
 ### Building for Production
 
@@ -641,19 +634,17 @@ npm run build
 
 ## 📋 Tech Stack
 
-| Component | Technology |
-|-----------|-----------|
-| Frontend | Electron + React 19 + Tailwind CSS 4 |
-| Backend | Python + FastAPI |
-| AI Brain | Ollama qwen2.5-coder:3b (Local Primary) + Gemini (Fallback) + OpenAI GPT-4o (Fallback) |
-| Speech-to-Text | faster-whisper |
-| Text-to-Speech | edge-tts |
-| Wake Word | openwakeword |
-| Desktop Automation | pywinauto + PyAutoGUI |
-| Browser Automation | Playwright |
-| OCR | pytesseract |
-| Memory | ChromaDB + SQLite |
-| Communication | WebSocket |
+| Layer / Subsystem | Technologies |
+|---|---|
+| **Frontend HUD** | Electron + React 19 + TypeScript + Tailwind CSS + Lucide Icons + Three.js |
+| **Backend Core** | Python 3.10+ + FastAPI + Uvicorn + Pydantic + Loguru |
+| **LLM Inference** | Ollama (Local) + Google Gemini (`google-genai`) + Groq + OpenRouter + OpenAI |
+| **Local AI Engine** | Prash Transformer (PyTorch + Custom Tokenizer) |
+| **Speech & Audio** | Faster-Whisper + Edge-TTS + Piper ONNX + Windows SAPI SpVoice + OpenWakeWord |
+| **Automation** | PyAutoGUI + PyWinAuto + Playwright Chromium + Win32 API |
+| **Memory & Storage** | ChromaDB + SentenceTransformers + SQLAlchemy + SQLite WAL + NetworkX |
+| **Vision & OCR** | OpenCV + PIL + PyTesseract + Haar Cascades |
+| **Security & Sandbox** | Cryptography + PyJWT + Keyring + AST Allowlist Sandbox + EAR Blink Liveness |
 
 ---
 

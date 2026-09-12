@@ -20,7 +20,7 @@ interface OAuthStatusState {
 }
 
 export default function PairingScreen() {
-  const [host, setHost] = useState('10.1.166.115');
+  const [host, setHost] = useState('10.0.2.2');
   const [port, setPort] = useState('8000');
   const [pin, setPin] = useState('');
   const [deviceName, setDeviceName] = useState('Android Companion');

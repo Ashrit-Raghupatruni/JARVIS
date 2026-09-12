@@ -195,10 +195,11 @@ class DeviceAgent(BaseMicroAgent):
         super().__init__("DeviceAgent", "Hardware metric telemetry (CPU, RAM, GPU, Battery, Disk, WASAPI audio volume).", event_bus)
 
     async def process_message(self, message: MicroAgentMessage) -> Optional[MicroAgentMessage]:
-        import psutil
+        import psutil, os
         cpu = psutil.cpu_percent(interval=0.05) or 15.0
         ram = psutil.virtual_memory().percent
-        disk = psutil.disk_usage("C:\\").percent
+        root_path = os.path.abspath(os.sep)
+        disk = psutil.disk_usage(root_path).percent
         content = f"🖥️ Device Telemetry: CPU {cpu}% | RAM {ram}% | Disk {disk}% | System Operational."
         return MicroAgentMessage(self.name, message.sender, content, "response", payload={"cpu": cpu, "ram": ram, "disk": disk})
 

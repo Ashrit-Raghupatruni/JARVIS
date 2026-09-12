@@ -23,7 +23,10 @@ _start_time = time.time()
 
 
 class CommandRequest(BaseModel):
-    text: str
+    text: Optional[str] = None
+    message: Optional[str] = None
+    prompt: Optional[str] = None
+    conversation_id: Optional[Any] = None
 
 
 class SettingsUpdate(BaseModel):
@@ -200,9 +203,19 @@ async def get_live_mode_status_public(request: Request):
 
 @router.post("/command")
 @router.post("/api/v1/command")
+@router.post("/chat")
+@router.post("/api/chat")
+@router.post("/api/v1/chat")
 async def process_command(cmd: CommandRequest, request: Request):
     """Process a text command and return the AI response."""
     app = request.app
+
+    raw_text = (cmd.text or cmd.message or cmd.prompt or "").strip()
+    if not raw_text:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Empty command text", "status": "error"}
+        )
 
     if not hasattr(app.state, "voice_agent") or not app.state.voice_agent:
         return JSONResponse(
@@ -210,7 +223,7 @@ async def process_command(cmd: CommandRequest, request: Request):
             content={"error": "Voice agent not initialized"},
         )
 
-    if cmd.text == "ping":
+    if raw_text == "ping":
         return {
             "status": "ok",
             "response": "pong",
@@ -219,7 +232,7 @@ async def process_command(cmd: CommandRequest, request: Request):
 
     try:
         messages = []
-        async for msg in app.state.voice_agent.handle_text_command(cmd.text):
+        async for msg in app.state.voice_agent.handle_text_command(raw_text):
             messages.append({"type": msg.type, "data": msg.data})
 
         # Extract the response text

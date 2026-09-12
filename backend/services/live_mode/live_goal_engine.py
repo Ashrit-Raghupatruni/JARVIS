@@ -116,7 +116,17 @@ class LiveGoalExecutionEngine:
         goal_lower = goal.lower()
         steps: List[GoalStep] = []
 
-        if "organize" in goal_lower and ("download" in goal_lower or "folder" in goal_lower or "file" in goal_lower):
+        if "form" in goal_lower or "fill" in goal_lower:
+            steps = [
+                GoalStep(
+                    step_id=1,
+                    description="Detect form fields and auto-fill information",
+                    tool_name="auto_fill_form",
+                    parameters={},
+                    risk_level="reversible"
+                )
+            ]
+        elif "organize" in goal_lower and ("download" in goal_lower or "folder" in goal_lower or "file" in goal_lower):
             steps = [
                 GoalStep(
                     step_id=1,
@@ -312,11 +322,30 @@ class LiveGoalExecutionEngine:
             try:
                 if tool_registry and hasattr(tool_registry, "execute_tool") and tool_registry.get_tool(step.tool_name):
                     res = await tool_registry.execute_tool(step.tool_name, step.parameters)
+                    if isinstance(res, dict) and res.get("status") == "error":
+                        err_msg = res.get("error") or res.get("message") or f"Tool '{step.tool_name}' failed."
+                        step.error = err_msg
+                        step.result = res
+                        step.status = "FAILED"
+                        step.end_time = time.time()
+                        state.status = "FAILED"
+                        state.error_message = f"Step #{step.step_id} ({step.description}) failed: {err_msg}"
+                        logger.error("✗ LiveGoalEngine [Step {}/{}]: Failed: {}", step.step_id, len(steps), err_msg)
+                        await self._emit_progress(state)
+                        break
+                    step.result = res
+                    step.status = "COMPLETED"
+                    step.end_time = time.time()
                 else:
-                    res = {"status": "success", "action": step.tool_name, "message": f"Executed {step.description}"}
-                step.result = res
-                step.status = "COMPLETED"
-                step.end_time = time.time()
+                    err_msg = f"Tool '{step.tool_name}' is not registered or unavailable in ToolRegistry."
+                    step.error = err_msg
+                    step.status = "FAILED"
+                    step.end_time = time.time()
+                    state.status = "FAILED"
+                    state.error_message = f"Step #{step.step_id} failed: {err_msg}"
+                    logger.error("✗ LiveGoalEngine [Step {}/{}]: Failed: {}", step.step_id, len(steps), err_msg)
+                    await self._emit_progress(state)
+                    break
                 logger.info("✓ LiveGoalEngine [Step {}/{}]: Completed '{}'", step.step_id, len(steps), step.description)
             except Exception as e:
                 step.error = str(e)

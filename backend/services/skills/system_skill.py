@@ -7,7 +7,12 @@ WiFi/network controls via netsh, Windows power actions, and clipboard interactio
 import os
 import sys
 import subprocess
-import winreg
+try:
+    import winreg
+    HAS_WINREG = True
+except ImportError:
+    winreg = None
+    HAS_WINREG = False
 import psutil
 import pyperclip
 from typing import Any, Dict, List, Optional
@@ -129,7 +134,7 @@ class SystemSkill(BaseSkill):
         parameters={"type": "object", "properties": {}, "required": []}
     )
     def list_startup_programs(self) -> str:
-        if sys.platform != "win32":
+        if not HAS_WINREG or sys.platform != "win32":
             return "Startup management is only supported on Windows."
 
         try:
@@ -163,7 +168,7 @@ class SystemSkill(BaseSkill):
         }
     )
     def set_startup_program(self, name: str, executable_path: Optional[str] = None) -> str:
-        if sys.platform != "win32":
+        if not HAS_WINREG or sys.platform != "win32":
             return "Startup management is Windows-only."
 
         try:

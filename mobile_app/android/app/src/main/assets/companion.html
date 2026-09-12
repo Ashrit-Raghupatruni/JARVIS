@@ -249,7 +249,7 @@
         <div class="grid-2">
           <div>
             <label>Server URL</label>
-            <input type="text" id="serverUrl" value="http://10.1.166.115:8000">
+            <input type="text" id="serverUrl" value="http://10.0.2.2:8000">
           </div>
           <div>
             <label>Pairing PIN</label>
@@ -367,6 +367,14 @@
         <button class="btn" onclick="fetchTaskQueue()">🔄 Fetch Task Queue</button>
         <div class="log-box" id="taskBox" style="margin-top:6px;">
           Task queue state will appear here.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Dynamic ToolRegistry Capabilities</div>
+        <button class="btn" style="background:rgba(0,229,255,0.2); color:#00e5ff; border:1px solid #00e5ff;" onclick="fetchToolRegistry()">🔧 Query Registered Backend Tools</button>
+        <div class="log-box" id="toolsBox" style="margin-top:6px; max-height:160px;">
+          Tap to query live ToolRegistry capabilities from backend.
         </div>
       </div>
     </div>
@@ -974,7 +982,7 @@
 
     async function autoDiscoverLAN() {
       log('📡 Probing LAN for JARVIS desktop on Port 8000...');
-      const candidates = ['10.1.166.115', '192.168.1.100', '10.0.2.2', '127.0.0.1'];
+      const candidates = ['10.0.2.2', '127.0.0.1', 'localhost'];
       for (const host of candidates) {
         try {
           const res = await fetch('http://' + host + ':8000/api/v1/mobile/status');
@@ -988,6 +996,28 @@
         } catch(e) {}
       }
       log('⚠️ Could not auto-detect node. Confirm Wi-Fi and enter IP manually.');
+    }
+
+    async function fetchToolRegistry() {
+      const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, '');
+      try {
+        log('🔧 Querying backend ToolRegistry...');
+        let res = await fetch(baseUrl + '/api/v1/tools');
+        if (!res.ok) {
+          res = await fetch(baseUrl + '/api/tools');
+        }
+        const data = await res.json();
+        const box = document.getElementById('toolsBox');
+        if (data.tools && Array.isArray(data.tools)) {
+          box.innerHTML = `<b>Registered Tools (${data.tools.length}):</b><br>` +
+            data.tools.map(t => `• <b>${t.name || t}</b>: <span style="color:#80deea;">${t.description || 'System Tool'}</span>`).join('<br>');
+          log(`✓ ToolRegistry: ${data.tools.length} active tools synchronized.`);
+        } else {
+          box.innerText = JSON.stringify(data, null, 2);
+        }
+      } catch(e) {
+        document.getElementById('toolsBox').innerText = 'ToolRegistry query notice: ' + e.message;
+      }
     }
 
     async function recoverInterruptedGoals() {

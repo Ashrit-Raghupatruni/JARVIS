@@ -1,47 +1,61 @@
-# Dependencies
-node_modules/
+# ==============================================================================
+# JARVIS AI OS - Git Ignore Configuration
+# ==============================================================================
+
+# ── Python & Bytecode ────────────────────────────────────────────────────────
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+
+# ── Virtual Environments ─────────────────────────────────────────────────────
 .venv/
 venv/
 env/
+ENV/
+backend/venv/
 
-# Environment
+# ── Testing, Profiling & Type Checkers ───────────────────────────────────────
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.coverage
+.coverage.*
+htmlcov/
+nosetests.xml
+coverage.xml
+
+# ── Application Logs & Observability Traces ──────────────────────────────────
+logs/
+backend/logs/
+*.log
+*.log.*
+*.jsonl
+logs/traces/
+
+# ── Environment & Secrets ────────────────────────────────────────────────────
 .env
+.env.*
 .env.local
+!.env.example
 
-# Build outputs
-dist/
-build/
-out/
-*.egg-info/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# Electron
-release/
-
-# Data & Runtime State Directories
+# ── Runtime State, Databases & Embeddings ────────────────────────────────────
 data/
 backend/data/
 *.db
 *.db-shm
 *.db-wal
 *.sqlite
+*.sqlite3
 *.bin
 *.key
+vault.key
+vault.bin
 jarvis_memory/
 chroma_data/
+checkpoints_colab/
 trusted_devices.json
 episodic_memory.json
 face_owner_profile.json
@@ -49,24 +63,58 @@ monitored_topics.json
 user_habits.json
 strategy_memory.json
 agent_memory.json
-vault.key
-vault.bin
+
+# ── Build & Distribution Outputs ─────────────────────────────────────────────
+dist/
+build/
+out/
+release/
+*.egg-info/
+*.egg
+*.whl
+
+# ── Frontend & Node Dependencies ─────────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ── Mobile App & Android Build Outputs ───────────────────────────────────────
+mobile_app/node_modules/
+mobile_app/android/.gradle/
+mobile_app/android/build/
+mobile_app/android/app/build/
+mobile_app/android/local.properties
+local.properties
+mobile_app/android/app/src/main/assets/index.android.bundle
+*.apk
+*.aab
+
+# ── IDEs & Text Editors ──────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# ── Operating System Metadata ────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+ehthumbs_vista.db
+
+# ── Temporary, Scratch & Archive Artifacts ───────────────────────────────────
+temp_*/
 scratch/
 prash_export/
 *.zip
+*.tar.gz
+*.tgz
+*.rar
 
-# Mobile App build outputs
-mobile_app/android/.gradle/
-mobile_app/android/app/build/
-mobile_app/android/build/
-mobile_app/node_modules/
-
-# Temporary reference clones & scratch artifacts
-temp_*/
-scratch/
-*.zip
-logs/
-backend/logs/
-*.log
 
 

@@ -9,8 +9,14 @@ Snapshots and restores multi-monitor window configurations:
 
 import json
 import os
-import win32gui
-import win32con
+try:
+    import win32gui
+    import win32con
+    HAS_WIN32 = True
+except ImportError:
+    win32gui = None
+    win32con = None
+    HAS_WIN32 = False
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
@@ -94,6 +100,10 @@ class WorkspaceMemory:
         preset = self._workspaces[key]
         logger.info("Restoring workspace layout '{}'", preset.name)
         
+        if not HAS_WIN32 or not win32gui:
+            logger.warning("Workspace layout restoration requires win32gui which is not available.")
+            return {"status": "error", "message": "Workspace layout restoration is not supported on this platform."}
+
         # Position windows using Win32 API EnumWindows
         restored_count = 0
         def enum_win_cb(hwnd, extra):

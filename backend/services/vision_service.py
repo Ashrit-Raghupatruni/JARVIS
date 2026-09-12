@@ -287,6 +287,7 @@ class VisionService:
     ) -> Dict[str, Any]:
         """
         Verify whether an action had a visual effect by comparing pre-action and post-action screenshots.
+        Uses fast perceptual downscaled diffing for minimum RAM and CPU overhead.
 
         Args:
             before_img: PIL Image before action execution.
@@ -297,16 +298,15 @@ class VisionService:
             Dict containing has_changed (bool), diff_score (float), and summary.
         """
         try:
-            # Ensure same dimensions
-            if before_img.size != after_img.size:
-                after_img = after_img.resize(before_img.size)
+            # Downscale for ultra-fast perceptual comparison if large
+            target_size = (256, 256)
+            b_small = before_img.convert("L").resize(target_size, Image.NEAREST)
+            a_small = after_img.convert("L").resize(target_size, Image.NEAREST)
 
-            diff = ImageChops.difference(before_img.convert("RGB"), after_img.convert("RGB"))
+            diff = ImageChops.difference(b_small, a_small)
             stat = diff.histogram()
-            
-            # Compute Mean Squared Error or pixel change magnitude
-            pixels = sum(stat)
-            num_pixels = before_img.size[0] * before_img.size[1] * 3
+
+            num_pixels = target_size[0] * target_size[1]
             if num_pixels == 0:
                 return {"has_changed": False, "diff_score": 0.0}
 

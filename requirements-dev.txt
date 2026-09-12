@@ -1,0 +1,11 @@
+# JARVIS - Development & Testing Dependencies
+-r requirements.txt
+
+# Testing Framework & Async Plugins
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.1.0
+
+# Code Quality & Formatting
+ruff>=0.4.0
+mypy>=1.10.0

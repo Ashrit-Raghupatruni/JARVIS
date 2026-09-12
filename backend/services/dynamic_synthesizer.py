@@ -289,7 +289,7 @@ if __name__ == '__main__':
             f.write(runner_code)
 
         clean_env = {
-            "SYSTEMROOT": os.environ.get("SYSTEMROOT", "C:\\Windows"),
+            "SYSTEMROOT": os.environ.get("SYSTEMROOT", "C:\\Windows" if sys.platform == "win32" else "/"),
             "PATH": os.environ.get("PATH", ""),
             "PYTHONPATH": str(tool_sandbox.resolve()),
             "TEMP": str(tool_sandbox.resolve()),

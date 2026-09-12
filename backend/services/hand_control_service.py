@@ -219,7 +219,7 @@ class HandControlService:
         return False
 
     def start_background_tracking(self, camera_index: int = 0) -> bool:
-        """Start the standalone backend OpenCV camera worker thread."""
+        """Start the standalone backend OpenCV camera worker thread on explicit user request."""
         if self._tracking_active:
             logger.info("Hand tracking worker already running.")
             return True
@@ -240,32 +240,42 @@ class HandControlService:
         return True
 
     def stop_background_tracking(self) -> None:
-        """Stop the background camera tracking thread cleanly."""
+        """Stop the background camera tracking thread and release camera/GPU handles cleanly."""
         self._tracking_active = False
         if self._worker_thread and self._worker_thread.is_alive():
             self._worker_thread.join(timeout=1.0)
-        logger.info("Hand Tracking Camera Worker stopped.")
+            self._worker_thread = None
+        logger.info("Hand Tracking Camera Worker stopped (Camera hardware released).")
+
+    def shutdown(self) -> None:
+        """Lifecycle hook for graceful shutdown."""
+        self.stop_background_tracking()
 
     def _camera_worker_loop(self, camera_index: int) -> None:
-        """Standalone OpenCV capture loop."""
-        cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW if hasattr(cv2, "CAP_DSHOW") else 0)
-        if not cap.isOpened():
-            logger.warning("Could not open camera index {} for hand tracking.", camera_index)
-            self._tracking_active = False
-            return
-
+        """Standalone OpenCV capture loop with guaranteed hardware release."""
+        cap = None
         try:
+            cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW if hasattr(cv2, "CAP_DSHOW") else 0)
+            if not cap.isOpened():
+                logger.warning("Could not open camera index {} for hand tracking.", camera_index)
+                self._tracking_active = False
+                return
+
             while self._tracking_active:
                 ret, frame = cap.read()
                 if not ret or frame is None:
                     time.sleep(0.05)
                     continue
 
-                # Process frame (frame processing / landmark detection)
+                # Process frame (landmark detection / gestures)
                 time.sleep(0.033)  # ~30 FPS loop rate
         except Exception as e:
             logger.error("Hand tracking camera worker exception: {}", e)
         finally:
-            cap.release()
+            if cap is not None:
+                try:
+                    cap.release()
+                except Exception:
+                    pass
             self._tracking_active = False
 

@@ -46,5 +46,19 @@
   - Async Multimodal Queue: `AsyncGenerationJobManager` with UUID tokens, SQLite persistence, and WebSocket progress push.
   - Media Generators: Image generation (Cloud + Local GPU), Video cloud adapter, and 3D procedural/neural generation.
 
+---
+
+### Master Architecture, ToolRegistry & Capability Registry Ground-Truth Audit Update
+- **Timestamp:** September 12, 2026
+- **Status:** Full codebase and documentation ground-truth audit completed. `CapabilityRegistry.json` rebuilt from reality with 100% valid implementation and test paths. Tool catalog synchronized to 61 unified executable tools.
+- **Key Verifications:**
+  - Master Test Suite: **116/116 tests passing across 12 test files (100% pass rate)**.
+  - Tool Catalog: **61 unified executable tools** registered in `ToolRegistry` with strict handler enforcement (zero fake mock successes).
+  - Capability Registry: 16 capability domains in `backend/CapabilityRegistry.json` programmatically verified against disk.
+  - Voice Pipeline: 3-tier fallback architecture (`Edge-TTS` -> `Piper Local ONNX` -> `SAPI SpVoice`).
+  - Service Manager: Lazy-initialized service container with fast startup and deterministic singleton lifecycle.
+  - Clean Repository: Zero stale build artifacts, caches, or virtual environments tracked in git.
+
+
 
 

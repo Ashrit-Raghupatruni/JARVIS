@@ -71,9 +71,8 @@ class MobileGatewayService:
         
         ram_percent = ram_info.percent if ram_info else 45.0
         ram_used_gb = round(ram_info.used / (1024**3), 2) if ram_info else 7.2
-        ram_total_gb = round(ram_info.total / (1024**3), 2) if ram_info else 16.0
-        
-        disk_info = psutil.disk_usage('C:\\') if HAS_PSUTIL else None
+        root_path = os.path.abspath(os.sep)
+        disk_info = psutil.disk_usage(root_path) if HAS_PSUTIL else None
         disk_percent = disk_info.percent if disk_info else 50.0
 
         battery = psutil.sensors_battery() if HAS_PSUTIL and hasattr(psutil, "sensors_battery") else None

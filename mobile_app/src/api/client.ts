@@ -77,7 +77,7 @@ export class JarvisMobileClient {
   private token: string | null = null;
   private ws: WebSocket | null = null;
 
-  constructor(serverHost = "192.168.1.100", serverPort = 8000, useSsl = false) {
+  constructor(serverHost = "10.0.2.2", serverPort = 8000, useSsl = false) {
     this.serverHost = serverHost;
     this.serverPort = serverPort;
     this.useSsl = useSsl;
@@ -283,12 +283,45 @@ export class JarvisMobileClient {
     return this.fetchConversations();
   }
 
+  async fetchRegisteredTools(): Promise<{ status: string; count: number; tools: Array<Record<string, any>> }> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/v1/tools`, {
+        headers: this.getHeaders()
+      });
+      if (res.ok) {
+        return res.json();
+      }
+    } catch {
+      // Fallback
+    }
+    const res = await fetch(`${this.baseUrl}/api/tools`, {
+      headers: this.getHeaders()
+    });
+    return res.json();
+  }
+
+  async executeTool(toolName: string, args: Record<string, any> = {}) {
+    return this.sendRemoteCommand(toolName, args);
+  }
+
   async sendNaturalLanguageCommand(prompt: string, conversationId?: number | string | null) {
-    const payload: Record<string, any> = { message: prompt };
+    const payload: Record<string, any> = { text: prompt, message: prompt };
     if (conversationId) {
       payload["conversation_id"] = conversationId;
     }
-    const res = await fetch(`${this.baseUrl}/api/v1/chat`, {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/v1/chat`, {
+        method: "POST",
+        headers: this.getHeaders(),
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {
+      // Fallback to command endpoint
+    }
+    const res = await fetch(`${this.baseUrl}/api/v1/command`, {
       method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify(payload)
@@ -446,11 +479,10 @@ export class JarvisMobileClient {
     const candidates = Array.from(new Set([
       this.serverHost,
       ...knownCandidates,
-      "10.1.166.115",
-      "192.168.1.100",
       "10.0.2.2",
-      "127.0.0.1"
-    ]));
+      "127.0.0.1",
+      "localhost"
+    ])).filter(Boolean);
 
     for (const host of candidates) {
       try {

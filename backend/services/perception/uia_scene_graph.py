@@ -58,85 +58,112 @@ class UIASceneGraph:
     """
     Native Win32 UI Automation Scene Graph Generator.
     Extracts structured DOM-like representation of desktop applications.
+    Uses differential caching to avoid continuous redundant UIA tree traversals.
     """
 
-    def __init__(self) -> None:
-        logger.info("UIASceneGraph initialized (Native Win32 UIA Parser Ready).")
+    def __init__(self, cache_ttl: float = 2.5) -> None:
+        self._cache_ttl = cache_ttl
+        self._cached_scene: Optional[SceneGraph] = None
+        self._cached_key: Optional[tuple] = None
+        self._cached_timestamp: float = 0.0
+        logger.info("UIASceneGraph initialized (Native Win32 UIA Parser Ready with Differential Cache).")
 
-    def capture_scene(self, max_depth: int = 3, max_elements: int = 100) -> SceneGraph:
+    def capture_scene(self, max_depth: int = 3, max_elements: int = 100, force: bool = False) -> SceneGraph:
         """
         Capture current active window's structured scene graph.
-        Executes sub-30ms tree traversal.
+        Returns cached scene if the foreground window, title, and bounds are identical and TTL is valid.
         """
         start_t = time.time()
-        scene = SceneGraph()
+        now = time.time()
 
         if not HAS_PYWINAUTO:
             logger.warning("pywinauto not available; returning fallback scene graph.")
-            return scene
+            return SceneGraph()
 
         try:
-            import win32gui, win32process
+            import win32gui
             hwnd = win32gui.GetForegroundWindow()
-            if hwnd:
-                scene.window_title = win32gui.GetWindowText(hwnd) or "Active Window"
-                try:
-                    app = pywinauto.Application(backend="uia").connect(handle=hwnd)
-                    active_win = app.window(handle=hwnd)
-                    rect = active_win.rectangle()
-                    scene.window_bounds = [rect.left, rect.top, rect.right, rect.bottom]
-                    scene.active_app = str(active_win.process_id())
+            if not hwnd:
+                return self._cached_scene or SceneGraph()
 
-                    count = 0
-                    for elem in active_win.descendants():
-                        if count >= max_elements:
-                            break
-                        try:
-                            info = elem.info
-                            ctrl_type = info.control_type or "Unknown"
-                            
-                            # Filter interactive / meaningful controls
-                            if ctrl_type in (
-                                "Button", "Edit", "ComboBox", "CheckBox", "RadioButton",
-                                "Hyperlink", "Document", "MenuItem", "ListItem", "TabItem",
-                                "Window", "Dialog", "Pane", "Table", "Header", "TreeItem"
-                            ):
-                                r = info.rectangle
-                                e_bounds = [r.left, r.top, r.right, r.bottom] if r else [0, 0, 0, 0]
-                                e_name = info.name or ""
-                                e_id = str(info.automation_id or info.handle or f"elem_{count}")
+            window_title = win32gui.GetWindowText(hwnd) or "Active Window"
+            try:
+                rect = win32gui.GetWindowRect(hwnd)
+                bounds_key = (rect[0], rect[1], rect[2], rect[3])
+            except Exception:
+                bounds_key = (0, 0, 1920, 1080)
 
-                                val_str = None
-                                try:
-                                    if hasattr(elem, "get_value"):
-                                        val_str = elem.get_value()
-                                except Exception:
-                                    pass
+            cache_key = (hwnd, window_title, bounds_key)
 
-                                sc_elem = SceneElement(
-                                    id=e_id,
-                                    name=e_name,
-                                    control_type=ctrl_type,
-                                    bounds=e_bounds,
-                                    is_enabled=getattr(info, "is_enabled", True),
-                                    is_focused=getattr(info, "has_keyboard_focus", False),
-                                    value=val_str
-                                )
+            # Check if cache is still valid
+            if not force and self._cached_scene is not None and self._cached_key == cache_key:
+                if (now - self._cached_timestamp) < self._cache_ttl:
+                    return self._cached_scene
 
-                                if sc_elem.is_focused:
-                                    scene.focused_element = sc_elem
+            scene = SceneGraph()
+            scene.window_title = window_title
+            scene.window_bounds = list(bounds_key)
 
-                                scene.elements.append(sc_elem)
-                                count += 1
-                        except Exception:
-                            continue
+            try:
+                app = pywinauto.Application(backend="uia").connect(handle=hwnd)
+                active_win = app.window(handle=hwnd)
+                scene.active_app = str(active_win.process_id())
 
-                    scene.total_elements = count
-                except Exception as inner_e:
-                    logger.debug(f"Window parse notice: {inner_e}")
+                count = 0
+                for elem in active_win.descendants():
+                    if count >= max_elements:
+                        break
+                    try:
+                        info = elem.info
+                        ctrl_type = info.control_type or "Unknown"
+
+                        # Filter interactive / meaningful controls
+                        if ctrl_type in (
+                            "Button", "Edit", "ComboBox", "CheckBox", "RadioButton",
+                            "Hyperlink", "Document", "MenuItem", "ListItem", "TabItem",
+                            "Window", "Dialog", "Pane", "Table", "Header", "TreeItem"
+                        ):
+                            r = info.rectangle
+                            e_bounds = [r.left, r.top, r.right, r.bottom] if r else [0, 0, 0, 0]
+                            e_name = info.name or ""
+                            e_id = str(info.automation_id or info.handle or f"elem_{count}")
+
+                            val_str = None
+                            try:
+                                if hasattr(elem, "get_value"):
+                                    val_str = elem.get_value()
+                            except Exception:
+                                pass
+
+                            sc_elem = SceneElement(
+                                id=e_id,
+                                name=e_name,
+                                control_type=ctrl_type,
+                                bounds=e_bounds,
+                                is_enabled=getattr(info, "is_enabled", True),
+                                is_focused=getattr(info, "has_keyboard_focus", False),
+                                value=val_str
+                            )
+
+                            if sc_elem.is_focused:
+                                scene.focused_element = sc_elem
+
+                            scene.elements.append(sc_elem)
+                            count += 1
+                    except Exception:
+                        continue
+
+                scene.total_elements = count
+            except Exception as inner_e:
+                logger.debug(f"Window parse notice: {inner_e}")
+
+            self._cached_scene = scene
+            self._cached_key = cache_key
+            self._cached_timestamp = now
+
+            logger.debug(f"Scene graph captured in {(time.time() - start_t)*1000:.1f}ms ({scene.total_elements} controls).")
+            return scene
 
         except Exception as e:
             logger.debug(f"UIA Scene capture notice: {e}")
-
-        logger.debug(f"Scene graph captured in {(time.time() - start_t)*1000:.1f}ms ({scene.total_elements} controls).")
-        return scene
+            return self._cached_scene or SceneGraph()
