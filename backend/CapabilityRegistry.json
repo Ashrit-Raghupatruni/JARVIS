@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "schema_version": "2.0.0",
   "authoritative_sources": {
-    "architecture": "ARCHITECTURE.md",
+    "architecture": "documentations/ARCHITECTURE.md",
     "capability_metadata": "backend/CapabilityRegistry.json",
     "user_guide": "README.md",
-    "verification_history": "JARVIS_IMPLEMENTATION_TRACKER.md"
+    "verification_history": "documentations/JARVIS_IMPLEMENTATION_TRACKER.md"
   },
   "capabilities": {
     "core_service_container": {
