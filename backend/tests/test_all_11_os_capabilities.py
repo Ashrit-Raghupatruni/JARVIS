@@ -41,8 +41,10 @@ async def test_os_cap_01_open_app(tool_registry, gatekeeper):
     decision = gatekeeper.evaluate_tool_call("open_application", {"app_name": "chrome"})
     assert decision.allowed
     with patch("subprocess.Popen") as mock_popen:
+        mock_popen.return_value.pid = 9999
         res = await tool_registry.execute_tool("open_application", {"app_name": "cmd"})
-        assert res.get("status") in ("success", "executed") or "status" in res
+        assert res.get("status") == "success"
+        assert "result" in res
         mock_popen.assert_called_once()
 
 
@@ -52,6 +54,9 @@ async def test_os_cap_02_find_files(tool_registry, gatekeeper):
     assert decision.allowed
     res = await tool_registry.execute_tool("search_files", {"pattern": "*.md", "directory": "."})
     assert res.get("status") == "success"
+    result_data = res.get("result", {})
+    assert "files" in result_data or "matches" in result_data or "count" in result_data
+    assert result_data.get("count", 0) >= 1
 
 
 @pytest.mark.asyncio
@@ -66,15 +71,20 @@ async def test_os_cap_03_create_folder(tool_registry, gatekeeper):
 
 @pytest.mark.asyncio
 async def test_os_cap_04_move_file(tool_registry, gatekeeper):
+    os.makedirs("data/test_pytest_folder", exist_ok=True)
     src = os.path.abspath("data/test_pytest_src.txt")
     dst = os.path.abspath("data/test_pytest_folder/test_pytest_dst.txt")
     with open(src, "w") as f:
-        f.write("test move content")
+        f.write("test move content payload")
     
     decision = gatekeeper.evaluate_tool_call("move_file", {"source": src, "destination": dst})
     assert decision.allowed
     res = await tool_registry.execute_tool("move_file", {"source": src, "destination": dst})
-    assert res.get("status") == "success" or os.path.exists(dst)
+    assert res.get("status") == "success"
+    assert os.path.exists(dst)
+    assert not os.path.exists(src)
+    with open(dst, "r") as f:
+        assert f.read() == "test move content payload"
 
     # Cleanup
     if os.path.exists(dst):
@@ -118,8 +128,15 @@ async def test_os_cap_07_type_text(tool_registry, gatekeeper):
 async def test_os_cap_08_close_app(tool_registry, gatekeeper):
     decision = gatekeeper.evaluate_tool_call("close_application", {"app_name": "cmd"})
     assert decision.allowed
-    res = await tool_registry.execute_tool("close_application", {"name_or_pid": "test_nonexistent_proc_12345"})
-    assert res.get("status") in ("success", "error")
+    with patch("psutil.process_iter", return_value=[]), \
+         patch("subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = "SUCCESS: The process has been terminated."
+        res = await tool_registry.execute_tool("close_application", {"app_name": "cmd"})
+        assert res.get("status") == "success"
+        msg = res.get("message") or res.get("result", {}).get("message", "") or str(res.get("result", ""))
+        assert "Closed" in msg
+        mock_run.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -128,6 +145,7 @@ async def test_os_cap_09_check_processes(tool_registry, gatekeeper):
     assert decision.allowed
     res = await tool_registry.execute_tool("get_running_processes", {})
     assert res.get("status") == "success"
+    assert isinstance(res.get("result"), (list, dict))
 
 
 @pytest.mark.asyncio
@@ -136,6 +154,7 @@ async def test_os_cap_10_check_monitors(tool_registry, gatekeeper):
     assert decision.allowed
     res = await tool_registry.execute_tool("get_monitors", {})
     assert res.get("status") == "success"
+    assert isinstance(res.get("result"), (list, dict))
 
 
 @pytest.mark.asyncio

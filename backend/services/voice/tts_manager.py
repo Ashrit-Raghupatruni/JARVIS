@@ -204,36 +204,45 @@ class TTSManager:
             logger.debug("TTS received empty text, skipping")
             return
 
+        # Sanitize sensitive credentials from speech text
+        from backend.services.data_privacy import mask_secrets, get_privacy_enforcer
+        privacy_enforcer = get_privacy_enforcer()
+        safe_text = mask_secrets(text)
+
         self._cancel_flag = False
         self._is_speaking_flag = True
-        logger.info("TTS synthesizing — text='{}'", text[:60])
+        logger.info("TTS synthesizing — text='{}'", safe_text[:60])
 
         try:
-            # Priority Path: Ultra-Fast Local Synthesis (<250ms)
-            if self.prefer_local:
+            # Priority Path: Ultra-Fast Local Synthesis (<250ms) or LOCAL_ONLY Mode
+            if self.prefer_local or privacy_enforcer.local_only_mode:
                 try:
                     self.last_provider_used = "sapi"
-                    async for chunk in self.local_provider.stream(text, lambda: self._cancel_flag):
+                    async for chunk in self.local_provider.stream(safe_text, lambda: self._cancel_flag):
                         yield chunk
                     logger.info("✓ TTS stream completed via Local Ultra-Fast SAPI")
                     self._cancel_flag = False
                     return
                 except Exception as sapi_err:
-                    logger.warning("Local SAPI error: {}. Falling back to Edge-TTS/Piper...", sapi_err)
+                    if privacy_enforcer.local_only_mode:
+                        logger.warning("Local SAPI error in LOCAL_ONLY mode: {}. Falling back strictly to Piper...", sapi_err)
+                    else:
+                        logger.warning("Local SAPI error: {}. Falling back to Edge-TTS/Piper...", sapi_err)
 
-            # Online Edge-TTS Path
+            # Online Edge-TTS Path (Strictly forbidden in LOCAL_ONLY mode)
             edge_success = False
-            try:
-                async for chunk in self.edge_provider.stream(text, lambda: self._cancel_flag):
-                    edge_success = True
-                    self.last_provider_used = "edge-tts"
-                    yield chunk
-            except Exception as edge_err:
-                logger.warning(
-                    "⚠️ Edge-TTS failed ({}: {}). Failing over to Offline Neural Piper Provider...",
-                    type(edge_err).__name__,
-                    edge_err,
-                )
+            if not privacy_enforcer.local_only_mode:
+                try:
+                    async for chunk in self.edge_provider.stream(safe_text, lambda: self._cancel_flag):
+                        edge_success = True
+                        self.last_provider_used = "edge-tts"
+                        yield chunk
+                except Exception as edge_err:
+                    logger.warning(
+                        "⚠️ Edge-TTS failed ({}: {}). Failing over to Offline Neural Piper Provider...",
+                        type(edge_err).__name__,
+                        edge_err,
+                    )
 
             if edge_success:
                 logger.debug("✓ TTS stream completed via Edge-TTS")

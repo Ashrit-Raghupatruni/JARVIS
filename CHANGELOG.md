@@ -2,6 +2,34 @@
 
 All notable changes and architectural upgrades to JARVIS are documented in this file.
 
+## [1.3.0-live-mode-failover-and-hermes-integration] - 2026-09-26
+
+### 🔄 Live Mode Failover Architecture & Agent Supervisor
+- **Single-Agent Control Lock (`_control_lock`)**: Implemented `LiveModeFailoverSupervisor` in `backend/services/live_mode/failover_controller.py` with strict `asyncio.Lock()` mutual exclusion ensuring JARVIS Desktop Agent and Hermes Desktop Agent never issue simultaneous mouse or keyboard inputs.
+- **Explicit Authority Lifecycle**: Introduced strict state machine transitions (`PRIMARY_ACTIVE` ➔ `FAILOVER_PENDING` ➔ `HERMES_ACTIVE` ➔ `RECOVERY` ➔ `COMPLETED` / `FAILED` / `CANCELLED`).
+- **Dynamic Step Tracking**: Per-step execution tracking (`PENDING`, `RUNNING`, `SUCCESS`, `FAILED`, `TIMEOUT`, `BLOCKED`).
+- **Seamless Failure Point Resume**: Primary failure compiles handoff payload (`completed_steps`, `failed_step`, `error_reason`, screen context) and transfers control to Hermes to finish remaining steps without repeating completed ones.
+- **Emergency Stop / Take Control**: Real-time interrupt and control lock revocation.
+- **Live Mode Failover HUD (`LiveModeFailoverHUD.tsx`)**: Real-time Electron HUD component displaying active agent badges, failover alerts, and manual takeover button.
+
+### 🌉 12-Pillar Hermes Bridge Service & Dual Agents
+- **Hermes Bridge Service (`backend/services/hermes_bridge.py`)**: 12-pillar bridge covering tool execution, agent orchestration, command routing, computer control bridge, task automation, background workers, context sync, local dev, extensibility, error boundary, permission boundaries, and WebSocket progress streaming.
+- **Hermes Desktop Agent (`backend/agents/desktop_agent.py`)**: Dedicated Windows 11 desktop executor with `AttachThreadInput` foregrounding, clipboard typing (`Ctrl+V`), and coordinate clicks.
+- **Hermes General Agent (`backend/agents/hermes_agent.py`)**: Multi-step LLM function calling agent operating over all 69 JARVIS system tools.
+- **Hermes Orchestrator (`backend/agents/hermes_orchestrator.py`)**: Task routing and multi-agent coordination.
+- **Hermes CLI Secrets Sync**: Automatically synchronized `.env` API keys to `C:\Users\ashri\AppData\Local\hermes\.env` and `~/.hermes\.env`. Verified with `hermes doctor` and `hermes setup`.
+
+### 🎨 In-Chat Image Generation Engine & Lightbox Studio
+- **Dual-Engine Image Generator (`ImageGeneratorService` in `backend/services/image_generator.py`)**: Google Imagen 3 with automatic fallback to Pollinations AI and local disk caching under `data/generated_images/`.
+- **Frontend Lightbox (`ChatPanel.tsx`)**: Glassmorphism image preview cards in chat with full-screen Lightbox zoom, panning, clipboard copy, and download actions.
+- **Truthful Tool Registry**: Registered `generate_image`, `live_mode_execute_task`, `live_mode_emergency_stop`, `hermes_bridge_task`, `hermes_async_task`, `hermes_agent_task`, `hermes_orchestrator_task`, and `desktop_agent_task` (Total tool count: **69 executable tools**).
+
+### 🧪 Automated Testing & Verification
+- **Test Suite**: Verified all 12 failover, dual Hermes, and image generator tests. Full test suite execution: **298 passed in 216.80s** with zero regressions across 30 test files.
+- **Frontend TypeScript Build**: Clean compilation `npx tsc --noEmit` (0 errors).
+
+---
+
 ## [1.2.0-production-upgrade] - 2026-08-20
 
 ### 🛡️ Fail-Closed Security Bridge & Gatekeeper Hardening

@@ -91,16 +91,162 @@ graph TD
 - **Adaptive Perception Loop (`live_engine.py`)**: Adaptive backoff loop (0.5s active -> 2.5s static backoff). Zero LLM invocation during static observation.
 - **Spatial Engine (`spatial_engine.py`)**: Multi-monitor desktop topology coordinate mapping across unequal resolutions and negative display offsets.
 
-### 9. Truthful Tool Registry & Security Sandbox (`backend/services/tool_registry.py`, `security/`)
-- **Truthful Execution**: 61 executable system tools. Explicit error normalization (`{"status": "error", "error": "Tool has no execution handler"}` when handlers are absent).
+### 9. Live Mode Failover Supervisor & Control Authority (`backend/services/live_mode/failover_controller.py`)
+- **Single-Agent Control Lock (`_control_lock`)**: An `asyncio.Lock()` enforces single-agent control locking, preventing race conditions or simultaneous inputs between the primary JARVIS Desktop Agent and Hermes.
+- **Authority Lifecycle**:
+  - `PRIMARY_ACTIVE`: JARVIS Desktop Agent has sole execution authority.
+  - `FAILOVER_PENDING`: An execution failure or timeout occurred; supervisor compiles the handoff payload.
+  - `HERMES_ACTIVE`: Control lock transferred to Hermes Desktop Agent to resume from failure point.
+  - `RECOVERY`: Recovery operations executing to restore normal state.
+  - `COMPLETED` / `FAILED` / `CANCELLED`: Terminal status with lock release.
+- **Dynamic Step Tracking**: Every step tracks `PENDING` ➔ `RUNNING` ➔ `SUCCESS` / `FAILED` / `TIMEOUT` / `BLOCKED`.
+- **Seamless Failure Point Resume**: Primary sends `completed_steps`, `failed_step`, `error_reason`, and `screen_context`. Hermes skips completed steps and resumes execution directly.
+- **Emergency Stop & Take Control**: `emergency_stop()` immediately cancels execution, clears state, and releases locks for user takeover.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant HUD as LiveMode HUD
+    participant Sup as Failover Supervisor
+    participant Pri as JARVIS Desktop Agent (Primary)
+    participant Herm as Hermes Desktop Agent (Fallback)
+    participant Win as Windows Desktop / UIA
+
+    User->>HUD: Trigger Task in Live Mode
+    HUD->>Sup: execute_supervised_task(steps)
+    Sup->>Sup: Acquire _control_lock (PRIMARY_ACTIVE)
+    Sup->>Pri: Execute Step 1 (e.g., Open Notepad)
+    Pri->>Win: Win32 Launch
+    Win-->>Pri: Success
+    Pri-->>Sup: Step 1 SUCCESS
+    Sup->>Pri: Execute Step 2 (e.g., Click 'Format' Menu)
+    Pri->>Win: UIA Click
+    Win-->>Pri: Error (Element not found / Timeout)
+    Pri-->>Sup: Step 2 FAILED (ToolError)
+    
+    rect rgb(240, 220, 220)
+        Note over Sup: Automatic Failover Triggered
+        Sup->>Sup: Transition to FAILOVER_PENDING
+        Sup->>Pri: Revoke Primary Control Lock
+        Sup->>Sup: Package Handoff (Step 1 done, Step 2 failed)
+        Sup->>Sup: Transition to HERMES_ACTIVE
+    end
+
+    Sup->>Herm: Resume Task (from Step 2)
+    Herm->>Win: Win32 Foreground + AttachThreadInput + OCR Fallback Click
+    Win-->>Herm: Success
+    Herm-->>Sup: Step 2 SUCCESS
+    Sup->>Herm: Execute Step 3 (e.g., Type Text)
+    Herm->>Win: Clipboard Paste (Ctrl+V)
+    Win-->>Herm: Success
+    Herm-->>Sup: Step 3 SUCCESS
+    Sup->>Sup: Transition to COMPLETED & Release Lock
+    Sup-->>HUD: Broadcast Task Success
+```
+
+### 10. Hermes Bridge & Dual-Agent Execution Layer (`backend/services/hermes_bridge.py`, `backend/agents/`)
+- **12-Pillar Bridge Architecture (`HermesBridgeService`)**:
+  1. *Tool Execution*: Unified command/tool execution bridge.
+  2. *Agent Orchestration*: Manages multi-agent lifecycles cleanly separated from core JARVIS.
+  3. *Command Routing*: Routes intents to optimal executor (Primary vs. Fallback).
+  4. *Computer Control Bridge*: Native OS API bridging with robust Win32 fallback.
+  5. *Task Automation*: Autonomous multi-step sequence decomposition.
+  6. *Background Tasks*: Detached async task queue (`hermes_async_task`).
+  7. *Context Handling*: Context synchronization between JARVIS and Hermes.
+  8. *Local Development*: Local-first CLI & daemon integration.
+  9. *Extensibility*: Dynamic tool injection without modifying core brain.
+  10. *Error Handling*: Automatic failure interception and recovery loops.
+  11. *Permission Boundaries*: Full compatibility with JARVIS `SafetyGatekeeper`.
+  12. *Status Streaming*: Real-time progress broadcasting over WebSocket.
+- **Dual Hermes Agents**:
+  - `HermesDesktopAgent` (`backend/agents/desktop_agent.py`): Windows 11 window foregrounding (`AttachThreadInput`), clipboard typing (`Ctrl+V`), and coordinate clicks.
+  - `HermesGeneralAgent` (`backend/agents/hermes_agent.py`): Multi-step function calling orchestrator across all 69 JARVIS system tools.
+  - `HermesOrchestrator` (`backend/agents/hermes_orchestrator.py`): Collaborative coordination and agent-to-agent delegation.
+
+### 11. Chat Image Generation Engine (`backend/services/image_generator.py`)
+- **Dual Engine Architecture**: Primary Google Imagen 3 with seamless automatic fallback to Pollinations AI.
+- **Disk Caching & Static Hosting**: Persists generated images to `data/generated_images/` and serves via FastAPI static route `/generated_images/`.
+- **Frontend Lightbox**: Chat panel embeds image preview cards with full-screen zoom, pan, copy, and download actions.
+
+### 12. Truthful Tool Registry & Security Sandbox (`backend/services/tool_registry.py`, `security/`)
+- **Truthful Execution**: 69 executable system tools. Explicit error normalization (`{"status": "error", "error": "Tool has no execution handler"}` when handlers are absent).
 - **Parameter Validation & Masking**: Schema validation for required fields, synchronous offloading via `asyncio.to_thread()`, and sensitive argument masking for audit logs.
 - **Security Sandbox (`security/sandbox.py`)**: AST allowlist security gate permitting pure computational modules and rejecting forbidden calls (`eval`, `exec`, `os.system`, `subprocess`, dunder traversal).
 - **Face Authentication (`face_auth_engine.py`)**: OpenCV Haar cascade ROI detection, 128-D spatial feature extraction, and Eye Aspect Ratio (EAR) blink liveness verification.
 
-### 10. Client Interfaces & Mobile Bridge
-- **Desktop UI**: Electron + React 19 + Tailwind CSS + Lucide Icons + Three.js HUD with lazy code splitting and responsive windowing.
-- **Android Companion**: Native Android shell with WebView loading `companion.html`, WebSocket telemetry streaming, remote approval cards, and lockscreen coordination.
-- **Mobile Bridge (`backend/services/mobile_bridge.py`)**: Fail-closed security approvals gatekeeper (`return False` on offline/timeout), JWT token authentication, and Telegram Bot fallback.
+### 13. Client Interfaces & Mobile Bridge
+- **Desktop UI**: Electron + React 19 + Tailwind CSS + Lucide Icons + Three.js HUD with lazy code splitting, Live Mode Failover HUD banner, and Image Lightbox.
+- **Android Companion App**: Dual-presentation Android client synchronized with JARVIS backend:
+  - **Native React Native Client (`mobile_app/src/`)**: 6 ergonomic mobile tabs (`HUD`, `ACTIONS`, `CHAT`, `GATE`, `FILES`, `NETWORK`).
+  - **Embedded Mission Control (`mobile_app/android/app/src/main/assets/companion.html`)**: 9 modular operational sub-panels (`Dashboard`, `Live Mode`, `Chat & Voice`, `Approvals`, `Screen & Apps`, `Tasks & Workflows`, `Files`, `Brain & Memory`, `Diagnostics`).
+  - **Communication & Security**: WebSocket telemetry stream (`/api/v1/mobile/ws`), REST API with 8s bounded timeouts, zero hardcoded developer IPs, and Ed25519 cryptographic pairing.
+  - **Biometric Approval Proof Model**: Zero trust client booleans or mock strings (`bio_sig_...`). High-risk actions generate backend unpredictable 32-byte single-use challenges bound to `(approval_id, action_type, dangerous_target, expires_at)`. Verified via Ed25519 asymmetric client signatures against registered device public keys with strict single-use consumption and replay protection.
+
+### 14. Backward-Compatibility Facade Architecture
+To prevent broken imports while keeping modular internal packages, JARVIS maintains zero-drift backward-compatibility facades that re-export from their canonical packages:
+- `backend/agents/planner.py` ➔ `backend/agents/planner/planner.py`
+- `backend/agents/message_router.py` ➔ `backend/agents/router.py`
+- `backend/services/memory.py` ➔ `backend/services/memory/`
+- `backend/services/automation.py` ➔ `backend/services/automation/desktop_executor.py`
+- `backend/services/desktop_automation.py` ➔ `backend/services/automation/orchestrator.py`
+- `backend/services/action_verifier.py` ➔ `backend/services/automation/verifier.py`
+- `backend/services/uia_engine.py` ➔ `backend/services/automation/uia_perception.py`
+- `backend/services/browser.py` ➔ `backend/services/automation/browser_executor.py`
+- `backend/agents/voice.py` ➔ `backend/services/voice/voice_manager.py`
+- `backend/services/stt.py` ➔ `backend/services/voice/stt_manager.py`
+- `backend/services/tts.py` ➔ `backend/services/voice/tts_manager.py`
+- `backend/services/wake_word.py` ➔ `backend/services/voice/wake_word_manager.py`
+- `backend/services/voice_intelligence.py` ➔ `backend/services/voice/intelligence.py`
+
+---
+
+### 12. Canonical Security Hierarchy & Fail-Closed Precedence
+JARVIS enforces one authoritative, fail-closed security hierarchy where no lower-level component or client approval can override a higher-level security denial:
+
+```text
+User Request
+    ↓
+Intent Classification (FastIntentRouter / RequestRouter)
+    ↓
+Planner / Decomposition (PlannerAgent / TaskDecomposer)
+    ↓
+SecurityPolicy & Out-of-Model Gatekeeper (SafetyGatekeeper / ASTSandbox / RBAC)
+    ↓
+Approval / Interactive Gatekeeper (MobileGatewayService / MobileBridgeService / FCM)
+    ↓
+ToolRegistry (Schema & Parameter Validation)
+    ↓
+Executor (DesktopExecutor / BrowserExecutor / SafeActionExecutor)
+    ↓
+ActionVerifier (ActionExecutionVerifier)
+    ↓
+Result
+```
+
+- **Inviolable Precedence Rules**:
+  1. `Policy.DENY` + `Approval.ALLOW` = `DENY` (Security policy is inviolable).
+  2. Unhandled security exceptions or missing services = `FAIL CLOSED (DENY)`.
+  3. Client-side booleans (`biometric_authenticated = true`) without valid cryptographic signatures cannot authorize high-risk operations.
+  4. Approvals are cryptographically bound to `(device_id, approval_id, action_type, dangerous_target, challenge_nonce)` with single-use nonce consumption and 30-60s TTL.
+
+### 13. Mobile Endpoint Authorization Matrix
+
+| Endpoint | Path | Public | Authenticated | Paired Device | Sensitive Approval |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **Pairing Initiation** | `POST /api/v1/mobile/pair/initiate` | ✅ Yes | ❌ No | ❌ No | ❌ No |
+| **QR Code Generation** | `GET /api/v1/mobile/pair/qr/generate` | ✅ Yes | ❌ No | ❌ No | ❌ No |
+| **QR Code Scan Confirmation** | `POST /api/v1/mobile/pair/qr/scan` | ✅ Yes | ❌ No | ❌ No | ❌ No |
+| **Pairing PIN Confirmation** | `POST /api/v1/mobile/pair/confirm` | ✅ Yes | ❌ No | ❌ No | ❌ No |
+| **Pairing Status Check** | `GET /api/v1/mobile/pair/status/{session_id}` | ✅ Yes | ❌ No | ❌ No | ❌ No |
+| **Device Revocation** | `POST /api/v1/mobile/devices/{device_id}/revoke` | ❌ No | ✅ JWT | ✅ Yes | ❌ No |
+| **Device Unpair** | `DELETE /api/v1/mobile/devices/{device_id}` | ❌ No | ✅ JWT | ✅ Yes | ❌ No |
+| **List Trusted Devices** | `GET /api/v1/mobile/devices` | ❌ No | ✅ JWT | ✅ Yes | ❌ No |
+| **Telemetry HUD Stream** | `GET /api/v1/mobile/telemetry` | ❌ No (Discovery only) | ❌ No | ❌ No | ❌ No |
+| **Desktop Commands** | `POST /api/v1/mobile/system/command` | ❌ No | ✅ JWT | ✅ Yes | ✅ Gatekeeper Intercept |
+| **Approval Decision** | `POST /api/v1/mobile/approvals/{id}/decision` | ❌ No | ✅ JWT | ✅ Yes | ✅ Ed25519 Signature |
+| **Filesystem Operations** | `GET/POST /api/v1/mobile/files/*` | ❌ No | ✅ JWT | ✅ Yes | ✅ Workspace Sandboxed |
+| **Live Mode Stream** | `GET /api/v1/mobile/live_mode/status` | ❌ No | ✅ JWT | ✅ Yes | ❌ No |
 
 ---
 
@@ -128,7 +274,7 @@ JARVIS/
 │   │   ├── manager.py          # Unified ServiceManager DI container
 │   │   ├── tool_registry.py    # Truthful Tool Registry (61 executable tools)
 │   │   └── world_model.py      # Aggregated desktop state & throttled telemetry
-│   ├── tests/                  # 12 Master test suites (116 passing tests, 100% pass rate)
+│   ├── tests/                  # 16 Master test suites (149 passing tests, 100% pass rate)
 │   ├── utils/                  # Logger (loguru), retry decorators, helpers
 │   ├── config.py               # Pydantic Settings & environment configuration
 │   └── main.py                 # FastAPI application lifespan & socket entrypoint
@@ -138,4 +284,5 @@ JARVIS/
 ├── requirements.txt            # Harmonized production Python dependencies across 8 functional tiers
 └── requirements-dev.txt        # Development, testing & linting dependencies
 ```
+
 

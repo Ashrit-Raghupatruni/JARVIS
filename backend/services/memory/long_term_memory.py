@@ -132,17 +132,20 @@ class LongTermMemory:
     # ── Facts and Semantic Knowledge ─────────────────────────────────────
 
     async def store_memory(self, content: str, metadata: Optional[dict] = None) -> str:
-        """Store a fact or preference in ChromaDB and SQLite."""
+        """Store a fact or preference in ChromaDB and SQLite with sensitive data masking."""
+        from backend.services.safety import mask_sensitive_data
+        sanitized_content = mask_sensitive_data(content)
         memory_id = f"mem_{uuid.uuid4().hex[:12]}"
-        meta = metadata or {}
+        meta = dict(metadata) if metadata else {}
         meta["timestamp"] = datetime.now(timezone.utc).isoformat()
+        meta["trust_level"] = meta.get("trust_level", "llm_inferred")
         importance = meta.get("importance", "medium")
 
         # Store in ChromaDB
         if self.knowledge_collection:
             try:
                 self.knowledge_collection.add(
-                    documents=[content],
+                    documents=[sanitized_content],
                     metadatas=[meta],
                     ids=[memory_id],
                 )
@@ -155,7 +158,7 @@ class LongTermMemory:
                 async with self.session_factory() as session:
                     log = MemoryLog(
                         id=memory_id,
-                        content=content,
+                        content=sanitized_content,
                         importance=importance,
                         is_consolidated=0
                     )
@@ -164,7 +167,7 @@ class LongTermMemory:
             except Exception as e:
                 logger.error("SQLite MemoryLog store error: {}", e)
 
-        logger.info("Stored memory '{}' (importance={}): {}...", memory_id, importance, content[:80])
+        logger.info("Stored memory '{}' (importance={}, trust={}): {}...", memory_id, importance, meta.get("trust_level"), sanitized_content[:80])
         return memory_id
 
     remember = store_memory

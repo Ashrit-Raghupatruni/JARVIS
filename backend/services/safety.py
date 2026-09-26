@@ -21,13 +21,25 @@ def mask_sensitive_data(text: str) -> str:
     """Masks API keys, passwords, and other credentials inside logged strings."""
     if not text:
         return text
-    # Mask keys
-    text = re.sub(r'sk-[a-zA-Z0-9]{32,}', 'sk-****[REDACTED]****', text)
-    text = re.sub(r'AIzaSy[a-zA-Z0-9_-]{33}', 'AIzaSy****[REDACTED]****', text)
-    text = re.sub(r'sk-or-v1-[a-zA-Z0-9]{48,}', 'sk-or-v1-****[REDACTED]****', text)
-    # Mask common password patterns
-    text = re.sub(r'(password|passwd|pwd|pass)\s*[:=]\s*["\']?[^\s"\'&,;]+["\']?', r'\1=****[REDACTED]****', text, flags=re.IGNORECASE)
-    return text
+    try:
+        from backend.services.data_privacy import mask_secrets
+        return mask_secrets(text)
+    except Exception:
+        # Fallback regex masking
+        text = re.sub(r'sk-[a-zA-Z0-9]{32,}', 'sk-****[REDACTED]****', text)
+        text = re.sub(r'AIzaSy[a-zA-Z0-9_-]{33}', 'AIzaSy****[REDACTED]****', text)
+        text = re.sub(r'sk-or-v1-[a-zA-Z0-9]{48,}', 'sk-or-v1-****[REDACTED]****', text)
+        text = re.sub(r'(password|passwd|pwd|pass)\s*[:=]\s*["\']?[^\s"\'&,;]+["\']?', r'\1=****[REDACTED]****', text, flags=re.IGNORECASE)
+        return text
+
+
+def sanitize_data_structure(data: Any) -> Any:
+    """Sanitizes sensitive data inside dicts, lists, strings, and objects."""
+    try:
+        from backend.services.data_privacy import sanitize_payload
+        return sanitize_payload(data)
+    except Exception:
+        return data
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -139,12 +151,12 @@ DANGEROUS_COMMAND_PATTERNS: List[str] = [
 # Absolutely blocked terminal commands.
 BLOCKED_COMMAND_PATTERNS: List[str] = [
     r"rm\s+(-rf?|--recursive)\s+/\s*$",          # rm -rf /  (root wipe)
-    r":(){ :\|:& };:",                            # fork bomb
+    r":\(\)\s*\{\s*:\|:&\s*\};:",                # fork bomb
     r">\s*/dev/sda",                              # write to raw device
-    r"mkfs\.\w+\s+/dev/sd[a-z]$",                # format entire disk
+    r"mkfs\.\w+\s+/dev/sd[a-z]",                  # format entire disk
     r"dd\s+if=/dev/(zero|random)\s+of=/dev/sd",  # dd wipe disk
     r"format\s+c:\s*/y",                          # format C: confirmed
-    r"cipher\s+/w:c:\\",                          # secure wipe C:
+    r"cipher\s+/w",                               # secure wipe C:
 ]
 
 

@@ -204,12 +204,17 @@ class LLMRoutingEngine:
 
         # Filter out open circuit breaker providers and sort descending
         ranked = sorted([p for p in scores if scores[p] > -90000.0], key=lambda x: scores[x], reverse=True)
-        
-        # OFFLINE IMMUNITY: Ensure local engines ('ollama' and 'prash') are ALWAYS included if initialized,
-        # so offline queries never return "trouble reaching AI services"!
+
+        # OFFLINE IMMUNITY: Ensure local engines ('ollama' and 'prash') are ALWAYS included if initialized
         for local_p in ("ollama", "prash"):
             if self.clients.get(local_p) and local_p not in ranked:
                 ranked.append(local_p)
+
+        # LOCAL_ONLY Isolation: If local-only mode is active, strictly exclude all cloud providers
+        from backend.services.data_privacy import get_privacy_enforcer
+        if get_privacy_enforcer().local_only_mode:
+            ranked = [p for p in ranked if p in ("ollama", "prash")]
+            logger.info("LLMRoutingEngine: LOCAL_ONLY active — strictly isolated to local engines: {}", ranked)
 
         logger.debug(f"LLM Provider Rankings: { {p: round(scores.get(p, 0.0), 2) for p in ranked} }")
         return ranked

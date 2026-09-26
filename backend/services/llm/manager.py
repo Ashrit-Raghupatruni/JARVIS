@@ -517,7 +517,19 @@ class LLMService:
         # ── Cloud Provider Cascade (existing logic) ─────────────────
         available_providers = await self.router.get_ranked_providers()
         fallback_count = 0
-        
+
+        # Privacy Gate: LOCAL_ONLY isolation enforcement
+        from backend.services.data_privacy import get_privacy_enforcer, sanitize_payload
+        privacy_enforcer = get_privacy_enforcer()
+        if privacy_enforcer.local_only_mode:
+            available_providers = [p for p in available_providers if p in ("ollama", "prash")]
+            if not available_providers:
+                msg = "LOCAL_ONLY Isolation Enforced: Cloud AI dispatch is strictly blocked and no local model is available."
+                logger.warning(msg)
+                yield {"type": "text_delta", "content": msg}
+                yield {"type": "text_done", "content": msg}
+                return
+
         for i, provider in enumerate(available_providers):
             start_time = time.time()
             prompt_tokens_start = self.total_prompt_tokens
@@ -533,18 +545,26 @@ class LLMService:
                     # "This process must be seamless, with no interruption or visible errors to the user."
                     # We just run silently!
                 
+                # Sanitize outbound user message and history for cloud providers
+                if provider not in ("ollama", "prash"):
+                    safe_user_msg = sanitize_payload(user_message)
+                    safe_conv_history = sanitize_payload(conversation_history)
+                else:
+                    safe_user_msg = user_message
+                    safe_conv_history = conversation_history
+
                 if provider == "ollama":
                     gen = self._process_message_ollama(user_message, conversation_history, tool_executor)
                 elif provider == "gemini":
-                    gen = self._process_message_gemini(user_message, conversation_history, tool_executor)
+                    gen = self._process_message_gemini(safe_user_msg, safe_conv_history, tool_executor)
                 elif provider == "groq":
-                    gen = self._process_message_groq(user_message, conversation_history, tool_executor)
+                    gen = self._process_message_groq(safe_user_msg, safe_conv_history, tool_executor)
                 elif provider == "openrouter":
-                    gen = self._process_message_openrouter(user_message, conversation_history, tool_executor)
+                    gen = self._process_message_openrouter(safe_user_msg, safe_conv_history, tool_executor)
                 elif provider == "openai":
-                    gen = self._process_message_openai(user_message, conversation_history, tool_executor)
+                    gen = self._process_message_openai(safe_user_msg, safe_conv_history, tool_executor)
                 elif provider == "nvidia":
-                    gen = self._process_message_nvidia(user_message, conversation_history, tool_executor)
+                    gen = self._process_message_nvidia(safe_user_msg, safe_conv_history, tool_executor)
                 else:
                     continue
 

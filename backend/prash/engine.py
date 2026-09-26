@@ -116,10 +116,15 @@ class PrashEngine:
             ckpt_data = None
             if checkpoint_path.exists():
                 try:
-                    ckpt_data = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
-                    logger.info("Loaded checkpoint payload from {}", checkpoint_path.name)
+                    ckpt_data = torch.load(checkpoint_path, map_location=self.device, weights_only=True)
+                    logger.info("Loaded checkpoint payload safely (weights_only=True) from {}", checkpoint_path.name)
                 except Exception as e:
-                    logger.warning("Could not pre-read checkpoint payload: {}", e)
+                    logger.warning("Safe weights_only=True checkpoint load failed ({}), falling back: {}", type(e).__name__, e)
+                    try:
+                        ckpt_data = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
+                    except Exception as inner_e:
+                        logger.warning("Could not read checkpoint payload: {}", inner_e)
+
 
             # ── Load / create config (prefer embedded config from .pt) ─
             config_path = self.model_dir / "model_config.json"
@@ -187,11 +192,19 @@ class PrashEngine:
                 checkpoint_path = self.model_dir / "checkpoint_latest.pt"
             if checkpoint_path.exists():
                 try:
-                    checkpoint = torch.load(
-                        checkpoint_path,
-                        map_location=self.device,
-                        weights_only=False,
-                    )
+                    try:
+                        checkpoint = torch.load(
+                            checkpoint_path,
+                            map_location=self.device,
+                            weights_only=True,
+                        )
+                    except Exception as safe_err:
+                        logger.warning("Safe weights_only=True weight load failed ({}), falling back: {}", type(safe_err).__name__, safe_err)
+                        checkpoint = torch.load(
+                            checkpoint_path,
+                            map_location=self.device,
+                            weights_only=False,
+                        )
                     state_dict = (
                         checkpoint["model_state_dict"]
                         if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint

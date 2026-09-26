@@ -152,6 +152,33 @@ Full architectural consolidation and ground-truth documentation audit completed:
 - **Complete Test Matrix**: 12 Pytest test suites in `backend/tests/` with **116/116 tests passing (100% pass rate in ~23s)**.
 - **100% Validated Capability Registry**: Rebuilt `backend/CapabilityRegistry.json` mapping all 16 capability domains strictly to active disk files and tests.
 
+---
+
+## 🔄 Live Mode Failover Architecture, 12-Pillar Hermes Bridge & Dual Agents (September 26, 2026)
+
+- **Live Mode Failover Architecture (`backend/services/live_mode/failover_controller.py`)**:
+  - `LiveModeFailoverSupervisor` coordinates real-time multi-step task execution with JARVIS Desktop Agent as primary and Hermes Desktop Agent as fallback.
+  - Single-agent control locking (`_control_lock = asyncio.Lock()`) enforces strict mutual exclusion.
+  - State machine lifecycle: `PRIMARY_ACTIVE` ➔ `FAILOVER_PENDING` ➔ `HERMES_ACTIVE` ➔ `RECOVERY` ➔ `COMPLETED` / `FAILED` / `CANCELLED`.
+  - Seamless failure point resume: Hermes receives completed steps, failed step, and error reason, executing remaining steps without repeating finished ones.
+  - Emergency Stop / Take Control: Instant task cancellation, lock release, and manual override.
+- **12-Pillar Hermes Bridge Service (`backend/services/hermes_bridge.py`)**:
+  - Complete bridge covering tool execution, agent orchestration, command routing, computer control bridge, task automation, background worker queue, context sync, local dev daemon, extensibility, error boundary, permission boundaries, and WebSocket progress streaming.
+- **Dual Hermes Agents (`backend/agents/`)**:
+  - `HermesDesktopAgent` (`backend/agents/desktop_agent.py`): Windows 11 foregrounding via `AttachThreadInput`, clipboard paste typing (`Ctrl+V`), and coordinate clicking.
+  - `HermesGeneralAgent` (`backend/agents/hermes_agent.py`): Multi-step function calling orchestrator across all 69 JARVIS system tools.
+  - `HermesOrchestrator` (`backend/agents/hermes_orchestrator.py`): Task routing and multi-agent coordination.
+- **In-Chat Image Generation & Lightbox Preview**:
+  - `ImageGeneratorService` (`backend/services/image_generator.py`) supporting Google Imagen 3 + Pollinations AI fallback with disk caching in `data/generated_images/`.
+  - Glassmorphic chat cards and full-screen Lightbox zoom/pan/download modal in `ChatPanel.tsx`.
+- **Hermes CLI Secrets Sync**:
+  - Automatically synchronized `.env` API keys to `C:\Users\ashri\AppData\Local\hermes\.env` and `~/.hermes\.env`. Verified with `hermes doctor` and `hermes setup`.
+- **Truthful Tool Registry**:
+  - Total registered & executable tools expanded to **69 executable tools**.
+- **Master Test Suite**:
+  - **298/298 passed across 30 test files** in `backend/tests/` with 100% pass rate.
+
+
 
 
 

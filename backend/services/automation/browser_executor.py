@@ -23,6 +23,79 @@ from loguru import logger
 from PIL import Image
 
 
+import ipaddress
+
+BLOCKED_SCHEMES = {"javascript", "data", "file", "vbscript", "about", "blob"}
+
+def validate_browser_url(url: str, allow_local: bool = False) -> Tuple[bool, str]:
+    """
+    Validate URL safety:
+    - Enforces http/https schemes.
+    - Blocks dangerous schemes (javascript:, data:, file:).
+    - Blocks SSRF loopback and private IP address ranges unless allow_local is explicitly enabled.
+    """
+    if not url or not isinstance(url, str):
+        return False, "URL must be a non-empty string."
+
+    clean_url = url.strip()
+    if ":" in clean_url and clean_url.split(":")[0].lower() in BLOCKED_SCHEMES:
+        return False, f"Security Policy Blocked: Disallowed URL scheme '{clean_url.split(':')[0]}'."
+
+    if not clean_url.startswith(("http://", "https://")):
+        clean_url = f"https://{clean_url}"
+
+    try:
+        parsed = urllib.parse.urlparse(clean_url)
+        scheme = (parsed.scheme or "").lower()
+        if scheme not in ("http", "https"):
+            return False, f"Security Policy Blocked: Disallowed URL scheme '{scheme}'. Only http/https permitted."
+
+        hostname = (parsed.hostname or "").lower().strip()
+        if not hostname:
+            return False, "Invalid URL: missing hostname."
+
+        if not allow_local:
+            # Check for localhost / loopback aliases
+            if hostname in ("localhost", "127.0.0.1", "::1", "0.0.0.0", "local", "ip6-localhost", "ip6-loopback"):
+                return False, f"Security Policy Blocked: SSRF protection blocked access to localhost/loopback address '{hostname}'."
+
+            # Check for IP address and verify if private/reserved
+            try:
+                ip_obj = ipaddress.ip_address(hostname)
+                if ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_link_local or ip_obj.is_reserved or ip_obj.is_multicast:
+                    return False, f"Security Policy Blocked: SSRF protection blocked access to private/reserved IP address '{hostname}'."
+            except ValueError:
+                # Hostname is not an IP literal, which is standard domain
+                pass
+
+            # Cloud instance metadata protection
+            if hostname in ("169.254.169.254", "metadata.google.internal", "instance-data"):
+                return False, "Security Policy Blocked: Cloud instance metadata exfiltration attempt blocked."
+
+        return True, clean_url
+    except Exception as e:
+        return False, f"Malformed URL: {e}"
+
+
+def is_matching_domain(actual_url: str, expected_domain: str) -> bool:
+    """
+    Determine if actual_url belongs to expected_domain or a valid subdomain of it.
+    Rejects naive substring exploits (e.g. attacker-example.com or example.com.attacker.com).
+    """
+    if not actual_url or not expected_domain:
+        return False
+    try:
+        parsed = urllib.parse.urlparse(actual_url)
+        actual_host = (parsed.hostname or "").lower()
+        exp_domain = expected_domain.lower().strip()
+        if exp_domain.startswith("http://") or exp_domain.startswith("https://"):
+            exp_domain = (urllib.parse.urlparse(exp_domain).hostname or "").lower().strip()
+
+        return actual_host == exp_domain or actual_host.endswith("." + exp_domain)
+    except Exception:
+        return False
+
+
 class BrowserExecutor:
     """
     Core executor for browser automation using Playwright Chromium with HTTP fallbacks.
@@ -97,24 +170,84 @@ class BrowserExecutor:
     def is_started(self) -> bool:
         return self._started
 
-    # ── Navigation & Page Interaction ────────────────────────────────────
-
-    async def open_url(self, url: str) -> str:
+    async def create_isolated_context(self) -> Any:
         """
-        Navigate to a URL.
+        Create an independent, isolated browser context to guarantee session/cookie isolation.
         """
         await self._ensure_started()
-        try:
-            if not url.startswith(("http://", "https://")):
-                url = f"https://{url}"
+        return await self._browser.new_context(
+            viewport={"width": 1280, "height": 800},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+        )
 
-            await self._page.goto(url, wait_until="domcontentloaded", timeout=15000)
-            title = await self._page.title()
-            logger.info(f"Navigated to: {url} — Title: {title}")
-            return f"Opened {url} — Page title: '{title}'"
+    async def detect_captcha_or_challenge(self) -> Tuple[bool, str]:
+        """
+        Detect CAPTCHA, Cloudflare Turnstile, or security challenge prompts in the current DOM.
+        """
+        if not self._page:
+            return False, "No active page"
+        try:
+            challenge_detected = await self._page.evaluate("""
+                () => {
+                    const selectors = [
+                        'iframe[src*="recaptcha"]',
+                        'iframe[src*="hcaptcha"]',
+                        'iframe[src*="cloudflare"]',
+                        'iframe[src*="turnstile"]',
+                        '.g-recaptcha',
+                        '#cf-challenge-running',
+                        '#challenge-stage',
+                        'div[class*="captcha"]'
+                    ];
+                    for (const sel of selectors) {
+                        if (document.querySelector(sel)) return true;
+                    }
+                    const text = document.body.innerText || '';
+                    if (text.includes("Verify you are human") || text.includes("Attention Required! | Cloudflare")) {
+                        return true;
+                    }
+                    return false;
+                }
+            """)
+            if challenge_detected:
+                return True, "CAPTCHA / Security Challenge detected on page."
+            return False, "No challenge detected."
         except Exception as e:
-            logger.error(f"Failed to open URL '{url}': {e}")
-            return f"Failed to open {url}: {str(e)}"
+            return False, f"Challenge detection error: {e}"
+
+    # ── Navigation & Page Interaction ────────────────────────────────────
+
+    async def open_url(self, url: str, expected_domain: Optional[str] = None, allow_local: bool = False) -> str:
+        """
+        Navigate to a URL with SSRF protection, URL scheme validation, and optional expected domain enforcement.
+        """
+        # Validate URL scheme and destination
+        is_valid, validated_or_err = validate_browser_url(url, allow_local=allow_local)
+        if not is_valid:
+            logger.warning("BrowserExecutor: Blocked invalid/unsafe URL navigation: {}", validated_or_err)
+            return f"Navigation Blocked: {validated_or_err}"
+
+        target_url = validated_or_err
+        await self._ensure_started()
+        try:
+            await self._page.goto(target_url, wait_until="domcontentloaded", timeout=15000)
+            current_url = self._page.url
+            title = await self._page.title()
+
+            # Enforce expected domain post-navigation redirect check
+            if expected_domain and not is_matching_domain(current_url, expected_domain):
+                logger.warning(
+                    "BrowserExecutor: Unexpected cross-domain redirect detected! Expected '{}', got '{}'",
+                    expected_domain,
+                    current_url
+                )
+                return f"Redirect Blocked: Current URL '{current_url}' redirected away from expected domain '{expected_domain}'."
+
+            logger.info(f"Navigated to: {target_url} — Title: {title}")
+            return f"Opened {target_url} — Page title: '{title}'"
+        except Exception as e:
+            logger.error(f"Failed to open URL '{target_url}': {e}")
+            return f"Failed to open {target_url}: {str(e)}"
 
     async def search_web(self, query: str) -> str:
         """
@@ -238,42 +371,102 @@ class BrowserExecutor:
         """Alias for get_page_content for backward compatibility."""
         return await self.get_page_content()
 
-    async def click_element(self, selector: str) -> str:
+    async def click_element(
+        self,
+        selector: str,
+        expected_domain: Optional[str] = None,
+        is_sensitive: bool = False
+    ) -> str:
         """
-        Click an element by CSS selector or text matching.
+        Click an element by CSS selector or text matching with domain verification and sensitive target protection.
         """
         await self._ensure_started()
+
+        # Domain verification before executing click
+        if expected_domain:
+            current_url = self._page.url
+            if not is_matching_domain(current_url, expected_domain):
+                logger.warning(
+                    "BrowserExecutor: Blocked click on '{}' due to domain mismatch (Current: '{}', Expected: '{}')",
+                    selector,
+                    current_url,
+                    expected_domain
+                )
+                return f"Domain Mismatch Blocked: Click on '{selector}' blocked because current page '{current_url}' does not match expected domain '{expected_domain}'."
+
         try:
             try:
-                await self._page.click(selector, timeout=5000)
+                locator = self._page.locator(selector)
+                count = await locator.count()
+                if count > 1 and is_sensitive:
+                    logger.warning("BrowserExecutor: Multiple ({}) elements match sensitive selector '{}'. Requiring disambiguation.", count, selector)
+                    return f"Target Ambiguity Blocked: Multiple elements ({count}) match sensitive selector '{selector}'."
+
+                await locator.first.click(timeout=5000)
                 logger.info(f"Clicked element: {selector}")
                 return f"Clicked element matching '{selector}'"
             except Exception:
                 pass
 
-            element = self._page.get_by_text(selector, exact=False).first
-            await element.click(timeout=5000)
+            element = self._page.get_by_text(selector, exact=False)
+            count_text = await element.count()
+            if count_text > 1 and is_sensitive:
+                return f"Target Ambiguity Blocked: Multiple elements ({count_text}) match sensitive text '{selector}'."
+
+            await element.first.click(timeout=5000)
             logger.info(f"Clicked element by text: {selector}")
             return f"Clicked element with text '{selector}'"
         except Exception as e:
             logger.error(f"Failed to click '{selector}': {e}")
             return f"Could not find or click element '{selector}': {str(e)}"
 
-    async def fill_input(self, selector: str, value: str) -> str:
+    async def fill_input(
+        self,
+        selector: str,
+        value: str,
+        expected_domain: Optional[str] = None,
+        is_sensitive: bool = False
+    ) -> str:
         """
-        Fill an input field on the page.
+        Fill an input field on the page with domain validation and credential masking.
         """
         await self._ensure_started()
+
+        # Domain verification before filling form inputs
+        if expected_domain:
+            current_url = self._page.url
+            if not is_matching_domain(current_url, expected_domain):
+                logger.warning(
+                    "BrowserExecutor: Blocked input fill on '{}' due to domain mismatch (Current: '{}', Expected: '{}')",
+                    selector,
+                    current_url,
+                    expected_domain
+                )
+                return f"Domain Mismatch Blocked: Input fill on '{selector}' blocked because current page '{current_url}' does not match expected domain '{expected_domain}'."
+
+        # Detect sensitive field types for logging redaction
+        is_secret = is_sensitive or any(
+            sk in selector.lower() for sk in ["password", "token", "secret", "cvv", "card", "key", "auth", "otp", "pin"]
+        )
+
         try:
             try:
                 await self._page.fill(selector, value, timeout=5000)
-                logger.info(f"Filled input '{selector}' with value")
-                return f"Filled input '{selector}' with '{value[:50]}...'" if len(value) > 50 else f"Filled input '{selector}' with '{value}'"
+                if is_secret:
+                    logger.info("Filled sensitive input '{}' with [REDACTED]", selector)
+                    return f"Filled input '{selector}' with '******' (sensitive credential masked)"
+                else:
+                    logger.info("Filled input '{}' with value", selector)
+                    display_val = f"'{value[:50]}...'" if len(value) > 50 else f"'{value}'"
+                    return f"Filled input '{selector}' with {display_val}"
             except Exception:
                 pass
 
             element = self._page.get_by_label(selector).first
             await element.fill(value, timeout=5000)
+            if is_secret:
+                logger.info("Filled sensitive input labeled '{}' with [REDACTED]", selector)
+                return f"Filled input labeled '{selector}' with '******' (sensitive credential masked)"
             return f"Filled input labeled '{selector}'"
         except Exception as e:
             logger.error(f"Failed to fill input '{selector}': {e}")

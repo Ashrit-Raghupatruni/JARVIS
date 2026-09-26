@@ -1,7 +1,7 @@
 # 🧪 JARVIS System Feature Test Audit & Verification Matrix
 
-**Last Full Audit Date:** September 12, 2026
-**Master Test Suite Status:** 12/12 test suites passing (116/116 tests, 100% pass rate)
+**Last Full Audit Date:** September 26, 2026
+**Master Test Suite Status:** 30/30 test suites passing (298/298 tests, 100% pass rate in 216.80s)
 
 This document serves as the authoritative, standing source of truth for all verified features, test results, empirical evidence, and hardware caveats across JARVIS.
 
@@ -597,6 +597,39 @@ backend\tests\test_routes.py ..........                                    [100%
   10. `backend/tests/test_all_11_os_capabilities.py`: 11 passed (All 11 core OS capabilities & hardware interfaces)
   11. `backend/tests/test_master_integration_suite.py`: 18 passed (Full end-to-end integration & cross-service communication)
   12. `backend/tests/test_routes.py`: 10 passed (FastAPI endpoints, WebSocket channels, status health checks)
+
+---
+
+### [Live Mode Failover, Dual Hermes Agents & Image Generation Test Suite]
+- **Date tested**: 2026-09-26
+- **How tested**: Executed `backend/venv/Scripts/python.exe -m pytest backend/tests/test_image_generation_and_desktop_agent.py -v` and full suite `backend/venv/Scripts/python.exe -m pytest backend/tests/ -q`.
+- **Expected result**: All 12 failover/Hermes/image tests pass, and entire 30-suite test harness passes with 100% success rate.
+- **Actual result**:
+```text
+backend/tests/test_image_generation_and_desktop_agent.py::test_image_generator_service_mock_or_real PASSED [  8%]
+backend/tests/test_image_generation_and_desktop_agent.py::test_image_generator_service_fallback PASSED     [ 16%]
+backend/tests/test_image_generation_and_desktop_agent.py::test_generate_image_tool_registration PASSED     [ 25%]
+backend/tests/test_image_generation_and_desktop_agent.py::test_hermes_desktop_agent_actions PASSED         [ 33%]
+backend/tests/test_image_generation_and_desktop_agent.py::test_hermes_agent_task_execution PASSED          [ 41%]
+backend/tests/test_image_generation_and_desktop_agent.py::test_hermes_orchestrator_routing PASSED          [ 50%]
+backend/tests/test_image_generation_and_desktop_agent.py::test_live_mode_failover_supervisor_primary_success PASSED [ 58%]
+backend/tests/test_image_generation_and_desktop_agent.py::test_live_mode_failover_supervisor_failover_trigger PASSED [ 66%]
+backend/tests/test_image_generation_and_desktop_agent.py::test_live_mode_failover_supervisor_emergency_stop PASSED [ 75%]
+backend/tests/test_image_generation_and_desktop_agent.py::test_hermes_bridge_service_pillars PASSED       [ 83%]
+backend/tests/test_image_generation_and_desktop_agent.py::test_live_mode_supervisor_routes PASSED          [ 91%]
+backend/tests/test_image_generation_and_desktop_agent.py::test_bootstrap_registers_all_new_services PASSED [100%]
+
+================================ 298 passed in 216.80s (0:03:36) ================================
+```
+- **Status**: PASS (298/298 tests, 100% pass rate)
+- **Key Features Verified**:
+  1. `ImageGeneratorService`: Google Imagen 3 synthesis, Pollinations AI fallback, disk caching in `data/generated_images/`.
+  2. `HermesDesktopAgent`: AttachThreadInput foregrounding, clipboard typing (`Ctrl+V`), coordinate clicks.
+  3. `HermesGeneralAgent`: Multi-step function calling across 69 tools.
+  4. `LiveModeFailoverSupervisor`: Single-agent `asyncio.Lock()` mutual exclusion, dynamic step status tracking, failure handoff packet assembly, and Emergency Stop.
+  5. `HermesBridgeService`: 12-pillar bridge execution and WebSocket progress broadcast.
+  6. `REST API Routes`: `/api/v1/live_mode/supervisor/execute`, `/api/v1/live_mode/supervisor/emergency_stop`, `/api/v1/live_mode/supervisor/status`.
+
 
 
 

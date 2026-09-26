@@ -306,8 +306,18 @@ async def websocket_endpoint(websocket: WebSocket):
                 continue
 
             if "text" in message:
+                raw_text = message["text"]
+                if len(raw_text) > 5 * 1024 * 1024:
+                    logger.warning("Oversized WebSocket text message (>5MB) from client '{}'", client_id)
+                    await manager.send_message(
+                        websocket,
+                        WSMessage(type="error", data={"message": "Message exceeds maximum size limit of 5MB"}),
+                        client_id=client_id
+                    )
+                    continue
+
                 try:
-                    data = json.loads(message["text"])
+                    data = json.loads(raw_text)
                     msg_type = data.get("type", "")
                     msg_data = data.get("data", {})
                     msg_id = data.get("msg_id")

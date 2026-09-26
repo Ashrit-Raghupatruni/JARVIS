@@ -311,35 +311,42 @@ def test_orchestrator_sub_executors_lazy_properties(orchestrator):
 # ── 6. Backward Compatibility Facades Tests ──────────────────────────────
 
 def test_backward_compatibility_facades():
-    """Verify all legacy classes instantiate and provide identical methods."""
+    """Verify all legacy classes instantiate and provide callable functional methods."""
     # 1. AutomationService facade
     auto_svc = AutomationServiceFacade()
-    assert hasattr(auto_svc, "open_application")
-    assert hasattr(auto_svc, "close_application")
-    assert hasattr(auto_svc, "arrange_workspace_layout")
-    assert hasattr(auto_svc, "type_text")
+    assert callable(auto_svc.open_application)
+    assert callable(auto_svc.close_application)
+    assert callable(auto_svc.arrange_workspace_layout)
+    assert callable(auto_svc.type_text)
 
     # 2. DesktopAutomationService facade
     desk_svc = DesktopAutomationService()
-    assert hasattr(desk_svc, "start_workflow_recording")
-    assert hasattr(desk_svc, "execute_rpa_macro")
-    assert hasattr(desk_svc, "arrange_windows_layout")
-    assert hasattr(desk_svc, "get_clipboard_content")
+    assert callable(desk_svc.start_workflow_recording)
+    assert callable(desk_svc.execute_rpa_macro)
+    assert callable(desk_svc.arrange_windows_layout)
+    assert callable(desk_svc.get_clipboard_content)
+    clip = desk_svc.get_clipboard_content()
+    assert isinstance(clip, dict)
+    assert "content" in clip
+    assert "content_type" in clip
 
     # 3. UIAEngine facade
     uia = UIAEngineFacade()
-    assert hasattr(uia, "inspect_active_window_controls")
-    assert hasattr(uia, "click_element_by_name")
-    assert hasattr(uia, "find_element_by_ocr")
+    assert callable(uia.inspect_active_window_controls)
+    assert callable(uia.click_element_by_name)
+    assert callable(uia.find_element_by_ocr)
 
     # 4. BrowserService facade
     browser = BrowserServiceFacade()
-    assert hasattr(browser, "open_url")
-    assert hasattr(browser, "search_web")
-    assert hasattr(browser, "click_element")
+    assert callable(browser.open_url)
+    assert callable(browser.search_web)
+    assert callable(browser.click_element)
 
     # 5. ActionVerifier facade
     av = ActionVerifierFacade()
-    assert hasattr(av, "verify_application_launched")
-    assert hasattr(av, "execute_and_verify")
-    assert action_verifier is not None
+    assert callable(av.verify_application_launched)
+    assert callable(av.execute_and_verify)
+    v_res = av.verify_application_launched("nonexistent_test_proc_99999")
+    assert isinstance(v_res, tuple)
+    assert v_res[0] is False
+    assert isinstance(action_verifier, ActionExecutionVerifier)

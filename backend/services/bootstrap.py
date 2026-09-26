@@ -347,6 +347,32 @@ def register_lazy_factories(event_bus: EventBus, connection_manager: Optional[An
         return AutomationAgent()
     ServiceManager.register_factory("automation_agent_domain", _make_automation_agent)
 
+    def _make_hermes_desktop_agent():
+        from backend.agents.desktop_agent import HermesDesktopAgent
+        return HermesDesktopAgent()
+    ServiceManager.register_factory("hermes_desktop_agent", _make_hermes_desktop_agent)
+
+    def _make_hermes_general_agent():
+        from backend.agents.hermes_agent import HermesGeneralAgent
+        return HermesGeneralAgent()
+    ServiceManager.register_factory("hermes_general_agent", _make_hermes_general_agent)
+    ServiceManager.register_factory("hermes_agent", _make_hermes_general_agent)
+
+    def _make_hermes_orchestrator():
+        from backend.agents.hermes_orchestrator import HermesOrchestrator
+        return HermesOrchestrator()
+    ServiceManager.register_factory("hermes_orchestrator", _make_hermes_orchestrator)
+
+    def _make_hermes_bridge():
+        from backend.services.hermes_bridge import HermesBridgeService
+        return HermesBridgeService(event_bus=event_bus)
+    ServiceManager.register_factory("hermes_bridge", _make_hermes_bridge)
+
+    def _make_live_failover_supervisor():
+        from backend.services.live_mode.failover_controller import LiveModeFailoverSupervisor
+        return LiveModeFailoverSupervisor()
+    ServiceManager.register_factory("live_failover_supervisor", _make_live_failover_supervisor)
+
     def _make_planner():
         from backend.agents.planner import PlannerAgent
         return PlannerAgent(

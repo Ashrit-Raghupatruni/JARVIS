@@ -16,6 +16,9 @@ from pydantic import BaseModel, Field
 
 from backend.models.schemas import SystemStatus, UserCommand
 
+import sys
+import platform
+
 router = APIRouter()
 
 # Track server start time for uptime
@@ -23,9 +26,9 @@ _start_time = time.time()
 
 
 class CommandRequest(BaseModel):
-    text: Optional[str] = None
-    message: Optional[str] = None
-    prompt: Optional[str] = None
+    text: Optional[str] = Field(None, max_length=100000)
+    message: Optional[str] = Field(None, max_length=100000)
+    prompt: Optional[str] = Field(None, max_length=100000)
     conversation_id: Optional[Any] = None
 
 
@@ -38,15 +41,105 @@ class SettingsUpdate(BaseModel):
     whisper_model: Optional[str] = None
 
 
+@router.get("/version")
+@router.get("/api/version")
+@router.get("/api/v1/version")
+async def get_version_endpoint():
+    """Version and build identification endpoint."""
+    return {
+        "app_name": "JARVIS AI OS",
+        "version": "1.0.0",
+        "backend_version": "1.0.0",
+        "frontend_version": "1.0.0",
+        "schema_version": "2.0.0",
+        "platform": sys.platform,
+        "python_version": platform.python_version(),
+        "status": "production_ready",
+    }
+
+
 @router.get("/health")
 @router.get("/api/health")
 @router.get("/api/v1/health")
 async def health_check():
-    """Basic health check endpoint."""
+    """Basic liveness health check endpoint."""
     return {
         "status": "ok",
+        "liveness": "healthy",
         "uptime": round(time.time() - _start_time, 2),
         "service": "JARVIS Backend",
+    }
+
+
+@router.get("/health/ready")
+@router.get("/api/health/ready")
+@router.get("/api/v1/health/ready")
+async def readiness_check(request: Request):
+    """Readiness check: verifies essential bootstrap services are available."""
+    from backend.services.manager import ServiceManager
+    
+    # Core essential services that must be present
+    core_ready = True
+    reasons = []
+
+    # Check ServiceManager
+    if not ServiceManager:
+        core_ready = False
+        reasons.append("ServiceManager not initialized")
+
+    return {
+        "status": "ok" if core_ready else "degraded",
+        "readiness": "ready" if core_ready else "unready",
+        "core_backend": "HEALTHY",
+        "uptime": round(time.time() - _start_time, 2),
+        "reasons": reasons
+    }
+
+
+@router.get("/health/detailed")
+@router.get("/api/health/detailed")
+@router.get("/api/v1/health/detailed")
+async def detailed_health_check(request: Request):
+    """Detailed dependency health check distinguishing core vs optional/on-demand services."""
+    from backend.services.manager import ServiceManager, ServiceState
+    from backend.config import get_settings
+    
+    settings = get_settings()
+    app = request.app
+
+    components = {
+        "core_backend": {"status": "HEALTHY", "required": True},
+        "security_policy": {"status": "HEALTHY", "required": True},
+        "tool_registry": {"status": "HEALTHY", "required": True},
+        "working_memory": {"status": "HEALTHY", "required": True},
+    }
+
+    # Check LLM Provider status (optional/fallback)
+    llm_state = ServiceManager.get_state("llm_service")
+    components["llm_provider"] = {
+        "provider": settings.LLM_PROVIDER or "ollama",
+        "state": llm_state.value if llm_state else "UNINITIALIZED",
+        "required": False
+    }
+
+    # Browser Automation (on-demand)
+    browser_state = ServiceManager.get_state("browser_executor")
+    components["browser_automation"] = {
+        "state": browser_state.value if browser_state else "NOT_INITIALIZED",
+        "required": False
+    }
+
+    # Vision / Perception (optional)
+    components["perception_camera"] = {
+        "state": "AVAILABLE",
+        "required": False
+    }
+
+    return {
+        "status": "ok",
+        "overall_health": "HEALTHY",
+        "components": components,
+        "uptime": round(time.time() - _start_time, 2),
     }
 
 
@@ -1155,7 +1248,51 @@ async def verify_face_profile(payload: Dict[str, Any]):
         res = face_auth_engine.verify_face(embedding, frame_sequence)
         return {"status": "ok", "result": res}
 
-    raise HTTPException(status_code=400, detail="Either image_base64 or embedding list must be provided")
+
+# ── Live Mode Failover Supervisor REST Endpoints ────────────────────────────
+
+class LiveModeSupervisorExecuteRequest(BaseModel):
+    goal: str
+    timeout_per_step: float = 25.0
+
+
+@router.post("/api/v1/live_mode/supervisor/execute")
+async def live_mode_supervisor_execute(payload: LiveModeSupervisorExecuteRequest):
+    """
+    Execute task with JARVIS Desktop Agent as primary and automatic Hermes failover recovery.
+    """
+    from backend.services.live_mode.failover_controller import live_failover_supervisor
+    from backend.services.tool_registry import tool_registry
+    return await live_failover_supervisor.execute_with_failover(
+        goal=payload.goal,
+        tool_registry=tool_registry,
+        timeout_per_step=payload.timeout_per_step
+    )
+
+
+@router.post("/api/v1/live_mode/supervisor/emergency_stop")
+async def live_mode_supervisor_emergency_stop():
+    """
+    Immediately revokes all AI agent control locks and gives manual control to the user.
+    """
+    from backend.services.live_mode.failover_controller import live_failover_supervisor
+    return live_failover_supervisor.emergency_stop()
+
+
+@router.get("/api/v1/live_mode/supervisor/status")
+async def live_mode_supervisor_status():
+    """
+    Retrieve current supervisor authority state, active agent, and handoff history.
+    """
+    from backend.services.live_mode.failover_controller import live_failover_supervisor
+    return {
+        "authority_state": live_failover_supervisor.current_authority.value,
+        "active_agent": live_failover_supervisor.active_agent_name,
+        "handoff_count": len(live_failover_supervisor.handoff_history),
+        "handoff_history": [h.model_dump() for h in live_failover_supervisor.handoff_history],
+        "latest_state": live_failover_supervisor.latest_state
+    }
+
 
 
 

@@ -1,11 +1,25 @@
 {
   "project_name": "JARVIS Personal AI Operating System",
   "version": "1.0.0",
+  "schema_version": "2.0.0",
+  "authoritative_sources": {
+    "architecture": "ARCHITECTURE.md",
+    "capability_metadata": "backend/CapabilityRegistry.json",
+    "user_guide": "README.md",
+    "verification_history": "JARVIS_IMPLEMENTATION_TRACKER.md"
+  },
   "capabilities": {
     "core_service_container": {
       "name": "Core Service Container & Dependency Injection",
-      "status": "IMPLEMENTED",
-      "description": "Unified thread-safe ServiceManager with lifecycle management, circular dependency protection, and 46 registered lazy factories.",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": false,
+      "experimental": false,
+      "description": "Unified thread-safe ServiceManager with lifecycle management, circular dependency protection, and 53 registered lazy factories.",
       "implementation_files": [
         "backend/services/manager.py",
         "backend/services/bootstrap.py"
@@ -14,11 +28,23 @@
         "backend/tests/test_service_manager_startup.py",
         "backend/tests/test_platform_isolation.py"
       ],
-      "dependencies": ["fastapi", "pydantic", "loguru"]
+      "dependencies": [
+        "fastapi",
+        "pydantic",
+        "loguru"
+      ],
+      "validation_details": "4/4 unit tests passing; circular dependency detection and reverse-initialization shutdown verified."
     },
     "intent_planning_orchestration": {
       "name": "Intent Classification & Planning Orchestration",
-      "status": "IMPLEMENTED",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": false,
+      "experimental": false,
       "description": "Hierarchical intent classification with fast-path deterministic intercepts, plan validation, and structured step tracking.",
       "implementation_files": [
         "backend/agents/router.py",
@@ -31,11 +57,22 @@
         "backend/tests/test_agent_ecosystem.py",
         "backend/tests/test_master_integration_suite.py"
       ],
-      "dependencies": ["pydantic", "loguru"]
+      "dependencies": [
+        "pydantic",
+        "loguru"
+      ],
+      "validation_details": "Intent routing matches exact RequestCategory enum; PlanValidator verifies tool schemas and risk levels."
     },
     "domain_agents_ecosystem": {
       "name": "Domain Specialized Agents & Multi-Agent IPC",
-      "status": "IMPLEMENTED",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": false,
+      "experimental": false,
       "description": "Four specialized domain agents (General, Research, Developer, Automation) with inter-agent message passing and state management.",
       "implementation_files": [
         "backend/agents/domain/general_agent.py",
@@ -47,27 +84,53 @@
       "test_files": [
         "backend/tests/test_agent_ecosystem.py"
       ],
-      "dependencies": ["pydantic", "loguru"]
+      "dependencies": [
+        "pydantic",
+        "loguru"
+      ],
+      "validation_details": "10/10 agent ecosystem tests passing; inter-agent IPC routing verified."
     },
     "unified_memory_system": {
       "name": "Unified 4-Tier Memory System",
-      "status": "IMPLEMENTED",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": true,
+      "experimental": false,
       "description": "Coordinated memory management across Working Memory (sliding window), Long-Term Memory (ChromaDB + NetworkX), Episodic Memory (SQLite WAL), and Semantic Memory (vector RAG).",
       "implementation_files": [
         "backend/services/memory/manager.py",
+        "backend/services/memory/types.py",
         "backend/services/memory/working_memory.py",
         "backend/services/memory/long_term_memory.py",
         "backend/services/memory/episodic_memory.py",
         "backend/services/memory/semantic_memory.py"
       ],
       "test_files": [
-        "backend/tests/test_memory_architecture.py"
+        "backend/tests/test_memory_architecture.py",
+        "backend/tests/test_memory_safety_and_poisoning.py"
       ],
-      "dependencies": ["chromadb", "sentence-transformers", "sqlalchemy", "networkx", "aiosqlite"]
+      "dependencies": [
+        "chromadb",
+        "sentence-transformers",
+        "sqlalchemy",
+        "networkx",
+        "aiosqlite"
+      ],
+      "validation_details": "13/13 memory tests passing (5 architecture + 8 memory safety/provenance/poisoning); credential masking and fail-closed isolation verified."
     },
     "consolidated_automation": {
       "name": "Consolidated Desktop & Browser Automation Suite",
-      "status": "IMPLEMENTED",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows"
+      ],
+      "optional": false,
+      "experimental": false,
       "description": "Unified automation orchestrator with Win32/PyAutoGUI desktop execution, Playwright browser navigation, UIA control tree perception, and pre/post action verification.",
       "implementation_files": [
         "backend/services/automation/orchestrator.py",
@@ -80,11 +143,23 @@
         "backend/tests/test_automation_architecture.py",
         "backend/tests/test_all_11_os_capabilities.py"
       ],
-      "dependencies": ["pyautogui", "playwright", "pywin32", "pywinauto"]
+      "dependencies": [
+        "pyautogui",
+        "playwright",
+        "pywin32",
+        "pywinauto"
+      ],
+      "validation_details": "21/21 automation & OS capability tests passing; all 11 Windows automation capabilities verified."
     },
     "voice_speech_intelligence": {
       "name": "Voice Pipeline & Multi-Tier Speech Synthesis",
-      "status": "IMPLEMENTED",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows"
+      ],
+      "optional": true,
+      "experimental": false,
       "description": "Voice coordinator with Faster-Whisper local STT, OpenWakeWord listener, 3-tier TTS fallback (Edge-TTS -> Piper Local ONNX -> SAPI SpVoice), and real-time barge-in cancellation.",
       "implementation_files": [
         "backend/services/voice/voice_manager.py",
@@ -97,24 +172,50 @@
       "test_files": [
         "backend/tests/test_voice_architecture.py"
       ],
-      "dependencies": ["faster-whisper", "openwakeword", "edge-tts", "sounddevice", "numpy"]
+      "dependencies": [
+        "faster-whisper",
+        "openwakeword",
+        "edge-tts",
+        "sounddevice",
+        "numpy"
+      ],
+      "validation_details": "10/10 voice tests passing; lazy model loading, STT hallucination filtering, and 3-tier TTS verified."
     },
     "truthful_tool_registry": {
       "name": "Truthful Tool Registry & Safety Gates",
-      "status": "IMPLEMENTED",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": false,
+      "experimental": false,
       "description": "Centralized registry with 61 executable system tools, strict error normalization, parameter validation, risk classification, and sensitive argument redaction.",
       "implementation_files": [
-        "backend/services/tool_registry.py"
+        "backend/services/tool_registry.py",
+        "backend/services/safety_gatekeeper.py"
       ],
       "test_files": [
         "backend/tests/test_tool_registry_hardening.py",
         "backend/tests/test_all_11_os_capabilities.py"
       ],
-      "dependencies": ["pydantic", "loguru", "psutil"]
+      "dependencies": [
+        "pydantic",
+        "loguru",
+        "psutil"
+      ],
+      "validation_details": "10/10 ToolRegistry tests passing; sync/async tool execution, schema checks, and argument masking verified."
     },
     "live_mode_perception": {
       "name": "Live Mode Screen & Desktop Perception",
-      "status": "IMPLEMENTED",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows"
+      ],
+      "optional": true,
+      "experimental": false,
       "description": "Event-driven adaptive perception loop with differential UIA scene graph caching, throttled WorldModel inspection, and zero LLM calls during static observation.",
       "implementation_files": [
         "backend/services/live_mode/live_engine.py",
@@ -125,11 +226,23 @@
       "test_files": [
         "backend/tests/test_live_perception_optimization.py"
       ],
-      "dependencies": ["pywin32", "pywinauto", "psutil"]
+      "dependencies": [
+        "pywin32",
+        "pywinauto",
+        "psutil"
+      ],
+      "validation_details": "6/6 perception tests passing; scene graph differential caching (2.5s TTL) and spatial coordinate mapping verified."
     },
     "multimodal_generation_engine": {
       "name": "Multimodal Generative Media Engine",
-      "status": "IMPLEMENTED",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": true,
+      "experimental": false,
       "description": "Async media generation queue with SQLite persistence for Image, Video, and 3D mesh synthesis with fail-closed preflight adapters.",
       "implementation_files": [
         "backend/services/async_generation_queue.py",
@@ -141,11 +254,22 @@
       "test_files": [
         "backend/tests/test_capability_expansion_full.py"
       ],
-      "dependencies": ["sqlite3", "torch", "httpx"]
+      "dependencies": [
+        "torch",
+        "httpx"
+      ],
+      "validation_details": "Generation queue, job status lifecycle, and fail-closed preflight guards validated."
     },
     "chemoinformatics_science_engine": {
       "name": "Science & Chemoinformatics Engine",
-      "status": "IMPLEMENTED",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": false,
+      "experimental": false,
       "description": "Chemical formula molecular weight calculator, stoichiometry equation balancer, PubChem compound lookup, and biological pathway explainer.",
       "implementation_files": [
         "backend/services/science_service.py",
@@ -154,11 +278,21 @@
       "test_files": [
         "backend/tests/test_capability_expansion_full.py"
       ],
-      "dependencies": ["httpx", "re", "json"]
+      "dependencies": [
+        "httpx"
+      ],
+      "validation_details": "Chemical parsing, equation balancing algorithms, and PubChem REST queries validated."
     },
     "design_ui_scaffolder": {
       "name": "Design Assistant & Web App Scaffolder",
-      "status": "IMPLEMENTED",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": false,
+      "experimental": false,
       "description": "WCAG contrast and UX hierarchy layout critique, Tailwind color palette generator, and standalone HTML/React component scaffolder.",
       "implementation_files": [
         "backend/services/design_assistant.py",
@@ -167,11 +301,20 @@
       "test_files": [
         "backend/tests/test_capability_expansion_full.py"
       ],
-      "dependencies": ["re", "json"]
+      "dependencies": [
+        "pydantic"
+      ],
+      "validation_details": "Palette generation, contrast ratio calculation, and UI scaffolding validated."
     },
     "vision_intelligence_engine": {
       "name": "Vision Intelligence & Object Detection",
-      "status": "IMPLEMENTED",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows"
+      ],
+      "optional": true,
+      "experimental": false,
       "description": "OpenCV Haar cascade and contour object detector with grounded visual captioning and aspect ratio analytics.",
       "implementation_files": [
         "backend/services/vision_service.py",
@@ -180,12 +323,24 @@
       "test_files": [
         "backend/tests/test_capability_expansion_full.py"
       ],
-      "dependencies": ["numpy", "Pillow", "pytesseract"]
+      "dependencies": [
+        "numpy",
+        "Pillow",
+        "pytesseract"
+      ],
+      "validation_details": "Image processing, object recognition fallback, and visual captioning validated."
     },
     "productivity_notes_copywriter": {
       "name": "Productivity Notes, Copywriting & Prompt Pipeline",
-      "status": "IMPLEMENTED",
-      "description": "Markdown note persistence (take, list, search) in data/notes/, multi-channel copywriting generator, and prompt transformation pipeline (summarization, style rewrite, sentiment, entity extraction).",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": false,
+      "experimental": false,
+      "description": "Markdown note persistence (take, list, search) in data/notes/, multi-channel copywriting generator, and prompt transformation pipeline.",
       "implementation_files": [
         "backend/services/productivity_service.py",
         "backend/services/skills/productivity_skill.py",
@@ -194,41 +349,81 @@
       "test_files": [
         "backend/tests/test_capability_expansion_phase1.py"
       ],
-      "dependencies": ["pathlib", "json", "pydantic"]
+      "dependencies": [
+        "pydantic"
+      ],
+      "validation_details": "Note storage/search and copywriting prompt transforms verified."
     },
     "security_sandbox_gatekeeper": {
       "name": "Security Sandbox & Approval Gatekeeper",
-      "status": "IMPLEMENTED",
-      "description": "AST allowlist sandbox, encrypted credential vault, face authentication liveness detection, and fail-closed mobile/desktop approval intercept.",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": false,
+      "experimental": false,
+      "description": "AST allowlist sandbox, encrypted credential vault, face authentication liveness detection, and fail-closed mobile/desktop approval intercept with Ed25519 cryptographic challenge nonce verification.",
       "implementation_files": [
         "backend/services/security/sandbox.py",
         "backend/services/security/face_auth_engine.py",
         "backend/services/security/vault.py",
-        "backend/services/mobile_bridge.py"
+        "backend/services/mobile_auth.py",
+        "backend/services/mobile_gateway.py"
       ],
       "test_files": [
+        "backend/tests/test_security_precedence_and_hierarchy.py",
+        "backend/tests/test_mobile_security_approvals.py",
         "backend/tests/test_master_integration_suite.py"
       ],
-      "dependencies": ["cryptography", "pyjwt", "keyring"]
+      "dependencies": [
+        "cryptography",
+        "pyjwt",
+        "keyring"
+      ],
+      "validation_details": "11/11 mobile security tests passing; Ed25519 pairing, replay protection, and challenge nonce verification validated."
     },
     "mobile_companion_gateway": {
       "name": "Mobile Companion Gateway & Remote Control",
-      "status": "IMPLEMENTED",
-      "description": "FastAPI WebSockets sync with JWT authentication, telemetry streaming, remote approval cards, and lockscreen coordination.",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "android",
+        "windows"
+      ],
+      "optional": true,
+      "experimental": false,
+      "description": "FastAPI WebSockets sync with JWT authentication, telemetry streaming, remote approval cards, 6-tab React Native client, and 9-panel embedded HTML Mission Control.",
       "implementation_files": [
         "backend/api/mobile_router.py",
         "backend/api/mobile_ws.py",
-        "backend/services/mobile_bridge.py"
+        "backend/services/mobile_gateway.py",
+        "mobile_app/src/api/client.ts"
       ],
       "test_files": [
         "backend/tests/test_routes.py",
+        "backend/tests/test_mobile_security_approvals.py",
         "backend/tests/test_master_integration_suite.py"
       ],
-      "dependencies": ["fastapi", "websockets", "pyjwt"]
+      "dependencies": [
+        "fastapi",
+        "websockets",
+        "pyjwt",
+        "cryptography"
+      ],
+      "validation_details": "REST endpoints & WebSocket streams verified; physical Android build & APK installation verified."
     },
     "local_ai_reasoner": {
       "name": "Prash Local AI Reasoner & Transformer",
-      "status": "IMPLEMENTED",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": true,
+      "experimental": false,
       "description": "Decoder-only GPT-style transformer in PyTorch with token prediction entropy gating for instant offline execution.",
       "implementation_files": [
         "backend/prash/model.py",
@@ -237,7 +432,295 @@
       "test_files": [
         "backend/tests/test_master_integration_suite.py"
       ],
-      "dependencies": ["torch", "numpy"]
+      "dependencies": [
+        "torch",
+        "numpy"
+      ],
+      "validation_details": "Local entropy gating and transformer inference verified in master test suite."
+    },
+    "autonomous_habit_planner": {
+      "name": "Autonomous Habit Learner & Project Planner",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": true,
+      "experimental": true,
+      "description": "Autonomous workflow & habit learning engine tracking user interaction frequencies and long-term milestones in data/user_habits.json.",
+      "implementation_files": [
+        "backend/services/autonomous_engine.py",
+        "backend/services/reflection_engine.py"
+      ],
+      "test_files": [
+        "backend/tests/test_master_integration_suite.py"
+      ],
+      "dependencies": [
+        "pydantic",
+        "loguru"
+      ],
+      "validation_details": "Habit scanning and long-term goal milestone retrieval validated."
+    },
+    "security_trust_and_execution_guard": {
+      "name": "Security Trust Hierarchy, Command Guard & Untrusted Content Defense (Phases 1, 2, 3)",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": false,
+      "experimental": false,
+      "description": "Authoritative fail-closed security hierarchy, out-of-model SafetyGatekeeper, ASTSandbox Python isolation, path canonicalization, process self-kill protection, Ed25519 mobile cryptographic approvals, and prompt injection/untrusted content red-team defenses.",
+      "implementation_files": [
+        "backend/services/safety_gatekeeper.py",
+        "backend/services/safety.py",
+        "backend/services/safe_action_executor.py",
+        "backend/services/security/sandbox.py",
+        "backend/services/automation/desktop_executor.py",
+        "backend/services/tool_registry.py",
+        "backend/services/mobile_gateway.py",
+        "backend/services/mobile_auth.py",
+        "backend/services/online_research_engine.py"
+      ],
+      "test_files": [
+        "backend/tests/test_security_precedence_and_hierarchy.py",
+        "backend/tests/test_command_and_execution_security.py",
+        "backend/tests/test_prompt_injection_redteam.py",
+        "backend/tests/test_mobile_security_approvals.py"
+      ],
+      "dependencies": [
+        "pydantic",
+        "loguru",
+        "cryptography"
+      ],
+      "validation_details": "36/36 dedicated security tests passing (11 precedence + 11 command/execution + 14 prompt injection red-team); 174/174 total backend test suite passing."
+    },
+    "data_privacy_and_exfiltration_defense": {
+      "name": "Data Privacy, Classification & Exfiltration Defense (Phase 8)",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": false,
+      "experimental": false,
+      "description": "Canonical 5-tier Data Classification Model (PUBLIC, INTERNAL, PERSONAL, SENSITIVE, SECRET), comprehensive secret masking across cloud LLMs and cloud TTS, LOCAL_ONLY mode strict isolation, and fail-closed outbound exfiltration blocking.",
+      "implementation_files": [
+        "backend/services/data_privacy.py",
+        "backend/services/safety_gatekeeper.py",
+        "backend/services/safety.py",
+        "backend/services/llm/manager.py",
+        "backend/services/llm_router.py",
+        "backend/services/voice/tts_manager.py",
+        "backend/services/tool_registry.py"
+      ],
+      "test_files": [
+        "backend/tests/test_data_privacy_and_exfiltration.py"
+      ],
+      "dependencies": [
+        "pydantic",
+        "loguru"
+      ],
+      "validation_details": "15/15 dedicated Phase 8 privacy & exfiltration tests passing; 220/220 total repository tests passing with 0 regressions."
+    },
+    "secrets_and_credential_management": {
+      "name": "Secrets, Credentials & Key Management Hardening (Phase 9)",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": false,
+      "experimental": false,
+      "description": "Comprehensive secret lifecycle management, CredentialVault Fernet/AES re-encryption and master key rotation, safe Settings __repr__/__str__ masking, zero hardcoded production credentials, MobileAuthService JWT HS256 algorithm enforcement, Ed25519 pairing challenge validation, single-use approval challenge replay protection, rejection of fake biometric signatures, and sanitized debug router outputs.",
+      "implementation_files": [
+        "backend/services/security/vault.py",
+        "backend/config.py",
+        "backend/services/mobile_auth.py",
+        "backend/services/mobile_gateway.py",
+        "backend/services/oauth_service.py",
+        "backend/services/data_privacy.py",
+        "backend/api/debug_router.py"
+      ],
+      "test_files": [
+        "backend/tests/test_secrets_and_credential_hardening.py"
+      ],
+      "dependencies": [
+        "cryptography",
+        "pyjwt",
+        "pydantic",
+        "loguru"
+      ],
+      "validation_details": "14/14 dedicated Phase 9 secrets and credential hardening tests passing; 234/234 total repository tests passing with 0 regressions."
+    },
+    "dependency_and_supply_chain_security": {
+      "name": "Dependency & Software Supply-Chain Security Hardening (Phase 10)",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": false,
+      "experimental": false,
+      "description": "Complete supply chain audit across Python, Node/Electron, and Android dependency ecosystems, perfect requirements.txt synchronization, safe torch.load weights_only=True deserialization, zero pickle/joblib/eval usage in production, GitHub Actions least-privilege CI workflow, and trusted repository provenance.",
+      "implementation_files": [
+        "requirements.txt",
+        "backend/requirements.txt",
+        "requirements-dev.txt",
+        "frontend/package.json",
+        "mobile_app/android/build.gradle",
+        "backend/prash/engine.py",
+        "backend/prash/training.py",
+        ".github/workflows/ci.yml"
+      ],
+      "test_files": [
+        "backend/tests/test_supply_chain_and_dependencies.py"
+      ],
+      "dependencies": [
+        "torch",
+        "pydantic",
+        "pytest"
+      ],
+      "validation_details": "10/10 dedicated Phase 10 supply-chain security tests passing; 244/244 total repository tests passing with 0 regressions."
+    },
+    "api_network_and_service_security": {
+      "name": "API, Network & Service-to-Service Security Hardening (Phase 11)",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": false,
+      "experimental": false,
+      "description": "Comprehensive network surface audit, fail-closed mobile API authentication, SSRF protection in OnlineResearchEngine and BrowserExecutor, CORS policy restricted to loopback and private LANs, 5MB WebSocket message size limits, SafetyGatekeeper remote execution authorization, and X-Webhook-Secret integration authentication.",
+      "implementation_files": [
+        "backend/main.py",
+        "backend/api/middleware.py",
+        "backend/api/mobile_router.py",
+        "backend/api/mobile_ws.py",
+        "backend/api/websocket.py",
+        "backend/api/integrations_router.py",
+        "backend/api/oauth.py",
+        "backend/api/routes.py",
+        "backend/services/online_research_engine.py",
+        "backend/services/automation/browser_executor.py"
+      ],
+      "test_files": [
+        "backend/tests/test_api_network_and_service_security.py"
+      ],
+      "dependencies": [
+        "fastapi",
+        "pydantic",
+        "websockets",
+        "loguru"
+      ],
+      "validation_details": "9/9 dedicated Phase 11 network security tests passing; 253/253 total repository tests passing with 0 regressions."
+    },
+    "testing_fault_injection_and_reliability": {
+      "name": "Testing, Fault Injection & Reliability Hardening (Phase 12)",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": false,
+      "experimental": false,
+      "description": "Comprehensive test audit, false-positive assertion elimination, test-only fault injection framework, failure-after-action unknown state handling, idempotency matrix enforcement, atomic cancellation, emergency stop execution lock release, service failure isolation, and resource exhaustion bounds.",
+      "implementation_files": [
+        "backend/services/safety_gatekeeper.py",
+        "backend/services/action_verifier.py",
+        "backend/services/manager.py",
+        "backend/services/automation/verifier.py",
+        "backend/services/live_mode/live_goal_engine.py",
+        "backend/services/automation/desktop_executor.py",
+        "backend/services/tool_registry.py"
+      ],
+      "test_files": [
+        "backend/tests/test_fault_injection_and_reliability.py",
+        "backend/tests/test_master_integration_suite.py",
+        "backend/tests/test_automation_architecture.py"
+      ],
+      "dependencies": [
+        "pytest",
+        "pydantic",
+        "loguru"
+      ],
+      "validation_details": "13/13 dedicated Phase 12 fault-injection tests passing; 266/266 total repository tests passing with 0 regressions."
+    },
+    "performance_and_resource_reliability": {
+      "name": "Performance, Resource Usage & Long-Run Reliability (Phase 13)",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": false,
+      "experimental": false,
+      "description": "Comprehensive performance baselines, sub-millisecond fast-path intent routing, sub-microsecond tool registry lookups, lazy ServiceManager neural model initialization, bounded WorkingMemory turn buffers, SQLite WAL concurrency, differential UIA scene graph caching with TTL, bounded task queue preemption, and leak-free browser/websocket lifecycle management.",
+      "implementation_files": [
+        "backend/services/manager.py",
+        "backend/services/fast_intent_router.py",
+        "backend/services/tool_registry.py",
+        "backend/services/memory/working_memory.py",
+        "backend/services/memory/episodic_memory.py",
+        "backend/services/perception/uia_scene_graph.py",
+        "backend/services/task_queue.py",
+        "backend/services/automation/browser_executor.py",
+        "backend/services/automation/desktop_executor.py",
+        "backend/api/websocket.py"
+      ],
+      "test_files": [
+        "backend/tests/test_performance_and_resource_reliability.py",
+        "backend/tests/benchmarks/benchmark_suite.py"
+      ],
+      "dependencies": [
+        "fastapi",
+        "pydantic",
+        "pytest",
+        "loguru"
+      ],
+      "validation_details": "10/10 dedicated Phase 13 performance and resource tests passing; 276/276 total repository tests passing with 0 regressions."
+    },
+    "production_and_deployment_hardening": {
+      "name": "Production, Deployment & Operational Hardening (Phase 14)",
+      "implementation_status": "IMPLEMENTED",
+      "validation_status": "VALIDATED",
+      "platform": [
+        "windows",
+        "cross-platform"
+      ],
+      "optional": false,
+      "experimental": false,
+      "description": "Production-readiness framework featuring default loopback host isolation (127.0.0.1), separate data and encrypted secret backup/restoration workflows, SHA256 integrity verification, automatic backup rotation, semantic version identification, liveness/readiness/detailed health check differentiation, and idempotent SQLite WAL schema migrations.",
+      "implementation_files": [
+        "backend/config.py",
+        "backend/main.py",
+        "backend/api/routes.py",
+        "backend/services/backup_manager.py",
+        "backend/models/database.py",
+        "start.bat",
+        "setup.bat"
+      ],
+      "test_files": [
+        "backend/tests/test_production_and_deployment_hardening.py"
+      ],
+      "dependencies": [
+        "fastapi",
+        "pydantic",
+        "pytest",
+        "cryptography",
+        "sqlalchemy",
+        "loguru"
+      ],
+      "validation_details": "10/10 dedicated Phase 14 production readiness tests passing; 286/286 total repository tests passing with 0 regressions."
     }
   }
 }

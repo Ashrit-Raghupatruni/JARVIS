@@ -26,13 +26,6 @@ from backend.agents.planner.plan_validator import PlanValidator
 from backend.agents.planner.task_decomposer import TaskDecomposer
 from backend.services.llm import clean_function_calls_from_text
 
-# Import LangGraph agent
-try:
-    from backend.agents.langgraph_agent.agent import PrashLangGraphAgent
-except ImportError:
-    logger.warning("Could not import PrashLangGraphAgent. Falling back to default planner.")
-    PrashLangGraphAgent = None
-
 
 class PlannerAgent:
     """Central orchestrator agent that plans and executes user commands."""
@@ -96,8 +89,9 @@ class PlannerAgent:
         # Initialize Prash LangGraph agent
         self.prash_agent = None
         self._active_graph_state = None
-        if PrashLangGraphAgent and self.llm and hasattr(self.llm, "prash_engine") and self.llm.prash_engine:
+        if self.llm and hasattr(self.llm, "prash_engine") and self.llm.prash_engine:
             try:
+                from backend.agents.langgraph_agent.agent import PrashLangGraphAgent
                 self.prash_agent = PrashLangGraphAgent(
                     llm_service=self.llm,
                     browser_service=self.browser,

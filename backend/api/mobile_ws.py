@@ -119,6 +119,11 @@ async def handle_mobile_ws(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
+            if len(data) > 5 * 1024 * 1024:
+                logger.warning("Oversized mobile WebSocket message received (>5MB) — dropping.")
+                await websocket.send_json({"type": "error", "message": "Message exceeds maximum size limit of 5MB"})
+                continue
+
             try:
                 message = json.loads(data)
             except Exception:

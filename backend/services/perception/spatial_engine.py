@@ -150,6 +150,54 @@ class SpatialEngine:
         y = max(min_y, min(max_y, y))
         return x, y
 
+    def get_dpi_scale_for_monitor(self, monitor_index: int = 1) -> float:
+        """
+        Get DPI scaling factor for a monitor (e.g. 1.0 for 100%, 1.25 for 125%, 1.5 for 150%, 2.0 for 200%).
+        """
+        try:
+            if HAS_WIN32:
+                mon_handles = win32api.EnumDisplayMonitors()
+                if 0 < monitor_index <= len(mon_handles):
+                    h_mon, _, _ = mon_handles[monitor_index - 1]
+                    try:
+                        dpi_x = ctypes.c_uint()
+                        dpi_y = ctypes.c_uint()
+                        shcore = ctypes.windll.shcore
+                        if hasattr(shcore, "GetDpiForMonitor"):
+                            h_val = h_mon.handle if hasattr(h_mon, "handle") else int(h_mon)
+                            res = shcore.GetDpiForMonitor(h_val, 0, ctypes.byref(dpi_x), ctypes.byref(dpi_y))
+                            if res == 0 and dpi_x.value > 0:
+                                return round(dpi_x.value / 96.0, 2)
+                    except Exception:
+                        pass
+                # Fallback to system DC DPI
+                try:
+                    import win32gui
+                    hdc = win32gui.GetDC(0)
+                    if hdc:
+                        LOGPIXELSX = 88
+                        dpi = win32gui.GetDeviceCaps(hdc, LOGPIXELSX)
+                        win32gui.ReleaseDC(0, hdc)
+                        if dpi > 0:
+                            return round(dpi / 96.0, 2)
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.debug(f"DPI scaling detection fallback: {e}")
+        return 1.0
+
+    def convert_logical_to_physical(self, x: int, y: int, monitor_index: int = 1) -> Tuple[int, int]:
+        """Convert logical application coordinates to physical device pixels according to DPI scaling."""
+        scale = self.get_dpi_scale_for_monitor(monitor_index)
+        return int(round(x * scale)), int(round(y * scale))
+
+    def convert_physical_to_logical(self, x: int, y: int, monitor_index: int = 1) -> Tuple[int, int]:
+        """Convert physical device pixels to logical coordinates."""
+        scale = self.get_dpi_scale_for_monitor(monitor_index)
+        if scale <= 0:
+            return x, y
+        return int(round(x / scale)), int(round(y / scale))
+
     def get_cursor_position(self) -> Tuple[int, int]:
         """Get current Windows mouse cursor screen coordinates."""
         try:

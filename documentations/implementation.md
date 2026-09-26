@@ -51,7 +51,7 @@ This document outlines the concrete code modules, service integration patterns, 
 ## 4. Unified Tool Registry & Safe Execution Pipeline
 
 ### 1. `ToolRegistry` ([`backend/services/tool_registry.py`](file:///c:/Users/ashri/JARVIS/backend/services/tool_registry.py))
-- Centralized tool catalogue exposing 61 unified executable tools across 9 functional domains: Desktop Automation & UI Perception, System/OS Controls, Filesystem & Indexing, Web & Research, Multimedia & Voice, Knowledge/RAG, n8n Automation, Cloud OAuth2, and Proximity Telemetry.
+- Centralized tool catalogue exposing 69 unified executable tools across 10 functional domains: Desktop Automation & UI Perception, Live Mode & Failover Supervisor, Hermes Dual-Agent & Bridge, Multimodal & Image Generation, System/OS Controls, Filesystem & Indexing, Web & Research, Multimedia & Voice, Knowledge/RAG, and Integrations (n8n, OAuth2).
 - Enforces strict handler checking on `execute_tool()`: returns `{"status": "error", "error": "Tool has no execution handler"}` if handler is unset, eliminating false-positive mock successes.
 - Exposes `get_tools_schema()` for standard OpenAI/LangChain function calling schemas.
 - Runs tool handlers asynchronously or in threadpools (`asyncio.to_thread`) with isolated try-except error blocks.
@@ -156,6 +156,52 @@ This document outlines the concrete code modules, service integration patterns, 
   - Episodic Memory: SQLite WAL database with semantic indexing.
   - Semantic Knowledge: ChromaDB vector store with cosine embeddings.
   - Procedural Strategy Memory: Dynamically ranked strategy engine.
+
+---
+
+## 8. Live Mode Failover Architecture ([`backend/services/live_mode/failover_controller.py`](file:///c:/Users/ashri/JARVIS/backend/services/live_mode/failover_controller.py))
+
+### 1. `LiveModeFailoverSupervisor`
+- Manages real-time desktop tasks with single-agent locking (`_control_lock = asyncio.Lock()`).
+- Authority states: `PRIMARY_ACTIVE`, `FAILOVER_PENDING`, `HERMES_ACTIVE`, `RECOVERY`, `COMPLETED`, `FAILED`, `CANCELLED`.
+- Dynamic step state tracking: `PENDING`, `RUNNING`, `SUCCESS`, `FAILED`, `TIMEOUT`, `BLOCKED`.
+- Failure Handoff: Primary failure compiles payload (`completed_steps`, `failed_step`, `error_reason`, `screen_context`), passes to Hermes Fallback, and resumes remaining steps without duplicating work.
+- Emergency Stop: Direct cancellation endpoint `/api/v1/live_mode/supervisor/emergency_stop` immediately revokes locks and resets state.
+
+---
+
+## 9. 12-Pillar Hermes Bridge & Dual Agents ([`backend/services/hermes_bridge.py`](file:///c:/Users/ashri/JARVIS/backend/services/hermes_bridge.py), [`backend/agents/`](file:///c:/Users/ashri/JARVIS/backend/agents/))
+
+### 1. `HermesBridgeService`
+- 12-Pillar architecture:
+  1. Tool Execution: Bridge for external & system tool calls.
+  2. Agent Orchestration: Multi-agent execution decoupled from core JARVIS process.
+  3. Command Routing: Routes intents between Primary and Fallback agents.
+  4. Computer Control Bridge: Native Win32 / UIA / PyAutoGUI bridging.
+  5. Task Automation: Multi-step autonomous task planning and execution.
+  6. Background Tasks: Asynchronous task queueing via `hermes_async_task`.
+  7. Context Handling: Bidirectional context passing between JARVIS and Hermes.
+  8. Local Development: Local CLI daemon support.
+  9. Extensibility: Dynamic tool registration without brain code modifications.
+  10. Error Handling: Isolated tool execution with automatic failure capture.
+  11. Permission Boundaries: Enforces `SafetyGatekeeper` authorization checks.
+  12. Status Streaming: Real-time progress broadcasting over WebSocket.
+
+### 2. Dual Hermes Agents
+- `HermesDesktopAgent` ([`backend/agents/desktop_agent.py`](file:///c:/Users/ashri/JARVIS/backend/agents/desktop_agent.py)): Windows 11 foregrounding via `AttachThreadInput`, clipboard paste typing (`Ctrl+V`), and coordinate clicking.
+- `HermesGeneralAgent` ([`backend/agents/hermes_agent.py`](file:///c:/Users/ashri/JARVIS/backend/agents/hermes_agent.py)): Multi-step LLM function calling orchestrator across all 69 JARVIS system tools.
+- `HermesOrchestrator` ([`backend/agents/hermes_orchestrator.py`](file:///c:/Users/ashri/JARVIS/backend/agents/hermes_orchestrator.py)): Intent routing and agent-to-agent delegation.
+
+---
+
+## 10. In-Chat Image Generation Engine ([`backend/services/image_generator.py`](file:///c:/Users/ashri/JARVIS/backend/services/image_generator.py))
+
+### 1. `ImageGeneratorService`
+- Dual-engine architecture: Primary Google Imagen 3 with automatic fallback to Pollinations AI.
+- Disk caching in `data/generated_images/` with UUID file keys.
+- Static hosting via FastAPI `/generated_images/` route.
+- Frontend Lightbox integration in `ChatPanel.tsx` supporting zoom, pan, copy, and download actions.
+
 
 
 

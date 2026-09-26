@@ -76,6 +76,7 @@ export default function ApprovalsScreen() {
             action_type: msg.action_type || "dangerous_action",
             description: msg.description || "Unspecified dangerous operation",
             dangerous_target: msg.dangerous_target || "System Resource",
+            challenge: msg.challenge || "",
             timestamp: Date.now(),
             timeout_seconds: msg.timeout_seconds || 30
           };
@@ -135,7 +136,8 @@ export default function ApprovalsScreen() {
         targetApproval.approval_id,
         decision,
         biometricAuthenticated,
-        biometricSignature
+        biometricSignature,
+        targetApproval.challenge
       );
 
       setRecentDecisions((prev) => [
@@ -165,9 +167,8 @@ export default function ApprovalsScreen() {
     setIsVerifyingBio(true);
     setTimeout(() => {
       setIsVerifyingBio(false);
-      const signature = `bio_sig_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
-      executeDecision('approve', true, signature);
-    }, 800);
+      executeDecision('approve', true, undefined);
+    }, 600);
   };
 
   const progressPercent = Math.max(0, Math.min(100, Math.round((timeLeft / maxTime) * 100)));

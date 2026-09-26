@@ -193,7 +193,8 @@ class DesktopExecutor:
     def __init__(self, safety_service: Optional[SafetyService] = None) -> None:
         self.safety = safety_service or SafetyService()
         self._clipboard_history: List[Dict[str, Any]] = []
-        logger.info("DesktopExecutor initialized")
+        self._execution_lock = asyncio.Lock()
+        logger.info("DesktopExecutor initialized (Target Validation & Execution Lock Active)")
 
     # ── Application Management ───────────────────────────────────────────
 
@@ -299,15 +300,37 @@ class DesktopExecutor:
             logger.error("Error opening '{}': {}", app_name, e)
             return f"Error opening '{app_name}': {e}"
 
+    PROTECTED_PROCESS_NAMES = {
+        "csrss.exe", "lsass.exe", "smss.exe", "wininit.exe", "services.exe",
+        "svchost.exe", "winlogon.exe", "system", "idle", "system idle process",
+        "dwm.exe", "explorer.exe", "taskmgr.exe"
+    }
+
     async def close_application(self, app_name: str) -> str:
         """
         Close a running application by process name or lookup.
+        Guards against terminating critical Windows processes or JARVIS host runtime.
         """
         app_key = app_name.lower().strip()
         logger.info("Closing application: {}", app_name)
 
+        # Protect critical Windows system processes
+        proc_check = app_key if app_key.endswith(".exe") else f"{app_key}.exe"
+        if proc_check in self.PROTECTED_PROCESS_NAMES or app_key in self.PROTECTED_PROCESS_NAMES:
+            logger.warning("DesktopExecutor: Refused to close protected system process: '{}'", app_name)
+            return f"Security Policy Blocked: Process '{app_name}' is a protected Windows system process."
+
+        # Protect JARVIS runtime process from self-termination
+        if app_key in ("python", "python.exe", "jarvis", "jarvis.exe", "pytest", "pytest.exe"):
+            logger.warning("DesktopExecutor: Refused to close JARVIS/Python runtime process: '{}'", app_name)
+            return f"Security Policy Blocked: Cannot terminate active JARVIS/Python runtime process."
+
         try:
             process_name = APP_PROCESS_NAMES.get(app_key, f"{app_name}.exe")
+            if process_name.lower() in self.PROTECTED_PROCESS_NAMES:
+                logger.warning("DesktopExecutor: Resolved process '{}' is protected", process_name)
+                return f"Security Policy Blocked: Process '{process_name}' is a protected Windows system process."
+
             result = subprocess.run(
                 ["taskkill", "/IM", process_name, "/F"],
                 capture_output=True,
@@ -480,96 +503,206 @@ class DesktopExecutor:
             "arranged_windows": arranged
         }
 
+    # ── Target Validation & Coordinate Geometry ───────────────────────────
+
+    def _validate_foreground_window(
+        self,
+        target_window: Optional[str | int] = None,
+        target_hwnd: Optional[int] = None
+    ) -> Tuple[bool, str]:
+        """
+        Verify that the expected window is currently active in the foreground before sending inputs.
+        Prevents TOCTOU races and typing/clicking into unintended background or popup windows.
+        """
+        if not HAS_WIN32:
+            return True, "Win32 extensions not available; skipping foreground HWND verification."
+
+        try:
+            current_hwnd = win32gui.GetForegroundWindow()
+            if not current_hwnd:
+                return False, "No active foreground window detected on desktop."
+
+            current_title = win32gui.GetWindowText(current_hwnd) or "Unknown Window"
+
+            # 1. Exact HWND target verification
+            if target_hwnd is not None:
+                if current_hwnd != target_hwnd:
+                    # Attempt focus recovery once if handle is valid
+                    if win32gui.IsWindow(target_hwnd):
+                        try:
+                            win32gui.ShowWindow(target_hwnd, win32con.SW_RESTORE)
+                            win32gui.SetForegroundWindow(target_hwnd)
+                            time.sleep(0.05)
+                            current_hwnd = win32gui.GetForegroundWindow()
+                        except Exception:
+                            pass
+                    if current_hwnd != target_hwnd:
+                        return False, f"Expected HWND {target_hwnd}, but active foreground is HWND {current_hwnd} ('{current_title}')."
+
+            # 2. Window title / identifier target verification
+            if target_window is not None:
+                if isinstance(target_window, int):
+                    return self._validate_foreground_window(target_hwnd=target_window)
+                t_str = str(target_window).lower().strip()
+                if t_str not in ["current", "active", "this", "active window"]:
+                    if t_str not in current_title.lower():
+                        # Attempt to focus matching window
+                        self.focus_window(str(target_window))
+                        time.sleep(0.05)
+                        current_hwnd = win32gui.GetForegroundWindow()
+                        current_title = win32gui.GetWindowText(current_hwnd) or "Unknown Window"
+                        if t_str not in current_title.lower():
+                            return False, f"Expected active window matching '{target_window}', but active foreground is '{current_title}' (HWND {current_hwnd})."
+
+            return True, f"Target window verified: '{current_title}' (HWND {current_hwnd})."
+        except Exception as e:
+            logger.debug(f"Foreground validation notice: {e}")
+            return True, f"Foreground validation bypassed due to: {e}"
+
+    def _get_clamped_coordinates(self, x: int, y: int) -> Tuple[int, int]:
+        """
+        Clamp coordinates to the complete virtual desktop bounds (supports multi-monitor negative offsets).
+        """
+        try:
+            from backend.services.perception.spatial_engine import SpatialEngine
+            se = SpatialEngine()
+            min_x, min_y, max_x, max_y, _, _ = se.get_virtual_desktop_bounds()
+            clamped_x = max(min_x, min(max_x, int(x)))
+            clamped_y = max(min_y, min(max_y, int(y)))
+            return clamped_x, clamped_y
+        except Exception:
+            try:
+                sw, sh = pyautogui.size()
+                return max(0, min(sw - 1, int(x))), max(0, min(sh - 1, int(y)))
+            except Exception:
+                return int(x), int(y)
+
     # ── Keyboard & Mouse Control ─────────────────────────────────────────
 
-    async def type_text(self, text: str) -> str:
+    async def type_text(
+        self,
+        text: str,
+        target_window: Optional[str | int] = None,
+        target_hwnd: Optional[int] = None
+    ) -> str:
         """
-        Type text at current cursor position with win32api fallback.
+        Type text at current cursor position with foreground window verification and win32api fallback.
         """
-        try:
-            pyautogui.FAILSAFE = False
-            pyautogui.typewrite(text, interval=0.01) if text.isascii() else pyautogui.write(text)
-            logger.info("Typed text: '{}'", text[:50])
-            return f"Typed: '{text[:50]}{'...' if len(text) > 50 else ''}'"
-        except Exception as e:
-            try:
-                import ctypes
-                for ch in text:
-                    vk = ctypes.windll.user32.VkKeyScanW(ord(ch))
-                    if vk != -1:
-                        ctypes.windll.user32.keybd_event(vk & 0xFF, 0, 0, 0)
-                        ctypes.windll.user32.keybd_event(vk & 0xFF, 0, 2, 0)
-                logger.info("Typed text via win32 fallback: '{}'", text[:50])
-                return f"Typed: '{text[:50]}'"
-            except Exception as e2:
-                logger.error("Error typing text: {}", e)
-                return f"Error typing text: {e}"
+        async with self._execution_lock:
+            # Revalidate foreground window immediately before execution
+            if target_window is not None or target_hwnd is not None:
+                is_valid, reason = self._validate_foreground_window(target_window, target_hwnd)
+                if not is_valid:
+                    logger.warning(f"DesktopExecutor: Blocked typing text due to window mismatch: {reason}")
+                    return f"Target Mismatch Blocked: {reason}"
 
-    async def press_hotkey(self, keys: str) -> str:
+            try:
+                pyautogui.FAILSAFE = False
+                pyautogui.typewrite(text, interval=0.01) if text.isascii() else pyautogui.write(text)
+                logger.info("Typed text: '{}'", text[:50])
+                return f"Typed: '{text[:50]}{'...' if len(text) > 50 else ''}'"
+            except Exception as e:
+                try:
+                    import ctypes
+                    for ch in text:
+                        vk = ctypes.windll.user32.VkKeyScanW(ord(ch))
+                        if vk != -1:
+                            ctypes.windll.user32.keybd_event(vk & 0xFF, 0, 0, 0)
+                            ctypes.windll.user32.keybd_event(vk & 0xFF, 0, 2, 0)
+                    logger.info("Typed text via win32 fallback: '{}'", text[:50])
+                    return f"Typed: '{text[:50]}'"
+                except Exception as e2:
+                    logger.error("Error typing text: {}", e)
+                    return f"Error typing text: {e}"
+
+    async def press_hotkey(
+        self,
+        keys: str,
+        target_window: Optional[str | int] = None,
+        target_hwnd: Optional[int] = None
+    ) -> str:
         """
-        Press a keyboard hotkey combination (e.g. 'ctrl+c', 'win+d').
+        Press a keyboard hotkey combination (e.g. 'ctrl+c', 'win+d') with window target verification.
         """
-        try:
-            key_list = [k.strip().lower() for k in keys.split("+")]
-            pyautogui.hotkey(*key_list)
-            logger.info("Pressed hotkey: {}", keys)
-            return f"Pressed hotkey: {keys}"
-        except Exception as e:
-            logger.error("Error pressing hotkey '{}': {}", keys, e)
-            return f"Error pressing hotkey '{keys}': {e}"
+        async with self._execution_lock:
+            # Revalidate foreground window immediately before hotkey dispatch
+            if target_window is not None or target_hwnd is not None:
+                is_valid, reason = self._validate_foreground_window(target_window, target_hwnd)
+                if not is_valid:
+                    logger.warning(f"DesktopExecutor: Blocked hotkey '{keys}' due to window mismatch: {reason}")
+                    return f"Target Mismatch Blocked: {reason}"
+
+            try:
+                key_list = [k.strip().lower() for k in keys.split("+")]
+                pyautogui.hotkey(*key_list)
+                logger.info("Pressed hotkey: {}", keys)
+                return f"Pressed hotkey: {keys}"
+            except Exception as e:
+                logger.error("Error pressing hotkey '{}': {}", keys, e)
+                return f"Error pressing hotkey '{keys}': {e}"
 
     async def move_mouse(self, x: int, y: int) -> str:
         """
-        Move the mouse cursor with safe screen clamping.
+        Move the mouse cursor with multi-monitor virtual desktop clamping.
         """
-        try:
-            safe_x = max(2, int(x))
-            safe_y = max(2, int(y))
-            pyautogui.moveTo(safe_x, safe_y, duration=0.3)
-            logger.info("Moved mouse to ({}, {})", safe_x, safe_y)
-            return f"Moved mouse to ({safe_x}, {safe_y})"
-        except Exception as e:
-            logger.error("Error moving mouse: {}", e)
-            return f"Error moving mouse: {e}"
+        async with self._execution_lock:
+            try:
+                safe_x, safe_y = self._get_clamped_coordinates(x, y)
+                pyautogui.moveTo(safe_x, safe_y, duration=0.3)
+                logger.info("Moved mouse to ({}, {})", safe_x, safe_y)
+                return f"Moved mouse to ({safe_x}, {safe_y})"
+            except Exception as e:
+                logger.error("Error moving mouse: {}", e)
+                return f"Error moving mouse: {e}"
 
     async def click_mouse(
         self,
         button: str = "left",
         x: Optional[int] = None,
         y: Optional[int] = None,
+        target_window: Optional[str | int] = None,
+        target_hwnd: Optional[int] = None
     ) -> str:
         """
-        Click mouse button at current or specified coordinate.
+        Click mouse button at current or specified coordinate with target validation and multi-monitor clamping.
         """
-        try:
-            kwargs: Dict[str, Any] = {"button": button}
-            if x is not None and y is not None:
-                safe_x = max(2, int(x))
-                safe_y = max(2, int(y))
-                kwargs["x"] = safe_x
-                kwargs["y"] = safe_y
-                pos = f"({safe_x}, {safe_y})"
-            else:
-                pos = "current position"
-            pyautogui.click(**kwargs)
-            logger.info("Clicked {} at {}", button, pos)
-            return f"Clicked {button} button at {pos}"
-        except Exception as e:
-            logger.error("Error clicking mouse: {}", e)
-            return f"Error clicking mouse: {e}"
+        async with self._execution_lock:
+            # Revalidate foreground window if specified
+            if target_window is not None or target_hwnd is not None:
+                is_valid, reason = self._validate_foreground_window(target_window, target_hwnd)
+                if not is_valid:
+                    logger.warning(f"DesktopExecutor: Blocked mouse click due to window mismatch: {reason}")
+                    return f"Target Mismatch Blocked: {reason}"
+
+            try:
+                kwargs: Dict[str, Any] = {"button": button}
+                if x is not None and y is not None:
+                    safe_x, safe_y = self._get_clamped_coordinates(x, y)
+                    kwargs["x"] = safe_x
+                    kwargs["y"] = safe_y
+                    pos = f"({safe_x}, {safe_y})"
+                else:
+                    pos = "current position"
+                pyautogui.click(**kwargs)
+                logger.info("Clicked {} at {}", button, pos)
+                return f"Clicked {button} button at {pos}"
+            except Exception as e:
+                logger.error("Error clicking mouse: {}", e)
+                return f"Error clicking mouse: {e}"
 
     async def scroll(self, direction: str = "down", amount: int = 3) -> str:
         """
-        Scroll the mouse wheel up or down.
+        Scroll the mouse wheel up or down under execution lock.
         """
-        try:
-            clicks = amount if direction.lower() == "up" else -amount
-            pyautogui.scroll(clicks)
-            logger.info("Scrolled {} by {}", direction, amount)
-            return f"Scrolled {direction} by {amount}"
-        except Exception as e:
-            logger.error("Error scrolling: {}", e)
-            return f"Error scrolling: {e}"
+        async with self._execution_lock:
+            try:
+                clicks = amount if direction.lower() == "up" else -amount
+                pyautogui.scroll(clicks)
+                logger.info("Scrolled {} by {}", direction, amount)
+                return f"Scrolled {direction} by {amount}"
+            except Exception as e:
+                logger.error("Error scrolling: {}", e)
+                return f"Error scrolling: {e}"
 
     # ── File Operations ──────────────────────────────────────────────────
 

@@ -1042,12 +1042,12 @@
             approval_id: approvalId,
             decision: decision,
             biometric_authenticated: isApprove,
-            biometric_signature: isApprove ? ('bio_sig_' + Date.now().toString(36)) : undefined
+            biometric_signature: undefined
           })
         });
         const card = document.getElementById('appr_card_' + approvalId);
         if (card) card.remove();
-        log('🛡️ Decision submitted: ' + decision + ' (Biometric: ' + isApprove + ')');
+        log('🛡️ Decision submitted: ' + decision + ' (Authenticated: ' + isApprove + ')');
       } catch(e) { log('❌ Decision Error: ' + e.message); }
     }
 

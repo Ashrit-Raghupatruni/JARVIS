@@ -56,7 +56,7 @@ echo.
 :: Launch Python AI Engine
 echo [3/4] Launching Python AI Engine (FastAPI backend on port 8000)...
 set "LAUNCHER_MANAGED=1"
-start "JARVIS Backend" /B /D "%PROJECT_ROOT%\backend" "%PROJECT_ROOT%\backend\venv\Scripts\python.exe" -m uvicorn main:app --host 0.0.0.0 --port 8000
+start "JARVIS Backend" /B /D "%PROJECT_ROOT%\backend" "%PROJECT_ROOT%\backend\venv\Scripts\python.exe" -m uvicorn main:app --host 127.0.0.1 --port 8000
 
 :: Wait for Backend to become fully healthy before starting frontend
 echo   Waiting for backend to initialize and bind socket...

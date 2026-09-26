@@ -22,8 +22,6 @@ from backend.models.mobile_schemas import (
     DeviceInfo
 )
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Header, Request
-
 mobile_router = APIRouter(prefix="/api/v1/mobile", tags=["Mobile Companion"])
 
 
@@ -74,13 +72,13 @@ async def require_mobile_auth(
     """
     path = request.url.path.rstrip('/')
     
-    # 1. Allow pairing, QR session handshakes, device discovery, and read-only telemetry HUD
-    if '/pair' in path or path.endswith('/devices') or path.endswith('/telemetry') or path.endswith('/diagnostics'):
+    # 1. Allow pairing and read-only telemetry HUD for discovery
+    if '/pair' in path or path.endswith('/telemetry') or path.endswith('/diagnostics'):
         return {}
         
     # 2. Allow localhost UI calls
     if request.client and request.client.host in ("127.0.0.1", "localhost", "::1"):
-        return {}
+        return {"sub": "localhost-client", "friendly_name": "Local Workstation"}
 
     raw_token = authorization or token_param
     if not raw_token:
@@ -231,6 +229,24 @@ async def list_trusted_devices(auth_svc=Depends(get_mobile_auth_service), gatewa
     return devices
 
 
+@mobile_router.post("/devices/{device_id}/revoke")
+async def revoke_device(device_id: str, auth_svc=Depends(get_mobile_auth_service)):
+    """Revoke authorization for a mobile companion device immediately."""
+    if not auth_svc:
+        raise HTTPException(status_code=503, detail="Mobile auth service unavailable")
+    ok = auth_svc.revoke_device(device_id)
+    return {"status": "revoked" if ok else "not_found", "device_id": device_id}
+
+
+@mobile_router.delete("/devices/{device_id}")
+async def unpair_device(device_id: str, auth_svc=Depends(get_mobile_auth_service)):
+    """Unpair and delete a mobile device from trusted store."""
+    if not auth_svc:
+        raise HTTPException(status_code=503, detail="Mobile auth service unavailable")
+    ok = auth_svc.unpair_device(device_id)
+    return {"status": "unpaired" if ok else "not_found", "device_id": device_id}
+
+
 # ── TELEMETRY & STATUS ────────────────────────────────────────────────────
 
 @mobile_router.get("/telemetry", response_model=SystemTelemetry)
@@ -256,11 +272,11 @@ async def execute_remote_command(req: RemoteCommandRequest, gateway_svc=Depends(
 
         if cmd in ("shutdown", "restart"):
             logger.info("🛡️ Mobile Security Gatekeeper: Remote {} requested. Enforcing safety gate...", cmd)
-            from backend.services.safety_gatekeeper import SafetyGatekeeper
+            from backend.services.safety_gatekeeper import SafetyGatekeeper, SecurityDecisionType
             from backend.services.manager import ServiceManager
             sg = ServiceManager.get_instance("safety_gatekeeper") or SafetyGatekeeper()
             gate_eval = sg.evaluate_tool_call(f"system_{cmd}", {"target": "host_pc"})
-            if gate_eval.decision.value == "DENIED":
+            if not gate_eval.allowed or gate_eval.decision == SecurityDecisionType.DENY:
                 return {
                     "status": "denied",
                     "command": cmd,
@@ -320,27 +336,40 @@ async def execute_remote_command(req: RemoteCommandRequest, gateway_svc=Depends(
 # ── MOBILE SECURITY APPROVALS ──────────────────────────────────────────────
 
 @mobile_router.post("/approvals/respond")
-async def submit_approval_decision(req: MobileApprovalDecision, gateway_svc=Depends(get_mobile_gateway_service)):
-    """Submit mobile security approval decision with biometric hardware verification."""
+async def submit_approval_decision(
+    req: MobileApprovalDecision,
+    request: Request,
+    gateway_svc=Depends(get_mobile_gateway_service),
+    auth_ctx=Depends(require_mobile_auth)
+):
+    """Submit mobile security approval decision with cryptographic challenge & biometric verification."""
     if not gateway_svc:
         raise HTTPException(status_code=503, detail="Mobile gateway unavailable")
+
+    signing_device_id = req.device_id or (auth_ctx.get("sub") if isinstance(auth_ctx, dict) else None)
 
     success, message = gateway_svc.submit_approval_decision_with_biometrics(
         approval_id=req.approval_id,
         decision=req.decision,
+        challenge=req.challenge,
+        device_id=signing_device_id,
         biometric_authenticated=req.biometric_authenticated,
         biometric_signature=req.biometric_signature,
     )
     if not success:
-        if "biometric" in message.lower():
+        lower_msg = message.lower()
+        if any(w in lower_msg for w in ("biometric", "signature", "replay", "mock", "mismatch", "denied")):
             raise HTTPException(status_code=403, detail=message)
+        if "expired" in lower_msg:
+            raise HTTPException(status_code=410, detail=message)
         raise HTTPException(status_code=404, detail=message)
 
     return {
         "status": "decision_processed",
         "approval_id": req.approval_id,
         "decision": req.decision,
-        "biometric_verified": req.biometric_authenticated,
+        "biometric_verified": req.biometric_authenticated or bool(req.biometric_signature),
+        "device_id": signing_device_id
     }
 
 

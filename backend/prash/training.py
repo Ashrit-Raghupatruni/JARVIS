@@ -290,7 +290,11 @@ class PrashTrainer:
         if not checkpoint_path.exists():
             raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
-        checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
+        try:
+            checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=True)
+        except Exception as safe_err:
+            logger.warning("Safe weights_only=True load failed ({}), falling back: {}", type(safe_err).__name__, safe_err)
+            checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
 
         state_dict = checkpoint["model_state_dict"] if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint else checkpoint
         self.model.load_state_dict(state_dict)

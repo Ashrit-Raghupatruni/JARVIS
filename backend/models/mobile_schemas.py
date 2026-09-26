@@ -5,6 +5,7 @@ Defines request and response data models for device pairing, authentication,
 telemetry streaming, remote desktop commands, security approvals, file operations, and screen previews.
 """
 
+import time
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field
 
@@ -42,9 +43,10 @@ class PairingConfirmResponse(BaseModel):
 
 class DeviceInfo(BaseModel):
     device_id: str
-    friendly_name: str
-    registered_at: float
-    last_active: float
+    friendly_name: str = "Mobile Companion"
+    registered_at: float = Field(default_factory=time.time)
+    last_active: float = Field(default_factory=time.time)
+    public_key: Optional[str] = None
     trusted: bool = True
     is_online: bool = False
 
@@ -87,13 +89,16 @@ class MobileApprovalRequest(BaseModel):
     dangerous_target: str
     timestamp: float
     timeout_seconds: float = 30.0
+    challenge: str = Field(default="", description="Cryptographic single-use challenge nonce")
 
 
 class MobileApprovalDecision(BaseModel):
     approval_id: str
     decision: str = Field(..., description="approve, deny, always_allow, always_deny")
-    biometric_authenticated: bool = Field(False, description="Whether device biometric hardware (fingerprint/Face ID) verified the user")
-    biometric_signature: Optional[str] = Field(None, description="Optional cryptographic biometric proof or hardware token")
+    challenge: Optional[str] = Field(None, description="Backend-generated challenge nonce being signed")
+    device_id: Optional[str] = Field(None, description="Identifier of the signing client device")
+    biometric_authenticated: bool = Field(False, description="Whether device biometric hardware (fingerprint/Face ID) verified the user locally")
+    biometric_signature: Optional[str] = Field(None, description="Cryptographic Ed25519 signature over canonical approval challenge message")
 
 
 

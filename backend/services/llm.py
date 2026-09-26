@@ -1,7 +1,7 @@
-\"\"\"
+"""
 JARVIS LLM Service — Backward-compatibility facade.
 Redirects to the modular package at backend.services.llm.
-\"\"\"
+"""
 from backend.services.llm.manager import LLMService
 from backend.services.llm.prompts import (
     JARVIS_SYSTEM_PROMPT,

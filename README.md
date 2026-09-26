@@ -14,7 +14,15 @@
 
 ---
 
-## ✨ Features
+### 🔄 Live Mode Failover & Autonomous Supervisor
+- **Dual-Agent Failover Architecture** — 3-Tier execution pipeline where **JARVIS Desktop Agent** operates as the primary action executor and **Hermes Desktop Agent** acts as the resilient fallback & recovery agent.
+- **Single-Agent Control Lock (`_control_lock`)** — Strict `asyncio.Lock()` mutual exclusion guaranteeing that JARVIS and Hermes never issue simultaneous mouse or keyboard actions. Explicit authority states: `PRIMARY_ACTIVE` ➔ `FAILOVER_PENDING` ➔ `HERMES_ACTIVE` ➔ `RECOVERY` ➔ `COMPLETED` / `FAILED` / `CANCELLED`.
+- **Seamless Failure Point Resume** — When the primary agent encounters an unrecoverable tool error or timeout, the supervisor compiles a handoff packet (`completed_steps`, `failed_step`, `error_reason`, screen context) and transfers control to Hermes to finish remaining steps without repeating completed ones.
+- **Live Mode Failover HUD (`LiveModeFailoverHUD.tsx`)** — Real-time Electron HUD banner displaying active controller, failover reason banner, and a 1-click **"Take Control / Emergency Stop"** button for immediate manual override.
+
+### 🎨 Chat Image Generation & Lightbox Studio
+- **Dual-Engine Image Generator (`ImageGeneratorService`)** — In-chat natural language image generation powered by Google Imagen 3 with automatic fallback to Pollinations AI and local disk caching in `data/generated_images/`.
+- **Interactive Lightbox Preview (`ChatPanel.tsx`)** — Embedded glassmorphic image cards in chat with full-screen Lightbox zoom, panning, copy, and download actions.
 
 ### 🎤 Voice Control, Mobile Companion & Live Mode AI Co-Pilot
 - **3-Tier Neural & Offline TTS Pipeline** — Multi-tier voice architecture featuring Microsoft Edge-TTS streaming neural audio with seamless automatic fallback to offline local Piper ONNX neural synthesis and tertiary Windows Native SAPI `SpVoice` / `SpFileStream`. Preserves real-time barge-in and cancellation.
@@ -26,13 +34,13 @@
 - **Fail-Closed Mobile & Telegram Gatekeeper Intercept** — Strictly fail-closed permission gatekeeper. Intercepts laptop window close, terminal exit, or dangerous system commands (`rm -rf`, `shutdown`). Broadcasts high-priority approval cards over WebSocket and Telegram with 1-click `[Approve]` / `[Deny]` control. Fails closed (denies action) if transport is offline.
 - **Standalone Backend Hand Tracking CV Worker** — Background `CameraWorker` thread capturing OpenCV frames, classifying landmarks via `GestureEngine` (`PINCH`, `OPEN_PALM`, `FIST`, `SWIPE`), filtering by confidence (`0.7`), and applying `150ms` debouncing. Works even when the Electron window is minimized.
 - **Fast Non-Blocking n8n Integration** — Pre-flight TCP socket probing eliminates connection timeout stalls when n8n is offline. Bi-directional Visual Canvas <-> n8n graph translation and 6 LLM tools.
-- **Real Mobile Voice Input & Companion App** — Live microphone audio recording streaming base64 chunks over WebSocket to backend `faster-whisper` STT in `mobile_ws.py`. Companion Android app features 8 modular tabs, real-time telemetry HUD streaming, remote screen preview, and dynamic approval cards.
+- **Real Mobile Voice Input & Companion App** — Live microphone audio recording streaming base64 chunks over WebSocket to backend `faster-whisper` STT in `mobile_ws.py`. Companion Android app features 6 native tabs (HUD, Actions, Chat, Gate, Files, Network) and 9 embedded Mission Control sub-panels, real-time telemetry HUD streaming, remote screen preview, and dynamic approval cards.
 - **Laptop Battery Level Mobile Alerts** — Automatic push & WebSocket notifications sent to phone at 30% (Warning) and 20% (Critical) unplugged battery levels.
 - **Double Clap Detection Engine** — Acoustic Peak-to-Average Power Ratio (PAPR > 3.2) transient filter with TTS speaker activity guard; double clapping when JARVIS is minimized or sleeping instantly restores and focuses the desktop window.
 - **Wake Word Activation** — Say "Hey Jarvis" to activate (local `openwakeword` engine tuned to 0.35 threshold).
 
 ### 🎨 Visual HUD & AI Command Center Studio
-- **Unified Command Center** — Modular workspace featuring 3D Orb focal core, AI Chat, Computer Use, Visual Workflow Studio, Task Queue Manager, Telemetry, and RAG Knowledge Hub.
+- **Unified Command Center** — Modular workspace featuring 3D Orb focal core, AI Chat with Image Generation, Computer Use, Visual Workflow Studio, Task Queue Manager, Telemetry, and RAG Knowledge Hub.
 - **Adaptive Responsive Windowing** — Displays full dashboard in fullscreen/maximized mode; auto-hides panels to show ONLY the central 3D Orb HUD when window is unmaximized or resized compact.
 - **Battery-Saver WebGL Canvas** — Automatically pauses WebGL rendering loops when window is minimized or hidden.
 - **Native Windows UI Automation (UIA)** — `UIAEngine` provides resolution-independent element selection, button clicks by title/name, and focus management.
@@ -46,6 +54,7 @@
 ### 🧠 AI Brain, Prash Engine & Resilient Fallback Routing (100% Verified)
 - **Prash Local AI Engine** — Custom Transformer model evaluating token prediction entropy for instant local responses; seamlessly handoffs to cloud cascade when entropy threshold is exceeded.
 - **Multi-Provider Fallback Cascade** — Dynamic routing across Ollama (#1 Local), Gemini, Groq, OpenRouter, and OpenAI with circuit-breaker recovery.
+- **Hermes Dual-Agent System** — Integrates `HermesDesktopAgent` (Windows 11 foregrounding via `AttachThreadInput`, clipboard paste typing, coordinate clicking) and `HermesGeneralAgent` (multi-step function-calling orchestrator across 69 tools).
 - **Response Quality Evaluator & Web Recovery** — Automatically triggers autonomous web research if LLM outputs fail or return incomplete answers.
 - **Instant Factual Fast-Paths** — Deterministic Date/Time, System Control, Volume, and Hardware Telemetry intercepts preventing LLM latency.
 - **Interactive Vision & Screen Inspector** — Real-time win32 foreground window HWND inspection and desktop screenshot capture.
@@ -55,60 +64,13 @@
 - **Multi-Agent Orchestrator** — 4 strong domain agents (General, Research, Developer, Automation) with task delegation and IPC state management.
 - **Workflow & Macro Manager** — Custom workflow recorder, macro playback, and deletion.
 
-
-### 🎭 J.A.R.V.I.S. Personality, Learning & Workspace Intelligence
-- **J.A.R.V.I.S. Personality Directives** — Refined British butler persona establishing a composed technical co-pilot and partner. Provides polite constructive pushback on unwise or inefficient user decisions, proposes superior technical alternatives, explains reasoning, and maintains dry wit.
-- **Workspace Intelligence (`WorkspaceIntelligenceService`)** — Continuously tracks active project context, operational goals, session workflows (`coding`, `research`, `study`), 20-action ring buffer, and long-term user habit transitions persisted in `data/user_habits.json`.
-- **Predictive Habit & Action Forecaster** — Uses habit transition matrices to predict your next anticipated desktop action (*"Action A -> Action B"*) and proactively offers macro skill automation when repetitive sequences are detected.
-- **Learning & Study Assistant (`LearningSkill`)** — Socratic concept explanations using the Feynman technique (`explain_concept`), interactive quiz generation (`generate_quiz`), and study note summarization (`summarize_study_notes`).
-- **Interactive Safety Permission Modal (`SafetyPermissionModal.tsx`)** — Renders backend `permission_request` WebSocket events in the Electron desktop UI with interactive Approve/Deny buttons.
-- **"What JARVIS is Seeing" Visualizer (`LivePerceptionVisualizer.tsx`)** — Real-time scene graph panel rendering active window, foreground PID, connected monitors, Win32 UIA control tree, and Workspace Intelligence habit metrics.
-
-### 🖥️ Computer Control
-- Open & close applications
-- Type text & use keyboard shortcuts
-- Control mouse movement and clicks
-- Create, rename, and organize files
-- Run terminal commands (with safety checks)
-- Minimize/maximize windows
-
-### 👁️ Screen Understanding
-- Capture and analyze screenshots
-- Read on-screen text with OCR
-- Answer questions about visible content
-- Detect active window and monitor info
-
-### 🌐 Browser Automation
-- Open websites and search the web
-- Fill forms and click elements
-- Navigate tabs and pages
-- Extract web page content
-
-### 📰 News, Digest & Deep Research (Ported from Friday/OpenJarvis)
-- **World & Finance RSS Aggregator** — Fetches and formats real-time headlines from BBC, CNBC, Bloomberg, NYTimes, AlJazeera, Reuters, and MarketWatch in parallel.
-- **World Monitor Dashboards** — Launches live visual maps and market monitors (`worldmonitor.app` & `finance.worldmonitor.app`) in your browser.
-- **Daily Morning Digest** — Generates daily briefings compiling weather, upcoming calendar events, CPU/RAM metrics, and world headlines.
-- **Multi-Step Deep Research** — Executes deep web research queries, scraper engines, and compiles citation-heavy synthesized summaries.
-
-### 💾 Memory System
-- Remembers your name, preferences, and habits
-- Semantic search across past conversations
-- Persistent storage with ChromaDB + SQLite
-- Context-aware responses
-
-### 🛡️ Safety System
-- Confirms before deleting files, shutdown, or risky commands
-- Blocks malicious requests
-- Sandboxed terminal execution
-- Command sanitization
-
 ---
 
 ## 🧩 Registered Skills & Truthful Tool Registry
 
 JARVIS employs a **Truthful Tool Registry** combined with a modular **Skill Plugin Architecture**. Each tool is strictly verified for executable handlers, parameter schemas, and risk tiers.
 
-> **61 Executable Tools** registered in `ToolRegistry` and modular skills
+> **69 Executable Tools** registered in `ToolRegistry` and modular skills
 
 | Category | Primary Tools | Purpose |
 |---|---|---|
@@ -116,10 +78,11 @@ JARVIS employs a **Truthful Tool Registry** combined with a modular **Skill Plug
 | 📁 **Filesystem** | `read_file`, `write_file`, `delete_file`, `create_file`, `copy_file`, `move_file`, `search_files`, `get_file_info` | Safe filesystem operations and file search |
 | 🌐 **Web & Browser** | `web_search`, `browser_agent_task`, `play_youtube_video`, `deep_research` | Web searching, Playwright autonomous navigation & research |
 | 🪟 **Automation & UI** | `type_text`, `click_element_by_name`, `set_control_value`, `resize_window`, `auto_fill_form`, `execute_rpa_macro` | Desktop RPA, UIA element targeting & form automation |
+| 🔄 **Live Mode & Failover** | `live_mode_execute_task`, `live_mode_emergency_stop`, `hermes_bridge_task`, `hermes_async_task`, `desktop_agent_task` | Live Mode failover supervisor, single-agent locking & Hermes execution |
 | 🧠 **Memory & RAG** | `memory_store`, `rag_knowledge_search`, `forget_memory` | 4-tier memory indexing, recall & ChromaDB search |
 | 🔌 **Integrations** | `n8n_list_workflows`, `n8n_execute_workflow`, `gmail_list_messages`, `google_calendar_list_events`, `outlook_list_messages` | n8n workflow execution, Google Workspace & Microsoft 365 OAuth |
 | 📚 **Learning & Productivity** | `explain_concept`, `generate_quiz`, `take_note`, `list_notes`, `search_notes`, `draft_copy` | Socratic learning, Markdown notes & copy drafting |
-| 🧬 **Science & Multimodal** | `balance_chemical_equation`, `calculate_molecular_weight`, `generate_image`, `generate_video`, `generate_3d_asset` | Chemoinformatics, PubChem queries & async media generation |
+| 🧬 **Science & Multimodal** | `generate_image`, `balance_chemical_equation`, `calculate_molecular_weight`, `generate_video`, `generate_3d_asset` | Image generation (Imagen 3 / Pollinations), Chemoinformatics & 3D assets |
 
 ---
 
@@ -609,12 +572,12 @@ npm run dev
 
 ### Running Automated Tests
 
-#### 1. Backend Master Pytest Suite (12 Suites · 116 Tests)
+#### 1. Backend Master Pytest Suite (16 Suites · 149 Tests)
 ```powershell
 # Run the complete verified backend test suite
 backend\venv\Scripts\python.exe -m pytest backend/tests/ -q
 ```
-*Executes all 12 master test suites covering service container, intent routing, domain agents, 4-tier memory, automation executors, voice pipeline, truthful tool registry, live mode perception, and capability expansion.*
+*Executes all 16 master test suites covering service container, intent routing, domain agents, 4-tier memory, automation executors, voice pipeline, truthful tool registry, live mode perception, capability expansion, cross-platform safety, biometric security verification, security precedence & hierarchy, and capability registry schema integrity.*
 
 #### 2. Frontend & Route Integration Tests
 ```bash

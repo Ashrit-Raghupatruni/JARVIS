@@ -298,58 +298,88 @@ class UIAPerceptionEngine:
 
     # ── Cascading Control Interaction ────────────────────────────────────
 
-    def click_element_by_name(self, element_name: str) -> Dict[str, Any]:
+    def click_element_by_name(
+        self,
+        element_name: str,
+        control_type: Optional[str] = None,
+        automation_id: Optional[str] = None,
+        class_name: Optional[str] = None,
+        index: Optional[int] = None,
+    ) -> Dict[str, Any]:
         """
-        Locate control by title/name matching and click.
+        Locate control by title/name matching and click with multi-property disambiguation support.
         Cascades: Native Win32 Controls -> UIA Scene Graph -> OCR Visual Bounds -> Scroll Fallback.
         """
         target_name = element_name.lower().strip()
 
         # Tier 1: Inspect Native Win32 child controls
         info = self.inspect_active_window_controls()
+        matching_win32 = []
         for ctrl in info.get("controls", []):
             c_title = ctrl.get("title", "").lower()
+            c_cls = ctrl.get("class_name", "").lower()
             if target_name in c_title and c_title:
-                bounds = ctrl["bounds"]
-                click_x = bounds["left"] + bounds["width"] // 2
-                click_y = bounds["top"] + bounds["height"] // 2
+                if class_name and class_name.lower() not in c_cls:
+                    continue
+                matching_win32.append(ctrl)
 
-                try:
-                    import pyautogui
-                    pyautogui.click(click_x, click_y)
-                    return {
-                        "status": "clicked",
-                        "target": ctrl.get("title"),
-                        "class_name": ctrl.get("class_name"),
-                        "method": "native_win32",
-                        "coordinates": {"x": click_x, "y": click_y}
-                    }
-                except Exception as e:
-                    return {"status": "error", "message": str(e)}
+        if matching_win32:
+            target_ctrl = matching_win32[index] if index is not None and 0 <= index < len(matching_win32) else matching_win32[0]
+            bounds = target_ctrl["bounds"]
+            click_x = bounds["left"] + bounds["width"] // 2
+            click_y = bounds["top"] + bounds["height"] // 2
+
+            try:
+                import pyautogui
+                pyautogui.click(click_x, click_y)
+                return {
+                    "status": "clicked",
+                    "target": target_ctrl.get("title"),
+                    "class_name": target_ctrl.get("class_name"),
+                    "method": "native_win32",
+                    "coordinates": {"x": click_x, "y": click_y},
+                    "matches_found": len(matching_win32)
+                }
+            except Exception as e:
+                return {"status": "error", "message": str(e)}
 
         # Tier 2: Inspect UIA Accessibility Scene Graph
         try:
             from backend.services.perception.uia_scene_graph import UIASceneGraph
             sg = UIASceneGraph()
             scene = sg.capture_scene(max_depth=3, max_elements=50)
+            matching_uia = []
             for elem in scene.elements:
-                if target_name in elem.name.lower() or target_name in elem.id.lower():
-                    b = elem.bounds
-                    if b and len(b) == 4:
-                        cx = (b[0] + b[2]) // 2
-                        cy = (b[1] + b[3]) // 2
-                        try:
-                            import pyautogui
-                            pyautogui.click(cx, cy)
-                            return {
-                                "status": "clicked",
-                                "target": elem.name,
-                                "element_id": elem.id,
-                                "method": "uia_scene_graph",
-                                "coordinates": {"x": cx, "y": cy}
-                            }
-                        except Exception as e:
-                            return {"status": "error", "message": str(e)}
+                e_name = elem.name.lower()
+                e_id = elem.id.lower()
+                e_type = elem.control_type.lower()
+                if target_name in e_name or target_name in e_id:
+                    if control_type and control_type.lower() not in e_type:
+                        continue
+                    if automation_id and automation_id.lower() not in e_id:
+                        continue
+                    matching_uia.append(elem)
+
+            if matching_uia:
+                target_elem = matching_uia[index] if index is not None and 0 <= index < len(matching_uia) else matching_uia[0]
+                b = target_elem.bounds
+                if b and len(b) == 4:
+                    cx = (b[0] + b[2]) // 2
+                    cy = (b[1] + b[3]) // 2
+                    try:
+                        import pyautogui
+                        pyautogui.click(cx, cy)
+                        return {
+                            "status": "clicked",
+                            "target": target_elem.name,
+                            "element_id": target_elem.id,
+                            "control_type": target_elem.control_type,
+                            "method": "uia_scene_graph",
+                            "coordinates": {"x": cx, "y": cy},
+                            "matches_found": len(matching_uia)
+                        }
+                    except Exception as e:
+                        return {"status": "error", "message": str(e)}
         except Exception:
             pass
 

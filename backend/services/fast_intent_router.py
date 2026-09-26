@@ -150,6 +150,12 @@ class FastIntentRouter:
             re.IGNORECASE
         )
 
+        # 10. Image Generation
+        self._re_generate_image = re.compile(
+            r"^(?:generate|create|draw|make|paint|synthesize)\s+(?:an?\s+)?(?:image|picture|photo|artwork|illustration|wallpaper|poster|visual)\s+(?:of|for|about|with)?\s*(.+)$",
+            re.IGNORECASE
+        )
+
     def classify(self, user_prompt: str) -> FastIntentResult:
         """
         Classifies user prompt into an atomic tool call intent or falls back to Planner.
@@ -179,14 +185,15 @@ class FastIntentRouter:
 
         # Reject compound sentences with conjunctions or chaining markers (ignoring safe noun compounds)
         test_str = cleaned.replace("cpu and ram", "system_specs")
-        for marker in self.COMPOUND_MARKERS:
-            if marker in f" {test_str} ":
-                return FastIntentResult(
-                    is_atomic=False,
-                    confidence=0.0,
-                    reason=f"Compound marker detected: '{marker.strip()}'",
-                    routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
-                )
+        if not self._re_generate_image.match(cleaned):
+            for marker in self.COMPOUND_MARKERS:
+                if marker in f" {test_str} ":
+                    return FastIntentResult(
+                        is_atomic=False,
+                        confidence=0.0,
+                        reason=f"Compound marker detected: '{marker.strip()}'",
+                        routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
+                    )
 
         # Reject destructive high-risk operations from fast path (must go through Planner & Safety Gate)
         for dangerous in self.HIGH_RISK_KEYWORDS:
@@ -418,6 +425,21 @@ class FastIntentRouter:
                 completion_phrase=None,
                 routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
             )
+
+        # K. Image Generation Request
+        m_img = self._re_generate_image.match(cleaned)
+        if m_img:
+            image_prompt = m_img.group(1).strip()
+            if image_prompt:
+                return FastIntentResult(
+                    is_atomic=True,
+                    tool_name="generate_image",
+                    tool_params={"prompt": image_prompt, "style": "vivid"},
+                    confidence=0.98,
+                    ack_phrase=f"Synthesizing your visual creation: '{image_prompt[:40]}...', sir...",
+                    completion_phrase="Visual generation complete.",
+                    routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
+                )
 
         # ── 3. Fallback to Planner / ReAct Loop ──────────────────────────
         return FastIntentResult(

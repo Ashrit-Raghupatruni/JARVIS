@@ -73,6 +73,15 @@ This document outlines the capabilities, completed features, active work, and up
 - [x] Sub-250ms Fast n8n Pre-Flight Probing & Workflow Execution (`n8n_service.py`)
 - [x] Codebase Polish & Syntax Hygiene (os.time fix, typing imports, class header cleanup)
 - [x] Comprehensive Outcome-Based E2E Verification Suite (6/6 Checks Passed 100% via `scratch/test_outcome_based_verification.py`)
+- [x] Live Mode Failover Architecture & Supervisor (`LiveModeFailoverSupervisor` with single-agent `_control_lock`)
+- [x] Seamless Failure Point Resume from Primary to Hermes Fallback
+- [x] 12-Pillar Hermes Bridge Service (`backend/services/hermes_bridge.py`)
+- [x] Dual Hermes Agents (`HermesDesktopAgent` with Win32 `AttachThreadInput` & `HermesGeneralAgent` with 69-tool function calling)
+- [x] Live Mode Failover HUD (`LiveModeFailoverHUD.tsx`) with Emergency Stop & Take Control
+- [x] In-Chat Image Generation Engine (`ImageGeneratorService` with Imagen 3 / Pollinations AI & Lightbox UI)
+- [x] Synchronized Hermes CLI API keys and configs (`~/.hermes/.env` and `AppData/Local/hermes/.env`)
+- [x] 69 Executable System Tools in Truthful Tool Registry (100% verified executable handlers)
+- [x] 298/298 Passing Tests across 30 test files with zero regressions
 
 ---
 

@@ -5,9 +5,11 @@ Orchestrates mobile companion interaction: status telemetry streaming,
 dangerous operation approval events, remote desktop commands, and screen preview snapshots.
 """
 
+import os
 import io
 import time
 import base64
+import secrets
 import asyncio
 from typing import Dict, Any, List, Optional, Tuple
 from loguru import logger
@@ -36,11 +38,12 @@ class MobileGatewayService:
     def __init__(self) -> None:
         self.pending_approvals: Dict[str, Dict[str, Any]] = {}  # approval_id -> metadata + Event
         self.approval_decisions: Dict[str, str] = {}           # approval_id -> decision
+        self.consumed_challenges: set = set()                  # Set of consumed single-use challenge nonces
         self.always_allowed_patterns: List[str] = []
         self.always_denied_patterns: List[str] = []
         self.active_connections: set = set()
         self.last_mobile_heartbeat: float = 0.0
-        logger.info("MobileGatewayService initialized (Mobile Gateway Active)")
+        logger.info("MobileGatewayService initialized (Mobile Gateway Active, Cryptographic Approval Interlock Enabled)")
 
     def register_connection(self, ws: Any) -> None:
         """Register active mobile WebSocket connection."""
@@ -71,6 +74,7 @@ class MobileGatewayService:
         
         ram_percent = ram_info.percent if ram_info else 45.0
         ram_used_gb = round(ram_info.used / (1024**3), 2) if ram_info else 7.2
+        ram_total_gb = round(ram_info.total / (1024**3), 2) if ram_info else 16.0
         root_path = os.path.abspath(os.sep)
         disk_info = psutil.disk_usage(root_path) if HAS_PSUTIL else None
         disk_percent = disk_info.percent if disk_info else 50.0
@@ -169,6 +173,7 @@ class MobileGatewayService:
                 return "approve"
 
         approval_id = f"appr_{int(time.time() * 1000)}"
+        challenge = secrets.token_hex(32)
         event = asyncio.Event()
 
         self.pending_approvals[approval_id] = {
@@ -176,11 +181,14 @@ class MobileGatewayService:
             "action_type": action_type,
             "description": description,
             "dangerous_target": dangerous_target,
+            "challenge": challenge,
             "timestamp": time.time(),
+            "expires_at": time.time() + timeout_seconds,
             "event": event
         }
 
-        logger.info("Mobile Security Gatekeeper: Pausing execution for mobile approval '{}' ({})", action_type, description)
+        logger.info("Mobile Security Gatekeeper: Pausing execution for mobile approval '{}' ({}) [Challenge={}]",
+                    action_type, description, challenge[:12] + "...")
 
         # Broadcast approval request to connected mobile clients
         try:
@@ -191,6 +199,7 @@ class MobileGatewayService:
                 "action_type": action_type,
                 "description": description,
                 "dangerous_target": dangerous_target,
+                "challenge": challenge,
                 "timeout_seconds": timeout_seconds
             }
             logger.info("🛡️ Gatekeeper broadcasting approval request '{}' to {} connected mobile client(s)...", approval_id, len(active_mobile_connections))
@@ -253,59 +262,126 @@ class MobileGatewayService:
         self,
         approval_id: str,
         decision: str,
+        challenge: Optional[str] = None,
+        device_id: Optional[str] = None,
         biometric_authenticated: bool = False,
         biometric_signature: Optional[str] = None,
     ) -> bool:
-        """Receive approval decision from client, enforce biometric lock on high-risk actions, and unblock execution."""
-        item = self.pending_approvals.get(approval_id)
-        if not item:
-            logger.warning("Approval decision received for unknown or expired ID: {}", approval_id)
-            return False
-
-        action_type = item.get("action_type", "")
-        # Enforce fail-closed biometric lock for high-risk actions
-        if decision in ("approve", "always_allow") and action_type in self.HIGH_RISK_ACTIONS:
-            if not biometric_authenticated:
-                logger.warning(
-                    "⛔ Mobile Biometric Lock: Denied approval for high-risk action '{}' — Fingerprint/Face ID required!",
-                    action_type,
-                )
-                return False
-
-        self.approval_decisions[approval_id] = decision
-        event: asyncio.Event = item["event"]
-        event.set()
-        logger.info(
-            "✓ Mobile approval decision set: {} -> {} (biometric_verified={})",
-            approval_id,
-            decision,
-            biometric_authenticated,
+        """Receive approval decision from client, enforce cryptographic challenge verification on high-risk actions, and unblock execution."""
+        success, _ = self.submit_approval_decision_with_biometrics(
+            approval_id=approval_id,
+            decision=decision,
+            challenge=challenge,
+            device_id=device_id,
+            biometric_authenticated=biometric_authenticated,
+            biometric_signature=biometric_signature,
         )
-        return True
+        return success
 
     def submit_approval_decision_with_biometrics(
         self,
         approval_id: str,
         decision: str,
+        challenge: Optional[str] = None,
+        device_id: Optional[str] = None,
         biometric_authenticated: bool = False,
         biometric_signature: Optional[str] = None,
     ) -> Tuple[bool, str]:
-        """Validates approval with detailed status message."""
+        """
+        Validates mobile approval decision against cryptographic challenge and security policies.
+        Enforces single-use challenge consumption, replay protection, and signature verification.
+        """
         item = self.pending_approvals.get(approval_id)
         if not item:
-            return False, "Approval request ID not found or expired"
+            return False, "Approval request ID not found or already expired"
+
+        # Check expiration
+        now = time.time()
+        if now > item.get("expires_at", item["timestamp"] + 30.0):
+            self.pending_approvals.pop(approval_id, None)
+            return False, "Approval request challenge has expired"
 
         action_type = item.get("action_type", "")
+        item_challenge = item.get("challenge", "")
+
+        # 1. Replay Protection: Ensure challenge has not been consumed
+        if item_challenge and item_challenge in self.consumed_challenges:
+            logger.warning("⛔ Mobile Security Gatekeeper: Replay attack detected for challenge '{}'", item_challenge[:12])
+            return False, "Approval challenge has already been consumed (replay attack detected)"
+
+        # 2. Challenge matching (if client supplied a challenge nonce)
+        if challenge and item_challenge and challenge != item_challenge:
+            logger.warning("⛔ Mobile Security Gatekeeper: Challenge mismatch for approval '{}'", approval_id)
+            return False, "Provided challenge nonce does not match pending approval"
+
+        # 3. Reject fake / mock biometric signatures
+        if biometric_signature:
+            clean_sig = biometric_signature.strip()
+            if clean_sig.startswith("bio_sig_") or len(clean_sig) < 16:
+                logger.warning("⛔ Mobile Security Gatekeeper: Rejected mock/fake biometric signature placeholder")
+                return False, "Rejected invalid or mock biometric signature placeholder"
+
+        # 4. Enforce fail-closed cryptographic verification for HIGH_RISK_ACTIONS
         if decision in ("approve", "always_allow") and action_type in self.HIGH_RISK_ACTIONS:
-            if not biometric_authenticated:
+            from backend.services.manager import ServiceManager
+            auth_svc = ServiceManager.get_instance("mobile_auth_service")
+            if not auth_svc:
+                from backend.services.mobile_auth import MobileAuthService
+                auth_svc = MobileAuthService()
+
+            # Check if device is revoked
+            if device_id:
+                if hasattr(auth_svc, "_revoked_devices") and device_id in auth_svc._revoked_devices:
+                    logger.warning("⛔ Mobile Security Gate: Denied approval from revoked device '{}'", device_id)
+                    return False, f"Device '{device_id}' has been revoked"
+                if hasattr(auth_svc, "_trusted_devices"):
+                    dev_entry = auth_svc._trusted_devices.get(device_id, {})
+                    if dev_entry and not dev_entry.get("trusted", True):
+                        logger.warning("⛔ Mobile Security Gate: Denied approval from untrusted device '{}'", device_id)
+                        return False, f"Device '{device_id}' is untrusted"
+
+            pub_key = None
+            if auth_svc and device_id and hasattr(auth_svc, "_trusted_devices"):
+                trusted_entry = auth_svc._trusted_devices.get(device_id, {})
+                pub_key = trusted_entry.get("public_key")
+
+            if pub_key and auth_svc:
+                # Device has registered public key -> Cryptographic signature is mandatory
+                canonical_msg = f"JARVIS_APPROVAL_CHALLENGE:{approval_id}:{action_type}:{item.get('dangerous_target', '')}:{item_challenge}"
+                if not biometric_signature:
+                    logger.warning("⛔ Mobile Biometric Gate: Missing cryptographic signature for high-risk action '{}'", action_type)
+                    return False, f"Cryptographic biometric signature required for registered device '{device_id}'"
+                
+                valid_sig = auth_svc.verify_client_signature(pub_key, canonical_msg, biometric_signature)
+                if not valid_sig:
+                    logger.warning("⛔ Mobile Biometric Gate: Cryptographic signature verification FAILED for action '{}'", action_type)
+                    return False, f"Cryptographic biometric signature verification failed for high-risk action '{action_type}'"
+                
+                logger.info("✓ Cryptographic biometric signature verified for high-risk action '{}' from device '{}'", action_type, device_id)
+            else:
+                # If no registered keypair or client is reporting local boolean without crypto proof -> FAIL CLOSED
                 logger.warning(
-                    "⛔ Mobile Biometric Lock: Denied approval for high-risk action '{}' — Fingerprint/Face ID required!",
+                    "⛔ Mobile Biometric Lock: Denied approval for high-risk action '{}' — Registered device cryptographic signature required!",
                     action_type,
                 )
-                return False, f"Biometric authentication (fingerprint/Face ID) required for high-risk action '{action_type}'"
+                return False, f"Cryptographic device keypair required for high-risk action '{action_type}' (client booleans not trusted)"
+
+        # 5. Mark challenge as consumed (Single-Use Guarantee)
+        if item_challenge:
+            self.consumed_challenges.add(item_challenge)
+
 
         self.approval_decisions[approval_id] = decision
-        event: asyncio.Event = item["event"]
-        event.set()
-        return True, "Approval decision processed"
+        event = item.get("event")
+        if event and hasattr(event, "set"):
+            event.set()
+        logger.info(
+            "✓ Mobile approval decision set: {} -> {} (action={}, biometric_verified={})",
+            approval_id,
+            decision,
+            action_type,
+            biometric_authenticated or bool(biometric_signature),
+        )
+        return True, "Approval decision successfully verified and processed"
+
 

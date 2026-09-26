@@ -164,6 +164,12 @@ app.include_router(debug_router)
 app.include_router(integrations_router)
 app.include_router(oauth_router)
 
+# ── Mount Static Media Files (Generated Images, Audio, Artifacts) ──
+from fastapi.staticfiles import StaticFiles
+_media_dir = Path("data/media_output")
+_media_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/media", StaticFiles(directory=str(_media_dir)), name="media")
+
 
 @app.get("/api/live_mode/status")
 @app.get("/live_mode/status")

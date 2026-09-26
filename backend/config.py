@@ -130,6 +130,18 @@ class Settings(BaseSettings):
         default="qwen3:8b",
         description="Alternative local Ollama model for fallback rotation.",
     )
+    HERMES_DESKTOP_MODEL: str = Field(
+        default="hermes-desktop",
+        description="Ollama model for desktop GUI automation and window operations.",
+    )
+    HERMES_AGENT_MODEL: str = Field(
+        default="hermes-agent",
+        description="Ollama model for multi-step reasoning, function calling, and general agentic workflows.",
+    )
+    HERMES_FALLBACK_MODEL: str = Field(
+        default="hermes3",
+        description="Fallback Nous Hermes model identifier if specific specialized tag is unavailable.",
+    )
 
 
     ASSISTANT_NAME: str = Field(
@@ -411,8 +423,8 @@ class Settings(BaseSettings):
 
     # ── Server Settings ──────────────────────────────────────────────────
     SERVER_HOST: str = Field(
-        default="0.0.0.0",
-        description="Host address for the FastAPI server.",
+        default="127.0.0.1",
+        description="Host address for the FastAPI server (default: 127.0.0.1 loopback for security).",
     )
     SERVER_PORT: int = Field(
         default=8000,
@@ -501,10 +513,23 @@ class Settings(BaseSettings):
             try:
                 from cryptography.fernet import Fernet
                 fallback_key = Fernet.generate_key().decode("utf-8")
-                print(f"[Config Warning] Invalid SYNC_KEY provided. Auto-generated secure fallback key: {fallback_key[:10]}...")
+                print("[Config Warning] Invalid SYNC_KEY provided. Auto-generated secure fallback key.")
                 return fallback_key
             except Exception:
                 return default_key
+
+    def __repr__(self) -> str:
+        """Safe representation masking all secrets, API keys, tokens, and credentials."""
+        masked_dict = {}
+        for k, v in self.__dict__.items():
+            if any(s in k.lower() for s in ["key", "secret", "token", "password", "pwd", "auth", "credential", "cookie"]):
+                masked_dict[k] = "******" if v else None
+            else:
+                masked_dict[k] = v
+        return f"Settings({masked_dict})"
+
+    def __str__(self) -> str:
+        return self.__repr__()
 
     @property
     def data_path(self) -> Path:

@@ -21,14 +21,25 @@ from backend.services.memory import (
 
 @pytest.mark.asyncio
 async def test_memory_manager_initialization():
-    """Verify MemoryManager initializes sub-memories and exposes standard interfaces."""
+    """Verify MemoryManager initializes sub-memories and executes operational cycles."""
     manager = MemoryManager()
     await manager.init()
 
-    assert manager.working is not None
-    assert manager.long_term is not None
-    assert manager.episodic is not None
-    assert manager.semantic is not None
+    # Working memory operation
+    manager.working.add_turn("user", "Init test ping")
+    turns = manager.working.get_turns()
+    assert len(turns) >= 1
+    assert turns[-1]["content"] == "Init test ping"
+
+    # Long term memory operation
+    await manager.long_term.set_user_preference("init_test_key", "init_test_val")
+    val = await manager.long_term.get_user_preference("init_test_key")
+    assert val == "init_test_val"
+
+    # Episodic memory operation
+    ep = manager.store_episode(goal="init_test_goal", result="success", success=True)
+    assert ep["goal"] == "init_test_goal"
+    assert ep["success"] is True
 
     # MemoryService alias check
     assert MemoryService is MemoryManager

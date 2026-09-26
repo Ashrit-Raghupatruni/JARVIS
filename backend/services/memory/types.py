@@ -15,6 +15,15 @@ class MemoryType(str, Enum):
     SEMANTIC = "semantic"
 
 
+class MemoryTrustLevel(str, Enum):
+    USER_CONFIRMED = "user_confirmed"
+    SYSTEM_VERIFIED = "system_verified"
+    APPLICATION_DERIVED = "application_derived"
+    LLM_INFERRED = "llm_inferred"
+    EXTERNAL_SOURCE = "external_source"
+    UNTRUSTED = "untrusted"
+
+
 class MemoryImportance(str, Enum):
     LOW = "low"
     MEDIUM = "medium"
@@ -27,6 +36,9 @@ class MemoryItem(BaseModel):
     content: str
     memory_type: MemoryType = MemoryType.LONG_TERM
     importance: MemoryImportance = MemoryImportance.MEDIUM
+    trust_level: MemoryTrustLevel = MemoryTrustLevel.LLM_INFERRED
+    provenance_source: str = "conversation"
+    confidence: float = 1.0
     metadata: Dict[str, Any] = Field(default_factory=dict)
     distance: Optional[float] = None
     timestamp: float = Field(default_factory=time.time)

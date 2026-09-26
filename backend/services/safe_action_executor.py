@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from loguru import logger
 
 from backend.services.tool_registry import ToolRegistry
-from backend.services.safety_gatekeeper import SafetyGatekeeper, ActionRiskLevel, SafetyDecision
+from backend.services.safety_gatekeeper import SafetyGatekeeper, ActionRiskLevel, SafetyDecision, SecurityDecisionType
 from backend.services.action_verifier import ActionExecutionVerifier
 from backend.services.prash_tool_validator import PrashToolValidator, PrashValidationResult
 
@@ -94,9 +94,10 @@ class SafeActionExecutor:
 
         # ── Gate 2: SafetyGatekeeper Evaluation ───────────────────────────────
         safety_dec: SafetyDecision = self.safety_gatekeeper.evaluate_tool_call(tool_name, sanitized_params)
-        logger.info(f"Gate 2 Safety Evaluation for '{tool_name}': allowed={safety_dec.allowed}, risk={safety_dec.risk_level}, req_approval={safety_dec.requires_user_approval}")
+        logger.info(f"Gate 2 Safety Evaluation for '{tool_name}': allowed={safety_dec.allowed}, decision={safety_dec.decision}, risk={safety_dec.risk_level}, req_approval={safety_dec.requires_user_approval}")
 
-        if not safety_dec.allowed:
+        # INVIOLABLE RULE: If policy is DENY, user confirmation CANNOT override
+        if safety_dec.decision == SecurityDecisionType.DENY or (not safety_dec.allowed and not safety_dec.requires_user_approval):
             duration_ms = round((time.time() - start_time) * 1000, 2)
             logger.warning(f"⛔ Gate 2 REJECTED by SafetyGatekeeper: {safety_dec.reason}")
             return ExecutionGuardResult(
@@ -105,7 +106,7 @@ class SafeActionExecutor:
                 tool_name=tool_name,
                 parameters=sanitized_params,
                 risk_level=safety_dec.risk_level.value,
-                requires_user_approval=safety_dec.requires_user_approval,
+                requires_user_approval=False,
                 schema_valid=True,
                 verified=False,
                 error=f"Security Policy Block: {safety_dec.reason}",

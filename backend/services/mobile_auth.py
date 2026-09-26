@@ -53,6 +53,8 @@ class MobileAuthService:
         self._active_sessions: Dict[str, Dict[str, Any]] = {}  # session_id -> metadata
         self._completed_sessions: Dict[str, Dict[str, Any]] = {}  # session_id -> device_entry
         self._trusted_devices: Dict[str, Dict[str, Any]] = self._load_trusted_devices()
+        self._revoked_devices: set = set()
+        self._revoked_tokens: set = set()
 
         # Initialize real Ed25519 asymmetric cryptographic keypair
         self._private_key = ed25519.Ed25519PrivateKey.generate()
@@ -245,13 +247,47 @@ class MobileAuthService:
             return jwt.encode(payload, self._jwt_secret, algorithm="HS256")
         return f"DEV_TOKEN_{device_id}_{int(time.time())}"
 
+    def revoke_device(self, device_id: str) -> bool:
+        """Revoke a trusted device immediately and invalidate all its authorization."""
+        if not device_id:
+            return False
+        self._revoked_devices.add(device_id)
+        if device_id in self._trusted_devices:
+            self._trusted_devices[device_id]["trusted"] = False
+            self._save_trusted_devices()
+            logger.info("Device '{}' has been revoked successfully.", device_id)
+            return True
+        return True
+
+    def unpair_device(self, device_id: str) -> bool:
+        """Remove device from trusted store and revoke authorizations."""
+        self._revoked_devices.add(device_id)
+        if device_id in self._trusted_devices:
+            del self._trusted_devices[device_id]
+            self._save_trusted_devices()
+            logger.info("Device '{}' unpaired and deleted from trusted devices.", device_id)
+            return True
+        return True
+
+    def revoke_token(self, token: str) -> bool:
+        """Add a specific token to the revoked tokens blocklist."""
+        if not token:
+            return False
+        clean = token.replace("Bearer ", "").strip()
+        self._revoked_tokens.add(clean)
+        return True
+
     def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
-        """Verify JWT token and return authenticated payload. Fails closed on any decode error."""
+        """Verify JWT token and return authenticated payload. Fails closed on any decode error or revocation."""
         if not token:
             return None
 
         clean_token = token.replace("Bearer ", "").strip()
         if not clean_token:
+            return None
+
+        if clean_token in self._revoked_tokens:
+            logger.warning("Token verification failed: Token is in revoked blocklist.")
             return None
 
         settings = get_settings()
@@ -262,6 +298,9 @@ class MobileAuthService:
                 logger.warning("DEV_TOKEN_ rejected because settings.DEBUG is False")
                 return None
             dev_id = clean_token.replace("DEV_TOKEN_", "").strip() or "dev-device"
+            if dev_id in self._revoked_devices:
+                logger.warning("DEV_TOKEN_ rejected: Device '{}' has been revoked", dev_id)
+                return None
             return {"sub": dev_id, "friendly_name": f"Dev Device ({dev_id})", "is_dev": True}
 
         if HAS_JWT:
@@ -271,7 +310,13 @@ class MobileAuthService:
                 if not dev_id:
                     logger.warning("JWT decode succeeded but missing 'sub' claim")
                     return None
+                if dev_id in self._revoked_devices:
+                    logger.warning("JWT rejected: Device '{}' has been revoked", dev_id)
+                    return None
                 if dev_id in self._trusted_devices:
+                    if not self._trusted_devices[dev_id].get("trusted", True):
+                        logger.warning("JWT rejected: Device '{}' is marked untrusted/revoked in store", dev_id)
+                        return None
                     self._trusted_devices[dev_id]["last_active"] = time.time()
                 return payload
             except Exception as e:
@@ -283,6 +328,19 @@ class MobileAuthService:
 
     def get_trusted_devices(self) -> List[DeviceInfo]:
         """Return list of all registered trusted mobile devices."""
-        return [
-            DeviceInfo(**data) for data in self._trusted_devices.values()
-        ]
+        devices = []
+        for data in self._trusted_devices.values():
+            try:
+                devices.append(DeviceInfo(
+                    device_id=data.get("device_id", "unknown"),
+                    friendly_name=data.get("friendly_name", "Mobile Companion"),
+                    registered_at=data.get("registered_at", time.time()),
+                    last_active=data.get("last_active", time.time()),
+                    public_key=data.get("public_key"),
+                    trusted=data.get("trusted", True),
+                    is_online=data.get("is_online", False)
+                ))
+            except Exception as e:
+                logger.warning(f"Error converting trusted device: {e}")
+        return devices
+

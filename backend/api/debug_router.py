@@ -28,6 +28,7 @@ from loguru import logger
 from backend.services.manager import ServiceManager
 from backend.services.world_model import WorldModel
 from backend.agents.message_router import classify_request, RequestCategory
+from backend.services.data_privacy import sanitize_payload, mask_secrets
 
 debug_router = APIRouter(prefix="/api/v1/debug", tags=["Debug & Validation"])
 
@@ -37,19 +38,22 @@ _last_llm_contexts: List[Dict[str, Any]] = []
 
 
 def record_execution_trace(trace_data: Dict[str, Any]):
-    """Record an execution trace event for runtime inspection."""
+    """Record an execution trace event for runtime inspection (sanitized)."""
     global _latest_execution_traces
-    trace_data["timestamp"] = time.time()
-    _latest_execution_traces.insert(0, trace_data)
+    sanitized_trace = sanitize_payload(dict(trace_data))
+    sanitized_trace["timestamp"] = time.time()
+    _latest_execution_traces.insert(0, sanitized_trace)
     _latest_execution_traces = _latest_execution_traces[:20]
 
 
 def record_llm_context(context_data: Dict[str, Any]):
-    """Record LLM prompt context payload for runtime inspection."""
+    """Record LLM prompt context payload for runtime inspection (sanitized)."""
     global _last_llm_contexts
-    context_data["timestamp"] = time.time()
-    _last_llm_contexts.insert(0, context_data)
+    sanitized_context = sanitize_payload(dict(context_data))
+    sanitized_context["timestamp"] = time.time()
+    _last_llm_contexts.insert(0, sanitized_context)
     _last_llm_contexts = _last_llm_contexts[:10]
+
 
 
 @debug_router.get("/world_model_inspector")
@@ -73,7 +77,7 @@ async def get_world_model_inspector():
     dialogs = [c.get("name", "Unnamed") for c in controls if c.get("control_type") in ("Window", "50032")]
 
     monitors_list = getattr(state, "monitors", [{"id": 1, "name": "Primary Display"}])
-    return {
+    raw_payload = {
         "timestamp": state.timestamp,
         "active_app": state.active_app,
         "window_title": state.window_title or "[Empty Window Title]",
@@ -81,7 +85,7 @@ async def get_world_model_inspector():
         "active_monitor_id": getattr(state, "active_monitor_id", 0),
         "monitors": monitors_list,
         "monitors_count": len(monitors_list),
-        "clipboard_text": state.clipboard_text or "[Clipboard Empty]",
+        "clipboard_text": mask_secrets(state.clipboard_text or "[Clipboard Empty]"),
         "scene_graph_nodes": len(controls),
         "buttons_detected": buttons[:10],
         "buttons_count": len(buttons),
@@ -91,6 +95,7 @@ async def get_world_model_inspector():
         "dialogs_count": len(dialogs),
         "is_healthy": len(monitors_list) > 0 and state.window_title != "[Empty Window Title]"
     }
+    return sanitize_payload(raw_payload)
 
 
 @debug_router.get("/live_mode_validation")
@@ -134,7 +139,7 @@ async def get_workspace_intelligence():
     ws_intel = ServiceManager.get_instance("workspace_intelligence")
     if ws_intel and hasattr(ws_intel, "get_context"):
         ctx = ws_intel.get_context()
-        return ctx.model_dump()
+        return sanitize_payload(ctx.model_dump())
     return {
         "timestamp": time.time(),
         "current_project": "JARVIS Personal AI OS",
@@ -152,11 +157,12 @@ async def get_router_and_execution_traces():
     """
     Fetch recent request router decisions, execution traces, and LLM context payloads.
     """
-    return {
+    return sanitize_payload({
         "execution_traces": _latest_execution_traces,
         "llm_contexts": _last_llm_contexts,
         "total_traces": len(_latest_execution_traces)
-    }
+    })
+
 
 
 @debug_router.get("/startup_self_test")

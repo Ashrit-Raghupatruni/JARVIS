@@ -92,8 +92,6 @@ class CredentialVault:
             return True
         except Exception as e:
             logger.error(f"Failed to write credential in encrypted vault: {e}")
-            return False
-            
     def get_credential(self, service: str, username: str) -> Optional[str]:
         """Retrieve a credential."""
         if HAS_KEYRING:
@@ -116,3 +114,76 @@ class CredentialVault:
                 logger.error(f"Failed to read local encrypted vault: {e}")
                 
         return None
+
+    def delete_credential(self, service: str, username: str) -> bool:
+        """Delete a credential from both Keyring and the local encrypted vault."""
+        deleted = False
+        if HAS_KEYRING:
+            try:
+                keyring.delete_password(service, username)
+                logger.info(f"Deleted credential for '{service}' from Windows Credential Manager")
+                deleted = True
+            except Exception as e:
+                logger.debug(f"Keyring deletion not found or failed: {e}")
+
+        if self.vault_path.exists():
+            try:
+                with open(self.vault_path, "r") as f:
+                    encrypted_content = f.read()
+                if encrypted_content:
+                    decrypted_data = self._decrypt(encrypted_content)
+                    vault_data = json.loads(decrypted_data)
+                    key_name = f"{service}:{username}"
+                    if key_name in vault_data:
+                        del vault_data[key_name]
+                        encrypted_str = self._encrypt(json.dumps(vault_data))
+                        with open(self.vault_path, "w") as f:
+                            f.write(encrypted_str)
+                        logger.info(f"Deleted credential for '{service}' from local vault")
+                        deleted = True
+            except Exception as e:
+                logger.error(f"Failed to delete credential from encrypted vault: {e}")
+
+        return deleted
+
+    def rotate_master_key(self, new_key: Optional[bytes] = None) -> bool:
+        """Rotate the master encryption key, re-encrypting all stored vault secrets."""
+        try:
+            # 1. Decrypt existing vault data if it exists
+            vault_data = {}
+            if self.vault_path.exists():
+                with open(self.vault_path, "r") as f:
+                    encrypted_content = f.read()
+                if encrypted_content:
+                    decrypted_data = self._decrypt(encrypted_content)
+                    vault_data = json.loads(decrypted_data)
+
+            # 2. Generate or assign new key
+            if new_key is None:
+                if HAS_CRYPTOGRAPHY:
+                    new_key = Fernet.generate_key()
+                else:
+                    new_key = base64.b64encode(os.urandom(32))
+
+            old_key = self._encryption_key
+            self._encryption_key = new_key
+
+            # 3. Re-encrypt with new key and write to vault
+            encrypted_str = self._encrypt(json.dumps(vault_data))
+            with open(self.vault_path, "w") as f:
+                f.write(encrypted_str)
+
+            # 4. Save new key file
+            with open(self.key_path, "wb") as f:
+                f.write(new_key)
+            try:
+                os.chmod(self.key_path, 0o600)
+            except Exception:
+                pass
+
+            logger.info("Successfully rotated master key for CredentialVault")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to rotate master key: {e}")
+            return False
+

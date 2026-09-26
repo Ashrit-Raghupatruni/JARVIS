@@ -23,6 +23,7 @@ export interface MobileApprovalItem {
   action_type: string;
   description: string;
   dangerous_target: string;
+  challenge?: string;
   timestamp: number;
   timeout_seconds: number;
 }
@@ -112,6 +113,17 @@ export class JarvisMobileClient {
     return `${scheme}://${this.serverHost}:${this.serverPort}/api/v1/mobile/ws/stream`;
   }
 
+  private async fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 8000): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      return res;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
   private getHeaders() {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (this.token) {
@@ -121,7 +133,7 @@ export class JarvisMobileClient {
   }
 
   async pairDevice(deviceName: string, deviceId: string, pairingCode: string, session_id: string) {
-    const res = await fetch(`${this.baseUrl}/api/v1/mobile/pair/confirm`, {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/api/v1/mobile/pair/confirm`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -138,7 +150,7 @@ export class JarvisMobileClient {
   }
 
   async easyPair(pin: string, deviceName: string = "Android Phone", deviceId: string = "android-companion-1") {
-    const res = await fetch(`${this.baseUrl}/api/v1/mobile/pair`, {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/api/v1/mobile/pair`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pin, device_name: deviceName, device_id: deviceId })
@@ -151,7 +163,7 @@ export class JarvisMobileClient {
   }
 
   async pairWithQR(qrPayload: string, deviceId: string = "mobile-qr-client") {
-    const res = await fetch(`${this.baseUrl}/api/v1/mobile/pair/qr/scan`, {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/api/v1/mobile/pair/qr/scan`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ qr_payload: qrPayload, device_id: deviceId })
@@ -164,21 +176,21 @@ export class JarvisMobileClient {
   }
 
   async fetchTrustedDevices() {
-    const res = await fetch(`${this.baseUrl}/api/v1/mobile/devices`, {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/api/v1/mobile/devices`, {
       headers: this.getHeaders()
     });
     return res.json();
   }
 
   async fetchTelemetry(): Promise<SystemTelemetryData> {
-    const res = await fetch(`${this.baseUrl}/api/v1/mobile/telemetry`, {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/api/v1/mobile/telemetry`, {
       headers: this.getHeaders()
     });
     return res.json();
   }
 
   async sendRemoteCommand(command: string, params: Record<string, any> = {}) {
-    const res = await fetch(`${this.baseUrl}/api/v1/mobile/system/command`, {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/api/v1/mobile/system/command`, {
       method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify({ command, params })
@@ -190,38 +202,41 @@ export class JarvisMobileClient {
     approvalId: string,
     decision: 'approve' | 'deny' | 'always_allow' | 'always_deny',
     biometricAuthenticated: boolean = false,
-    biometricSignature?: string
+    biometricSignature?: string,
+    challenge?: string,
+    deviceId?: string
   ) {
-    const res = await fetch(`${this.baseUrl}/api/v1/mobile/approvals/respond`, {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/api/v1/mobile/approvals/respond`, {
       method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify({
         approval_id: approvalId,
         decision,
+        challenge: challenge || undefined,
+        device_id: deviceId || undefined,
         biometric_authenticated: biometricAuthenticated,
-        biometric_signature: biometricSignature || (biometricAuthenticated ? `bio_sig_${Date.now()}` : undefined)
+        biometric_signature: biometricSignature || undefined
       })
     });
     return res.json();
   }
 
-
   async getScreenPreview() {
-    const res = await fetch(`${this.baseUrl}/api/v1/mobile/screen/preview`, {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/api/v1/mobile/screen/preview`, {
       headers: this.getHeaders()
     });
     return res.json();
   }
 
   async searchFiles(query: string) {
-    const res = await fetch(`${this.baseUrl}/api/v1/mobile/files/search?query=${encodeURIComponent(query)}`, {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/api/v1/mobile/files/search?query=${encodeURIComponent(query)}`, {
       headers: this.getHeaders()
     });
     return res.json();
   }
 
   async toggleLiveMode(enable: boolean) {
-    const res = await fetch(`${this.baseUrl}/api/v1/mobile/live_mode/toggle?enable=${enable}`, {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/api/v1/mobile/live_mode/toggle?enable=${enable}`, {
       method: "POST",
       headers: this.getHeaders()
     });
@@ -229,51 +244,21 @@ export class JarvisMobileClient {
   }
 
   async fetchLiveModeStatus(): Promise<LiveModeStatusResponse> {
-    try {
-      const res = await fetch(`${this.baseUrl}/api/live_mode/status`, {
-        headers: this.getHeaders()
-      });
-      if (res.ok) {
-        return res.json();
-      }
-    } catch {
-      // Fallback to mobile router endpoint
-    }
-    const res = await fetch(`${this.baseUrl}/api/v1/mobile/live_mode/status`, {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/api/v1/mobile/live_mode/status`, {
       headers: this.getHeaders()
     });
     return res.json();
   }
 
   async fetchConversations(limit: number = 30): Promise<{ status: string; conversations: ConversationListItem[] }> {
-    try {
-      const res = await fetch(`${this.baseUrl}/api/conversations?limit=${limit}`, {
-        headers: this.getHeaders()
-      });
-      if (res.ok) {
-        return res.json();
-      }
-    } catch {
-      // Fallback
-    }
-    const res = await fetch(`${this.baseUrl}/api/v1/conversations?limit=${limit}`, {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/api/conversations?limit=${limit}`, {
       headers: this.getHeaders()
     });
     return res.json();
   }
 
   async fetchConversationById(id: number | string): Promise<{ status: string; conversation?: ConversationDetail }> {
-    try {
-      const res = await fetch(`${this.baseUrl}/api/conversations/${id}`, {
-        headers: this.getHeaders()
-      });
-      if (res.ok) {
-        return res.json();
-      }
-    } catch {
-      // Fallback
-    }
-    const res = await fetch(`${this.baseUrl}/api/v1/conversations/${id}`, {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/api/conversations/${id}`, {
       headers: this.getHeaders()
     });
     return res.json();
@@ -284,17 +269,7 @@ export class JarvisMobileClient {
   }
 
   async fetchRegisteredTools(): Promise<{ status: string; count: number; tools: Array<Record<string, any>> }> {
-    try {
-      const res = await fetch(`${this.baseUrl}/api/v1/tools`, {
-        headers: this.getHeaders()
-      });
-      if (res.ok) {
-        return res.json();
-      }
-    } catch {
-      // Fallback
-    }
-    const res = await fetch(`${this.baseUrl}/api/tools`, {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/api/v1/tools`, {
       headers: this.getHeaders()
     });
     return res.json();
@@ -309,19 +284,7 @@ export class JarvisMobileClient {
     if (conversationId) {
       payload["conversation_id"] = conversationId;
     }
-    try {
-      const res = await fetch(`${this.baseUrl}/api/v1/chat`, {
-        method: "POST",
-        headers: this.getHeaders(),
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch {
-      // Fallback to command endpoint
-    }
-    const res = await fetch(`${this.baseUrl}/api/v1/command`, {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/api/v1/chat`, {
       method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify(payload)
@@ -330,27 +293,42 @@ export class JarvisMobileClient {
   }
 
   async fetchDiagnostics() {
-    const res = await fetch(`${this.baseUrl}/api/v1/mobile/diagnostics`, {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/api/v1/mobile/diagnostics`, {
       headers: this.getHeaders()
     });
     return res.json();
   }
 
   async fetchBrainMemories() {
-    const res = await fetch(`${this.baseUrl}/api/v1/mobile/brain/memory`, {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/api/v1/mobile/brain/memory`, {
       headers: this.getHeaders()
     });
     return res.json();
   }
 
-  connectWebSocket(onTelemetry: (data: SystemTelemetryData) => void, onMessage: (msg: any) => void) {
+  connectWebSocket(
+    onTelemetry: (data: SystemTelemetryData) => void,
+    onMessage: (msg: any) => void,
+    onStatusChange?: (connected: boolean) => void
+  ) {
     if (this.ws) {
-      this.ws.close();
+      try {
+        this.ws.close();
+      } catch {}
+      this.ws = null;
     }
-    this.ws = new WebSocket(this.wsUrl);
+
+    try {
+      this.ws = new WebSocket(this.wsUrl);
+    } catch (e) {
+      console.error("[JarvisMobile] WebSocket creation error:", e);
+      if (onStatusChange) onStatusChange(false);
+      return;
+    }
 
     this.ws.onopen = () => {
       console.log("[JarvisMobile] Connected to desktop WebSocket");
+      if (onStatusChange) onStatusChange(true);
     };
 
     this.ws.onmessage = (e) => {
@@ -362,17 +340,31 @@ export class JarvisMobileClient {
           onMessage(payload);
         }
       } catch (err) {
-        console.error("Error parsing WS frame:", err);
+        console.error("[JarvisMobile] Error parsing WS frame:", err);
       }
+    };
+
+    this.ws.onerror = (err) => {
+      console.warn("[JarvisMobile] WebSocket error event:", err);
     };
 
     this.ws.onclose = () => {
       console.log("[JarvisMobile] Disconnected from WebSocket");
+      if (onStatusChange) onStatusChange(false);
     };
   }
 
+  disconnectWebSocket() {
+    if (this.ws) {
+      try {
+        this.ws.close();
+      } catch {}
+      this.ws = null;
+    }
+  }
+
   async fetchPendingApprovals() {
-    const res = await fetch(`${this.baseUrl}/api/v1/mobile/approvals/pending`, {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/api/v1/mobile/approvals/pending`, {
       headers: this.getHeaders()
     });
     return res.json();

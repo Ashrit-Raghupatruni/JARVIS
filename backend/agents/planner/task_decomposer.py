@@ -434,11 +434,11 @@ class TaskDecomposer:
                         break
             
             if found_path and os.path.exists(found_path):
-                from backend.services.safety_gatekeeper import SafetyGatekeeper
+                from backend.services.safety_gatekeeper import SafetyGatekeeper, SecurityDecisionType
                 from backend.services.manager import ServiceManager
                 sg = ServiceManager.get_instance("safety_gatekeeper") or SafetyGatekeeper()
                 gate_eval = sg.evaluate_tool_call("execute_script", {"path": found_path})
-                if gate_eval.decision.value == "DENIED":
+                if not gate_eval.allowed or gate_eval.decision == SecurityDecisionType.DENY:
                     response_text = f"🛡️ Script execution blocked by SafetyGatekeeper: {gate_eval.reason}"
                 else:
                     try:

@@ -182,7 +182,7 @@ class PrashToolValidator:
 
         # 4b. Semantic Relevance Check (Anti-Hallucination Guard)
         # Prevents model from proposing unrelated tools (e.g. 'calc' when user asked for 'chrome')
-        if tool_name == "open_application":
+        if tool_name == "open_application" and user_query:
             q_lower = user_query.lower()
             if not any(k in q_lower for k in ["open", "start", "launch", "run", "switch to"]):
                 return PrashValidationResult(
@@ -207,7 +207,7 @@ class PrashToolValidator:
                         rejection_reason=f"Semantic hallucination mismatch: query asked for '{expected}' but model targeted '{app_arg}'"
                     )
 
-        if tool_name in ("click_element_by_name", "set_control_value"):
+        if tool_name in ("click_element_by_name", "set_control_value") and user_query:
             q_lower = user_query.lower()
             if not any(k in q_lower for k in ["click", "press", "tap", "type", "enter", "submit", "button", "field"]):
                 return PrashValidationResult(

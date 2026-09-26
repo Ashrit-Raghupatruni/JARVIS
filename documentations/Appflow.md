@@ -202,4 +202,60 @@ sequenceDiagram
     API-->>User: JSON Status Response
 ```
 
+---
+
+## 7. Live Mode Failover & Hermes Dual-Agent Execution Flow (Added September 26, 2026)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant HUD as LiveModeFailoverHUD.tsx
+    participant Sup as LiveModeFailoverSupervisor
+    participant Lock as _control_lock (asyncio.Lock)
+    participant Primary as JARVIS Desktop Agent (Primary)
+    participant Hermes as Hermes Desktop Agent (Fallback)
+    participant Bridge as HermesBridgeService
+    participant OS as Windows 11 Desktop (Win32 / UIA)
+
+    User->>HUD: Trigger Task in Live Mode
+    HUD->>Sup: execute_supervised_task(steps)
+    Sup->>Lock: Acquire _control_lock (State: PRIMARY_ACTIVE)
+    Sup-->>HUD: Broadcast authority: PRIMARY_ACTIVE
+    
+    Sup->>Primary: execute_step(step_1)
+    Primary->>OS: Launch Application (Win32)
+    OS-->>Primary: Application Running (PID verified)
+    Primary-->>Sup: Step 1 SUCCESS
+
+    Sup->>Primary: execute_step(step_2: Click Button)
+    Primary->>OS: Find UIA Element & Click
+    OS-->>Primary: UIA Element Not Found / Timeout
+    Primary-->>Sup: Step 2 FAILED (ToolError)
+
+    rect rgb(255, 230, 230)
+        Note over Sup: Automatic Failover Handshake
+        Sup->>Sup: State: FAILOVER_PENDING
+        Sup->>Primary: Revoke Primary Control Lock
+        Sup->>Sup: Package Handoff (Completed: [Step 1], Failed: Step 2, Reason: ToolError)
+        Sup->>Lock: Transfer lock to Hermes (State: HERMES_ACTIVE)
+        Sup-->>HUD: Broadcast authority: HERMES_ACTIVE (Failover Alert)
+    end
+
+    Sup->>Hermes: Resume Task from Step 2
+    Hermes->>OS: Win32 AttachThreadInput + Coordinate Click / OCR Fallback
+    OS-->>Hermes: Click Succeeded
+    Hermes-->>Sup: Step 2 SUCCESS
+
+    Sup->>Hermes: execute_step(step_3: Type Content)
+    Hermes->>OS: Windows Clipboard Paste (Ctrl+V)
+    OS-->>Hermes: Text Injected
+    Hermes-->>Sup: Step 3 SUCCESS
+
+    Sup->>Lock: Release _control_lock (State: COMPLETED)
+    Sup-->>HUD: Broadcast status: COMPLETED
+    HUD-->>User: Visual HUD Success Indicator
+```
+
+
 

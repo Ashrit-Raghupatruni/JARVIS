@@ -77,6 +77,10 @@ class SelfDiagnosticEngine:
             }
         }
 
+    def run_full_system_check(self) -> Dict[str, Any]:
+        """Alias for run_diagnostics for full system health assessment."""
+        return self.run_diagnostics()
+
     def auto_repair(self) -> Dict[str, Any]:
         """Execute automated background repairs for identified issues."""
         diag = self.run_diagnostics()

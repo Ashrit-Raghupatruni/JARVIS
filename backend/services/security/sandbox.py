@@ -16,6 +16,9 @@ from typing import Dict, Any, Tuple, Optional, Set
 from loguru import logger
 
 
+from backend.services.safety import BLOCKED_COMMAND_PATTERNS, DANGEROUS_COMMAND_PATTERNS
+
+
 class SandboxResult:
     def __init__(self, stdout: str, stderr: str, exit_code: int, timeout_expired: bool = False):
         self.stdout = stdout
@@ -59,14 +62,21 @@ class SecuritySandbox:
         self.timeout_limit = timeout_limit
         self.blocked_patterns = [
             "del ", "rm ", "rmdir ", "rd ", "format ", "erase ", 
-            "mkfs", "shutdown", "reboot", "/dev/sda", "/dev/sdb"
+            "mkfs", "shutdown", "reboot", "/dev/sda", "/dev/sdb", "cipher /w"
         ]
 
     def _is_destructive(self, command: str) -> bool:
-        """Verify command doesn't contain destructive command patterns."""
+        """Verify command doesn't contain destructive command patterns or dangerous metacharacters."""
+        import re
         cmd_lower = command.lower()
         for pattern in self.blocked_patterns:
             if pattern in cmd_lower:
+                return True
+        for pat in BLOCKED_COMMAND_PATTERNS:
+            if re.search(pat, command, re.IGNORECASE):
+                return True
+        for pat in DANGEROUS_COMMAND_PATTERNS:
+            if re.search(pat, command, re.IGNORECASE):
                 return True
         return False
 

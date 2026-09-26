@@ -30,17 +30,21 @@ class ToolMetadata(BaseModel):
 
 
 def _sanitize_args_for_logging(args: Dict[str, Any]) -> Dict[str, Any]:
-    """Sanitize sensitive keys for logging."""
+    """Sanitize sensitive keys and secret values for logging."""
     if not isinstance(args, dict):
         return {}
-    sensitive_keys = {"password", "token", "secret", "api_key", "key", "auth", "credential", "private_key"}
-    sanitized = {}
-    for k, v in args.items():
-        if any(sk in str(k).lower() for sk in sensitive_keys):
-            sanitized[k] = "******"
-        else:
-            sanitized[k] = v
-    return sanitized
+    try:
+        from backend.services.data_privacy import sanitize_payload
+        return sanitize_payload(args)
+    except Exception:
+        sensitive_keys = {"password", "token", "secret", "api_key", "key", "auth", "credential", "private_key"}
+        sanitized = {}
+        for k, v in args.items():
+            if any(sk in str(k).lower() for sk in sensitive_keys):
+                sanitized[k] = "******"
+            else:
+                sanitized[k] = v
+        return sanitized
 
 
 class ToolRegistry:
@@ -626,6 +630,136 @@ class ToolRegistry:
                 "required": ["enable"]
             },
             handler=_toggle_live_handler
+        )
+
+        async def _desktop_agent_task_handler(goal: str):
+            from backend.agents.desktop_agent import hermes_desktop_agent
+            return await hermes_desktop_agent.execute_task(user_goal=goal)
+
+        self.register(
+            name="desktop_agent_task",
+            description="Executes complex desktop GUI tasks (opening files, text editing, clicking, window positioning) autonomously via the Hermes Desktop Agent loop (hermes-desktop).",
+            category="automation",
+            risk_level="sensitive",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "goal": {"type": "string", "description": "High-level desktop goal to accomplish (e.g. 'Open Notepad, write meeting notes, and save file')."}
+                },
+                "required": ["goal"]
+            },
+            handler=_desktop_agent_task_handler
+        )
+
+        async def _hermes_agent_task_handler(goal: str):
+            from backend.agents.hermes_agent import hermes_general_agent
+            return await hermes_general_agent.execute_task(user_goal=goal)
+
+        self.register(
+            name="hermes_agent_task",
+            description="Executes multi-step reasoning, tool execution, code generation, and complex workflows via Hermes Agent (hermes-agent).",
+            category="automation",
+            risk_level="sensitive",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "goal": {"type": "string", "description": "High-level goal or problem to solve autonomously"}
+                },
+                "required": ["goal"]
+            },
+            handler=_hermes_agent_task_handler
+        )
+
+        async def _hermes_orchestrator_task_handler(goal: str, mode: str = "auto"):
+            from backend.agents.hermes_orchestrator import hermes_orchestrator
+            return await hermes_orchestrator.run_task(goal=goal, mode=mode)
+
+        self.register(
+            name="hermes_orchestrator_task",
+            description="Unified orchestrator combining both hermes-desktop (GUI actions) and hermes-agent (deep reasoning & tool orchestration).",
+            category="automation",
+            risk_level="sensitive",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "goal": {"type": "string", "description": "Objective to achieve"},
+                    "mode": {"type": "string", "enum": ["auto", "desktop", "agent", "collaborative"], "description": "Orchestration mode (defaults to auto)"}
+                },
+                "required": ["goal"]
+            },
+            handler=_hermes_orchestrator_task_handler
+        )
+
+        async def _hermes_bridge_task_handler(goal: str, mode: str = "auto"):
+            from backend.services.hermes_bridge import hermes_bridge
+            return await hermes_bridge.execute_task(goal=goal, mode=mode)
+
+        self.register(
+            name="hermes_bridge_task",
+            description="Executes a task through the 12-Pillar Hermes Bridge with context snapshot and event streaming.",
+            category="automation",
+            risk_level="sensitive",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "goal": {"type": "string", "description": "Task objective"},
+                    "mode": {"type": "string", "enum": ["auto", "desktop", "agent", "collaborative"]}
+                },
+                "required": ["goal"]
+            },
+            handler=_hermes_bridge_task_handler
+        )
+
+        def _hermes_async_task_handler(goal: str, mode: str = "auto"):
+            from backend.services.hermes_bridge import hermes_bridge
+            return hermes_bridge.submit_background_job(goal=goal, mode=mode)
+
+        self.register(
+            name="hermes_async_task",
+            description="Submits a long-running task to the background Hermes queue, returning a trackable jobId immediately.",
+            category="automation",
+            risk_level="sensitive",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "goal": {"type": "string", "description": "Background task objective"},
+                    "mode": {"type": "string", "enum": ["auto", "desktop", "agent", "collaborative"]}
+                },
+                "required": ["goal"]
+            },
+            handler=_hermes_async_task_handler
+        )
+
+        async def _live_mode_execute_task_handler(goal: str):
+            from backend.services.live_mode.failover_controller import live_failover_supervisor
+            return await live_failover_supervisor.execute_with_failover(goal=goal, tool_registry=self)
+
+        self.register(
+            name="live_mode_execute_task",
+            description="Executes a multi-step Live Mode goal with JARVIS Desktop Agent as primary and automatic Hermes failover recovery upon failure/timeout.",
+            category="automation",
+            risk_level="sensitive",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "goal": {"type": "string", "description": "High-level user goal to accomplish on desktop."}
+                },
+                "required": ["goal"]
+            },
+            handler=_live_mode_execute_task_handler
+        )
+
+        def _live_mode_emergency_stop_handler():
+            from backend.services.live_mode.failover_controller import live_failover_supervisor
+            return live_failover_supervisor.emergency_stop()
+
+        self.register(
+            name="live_mode_emergency_stop",
+            description="Immediately revokes all AI agent computer-control locks and returns full manual control to the user.",
+            category="system",
+            risk_level="low",
+            parameters={"type": "object", "properties": {}},
+            handler=_live_mode_emergency_stop_handler
         )
         self.register(
             name="explain_concept",
@@ -1870,6 +2004,27 @@ class ToolRegistry:
             risk_level="low",
             parameters={"type": "object", "properties": {}},
             handler=_battery_status_handler
+        )
+
+        async def _generate_image_handler(prompt: str, style: str = "vivid", resolution: str = "1024x1024"):
+            from backend.services.image_generator import image_generator
+            return await image_generator.generate_image(prompt=prompt, style=style, resolution=resolution)
+
+        self.register(
+            name="generate_image",
+            description="Generates an image from a descriptive text prompt and saves the artifact to local media storage for direct chat rendering.",
+            category="media",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "prompt": {"type": "string", "description": "Detailed text description of the image to synthesize."},
+                    "style": {"type": "string", "description": "Visual style: 'vivid', 'photorealistic', 'digital_art', 'anime', 'minimalist', 'cyberpunk'. Default is 'vivid'."},
+                    "resolution": {"type": "string", "description": "Output image resolution (e.g. '1024x1024', '768x1024', '1024x768')."}
+                },
+                "required": ["prompt"]
+            },
+            handler=_generate_image_handler
         )
 
 

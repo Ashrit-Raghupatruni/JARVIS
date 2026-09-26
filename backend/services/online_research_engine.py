@@ -87,16 +87,28 @@ class OnlineResearchEngine:
     def extract_url_content(self, target_url: str) -> Dict[str, Any]:
         """
         Fetch HTML page content from a target URL, extract clean text, and return summary data.
+        Validates target URL against SSRF, local loopback, and dangerous schemes.
         """
-        logger.info("OnlineResearchEngine: Extracting page content from URL: '{}'", target_url)
+        from backend.services.automation.browser_executor import validate_browser_url
+        is_safe, safe_url_or_err = validate_browser_url(target_url, allow_local=False)
+        if not is_safe:
+            logger.warning("OnlineResearchEngine blocked SSRF target URL: {}", safe_url_or_err)
+            return {
+                "status": "error",
+                "url": target_url,
+                "error": safe_url_or_err,
+                "message": f"Security Policy Blocked: {safe_url_or_err}"
+            }
+
+        logger.info("OnlineResearchEngine: Extracting page content from URL: '{}'", safe_url_or_err)
         try:
-            req = urllib.request.Request(target_url, headers=self.headers)
+            req = urllib.request.Request(safe_url_or_err, headers=self.headers)
             with urllib.request.urlopen(req, timeout=10.0) as resp:
                 html = resp.read().decode("utf-8", errors="ignore")
 
             # Extract title
             title_match = re.search(r'<title>(.*?)</title>', html, re.IGNORECASE | re.DOTALL)
-            page_title = title_match.group(1).strip() if title_match else target_url
+            page_title = title_match.group(1).strip() if title_match else safe_url_or_err
 
             # Remove scripts, styles, and extra whitespace
             clean_text = re.sub(r'<(script|style).*?>.*?</\1>', '', html, flags=re.IGNORECASE | re.DOTALL)

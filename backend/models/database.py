@@ -345,16 +345,19 @@ def get_session_factory(database_url: str) -> async_sessionmaker[AsyncSession]:
 async def init_db(database_url: str) -> None:
     """
     Initialise the database — create all tables if they do not exist.
-
-    Should be called once during application startup.
+    Enforces SQLite WAL journal mode and records schema version.
 
     Args:
         database_url: Async SQLite connection string.
     """
+    from sqlalchemy import text
     engine = get_engine(database_url)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    logger.info("Database tables initialised successfully")
+        # Enforce WAL mode and user_version tracking
+        await conn.execute(text("PRAGMA journal_mode=WAL;"))
+        await conn.execute(text("PRAGMA user_version=2;"))
+    logger.info("Database tables initialised successfully (schema v2, WAL mode)")
 
 
 async def close_db() -> None:
