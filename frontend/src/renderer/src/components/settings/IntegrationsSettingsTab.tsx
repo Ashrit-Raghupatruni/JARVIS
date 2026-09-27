@@ -1,9 +1,10 @@
 import React from 'react'
 import OAuthIntegrationsCard from '../OAuthIntegrationsCard'
 import BluetoothProximityCard from '../BluetoothProximityCard'
+import TelegramIntegrationCard from '../TelegramIntegrationCard'
 
 interface IntegrationsSettingsTabProps {
-  viewMode?: 'all' | 'oauth' | 'proximity'
+  viewMode?: 'all' | 'oauth' | 'proximity' | 'telegram'
 }
 
 export const IntegrationsSettingsTab: React.FC<IntegrationsSettingsTabProps> = ({
@@ -11,6 +12,12 @@ export const IntegrationsSettingsTab: React.FC<IntegrationsSettingsTabProps> = (
 }) => {
   return (
     <div className="space-y-6">
+      {(viewMode === 'all' || viewMode === 'telegram') && (
+        <section>
+          <TelegramIntegrationCard />
+        </section>
+      )}
+
       {(viewMode === 'all' || viewMode === 'oauth') && (
         <section>
           <OAuthIntegrationsCard />

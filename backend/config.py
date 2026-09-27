@@ -443,6 +443,26 @@ class Settings(BaseSettings):
         description="Allow execution of terminal/shell commands.",
     )
 
+    # ── Telegram Remote Control & Notification Gateway ───────────────────
+    TELEGRAM_BOT_TOKEN: Optional[str] = Field(
+        default=None,
+        description="Telegram Bot API Token for remote control and push notification alerts.",
+    )
+    TELEGRAM_CHAT_ID: Optional[str] = Field(
+        default=None,
+        description="Authorized Telegram user/chat ID. All unauthorized IDs are rejected.",
+    )
+    TELEGRAM_ENABLED: bool = Field(
+        default=True,
+        description="Enable Telegram remote control and push notification bridge.",
+    )
+    TELEGRAM_POLL_INTERVAL_S: int = Field(
+        default=20,
+        ge=1,
+        le=60,
+        description="Telegram long-polling timeout in seconds.",
+    )
+
     # ── OCR / Tesseract ──────────────────────────────────────────────────
     TESSERACT_PATH: Optional[str] = Field(
         default=None,

@@ -2,6 +2,57 @@
 
 All notable changes and architectural upgrades to JARVIS are documented in this file.
 
+## [1.5.0-secure-telegram-bot-integration] - 2026-09-27
+
+### 🤖 Secure Telegram Bot Remote Control & Notification Gateway
+- **Zero-Duplicate Assistant Architecture**: Incoming Telegram text and commands route directly into the existing JARVIS core execution pipeline (`FastIntentRouter`, `PlannerAgent`, `ToolRegistry`, `SafetyGatekeeper`, `ActionExecutionVerifier`, `WorldModel`, and `MemoryService`) with interactions tagged as `source="telegram"`.
+- **Strict Authentication & Security Gate**: Constant-time verification on authorized user ID (`TELEGRAM_CHAT_ID`). Rejects all unknown or unauthorized senders fail-closed with immediate security audit alerts.
+- **Fail-Closed Companion Pairing Mode**: If `TELEGRAM_CHAT_ID` is unassigned, bot enters Pairing Mode, generates a 6-digit numeric pairing PIN on the desktop HUD, and safely pairs the user via `/pair <PIN>`, persisting the chat ID to `.env`.
+- **Remote Capabilities Supported**:
+  - `/status`, `/telemetry`: Hardware metrics (CPU, RAM, Disk), active LLM provider, and system state.
+  - `/tasks`, `/progress`: Live inspection of `AsyncTaskQueue` items and step-by-step progress tracking.
+  - `/lock`: Instant Windows workstation lock via `rundll32.exe user32.dll,LockWorkStation`.
+  - `/screenshot`: Live desktop capture delivered directly as an uncompressed Telegram photo.
+  - `/cancel`: Immediate cancellation of running background tasks and VoiceManager speech interrupt.
+  - `/app <name>`: Whitelisted desktop application launching with strict shell injection defense.
+  - **Natural Language Interaction**: Full conversational reasoning, web search, memory lookup, and multi-step tool execution.
+- **1-Click Inline Approval System**: Interactive cards sent with `[✅ Approve Action]` and `[❌ Deny Action]` inline keyboard buttons. Tapping instantly unblocks or denies pending `MobileGatewayService` and `MobileBridgeService` execution promises.
+- **Notification Debounce & Flood Defense**: Built-in 2.0s rate-limiting buffer and 10-second duplicate message suppression to protect against Telegram API rate limits.
+- **Desktop UI Integration (`TelegramIntegrationCard.tsx`)**: Embedded inside the Settings `Integrations` tab with live connection status, bot identity (`@playingwdbot_bot`), masked chat ID, pairing PIN generator, and test notification triggers.
+- **Automated Verification Suite (`test_telegram_remote_service.py`)**: 17 runtime security and integration tests passing at 100%.
+
+---
+
+## [1.4.0-client-independent-core-and-mobile-modernization] - 2026-09-27
+
+### 🌐 Client-Independent JARVIS Core Architecture & Unified Endpoints
+- **Unified Core Endpoints**: Standardized root and versioned REST endpoints across `GET /health`, `GET /status`, `GET /system/status`, `GET /device/info`, `POST /device/pair`, `GET /history`, `POST /command`, `POST /settings`, and `WS /ws`.
+- **Authoritative Runtime Diagnostics Model**: Introduced `RuntimeDiagnosticsModel` / `RuntimeDiagnostics` schema in `backend/models/schemas.py`. Dynamically resolves the actual active LLM provider (`active_provider`) and active model (`active_model`) from `llm_service.get_runtime_info()`, accurately reporting Ollama, Gemini, Groq, OpenRouter, or OpenAI without exposing credentials or API keys.
+- **Fail-Closed Companion Pairing**: Integrated `POST /device/pair` supporting 6-digit numeric PIN, Ed25519 QR payload verification (`jarvis_pair://`), and cryptographic JWT issuance with fail-closed security.
+- **LAN Device Discovery**: `GET /device/info` dynamically gathers host information, platform identifiers, and local network LAN IPv4 addresses for seamless zero-configuration discovery.
+
+### ⚡ Version 1 WebSocket Protocol & Request Correlation
+- **Versioned Protocol Envelope**: Enforced strict `version: "1"` envelope on `WSMessage` with `request_id`, `session_id`, `msg_id`, `type`, `timestamp`, and strongly typed `data`.
+- **Request-to-Response Correlation**: Propagated client `request_id` through the decoupled background execution worker in `backend/api/websocket.py` to all downstream acknowledgments, task progress milestones (`agent_progress`), and assistant responses.
+- **Strict TypeScript Protocol Definitions**: Created `frontend/src/renderer/src/types/protocol.ts` and `mobile_app/src/types/protocol.ts` with discriminated unions for all server and client messages without a single `any` type.
+
+### 📱 Robust Connection Manager & Mobile Services
+- **Autonomous Lifecycle & Reconnect**: Implemented `RobustConnectionManager` in `mobile_app/src/services/connectionManager.ts` featuring exponential backoff with random jitter (1s to 30s), active heartbeat keep-alive with ping/pong timeout detection, foreground/background lifecycle awareness, and an observable state machine (`connecting`, `connected`, `reconnecting`, `offline`, `error`).
+- **Correlated Command Promises**: Added `sendCommandCorrelated(text, conversationId)` returning typed response promises correlated via `request_id`.
+
+### 🎨 Mobile-First UI Modernization & Unified Design System
+- **Phone-Native Information Architecture**: Rebuilt mobile navigation into 5 core bottom-dock tabs: `Home`, `Chat`, `Voice`, `Apps`, and `More`.
+- **Futuristic Minimalist Dark Aesthetic**: Standardized on `#02040a` deep void background with glowing cyan and indigo accents across mobile and desktop.
+- **Mobile Component Suite**: Built `JarvisMobileCoreOrb` (multi-state animated SVG orb with IDLE, LISTENING, PROCESSING, EXECUTING, SPEAKING, ERROR, OFFLINE), `HeaderGreeting`, `QuickPromptPills`, `QuickActionsBentoGrid`, `CommandInputPill`, and `FloatingBottomDock`.
+- **Desktop Sub-Page Harmonization**: Unified all 9 desktop sub-pages (`Home`, `Chat`, `Voice`, `Tasks`, `PC Control`, `Files`, `Automation`, `System`, `Settings`) with consistent glassmorphism, floating HUD, and responsive layouts.
+
+### 🧪 Automated Testing & Verification
+- **Full Backend Pytest Suite**: **298/298 passed** (100% pass rate in 116.16s) across all 31 test files.
+- **Frontend TypeScript Gate**: **0 errors** (`npx tsc --noEmit` in `frontend/`).
+- **Mobile TypeScript Gate**: **0 errors** (`npx tsc --noEmit` in `mobile_app/`).
+
+---
+
 ## [1.3.0-live-mode-failover-and-hermes-integration] - 2026-09-26
 
 ### 🔄 Live Mode Failover Architecture & Agent Supervisor

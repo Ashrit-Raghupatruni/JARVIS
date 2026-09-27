@@ -14,6 +14,15 @@
 
 ---
 
+### 🌐 Client-Independent Platform, Version 1 Protocol & Mobile-First UI
+- **Client-Independent Core Architecture** — Unified FastAPI platform delivering AI capabilities to both Windows Electron desktop and mobile companion applications via identical backend intelligence.
+- **Version 1 WebSocket Protocol (`WS /ws`)** — Standardized `{ version: "1", type, request_id, session_id, timestamp, data }` envelope with end-to-end request correlation, sequence IDs, and strictly typed TypeScript protocol definitions with zero `any`.
+- **Authoritative Runtime Diagnostics** — `RuntimeDiagnosticsModel` dynamically derives the active provider and model from `llm_service.get_runtime_info()`, exposing clean system health, service states, and uptime without exposing API keys or secrets.
+- **Robust Mobile Connection Manager** — Auto-reconnect with exponential backoff (1s–30s + jitter), active heartbeat keep-alive, foreground/background lifecycle handling, and an observable state machine (`connecting`, `connected`, `reconnecting`, `offline`, `error`).
+- **Clean Unified Core Endpoints** — `GET /health`, `GET /status`, `GET /system/status`, `GET /device/info`, `POST /device/pair`, `GET /history`, `POST /command`, `POST /settings`, and `WS /ws`.
+- **Mobile-First Companion Interface** — Dedicated phone-native UI (`mobile_app/`) with 5-tab floating bottom dock (`Home`, `Chat`, `Voice`, `Apps`, `More`), `#02040a` void dark aesthetic, and state-driven `JarvisMobileCoreOrb`.
+- **Desktop UI Design Harmonization** — All 9 desktop sub-pages unified under the same minimalist glassmorphic design language.
+
 ### 🔄 Live Mode Failover & Autonomous Supervisor
 - **Dual-Agent Failover Architecture** — 3-Tier execution pipeline where **JARVIS Desktop Agent** operates as the primary action executor and **Hermes Desktop Agent** acts as the resilient fallback & recovery agent.
 - **Single-Agent Control Lock (`_control_lock`)** — Strict `asyncio.Lock()` mutual exclusion guaranteeing that JARVIS and Hermes never issue simultaneous mouse or keyboard actions. Explicit authority states: `PRIMARY_ACTIVE` ➔ `FAILOVER_PENDING` ➔ `HERMES_ACTIVE` ➔ `RECOVERY` ➔ `COMPLETED` / `FAILED` / `CANCELLED`.
@@ -117,8 +126,25 @@ JARVIS employs a **Truthful Tool Registry** combined with a modular **Skill Plug
 | `list_calendar_events` | List all upcoming local calendar events and reminders |
 | `adb_make_call` | Trigger a phone call on a connected Android device via ADB |
 | `adb_send_sms` | Send an SMS from a connected Android device using ADB |
+| `send_telegram_alert` | Send encrypted push notification or security approval to authorized Telegram user |
 
 ---
+
+### 🤖 Secure Telegram Bot Remote Control & Notification Gateway
+JARVIS connects directly to your authorized Telegram bot (e.g., `@playingwdbot_bot`) without building a secondary assistant. All text and shortcut commands execute through the **exact same** `PlannerAgent`, `ToolRegistry`, `SafetyGatekeeper`, and `ActionExecutionVerifier` as the desktop:
+
+- **Strict Authentication**: Only your configured Telegram User ID can control JARVIS. Unknown users are rejected fail-closed with security logs.
+- **Fail-Closed Pairing Mode**: If unassigned, generate a 6-digit PIN in Desktop Settings and pair instantly by sending `/pair <PIN>` to the bot.
+- **Built-in Shortcut Commands**:
+  - `/status` — Live hardware telemetry (CPU, RAM, Disk), active LLM, health.
+  - `/tasks` — Active, queued, and completed `AsyncTaskQueue` workflows.
+  - `/progress` — Step-by-step progress tracking of long-running workflows.
+  - `/lock` — Instantly lock the Windows workstation.
+  - `/screenshot` — Live high-resolution desktop preview as a Telegram photo.
+  - `/cancel` — Atomic cancellation of running tasks & speech synthesis.
+  - `/app <name>` — Launch whitelisted apps with shell injection defense.
+- **1-Click Inline Approval Interlock**: Destructive or high-risk actions send interactive `[✅ Approve Action]` and `[❌ Deny Action]` buttons to your phone, directly resolving security gatekeeper promises.
+- **Notification Debouncer**: 2.0s rate-limiting buffer and 10s duplicate alert suppression.
 
 ### 🖥️ SystemSkill
 **Purpose:** Monitor resource utilization, manage Windows startup, control networks, power, and clipboard.

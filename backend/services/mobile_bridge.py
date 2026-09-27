@@ -31,24 +31,55 @@ class MobileBridgeService:
 
     def __init__(self, bot_token: Optional[str] = None, chat_id: Optional[str] = None) -> None:
         self.settings = get_settings()
-        self.bot_token = bot_token or getattr(self.settings, "TELEGRAM_BOT_TOKEN", None)
-        self.chat_id = chat_id or getattr(self.settings, "TELEGRAM_CHAT_ID", None)
+        self._bot_token = bot_token
+        self._chat_id = chat_id
         self._pending_approvals: Dict[str, asyncio.Event] = {}
         self._approval_decisions: Dict[str, ApprovalState] = {}
         logger.info("MobileBridgeService initialized (Fail-Closed Push Gatekeeper Ready)")
 
+    @property
+    def bot_token(self) -> Optional[str]:
+        if self._bot_token:
+            return self._bot_token
+        settings = get_settings()
+        return getattr(settings, "TELEGRAM_BOT_TOKEN", None)
+
+    @bot_token.setter
+    def bot_token(self, val: Optional[str]) -> None:
+        self._bot_token = val
+
+    @property
+    def chat_id(self) -> Optional[str]:
+        if self._chat_id:
+            return self._chat_id
+        try:
+            from backend.services.manager import ServiceManager
+            ts = ServiceManager.get_instance("telegram_service")
+            if ts and getattr(ts, "chat_id", None):
+                return ts.chat_id
+        except Exception:
+            pass
+        settings = get_settings()
+        return getattr(settings, "TELEGRAM_CHAT_ID", None)
+
+    @chat_id.setter
+    def chat_id(self, val: Optional[str]) -> None:
+        self._chat_id = val
+
     def send_mobile_notification(self, title: str, body: str) -> bool:
         """Send an instant push notification alert to your mobile phone via Telegram Bot."""
-        if not self.bot_token or not self.chat_id:
+        token = self.bot_token
+        chat = self.chat_id
+        if not token or not chat:
             logger.warning("[SECURITY] Mobile notification skipped: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not configured.")
             return False
 
         message_text = f"📱 **JARVIS Alert: {title}**\n\n{body}"
-        url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
         
         try:
             payload = json.dumps({
-                "chat_id": self.chat_id,
+                "chat_id": chat,
                 "text": message_text,
                 "parse_mode": "Markdown"
             }).encode("utf-8")

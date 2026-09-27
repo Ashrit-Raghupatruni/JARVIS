@@ -1,6 +1,6 @@
 # 📑 JARVIS AI Operating System — Master Status Registry (`JARVIS_MASTER_STATUS.md`)
 
-*Last Updated: 2026-09-12 | Verified Master Ground-Truth Audit*
+*Last Updated: 2026-09-27 | Verified Master Ground-Truth Audit*
 
 This document serves as the **single authoritative source of truth** for the current operational state, verified components, known bugs, decorative stubs, pending work, and architectural improvement recommendations across the entire JARVIS codebase. 
 
@@ -54,7 +54,8 @@ backend\venv\Scripts\python.exe -m pytest backend/tests/ -q
 | [`test_production_and_deployment_hardening.py`](file:///c:/Users/ashri/JARVIS/backend/tests/test_production_and_deployment_hardening.py) | 10 | **PASSED** | Production-safe default host binding (127.0.0.1 loopback isolation), secret masking, version identification (/api/version), liveness/readiness/detailed health checks, backup/restore manager, and SQLite WAL schema migrations. |
 | [`test_capability_registry_schema.py`](file:///c:/Users/ashri/JARVIS/backend/tests/test_capability_registry_schema.py) | 3 | **PASSED** | Multidimensional schema v2.0.0 validation, valid enum constraints, and physical file existence verification. |
 | [`test_image_generation_and_desktop_agent.py`](file:///c:/Users/ashri/JARVIS/backend/tests/test_image_generation_and_desktop_agent.py) | 12 | **PASSED** | Image generation with Imagen 3 / Pollinations fallback, Live Mode Failover Supervisor single-agent locking, Hermes Bridge 12-pillar execution, and dual Hermes agents. |
-| **TOTAL** | **298** | **100%** | **0 Failures · 0 Regressions across 30 Test Suites** |
+| [`test_telegram_remote_service.py`](file:///c:/Users/ashri/JARVIS/backend/tests/test_telegram_remote_service.py) | 17 | **PASSED** | Telegram bot remote control, user auth gate, pairing PIN mode, inline [Approve]/[Deny] callback resolution, rate limiting, and network resilience. |
+| **TOTAL** | **315** | **100%** | **0 Failures · 0 Regressions across 32 Test Suites** |
 
 ---
 
@@ -79,6 +80,11 @@ backend\venv\Scripts\python.exe -m pytest backend/tests/ -q
 | **Science & Chemoinformatics (`services/science_service.py`)** | **(a) Real and working** | Molecular weight calculation, stoichiometry balancing, and PubChem REST queries. Tested in `test_capability_expansion_full.py`. |
 | **Design Assistant & Scaffolder (`services/design_assistant.py`)** | **(a) Real and working** | WCAG contrast critique, Tailwind palette generator, and React component scaffolder. Tested in `test_capability_expansion_full.py`. |
 | **Productivity Notes & Copywriting (`services/productivity_service.py`)** | **(a) Real and working** | Markdown note persistence, SQL generator, marketing copywriter, and prompt pipeline. Tested in `test_capability_expansion_phase1.py`. |
+| **Client-Independent Core & Endpoints (`api/routes.py`)** | **(a) Real and working** | Unified root endpoints (`/health`, `/status`, `/system/status`, `/device/info`, `/device/pair`, `/history`, `/command`, `/settings`) serving both Desktop and Mobile companions. Tested in `test_routes.py`. |
+| **Version 1 WebSocket Protocol (`api/websocket.py`, `schemas.py`)** | **(a) Real and working** | Strict `version="1"` envelope, request_id correlation across async LLM queue, and ACK tracking. Tested in `test_routes.py`. |
+| **Robust Mobile Connection Manager (`mobile_app/src/services/`)** | **(a) Real and working** | Exponential backoff (1s–30s + jitter), heartbeat ping/pong keep-alive, foreground lifecycle hooks, and observable state machine. |
+| **Mobile-First UI Modernization (`mobile_app/src/`)** | **(a) Real and working** | 5-Tab floating bottom dock, state-driven `JarvisMobileCoreOrb`, `HeaderGreeting`, `QuickActionsBentoGrid`, and `#02040a` void theme. |
+| **Desktop UI Design Harmonization (`frontend/src/`)** | **(a) Real and working** | Unified glassmorphic dark theme and floating HUD across all 9 pages with 0 TypeScript compiler errors. |
 
 ---
 

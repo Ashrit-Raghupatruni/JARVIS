@@ -1,6 +1,6 @@
 # JARVIS — Comprehensive Status, Tech Stack, & Features Overview
 
-This document serves as the single source of truth for JARVIS's current capabilities, system architecture, tech stack, and development status. **Last Updated:** August 8, 2026
+This document serves as the single source of truth for JARVIS's current capabilities, system architecture, tech stack, and development status. **Last Updated:** September 27, 2026
 
 ---
 
@@ -176,7 +176,58 @@ Full architectural consolidation and ground-truth documentation audit completed:
 - **Truthful Tool Registry**:
   - Total registered & executable tools expanded to **69 executable tools**.
 - **Master Test Suite**:
-  - **298/298 passed across 30 test files** in `backend/tests/` with 100% pass rate.
+  - **298/298 passed across 31 test files** in `backend/tests/` with 100% pass rate.
+
+---
+
+## 🌐 Client-Independent Platform, Version 1 WebSocket Protocol & Mobile-First Modernization (September 27, 2026)
+
+- **Client-Independent Core Architecture**:
+  - Authoritative runtime diagnostic model (`RuntimeDiagnosticsModel`) dynamically derives `active_provider` and `active_model` from `llm_service.get_runtime_info()` without exposing credentials.
+  - Standardized core REST endpoints: `GET /health`, `GET /status`, `GET /system/status`, `GET /device/info`, `POST /device/pair`, `GET /history`, `POST /command`, `POST /settings`.
+  - Unified pairing flow accepting 6-digit numeric PIN, Ed25519 QR payloads (`jarvis_pair://`), and fail-closed authentication.
+- **Version 1 WebSocket Protocol Envelope**:
+  - Enforces `{ version: "1", type, request_id, session_id, timestamp, data }` envelope across all streams (`/ws`).
+  - Correlation IDs (`request_id`) propagated to background async execution queues, ACK acknowledgments, and responses.
+  - Strictly typed TypeScript protocol models without any `any` types in `frontend/src/renderer/src/types/protocol.ts` and `mobile_app/src/types/protocol.ts`.
+- **Mobile-First Client & Robust Connection Manager**:
+  - `RobustConnectionManager` (`mobile_app/src/services/connectionManager.ts`) with exponential backoff (1s–30s + jitter), heartbeat ping/pong keep-alive, foreground/background lifecycle handling, and observable states (`connecting`, `connected`, `reconnecting`, `offline`, `error`).
+  - Mobile UI suite: `JarvisMobileCoreOrb`, `HeaderGreeting`, `QuickPromptPills`, `QuickActionsBentoGrid`, `CommandInputPill`, `FloatingBottomDock`, and `SleekHomeScreen`.
+- **Desktop UI Design Language Unification**:
+  - Unified all 9 desktop sub-pages with consistent minimalist dark aesthetic (`#02040a`, glowing cyan and indigo accents).
+- **Verification Gates**:
+  - **298/298 Pytest passed** (100% pass rate in 116.16s).
+  - **0 TypeScript errors** in desktop (`frontend/`) and mobile (`mobile_app/`).
+
+---
+
+## 🤖 Secure Telegram Bot Remote Control & Notification Gateway (September 27, 2026)
+
+- **Zero-Duplicate Assistant Architecture**:
+  - `TelegramRemoteService` (`backend/services/telegram_service.py`) acts as an authenticated remote transport into the existing JARVIS core (`FastIntentRouter`, `PlannerAgent`, `ToolRegistry`, `SafetyGatekeeper`, `ActionExecutionVerifier`, `WorldModel`, and `MemoryService`).
+  - All executions and interactions from Telegram are tagged with `source="telegram"`.
+- **Strict Authentication & Pairing**:
+  - Constant-time verification on authorized user ID (`TELEGRAM_CHAT_ID`). Rejects unknown senders fail-closed with security audit logs.
+  - Pairing PIN mode: generates a 6-digit PIN on the desktop HUD for one-time pairing via `/pair <PIN>`, persisting the chat ID to `.env`.
+- **Remote Capabilities Supported**:
+  - `/status`, `/telemetry`: Live hardware metrics, active LLM model, uptime.
+  - `/tasks`, `/progress`: Inspect `AsyncTaskQueue` items and step-by-step progress.
+  - `/lock`: Lock workstation immediately via `rundll32.exe user32.dll,LockWorkStation`.
+  - `/screenshot`: Capture screen preview and dispatch uncompressed photo.
+  - `/cancel`: Cancel running task execution and trigger interrupt.
+  - `/app <name>`: Whitelisted application launch with strict shell injection defense.
+  - **Natural Language Interaction**: Conversational reasoning, web search, memory lookup, and multi-step tool execution.
+- **1-Click Inline Approval System**:
+  - Interactive cards sent with `[✅ Approve Action]` and `[❌ Deny Action]` inline keyboard buttons.
+  - Tapping unblocks or denies pending `MobileGatewayService` and `MobileBridgeService` execution promises in real-time.
+- **Rate-Limiting & Flood Defense**:
+  - Built-in 2.0s rate-limiting buffer and 10-second duplicate message suppression.
+- **UI Integration**:
+  - `TelegramIntegrationCard.tsx` inside Desktop Settings `Integrations` tab with live connection status, bot identity (`@playingwdbot_bot`), masked chat ID, pairing PIN generator, and test notification triggers.
+- **Verification Matrix**:
+  - **315/315 Pytest passed** (100% pass rate across 32 test files).
+  - 17 dedicated tests in `test_telegram_remote_service.py` covering auth, pairing, commands, approvals, and debouncing.
+
 
 
 

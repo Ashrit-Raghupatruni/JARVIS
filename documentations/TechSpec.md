@@ -1,6 +1,6 @@
 # 📐 Technical Specification (TechSpec)
 
-This document provides the high-level technical specifications, stack requirements, component boundaries, and performance benchmarks for JARVIS. **Last Updated:** September 26, 2026
+This document provides the high-level technical specifications, stack requirements, component boundaries, and performance benchmarks for JARVIS. **Last Updated:** September 27, 2026
 
 ---
 
@@ -8,11 +8,15 @@ This document provides the high-level technical specifications, stack requiremen
 
 | Layer | Technologies & Frameworks |
 |---|---|
-| **Frontend Framework** | React 19, TypeScript 5, Vite, Electron 30, TailwindCSS, Lucide Icons |
+| **Desktop Client** | React 19, TypeScript 5, Vite, Electron 30, TailwindCSS, Lucide Icons |
+| **Mobile Companion Client** | React Native / Expo, TypeScript 5, Strict V1 Protocol, Lucide React Native |
+| **Connection Manager** | `RobustConnectionManager` (exponential backoff 1s–30s + jitter, heartbeat, state machine) |
+| **Protocol Specification** | V1 WebSocket Envelope (`version="1"`, `request_id`, `session_id`, typed `data`) |
 | **3D Render Engine** | Three.js (r164), WebGL 2, `GLTFLoader`, `MeshoptDecoder`, Custom PBR Shaders |
 | **3D Asset** | `facecap.glb` (332.8 KB, Three.js dev examples) with ARKit morph targets |
-| **Backend Core** | Python 3.11, FastAPI, Uvicorn, Asyncio Event Loop, Loguru |
+| **Backend Core** | Python 3.10+, FastAPI, Uvicorn, Asyncio Event Loop, Loguru |
 | **Database** | SQLite3 with WAL (Write-Ahead Logging) and FTS5 Full-Text Search |
+| **Diagnostics Model** | Authoritative `RuntimeDiagnosticsModel` (provider, model, services, uptime, no secrets) |
 | **Failover Supervisor** | `LiveModeFailoverSupervisor` with single-agent `asyncio.Lock()` mutual exclusion |
 | **Hermes Execution Layer**| 12-Pillar `HermesBridgeService`, `HermesDesktopAgent`, `HermesGeneralAgent`, `HermesOrchestrator` |
 | **Image Generation** | `ImageGeneratorService` (Google Imagen 3 + Pollinations AI fallback) |
@@ -24,27 +28,28 @@ This document provides the high-level technical specifications, stack requiremen
 ## 2. Component Boundaries & API Interconnects
 
 ```
- ┌────────────────────────────────────────────────────────────────────────┐
- │                      React / Electron Renderer                         │
- │  - Hero Visualizer (IdleHUD.tsx / TalkingFace3D.tsx)                   │
- │  - Live Mode Failover HUD (LiveModeFailoverHUD.tsx)                    │
- │  - AI Chat & Image Lightbox Studio (ChatPanel.tsx)                     │
- │  - AutonomousAgentStudio.tsx (Sub-agents, IPC logs, Goals, Pruner)     │
- └───────────────────────────────────┬────────────────────────────────────┘
-                                     │ WebSocket / REST API
- ┌───────────────────────────────────▼────────────────────────────────────┐
- │                          FastAPI Backend Core                          │
- │  - ServiceManager Container & Lazy Bootstrap                           │
- │  - LiveModeFailoverSupervisor (JARVIS Primary ➔ Hermes Fallback)       │
- │  - HermesBridgeService (12-Pillar Architecture)                        │
- │  - HermesDesktopAgent (Win32 Foreground, Clipboard Typing, Coordinate) │
- │  - HermesGeneralAgent (Multi-Step Function Calling across 69 tools)    │
- │  - ImageGeneratorService (Imagen 3 / Pollinations AI / Caching)        │
- │  - Truthful ToolRegistry (69 Executable System Tools)                  │
- │  - LongHorizonCheckpointService (data/jarvis.db SQLite WAL)            │
- │  - KVCachePruner <--> LLMService                                       │
- │  - MobileAuthService (Fail-Closed JWT & Ed25519 Gatekeeper Interlock)  │
- └────────────────────────────────────────────────────────────────────────┘
+ ┌──────────────────────────────────────────────┐  ┌──────────────────────────────────────────────┐
+ │          React / Electron Desktop            │  │          Mobile-First Companion App          │
+ │ - Floating Command Bar & Core 3D Orb         │  │ - SleekHomeScreen & JarvisMobileCoreOrb      │
+ │ - Unified 9 Glassmorphic Sub-Pages           │  │ - 5-Tab Floating Bottom Dock Navigation      │
+ │ - Strict protocol.ts (Zero `any`)            │  │ - RobustConnectionManager (Auto-Reconnect)  │
+ └──────────────────────┬───────────────────────┘  └──────────────────────┬───────────────────────┘
+                        │                                                 │
+                        │   Unified V1 WebSocket (/ws) & REST Endpoints    │
+                        └─────────────────────────┬───────────────────────┘
+                                                  │
+ ┌────────────────────────────────────────────────▼───────────────────────────────────────────────┐
+ │                                     FastAPI Backend Core                                       │
+ │  - Unified Core Endpoints: /health, /status, /system/status, /device/info, /device/pair, etc.  │
+ │  - RobustConnectionManager: Sequence IDs (msg_id), ACK replay buffer, duplicate eviction       │
+ │  - Decoupled Queue Worker: Non-blocking background LLM execution & request_id correlation      │
+ │  - ServiceManager Container & 46 Lazy Factories                                                │
+ │  - LiveModeFailoverSupervisor: JARVIS Primary ➔ Hermes Fallback                                │
+ │  - HermesBridgeService: 12-Pillar Architecture & Dual Agents                                   │
+ │  - ImageGeneratorService: Imagen 3 / Pollinations AI / Local Disk Caching                      │
+ │  - Truthful ToolRegistry: 69 Audited System Tools                                              │
+ │  - MobileAuthService: Ed25519 Keypairs, 6-digit PIN, and QR Payload Verification               │
+ └────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -108,6 +113,47 @@ Empirically measured runtime performance on host Windows 11 machine:
 - **Providers**: Google Imagen 3 (primary) with Pollinations AI fallback.
 - **Disk Caching**: Images cached in `data/generated_images/` with UUID-based filenames and served through FastAPI static mount.
 - **UI Lightbox**: Integrated into `ChatPanel.tsx` with pan, zoom, copy, and download actions.
+
+---
+
+## 6. Client-Independent Platform & Mobile-First Architecture (Added September 2026)
+
+### 1. Version 1 WebSocket Protocol
+- **Envelope Specification**: `{ "version": "1", "type": str, "request_id": str?, "session_id": str?, "timestamp": ISO8601, "data": dict }`.
+- **Correlation**: Client `request_id` is propagated downstream to asynchronous worker queues, execution milestones (`agent_progress`), and text/audio responses.
+- **Strict Typing**: Zero `any` usage in `frontend/src/renderer/src/types/protocol.ts` and `mobile_app/src/types/protocol.ts`.
+
+### 2. Robust Connection Manager (`mobile_app/src/services/connectionManager.ts`)
+- **Exponential Backoff**: Base 1000ms delay with `1.8^n` escalation up to 30,000ms ceiling, modulated with ±20% pseudo-random jitter.
+- **Heartbeat & Liveness**: 15s ping interval with 10s timeout threshold; drops dead sockets and triggers fast-reconnect.
+- **Observable Lifecycle**: States: `'connecting' | 'connected' | 'reconnecting' | 'offline' | 'error'`.
+- **Foreground / Background Hooks**: Fast reconnect triggered immediately upon OS window/app foregrounding.
+
+### 3. Authoritative Runtime Diagnostics
+- **Schema**: `RuntimeDiagnosticsModel` in `backend/models/schemas.py`.
+- **Active Resolution**: Queries `llm_service.get_runtime_info()` dynamically without exposing API keys or secrets.
+- **Core Endpoints**: Standardized `GET /health`, `GET /status`, `GET /system/status`, `GET /device/info`, `POST /device/pair`, `GET /history`, `POST /command`, `POST /settings`.
+
+---
+
+## 7. Telegram Remote Control & Push Notification Architecture (Added September 2026)
+
+### 1. TelegramRemoteService (`backend/services/telegram_service.py`)
+- **Transport**: HTTPS long-polling (`getUpdates` with offset tracking) using Python standard library `urllib` / `asyncio` without heavyweight external dependencies.
+- **Authentication**: Constant-time verification on authorized user ID (`TELEGRAM_CHAT_ID`). Rejects unknown senders fail-closed.
+- **Pairing Mode**: If `TELEGRAM_CHAT_ID` is unassigned, bot enters Pairing Mode, generates a 6-digit numeric PIN on the desktop HUD, and pairs the user via `/pair <PIN>`.
+- **Remote Capabilities**:
+  - `/status`, `/telemetry`: Hardware metrics (CPU, RAM, Disk), active LLM, health.
+  - `/tasks`, `/progress`: Inspect `AsyncTaskQueue` items and track progress.
+  - `/lock`: Lock workstation via `rundll32.exe user32.dll,LockWorkStation`.
+  - `/screenshot`: Capture screen preview and dispatch uncompressed photo.
+  - `/cancel`: Cancel running task execution and trigger interrupt.
+  - `/app <name>`: Whitelisted application launch with strict shell injection defense.
+  - **Natural Language Interaction**: Full multi-tool reasoning pipeline execution.
+- **Interactive Inline Approval**: Push interactive cards with `[✅ Approve Action]` and `[❌ Deny Action]` inline keyboard buttons. Tapping unblocks or denies pending `MobileGatewayService` / `MobileBridgeService` execution promises.
+- **Debounce Buffer**: 2.0s rate-limiting gap and 10s duplicate alert suppression.
+- **UI Integration**: `TelegramIntegrationCard.tsx` inside Desktop Settings `Integrations` tab.
+
 
 
 

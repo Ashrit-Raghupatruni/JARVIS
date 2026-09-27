@@ -57,6 +57,15 @@ async def lifespan(app: FastAPI):
     # 2. Register lazy factories for heavy/optional subsystems
     register_lazy_factories(event_bus, app.state.connection_manager)
 
+    # 3. Start Telegram Remote Service if enabled
+    try:
+        from backend.services.telegram_service import telegram_service
+        app.state.telegram_service = telegram_service
+        if telegram_service.enabled:
+            asyncio.create_task(telegram_service.start())
+    except Exception as tg_err:
+        logger.warning(f"Telegram remote service startup notice: {tg_err}")
+
     elapsed = time.time() - start_time
     logger.info("=" * 60)
     logger.info(f"  JARVIS is online! (Startup time: {elapsed:.3f}s)")
@@ -124,6 +133,12 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Task queue shutdown error: {e}")
 
+    if hasattr(app.state, "telegram_service") and app.state.telegram_service:
+        try:
+            await app.state.telegram_service.stop()
+        except Exception as e:
+            logger.error(f"Telegram service shutdown error: {e}")
+
     # ── Shutdown all ServiceManager active singletons ─────────
     try:
         await ServiceManager.shutdown_all()
@@ -153,6 +168,7 @@ from backend.api.mobile_ws import mobile_ws_router
 from backend.api.debug_router import debug_router
 from backend.api.integrations_router import integrations_router
 from backend.api.oauth import router as oauth_router
+from backend.api.telegram_router import telegram_router
 
 setup_middleware(app)
 app.include_router(api_router, tags=["API"])
@@ -163,6 +179,7 @@ app.include_router(mobile_ws_router)
 app.include_router(debug_router)
 app.include_router(integrations_router)
 app.include_router(oauth_router)
+app.include_router(telegram_router)
 
 # ── Mount Static Media Files (Generated Images, Audio, Artifacts) ──
 from fastapi.staticfiles import StaticFiles

@@ -8,19 +8,20 @@ This document describes the runtime architecture, request lifecycles, memory str
 
 ```mermaid
 graph TD
-    User([User: Voice / GUI / Mobile]) --> DesktopClient[Electron + React 19 Desktop HUD]
-    User --> MobileClient[Android Companion App]
+    User([User: Voice / Desktop GUI / Mobile App]) --> DesktopClient[Electron + React 19 Desktop HUD]
+    User --> MobileClient[Mobile-First Companion App]
 
-    DesktopClient <-->|WebSocket & REST| FastAPI[FastAPI Monolith Backend]
-    MobileClient <-->|WebSocket & REST| MobileGateway[Mobile Companion Gateway & Auth]
+    DesktopClient <-->|Unified V1 WebSocket /ws & REST| FastAPI[Client-Independent FastAPI Core]
+    MobileClient <-->|Unified V1 WebSocket /ws & REST| FastAPI
 
     FastAPI --> ServiceMgr[ServiceManager Container & Lazy Bootstrap]
+    FastAPI --> ConnMgr[RobustConnectionManager & Session Tracker]
     
     FastAPI --> IntentRouter[Hierarchical Intent Router]
     IntentRouter -->|Atomic Fast-Path| FastPath[Fast Intent Intercept]
     IntentRouter -->|Complex / Multi-Step| Planner[Planner & Task Decomposer]
 
-    FastPath --> ToolReg[Truthful Tool Registry]
+    FastPath --> ToolReg[Truthful Tool Registry - 69 Tools]
     Planner --> DomainAgents[Domain Agents: General / Research / Dev / Automation]
     DomainAgents --> ToolReg
 
@@ -230,23 +231,22 @@ Result
   3. Client-side booleans (`biometric_authenticated = true`) without valid cryptographic signatures cannot authorize high-risk operations.
   4. Approvals are cryptographically bound to `(device_id, approval_id, action_type, dangerous_target, challenge_nonce)` with single-use nonce consumption and 30-60s TTL.
 
-### 13. Mobile Endpoint Authorization Matrix
+### 13. Unified API & WebSocket Endpoint Matrix
 
-| Endpoint | Path | Public | Authenticated | Paired Device | Sensitive Approval |
-| :--- | :--- | :---: | :---: | :---: | :---: |
-| **Pairing Initiation** | `POST /api/v1/mobile/pair/initiate` | ✅ Yes | ❌ No | ❌ No | ❌ No |
-| **QR Code Generation** | `GET /api/v1/mobile/pair/qr/generate` | ✅ Yes | ❌ No | ❌ No | ❌ No |
-| **QR Code Scan Confirmation** | `POST /api/v1/mobile/pair/qr/scan` | ✅ Yes | ❌ No | ❌ No | ❌ No |
-| **Pairing PIN Confirmation** | `POST /api/v1/mobile/pair/confirm` | ✅ Yes | ❌ No | ❌ No | ❌ No |
-| **Pairing Status Check** | `GET /api/v1/mobile/pair/status/{session_id}` | ✅ Yes | ❌ No | ❌ No | ❌ No |
-| **Device Revocation** | `POST /api/v1/mobile/devices/{device_id}/revoke` | ❌ No | ✅ JWT | ✅ Yes | ❌ No |
-| **Device Unpair** | `DELETE /api/v1/mobile/devices/{device_id}` | ❌ No | ✅ JWT | ✅ Yes | ❌ No |
-| **List Trusted Devices** | `GET /api/v1/mobile/devices` | ❌ No | ✅ JWT | ✅ Yes | ❌ No |
-| **Telemetry HUD Stream** | `GET /api/v1/mobile/telemetry` | ❌ No (Discovery only) | ❌ No | ❌ No | ❌ No |
-| **Desktop Commands** | `POST /api/v1/mobile/system/command` | ❌ No | ✅ JWT | ✅ Yes | ✅ Gatekeeper Intercept |
-| **Approval Decision** | `POST /api/v1/mobile/approvals/{id}/decision` | ❌ No | ✅ JWT | ✅ Yes | ✅ Ed25519 Signature |
-| **Filesystem Operations** | `GET/POST /api/v1/mobile/files/*` | ❌ No | ✅ JWT | ✅ Yes | ✅ Workspace Sandboxed |
-| **Live Mode Stream** | `GET /api/v1/mobile/live_mode/status` | ❌ No | ✅ JWT | ✅ Yes | ❌ No |
+| Endpoint | Protocol | Auth Type | Description |
+| :--- | :---: | :---: | :--- |
+| `GET /health` | HTTP | None | Basic liveness and server uptime health check |
+| `GET /status` | HTTP | None | Authoritative runtime diagnostics (provider, model, services, uptime) |
+| `GET /system/status` | HTTP | None | Full system status with active connections, services, and hardware telemetry |
+| `GET /device/info` | HTTP | None | Host identification, hostname, platform, server port, LAN IPv4s, paired device count |
+| `POST /device/pair` | HTTP | PIN / QR / JWT | Unified pairing endpoint: PIN, Ed25519 QR payload (`jarvis_pair://`), or session initiation |
+| `GET /history` | HTTP | None / Bearer | Recent conversation list and transcript history for sidebar UI |
+| `POST /command` | HTTP | None / Bearer | Text command execution returning streaming or consolidated AI response |
+| `POST /settings` | HTTP | None / Bearer | Update runtime settings (TTS voice, speech rate, AI model, provider) |
+| `WS /ws` | WebSocket | Query / Bearer | Unified bidirectional V1 protocol stream for Desktop and Mobile clients |
+| `WS /sync` | WebSocket | Encrypted P2P | Cross-device encrypted peer-to-peer state synchronization |
+| `POST /api/v1/mobile/system/command` | HTTP | Bearer JWT | Remote system actions (lock, shutdown, sleep) with Gatekeeper approval |
+| `POST /api/v1/mobile/approvals/{id}/decision` | HTTP | Ed25519 Sig | Cryptographic biometric signature approval for high-risk system commands |
 
 ---
 
@@ -258,31 +258,85 @@ JARVIS/
 │   ├── agents/                 # Planner, Intent Router, Domain Agents (General, Research, Dev, Automation)
 │   │   ├── domain/             # Specialized domain agents
 │   │   └── planner/            # Modular planner, task decomposer, plan validator, execution plan
-│   ├── api/                    # REST routers (routes.py, mobile_router.py, debug_router.py, mobile_ws.py)
-│   ├── models/                 # Pydantic schemas, database models, event envelopes
+│   ├── api/                    # Clean REST routers & WebSocket endpoints
+│   │   ├── routes.py           # Unified core REST endpoints (/health, /status, /command, /device/pair, etc.)
+│   │   ├── websocket.py        # RobustConnectionManager & unified /ws V1 protocol router
+│   │   ├── mobile_router.py    # Mobile companion REST endpoints & Ed25519 security approvals
+│   │   ├── mobile_ws.py        # Dedicated mobile companion telemetry & streaming
+│   │   └── oauth.py            # Google & Microsoft 365 OAuth callback flows
+│   ├── models/                 # Pydantic schemas (schemas.py, mobile_schemas.py, event envelopes)
 │   ├── prash/                  # Prash local Transformer engine, tokenizer & model architecture
 │   ├── services/               # Core OS services
 │   │   ├── automation/         # Consolidated automation (desktop, browser, uia, verifier, orchestrator)
-│   │   ├── live_mode/          # Live Mode engine & Form Assistant
-│   │   ├── llm/                # Multi-provider LLM manager, streaming, prompts, tool calling
+│   │   ├── live_mode/          # Live Mode engine, Form Assistant, and Failover Controller
+│   │   ├── llm/                # Multi-provider LLM manager (Ollama, Gemini, Groq, OpenRouter, OpenAI)
 │   │   ├── memory/             # Unified 4-tier memory (working, long_term, episodic, semantic)
-│   │   ├── perception/         # UIA Scene Graph, Spatial Engine
+│   │   ├── perception/         # UIA Scene Graph, Spatial Engine, WorldModel
 │   │   ├── security/           # Security Sandbox, Face Auth, Credential Vault
 │   │   ├── skills/             # Modular skill plugins (research, ui, vision, productivity, multimodal)
 │   │   ├── voice/              # Consolidated voice (voice_manager, stt, tts, wake_word, audio_device)
 │   │   ├── bootstrap.py        # Modular core service bootstrapper & 46 lazy factories
+│   │   ├── hermes_bridge.py    # 12-Pillar Hermes Bridge Architecture
+│   │   ├── image_generator.py  # Google Imagen 3 + Pollinations AI dual-engine generator
 │   │   ├── manager.py          # Unified ServiceManager DI container
-│   │   ├── tool_registry.py    # Truthful Tool Registry (61 executable tools)
+│   │   ├── mobile_auth.py      # Ed25519 keypair generation, QR pairing, trusted device store
+│   │   ├── tool_registry.py    # Truthful Tool Registry (69 executable system tools)
 │   │   └── world_model.py      # Aggregated desktop state & throttled telemetry
-│   ├── tests/                  # 16 Master test suites (149 passing tests, 100% pass rate)
+│   ├── tests/                  # 31 Master test suites (298 passing tests, 100% pass rate)
 │   ├── utils/                  # Logger (loguru), retry decorators, helpers
 │   ├── config.py               # Pydantic Settings & environment configuration
 │   └── main.py                 # FastAPI application lifespan & socket entrypoint
 ├── frontend/                   # Electron + React 19 desktop command center
-├── mobile_app/                 # Android WebView companion app & React Native client
+│   └── src/renderer/src/
+│       ├── components/         # FloatingCommandBar, JarvisCoreOrb, TelemetryGaugesCard, ChatPanel, etc.
+│       └── types/protocol.ts   # Strict V1 WebSocket protocol definitions (zero `any`)
+├── mobile_app/                 # Mobile-first companion app (React Native / Expo)
+│   └── src/
+│       ├── api/client.ts       # Unified HTTP/WS client & LAN auto-discovery
+│       ├── components/         # JarvisMobileCoreOrb, HeaderGreeting, FloatingBottomDock, QuickActions, etc.
+│       ├── screens/            # SleekHomeScreen, ChatScreen, ControlScreen, ApprovalsScreen, etc.
+│       ├── services/           # RobustConnectionManager (exponential backoff & state machine)
+│       └── types/protocol.ts   # Strict V1 WebSocket protocol definitions (zero `any`)
 ├── documentations/             # Extended system specs, PRD, and implementation guides
 ├── requirements.txt            # Harmonized production Python dependencies across 8 functional tiers
 └── requirements-dev.txt        # Development, testing & linting dependencies
 ```
+
+---
+
+## 11. Secure Telegram Remote Control & Notification Gateway
+
+### 11.1 Architecture & Zero-Duplicate Guarantee
+The Telegram remote control integration establishes an encrypted, bidirectional bridge between the user's mobile Telegram client and the JARVIS workstation without running a redundant assistant runtime:
+
+```
+Telegram Cloud (@playingwdbot_bot)
+             │  (HTTPS Long-Polling with Offset ACK)
+             ▼
+TelegramRemoteService (backend/services/telegram_service.py)
+   ├── Constant-Time Authentication Gate (user_id == TELEGRAM_CHAT_ID)
+   ├── Pairing PIN Mode (6-digit numeric OTP /pair <PIN>)
+   ├── Command Router (/status, /tasks, /progress, /lock, /screenshot, /cancel, /app)
+   └── Outbound Rate-Limiter (2.0s gap, 10s duplicate alert suppression)
+             │
+             ▼ (source="telegram")
+Unified JARVIS Core Pipeline
+   ├── FastIntentRouter (Instant deterministic intent dispatch)
+   ├── PlannerAgent & UnifiedPipeline (Multi-step LLM reasoning & tool execution)
+   ├── ToolRegistry (69 registered capabilities)
+   ├── SafetyGatekeeper & MobileGateway (Fail-closed permission checks)
+   ├── ActionExecutionVerifier (Outcome inspection & retry loops)
+   └── ExperienceEngine & StrategyMemory (Continuous learning from traces)
+```
+
+### 11.2 1-Click Inline Security Approval Interlock
+Destructive operations trigger an urgent interactive card via Telegram with `[✅ Approve Action]` and `[❌ Deny Action]` inline keyboard buttons:
+- Callback queries (`approve_<action_id>`, `deny_<action_id>`) are cryptographically correlated to active pending approval events in `MobileGatewayService` and `MobileBridgeService`.
+- Tapping an inline button unblocks or aborts the waiting execution promise in real-time.
+- Unapproved actions or timeouts strictly default to **fail-closed** denial.
+
+### 11.3 Memory Context & Continuous Learning
+- Natural language interactions from Telegram update conversation history in `MemoryService` (SQLite + ChromaDB).
+- Execution metrics, duration, and success status are recorded into `ExperienceEngine` tagged with `[Telegram]`, feeding into `StrategyMemory` ranking.
 
 

@@ -256,6 +256,11 @@ def register_lazy_factories(event_bus: EventBus, connection_manager: Optional[An
         return MobileBridgeService()
     ServiceManager.register_factory("mobile_bridge", _make_mobile_bridge)
 
+    def _make_telegram_service():
+        from backend.services.telegram_service import telegram_service
+        return telegram_service
+    ServiceManager.register_factory("telegram_service", _make_telegram_service)
+
     def _make_mobile_auth():
         from backend.services.mobile_auth import MobileAuthService
         return MobileAuthService()
