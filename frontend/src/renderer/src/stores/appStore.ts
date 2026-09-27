@@ -32,11 +32,21 @@ interface AppState {
   kvCacheMetrics: any
 
   /* ----- UI State ----- */
+  activeTab: 'home' | 'chat' | 'voice' | 'tasks' | 'pc_control' | 'files' | 'automation' | 'system' | 'settings'
+  userName: string
+  focusMode: boolean
+  quickActionFeedback: string | null
   showSettings: boolean
   showChat: boolean
   showCommandHistory: boolean
   isWindowMaximized: boolean
   thinkingText: string
+
+  /* ----- UI Actions ----- */
+  setActiveTab: (tab: 'home' | 'chat' | 'voice' | 'tasks' | 'pc_control' | 'files' | 'automation' | 'system' | 'settings') => void
+  setUserName: (name: string) => void
+  toggleFocusMode: (enable?: boolean) => void
+  setQuickActionFeedback: (feedback: string | null) => void
 
   /* ----- Settings ----- */
   settings: Settings
@@ -196,6 +206,10 @@ export const useAppStore = create<AppState>((set) => ({
     savings_percent: 0,
     last_prune_time: null
   },
+  activeTab: 'home',
+  userName: 'Ashrit',
+  focusMode: false,
+  quickActionFeedback: null,
   showSettings: false,
   showChat: true,
   showCommandHistory: false,
@@ -294,6 +308,10 @@ export const useAppStore = create<AppState>((set) => ({
   setKVCacheMetrics: (kvCacheMetrics) => set({ kvCacheMetrics }),
 
   /* ----- UI Actions ----- */
+  setActiveTab: (activeTab) => set({ activeTab }),
+  setUserName: (userName) => set({ userName }),
+  toggleFocusMode: (enable) => set((state) => ({ focusMode: enable !== undefined ? enable : !state.focusMode })),
+  setQuickActionFeedback: (quickActionFeedback) => set({ quickActionFeedback }),
   toggle3DRotation: () => set((state) => ({ is3DRotationEnabled: !state.is3DRotationEnabled })),
   toggleSettings: () => set((state) => ({ showSettings: !state.showSettings })),
 

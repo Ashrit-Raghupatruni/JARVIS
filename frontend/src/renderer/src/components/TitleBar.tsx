@@ -37,38 +37,26 @@ const TitleBar: React.FC = () => {
   }
 
   return (
-    <div className="titlebar-drag h-9 flex items-center justify-between px-4 glass-light border-b border-jarvis-border z-50 relative shrink-0">
-      {/* Left: Logo + Title */}
-      <div className="flex items-center gap-2.5 titlebar-no-drag">
-        {/* JARVIS Logo - Hexagonal Icon */}
-        <div className="relative w-5 h-5 flex items-center justify-center">
-          <div
-            className="w-4 h-4 rounded-sm rotate-45"
-            style={{
-              background: 'linear-gradient(135deg, var(--jarvis-accent) 0%, var(--jarvis-accent-2) 100%)',
-              boxShadow: '0 0 8px rgba(0, 229, 255, 0.4)'
-            }}
-          />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div
-              className="w-1.5 h-1.5 rounded-full bg-jarvis-bg"
-            />
-          </div>
+    <div className="titlebar-drag h-10 flex items-center justify-between px-4 bg-slate-950/60 backdrop-blur-xl border-b border-blue-500/20 z-50 relative shrink-0">
+      {/* Left: Logo + Online Status Badge */}
+      <div className="flex items-center gap-3 titlebar-no-drag">
+        {/* JARVIS Glowing Title */}
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#00e5ff] animate-pulse" />
+          <span className="text-xs font-bold tracking-[0.3em] text-white drop-shadow-[0_0_8px_rgba(0,229,255,0.7)] uppercase font-mono">
+            J A R V I S
+          </span>
         </div>
 
-        <span className="text-xs font-semibold tracking-[0.25em] text-jarvis-text uppercase">
-          JARVIS
-        </span>
-
-        {/* Connection dot */}
-        <div
-          className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-jarvis-success' : 'bg-jarvis-danger'}`}
-          style={{
-            boxShadow: isConnected
-              ? '0 0 6px rgba(16, 185, 129, 0.6)'
-              : '0 0 6px rgba(239, 68, 68, 0.6)'
-          }}
-        />
+        {/* Online Status Pill Badge */}
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-900/80 border border-cyan-500/30">
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-cyan-400 shadow-[0_0_6px_#00e5ff]' : 'bg-rose-400'}`}
+          />
+          <span className="text-[10px] font-mono tracking-wider font-semibold text-cyan-300">
+            {isConnected ? 'Online' : 'Offline'}
+          </span>
+        </div>
       </div>
 
       {/* Right: Window Controls */}

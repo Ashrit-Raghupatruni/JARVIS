@@ -330,6 +330,33 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
           break
         }
 
+        case 'ui_navigation': {
+          const tab = (message.data as any)?.tab
+          if (tab) {
+            useAppStore.getState().setActiveTab(tab)
+          }
+          break
+        }
+
+        case 'ui_action': {
+          const action = (message.data as any)?.action
+          const feedback = (message.data as any)?.feedback || (message.data as any)?.message
+          const store = useAppStore.getState()
+          if (feedback) {
+            store.setQuickActionFeedback(feedback)
+            setTimeout(() => {
+              if (useAppStore.getState().quickActionFeedback === feedback) {
+                useAppStore.getState().setQuickActionFeedback(null)
+              }
+            }, 4000)
+          }
+          if (action === 'focus_mode') {
+            const enabled = (message.data as any)?.enabled
+            store.toggleFocusMode(enabled)
+          }
+          break
+        }
+
         case 'pong':
         case 'heartbeat': {
           break

@@ -118,16 +118,18 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   )
 
   return (
-    <div className="w-64 bg-slate-900/90 border-r border-cyan-500/20 flex flex-col h-full text-slate-200 select-none">
+    <div className="w-72 bg-slate-950/40 backdrop-blur-2xl border border-blue-500/20 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] flex flex-col h-full text-slate-200 select-none overflow-hidden">
       {/* Header & New Chat */}
-      <div className="p-3 border-b border-cyan-500/20 flex items-center justify-between">
-        <span className="text-xs font-semibold tracking-wider text-cyan-400 uppercase flex items-center gap-1.5">
-          <MessageSquare className="w-4 h-4 text-cyan-400" />
-          Chat History
-        </span>
+      <div className="p-4 border-b border-white/5 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#00e5ff] animate-pulse" />
+          <span className="text-xs font-bold tracking-[0.2em] text-slate-200 uppercase font-mono">
+            Chat History
+          </span>
+        </div>
         <button
           onClick={onNewChat}
-          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-cyan-300 bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-500/30 rounded transition-all shadow-sm cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-bold text-cyan-200 hover:text-white bg-blue-600/30 hover:bg-blue-600/50 border border-cyan-400/50 rounded-xl transition-all shadow-[0_0_15px_rgba(0,229,255,0.2)] cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
           New
@@ -135,25 +137,25 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       </div>
 
       {/* Search Filter Box */}
-      <div className="px-3 pt-2.5 pb-1">
+      <div className="px-3 pt-3 pb-1">
         <div className="relative">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Search chat history..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500/50 rounded-md pl-8 pr-2 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-all"
+            className="w-full bg-slate-950/60 border border-white/10 focus:border-cyan-400/50 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-all font-mono"
           />
         </div>
       </div>
 
       {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-3 space-y-1.5 custom-scrollbar">
         {loading && conversations.length === 0 ? (
-          <div className="p-4 text-center text-xs text-slate-400">Loading history...</div>
+          <div className="p-4 text-center text-xs font-mono text-slate-400">Loading history...</div>
         ) : filteredConversations.length === 0 ? (
-          <div className="p-4 text-center text-xs text-slate-500">
+          <div className="p-4 text-center text-xs font-mono text-slate-500">
             {searchQuery ? 'No matching conversations' : 'No past conversations'}
           </div>
         ) : (
@@ -165,10 +167,10 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
               <div
                 key={conv.id}
                 onClick={() => onSelectConversation(conv.id)}
-                className={`group relative flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition-all border ${
+                className={`group relative flex items-center justify-between p-2.5 rounded-xl cursor-pointer text-xs transition-all border ${
                   isActive
-                    ? 'bg-cyan-950/70 border-cyan-500/40 text-cyan-200 shadow-sm'
-                    : 'bg-slate-800/40 border-transparent hover:bg-slate-800/80 hover:border-slate-700 text-slate-300'
+                    ? 'bg-blue-600/30 border-cyan-400/50 text-white shadow-[0_0_15px_rgba(0,229,255,0.2)]'
+                    : 'bg-slate-900/30 border-transparent hover:bg-slate-800/40 hover:border-white/5 text-slate-300'
                 }`}
               >
                 {isEditing ? (

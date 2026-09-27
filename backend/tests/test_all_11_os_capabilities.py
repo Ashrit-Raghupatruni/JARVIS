@@ -52,7 +52,7 @@ async def test_os_cap_01_open_app(tool_registry, gatekeeper):
 async def test_os_cap_02_find_files(tool_registry, gatekeeper):
     decision = gatekeeper.evaluate_tool_call("search_files", {"pattern": "*.pdf"})
     assert decision.allowed
-    res = await tool_registry.execute_tool("search_files", {"pattern": "*.md", "directory": "."})
+    res = await tool_registry.execute_tool("search_files", {"pattern": "*.py", "directory": "."})
     assert res.get("status") == "success"
     result_data = res.get("result", {})
     assert "files" in result_data or "matches" in result_data or "count" in result_data

@@ -297,30 +297,30 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#030712', padding: 16 },
+  container: { flex: 1, backgroundColor: '#02040a', padding: 16 },
   contentFlex: { flex: 1 },
-  headerBar: { marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#1e293b', paddingBottom: 10 },
+  headerBar: { marginBottom: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)', paddingBottom: 10 },
   headerListRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerTitle: { color: '#f8fafc', fontSize: 16, fontWeight: 'bold', fontFamily: 'monospace', letterSpacing: 1 },
+  headerTitle: { color: '#f8fafc', fontSize: 15, fontWeight: 'bold', fontFamily: 'monospace', letterSpacing: 1.5 },
   headerSubtitle: { color: '#64748b', fontSize: 9, fontFamily: 'monospace', marginTop: 2 },
-  newChatBtn: { backgroundColor: '#00e5ff', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  newChatBtnText: { color: '#030712', fontSize: 11, fontWeight: 'bold', fontFamily: 'monospace' },
+  newChatBtn: { backgroundColor: 'rgba(37,99,235,0.3)', borderWidth: 1, borderColor: 'rgba(0,229,255,0.5)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
+  newChatBtnText: { color: '#00e5ff', fontSize: 11, fontWeight: 'bold', fontFamily: 'monospace' },
   headerThreadRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  backBtn: { backgroundColor: '#0b1329', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#334155' },
+  backBtn: { backgroundColor: 'rgba(15,23,42,0.6)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   backBtnText: { color: '#00e5ff', fontSize: 11, fontWeight: 'bold', fontFamily: 'monospace' },
   threadTitle: { color: '#f8fafc', fontSize: 13, fontWeight: 'bold', fontFamily: 'monospace', flex: 1 },
   
-  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0b1329', borderRadius: 10, paddingHorizontal: 12, marginBottom: 12, borderWidth: 1, borderColor: '#1e293b' },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(15,23,42,0.5)', borderRadius: 12, paddingHorizontal: 12, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(59,130,246,0.2)' },
   searchInput: { flex: 1, color: '#f8fafc', paddingVertical: 10, fontFamily: 'monospace', fontSize: 12 },
   clearIcon: { color: '#64748b', fontSize: 14, padding: 4 },
 
-  convCard: { backgroundColor: '#0b1329', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#1e293b', marginBottom: 10 },
+  convCard: { backgroundColor: 'rgba(15,23,42,0.5)', padding: 14, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(59,130,246,0.2)', marginBottom: 10 },
   convHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   convTitle: { color: '#f8fafc', fontSize: 13, fontWeight: 'bold', fontFamily: 'monospace', flex: 1, marginRight: 8 },
-  msgCountBadge: { backgroundColor: '#030712', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#334155' },
+  msgCountBadge: { backgroundColor: 'rgba(37,99,235,0.2)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0,229,255,0.3)' },
   msgCountText: { color: '#00e5ff', fontSize: 9, fontWeight: 'bold', fontFamily: 'monospace' },
   convSummary: { color: '#94a3b8', fontSize: 11, fontFamily: 'monospace', marginBottom: 8, lineHeight: 16 },
-  convFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#1e293b', paddingTop: 8 },
+  convFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 8 },
   convTime: { color: '#64748b', fontSize: 9, fontFamily: 'monospace' },
   convArrow: { color: '#00e5ff', fontSize: 10, fontWeight: 'bold', fontFamily: 'monospace' },
 
@@ -331,12 +331,12 @@ const styles = StyleSheet.create({
 
   messageList: { flex: 1, marginBottom: 12 },
   bubble: { padding: 12, borderRadius: 14, marginVertical: 6, maxWidth: '85%' },
-  userBubble: { backgroundColor: '#0b192e', alignSelf: 'flex-end', borderWidth: 1, borderColor: '#00e5ff50' },
-  jarvisBubble: { backgroundColor: '#0b1329', alignSelf: 'flex-start', borderWidth: 1, borderColor: '#1e293b' },
-  systemBubble: { backgroundColor: '#180d2b', alignSelf: 'center', borderWidth: 1, borderColor: '#a855f750' },
+  userBubble: { backgroundColor: 'rgba(37,99,235,0.25)', alignSelf: 'flex-end', borderWidth: 1, borderColor: 'rgba(0,229,255,0.4)' },
+  jarvisBubble: { backgroundColor: 'rgba(15,23,42,0.6)', alignSelf: 'flex-start', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  systemBubble: { backgroundColor: 'rgba(88,28,135,0.2)', alignSelf: 'center', borderWidth: 1, borderColor: 'rgba(168,85,247,0.3)' },
   senderText: { fontSize: 9, fontWeight: 'bold', fontFamily: 'monospace', marginBottom: 4 },
   userSenderText: { color: '#00e5ff' },
-  jarvisSenderText: { color: '#10b981' },
+  jarvisSenderText: { color: '#34d399' },
   systemSenderText: { color: '#c084fc' },
   messageText: { color: '#f8fafc', fontSize: 13, fontFamily: 'monospace', lineHeight: 18 },
 
@@ -344,8 +344,8 @@ const styles = StyleSheet.create({
   thinkingText: { color: '#64748b', fontSize: 11, fontFamily: 'monospace' },
 
   inputContainer: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  textInput: { flex: 1, backgroundColor: '#0b1329', color: '#f8fafc', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#334155', fontFamily: 'monospace', fontSize: 12 },
-  sendBtn: { backgroundColor: '#00e5ff', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, justifyContent: 'center' },
-  sendBtnText: { color: '#030712', fontSize: 12, fontWeight: 'bold', fontFamily: 'monospace' }
+  textInput: { flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', color: '#f8fafc', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: 'rgba(59,130,246,0.25)', fontFamily: 'monospace', fontSize: 12 },
+  sendBtn: { backgroundColor: '#00e5ff', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, justifyContent: 'center' },
+  sendBtnText: { color: '#02040a', fontSize: 12, fontWeight: 'bold', fontFamily: 'monospace' }
 });
 

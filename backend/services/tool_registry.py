@@ -2027,5 +2027,58 @@ class ToolRegistry:
             handler=_generate_image_handler
         )
 
+        async def _navigate_ui_handler(tab: str):
+            valid_tabs = {"home", "chat", "voice", "tasks", "pc_control", "files", "automation", "system", "settings"}
+            norm_tab = tab.lower().strip().replace(" ", "_")
+            if norm_tab not in valid_tabs:
+                norm_tab = "home"
+            return {
+                "status": "success",
+                "tab": norm_tab,
+                "message": f"Navigated to {norm_tab.replace('_', ' ').title()} view."
+            }
+
+        self.register(
+            name="navigate_ui",
+            description="Switches the active UI view or tab on the desktop interface (home, chat, voice, tasks, pc_control, files, automation, system, settings).",
+            category="system",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "tab": {
+                        "type": "string",
+                        "enum": ["home", "chat", "voice", "tasks", "pc_control", "files", "automation", "system", "settings"],
+                        "description": "The target UI tab to open."
+                    }
+                },
+                "required": ["tab"]
+            },
+            handler=_navigate_ui_handler
+        )
+
+        async def _toggle_focus_mode_handler(enable: Optional[bool] = None):
+            is_enabled = True if enable is None else bool(enable)
+            return {
+                "status": "success",
+                "enabled": is_enabled,
+                "message": "Focus mode activated. Distractions muted." if is_enabled else "Focus mode deactivated."
+            }
+
+        self.register(
+            name="toggle_focus_mode",
+            description="Toggles or sets the focus mode state to minimize distractions.",
+            category="system",
+            risk_level="low",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "enable": {"type": "boolean", "description": "Whether to turn focus mode on or off."}
+                }
+            },
+            handler=_toggle_focus_mode_handler
+        )
+
+
 
 

@@ -38,15 +38,13 @@ export const LivePerceptionVisualizer: React.FC = () => {
   }, []);
 
   return (
-    <div className="p-5 rounded-2xl bg-slate-900 border border-cyan-500/30 space-y-4 font-mono text-xs text-slate-100 shadow-xl backdrop-blur-md">
+    <div className="p-5 rounded-2xl bg-slate-950/40 backdrop-blur-2xl border border-blue-500/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] hover:border-cyan-500/30 transition-all space-y-4 font-mono text-xs text-slate-100">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-        <div className="flex items-center space-x-2.5">
-          <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400">
-            <Eye className="w-5 h-5 animate-pulse" />
-          </div>
+      <div className="flex items-center justify-between border-b border-white/5 pb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#00e5ff] animate-pulse" />
           <div>
-            <h3 className="font-bold text-sm text-cyan-300 uppercase tracking-wide">
+            <h3 className="font-bold text-xs text-slate-200 tracking-[0.2em] uppercase font-mono">
               WHAT JARVIS IS SEEING (LIVE SCENE GRAPH)
             </h3>
             <span className="text-[10px] text-slate-400">
@@ -56,7 +54,7 @@ export const LivePerceptionVisualizer: React.FC = () => {
         </div>
 
         {data && (
-          <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-[10px] flex items-center gap-1.5">
+          <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-[10px] flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
             LIVE PERCEPTION ACTIVE
           </span>
@@ -66,7 +64,7 @@ export const LivePerceptionVisualizer: React.FC = () => {
       {data ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Active Window */}
-          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+          <div className="p-3.5 rounded-xl bg-slate-900/40 border border-white/5 space-y-1.5">
             <span className="text-slate-500 text-[10px] block uppercase font-bold flex items-center gap-1.5">
               <Monitor className="w-3.5 h-3.5 text-cyan-400" /> FOREGROUND WINDOW
             </span>
@@ -78,14 +76,14 @@ export const LivePerceptionVisualizer: React.FC = () => {
           </div>
 
           {/* Detected Buttons */}
-          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
-            <span className="text-slate-500 text-[10px] block uppercase font-bold flex items-center gap-1.5">
+          <div className="p-3.5 rounded-xl bg-slate-900/40 border border-white/5 space-y-1.5">
+            <span className="text-slate-400 text-[10px] block uppercase font-bold flex items-center gap-1.5">
               <Target className="w-3.5 h-3.5 text-purple-400" /> DETECTED BUTTONS ({data.buttons_detected.length})
             </span>
             <div className="space-y-1 max-h-24 overflow-y-auto custom-scrollbar">
               {data.buttons_detected.length > 0 ? (
                 data.buttons_detected.slice(0, 5).map((btn, idx) => (
-                  <span key={idx} className="block text-[11px] px-2 py-1 rounded bg-slate-900 text-purple-300 truncate border border-purple-500/20">
+                  <span key={idx} className="block text-[11px] px-2 py-1 rounded-lg bg-purple-950/20 text-purple-300 truncate border border-purple-500/20">
                     {btn}
                   </span>
                 ))
@@ -96,14 +94,14 @@ export const LivePerceptionVisualizer: React.FC = () => {
           </div>
 
           {/* Detected Form Textboxes */}
-          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
-            <span className="text-slate-500 text-[10px] block uppercase font-bold flex items-center gap-1.5">
+          <div className="p-3.5 rounded-xl bg-slate-900/40 border border-white/5 space-y-1.5">
+            <span className="text-slate-400 text-[10px] block uppercase font-bold flex items-center gap-1.5">
               <FormInput className="w-3.5 h-3.5 text-amber-400" /> TEXT INPUT FIELDS ({data.textboxes_detected.length})
             </span>
             <div className="space-y-1 max-h-24 overflow-y-auto custom-scrollbar">
               {data.textboxes_detected.length > 0 ? (
                 data.textboxes_detected.slice(0, 5).map((txt, idx) => (
-                  <span key={idx} className="block text-[11px] px-2 py-1 rounded bg-slate-900 text-amber-300 truncate border border-amber-500/20">
+                  <span key={idx} className="block text-[11px] px-2 py-1 rounded-lg bg-amber-950/20 text-amber-300 truncate border border-amber-500/20">
                     {txt}
                   </span>
                 ))
@@ -113,20 +111,20 @@ export const LivePerceptionVisualizer: React.FC = () => {
             </div>
           </div>
           {/* Workspace Intelligence Card */}
-          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 md:col-span-3">
-            <span className="text-slate-500 text-[10px] block uppercase font-bold flex items-center gap-1.5">
+          <div className="p-3.5 rounded-xl bg-slate-900/40 border border-white/5 space-y-1.5 md:col-span-3">
+            <span className="text-slate-400 text-[10px] block uppercase font-bold flex items-center gap-1.5">
               <Activity className="w-3.5 h-3.5 text-emerald-400" /> WORKSPACE INTELLIGENCE & HABIT PREDICTION
             </span>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] pt-1">
-              <div className="p-2 rounded bg-slate-900 border border-slate-800">
+              <div className="p-2.5 rounded-xl bg-slate-950/40 border border-white/5">
                 <span className="text-slate-500 block text-[9px] font-bold uppercase">ACTIVE PROJECT</span>
                 <span className="text-cyan-300 font-bold block truncate">JARVIS Personal AI OS</span>
               </div>
-              <div className="p-2 rounded bg-slate-900 border border-slate-800">
+              <div className="p-2.5 rounded-xl bg-slate-950/40 border border-white/5">
                 <span className="text-slate-500 block text-[9px] font-bold uppercase">WORKFLOW CLASSIFICATION</span>
                 <span className="text-purple-300 font-bold block truncate">Software Engineering & Coding</span>
               </div>
-              <div className="p-2 rounded bg-slate-900 border border-slate-800">
+              <div className="p-2.5 rounded-xl bg-slate-950/40 border border-white/5">
                 <span className="text-slate-500 block text-[9px] font-bold uppercase">NEXT LIKELY ACTION (HABIT PREDICTION)</span>
                 <span className="text-emerald-400 font-bold block truncate">Run Unit Verification Tests</span>
               </div>

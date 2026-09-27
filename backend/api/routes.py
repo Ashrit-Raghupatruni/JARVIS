@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from backend.models.schemas import SystemStatus, UserCommand
+from backend.models.schemas import SystemStatus, UserCommand, RuntimeDiagnostics, RuntimeDiagnosticsModel
 
 import sys
 import platform
@@ -165,10 +165,11 @@ async def list_tools_endpoint(request: Request):
 
 @router.get("/status")
 @router.get("/api/status")
+@router.get("/system/status")
 @router.get("/api/system/status")
 @router.get("/api/v1/status")
 async def system_status(request: Request):
-    """Get detailed system status including all services."""
+    """Get authoritative runtime diagnostics and detailed system status."""
     app = request.app
 
     services = {}
@@ -190,20 +191,29 @@ async def system_status(request: Request):
             "status": "online" if app.state.wake_word_service else "offline",
         }
 
-    if hasattr(app.state, "llm_service"):
+    active_provider = "unknown"
+    active_model = "unknown"
+    if hasattr(app.state, "llm_service") and app.state.llm_service:
         llm = app.state.llm_service
-        llm_info = {
-            "status": "online" if llm else "offline",
-        }
-        if llm:
-            llm_info["provider"] = getattr(llm, "primary_provider", "unknown")
-            if llm.primary_provider == "ollama":
-                llm_info["model"] = getattr(llm, "ollama_model_name", "unknown")
-            elif llm.primary_provider == "gemini":
-                llm_info["model"] = getattr(llm, "gemini_model_name", "unknown")
+        if hasattr(llm, "get_runtime_info"):
+            rinfo = llm.get_runtime_info()
+            active_provider = rinfo.get("provider", "unknown")
+            active_model = rinfo.get("model", "unknown")
+        else:
+            active_provider = getattr(llm, "primary_provider", "unknown")
+            if active_provider == "ollama":
+                active_model = getattr(llm, "ollama_model_name", "unknown")
+            elif active_provider == "gemini":
+                active_model = getattr(llm, "gemini_model_name", "unknown")
             else:
-                llm_info["model"] = getattr(llm, "openai_model_name", "unknown")
-        services["llm"] = llm_info
+                active_model = getattr(llm, "openai_model_name", "unknown")
+        services["llm"] = {
+            "status": "online",
+            "provider": active_provider,
+            "model": active_model,
+        }
+    else:
+        services["llm"] = {"status": "offline", "provider": "none", "model": "none"}
 
     if hasattr(app.state, "automation_service"):
         services["automation"] = {
@@ -234,12 +244,145 @@ async def system_status(request: Request):
     if hasattr(app.state, "connection_manager"):
         active_connections = len(app.state.connection_manager.active_connections)
 
+    uptime_val = round(time.time() - _start_time, 2)
+    diagnostics = RuntimeDiagnostics(
+        provider=active_provider,
+        model=active_model,
+        stt_status=services.get("speech_to_text", {}).get("status", "offline"),
+        stt_model=services.get("speech_to_text", {}).get("model"),
+        tts_status=services.get("text_to_speech", {}).get("status", "offline"),
+        tts_voice=getattr(app.state.tts_service, "_voice", None) if hasattr(app.state, "tts_service") and app.state.tts_service else None,
+        wake_word_status=services.get("wake_word", {}).get("status", "offline"),
+        wake_word_engine=getattr(app.state, "wake_word_engine_name", "openwakeword"),
+        automation_status=services.get("automation", {}).get("status", "offline"),
+        browser_status=services.get("browser", {}).get("status", "offline"),
+        screen_status=services.get("screen", {}).get("status", "offline"),
+        memory_status=services.get("memory", {}).get("status", "offline"),
+        backend_version="1.0.0",
+        uptime=uptime_val,
+        active_connections=active_connections,
+        platform=sys.platform,
+        services=services,
+    )
+    res = diagnostics.model_dump()
+    res["status"] = "ok"
+    return res
+
+
+@router.get("/device/info")
+@router.get("/api/device/info")
+@router.get("/api/v1/device/info")
+async def get_device_info(request: Request):
+    """Host device and pairing status information for companion clients."""
+    import socket
+    app = request.app
+    from backend.services.manager import ServiceManager
+    from backend.config import get_settings
+
+    settings = get_settings()
+    host_name = socket.gethostname()
+
+    # Discover local LAN IP
+    lan_ips = []
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        lan_ips.append(s.getsockname()[0])
+        s.close()
+    except Exception:
+        pass
+    if not lan_ips:
+        try:
+            lan_ips = [ip for ip in socket.gethostbyname_ex(host_name)[2] if not ip.startswith("127.")]
+        except Exception:
+            pass
+    if not lan_ips:
+        lan_ips = ["127.0.0.1"]
+
+    auth_svc = getattr(app.state, "mobile_auth_service", None) or ServiceManager.get_instance("mobile_auth_service")
+    trusted_count = 0
+    if auth_svc and hasattr(auth_svc, "get_trusted_devices"):
+        try:
+            trusted_count = len(auth_svc.get_trusted_devices())
+        except Exception:
+            pass
+
     return {
         "status": "ok",
-        "uptime": round(time.time() - _start_time, 2),
-        "services": services,
-        "active_connections": active_connections,
+        "device_name": f"{host_name} (JARVIS OS)",
+        "hostname": host_name,
+        "platform": sys.platform,
+        "server_port": settings.SERVER_PORT,
+        "lan_ips": lan_ips,
+        "primary_lan_ip": lan_ips[0] if lan_ips else "127.0.0.1",
+        "version": "1.0.0",
+        "paired_devices_count": trusted_count,
+        "pairing_enabled": True
     }
+
+
+@router.post("/device/pair")
+@router.post("/api/device/pair")
+@router.post("/api/v1/device/pair")
+async def pair_device_root(req: Dict[str, Any], request: Request):
+    """
+    Unified companion device pairing endpoint.
+    Accepts PIN, QR payload, or session confirmation from mobile companions.
+    Fails closed if credentials/PIN/session are invalid.
+    """
+    app = request.app
+    from backend.services.manager import ServiceManager
+    auth_svc = getattr(app.state, "mobile_auth_service", None) or ServiceManager.get_instance("mobile_auth_service")
+    if not auth_svc:
+        from backend.services.mobile_auth import MobileAuthService
+        auth_svc = MobileAuthService()
+        app.state.mobile_auth_service = auth_svc
+
+    pin = str(req.get("pin", "")).strip()
+    qr_payload = str(req.get("qr_payload", "")).strip()
+    session_id = str(req.get("pairing_session_id", "")).strip()
+    pairing_code = str(req.get("pairing_code", "")).strip()
+    device_name = str(req.get("device_name", "Mobile Companion")).strip()
+    device_id = str(req.get("device_id", "mobile_client")).strip()
+
+    # 1. QR Payload pairing
+    if qr_payload:
+        if not qr_payload.startswith("jarvis_pair://"):
+            return JSONResponse(status_code=400, content={"status": "error", "error": "Invalid QR code payload format"})
+        parts = qr_payload.replace("jarvis_pair://", "").split(":")
+        if len(parts) != 2:
+            return JSONResponse(status_code=400, content={"status": "error", "error": "Malformed QR code payload"})
+        res = auth_svc.confirm_pairing(parts[0], parts[1], device_id)
+        if not res:
+            return JSONResponse(status_code=401, content={"status": "error", "error": "QR code pairing expired or invalid"})
+        token_val = getattr(res, "access_token", None) or getattr(res, "token", "")
+        return {"status": "paired", "token": token_val, "device_id": device_id, "friendly_name": getattr(res, "friendly_name", device_name)}
+
+    # 2. Session ID + Pairing Code
+    if session_id and pairing_code:
+        res = auth_svc.confirm_pairing(session_id, pairing_code, device_id)
+        if not res:
+            return JSONResponse(status_code=401, content={"status": "error", "error": "Invalid or expired pairing code"})
+        token_val = getattr(res, "access_token", None) or getattr(res, "token", "")
+        return {"status": "paired", "token": token_val, "device_id": device_id, "friendly_name": getattr(res, "friendly_name", device_name)}
+
+    # 3. Direct PIN (Easy Pair)
+    if pin:
+        res = auth_svc.easy_pair(pin, device_name, device_id)
+        if not res:
+            return JSONResponse(status_code=401, content={"status": "error", "error": "Invalid or expired pairing PIN"})
+        return {"status": "paired", "token": res.get("token"), "device_id": device_id}
+
+    # 4. If initiating a new pairing session from host
+    init_res = auth_svc.initiate_pairing(device_name, device_id)
+    return {
+        "status": "pending",
+        "pairing_session_id": init_res.pairing_session_id,
+        "pairing_code": init_res.pairing_code,
+        "qr_payload": f"jarvis_pair://{init_res.pairing_session_id}:{init_res.pairing_code}",
+        "expires_in": 300
+    }
+
 
 
 @router.post("/live_mode/toggle")

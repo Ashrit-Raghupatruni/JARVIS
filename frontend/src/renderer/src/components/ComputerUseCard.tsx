@@ -59,55 +59,55 @@ export default function ComputerUseCard() {
   }, [])
 
   return (
-    <div className="bg-[rgba(10,20,38,0.75)] backdrop-blur-md border border-[rgba(0,229,255,0.18)] rounded-xl p-3 shadow-lg hover:border-[rgba(0,229,255,0.35)] transition-all">
-      <div className="flex items-center justify-between mb-2">
+    <div className="bg-slate-950/40 backdrop-blur-2xl border border-blue-500/20 rounded-2xl p-4 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] hover:border-cyan-500/30 transition-all">
+      <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-3">
         <div className="flex items-center gap-2">
-          <Monitor className="w-4 h-4 text-[#00e5ff]" />
-          <span className="text-xs font-semibold text-[#00e5ff] tracking-wider uppercase">Computer Use & Inspector</span>
+          <Monitor className="w-4 h-4 text-cyan-400" />
+          <span className="text-xs font-bold text-slate-200 tracking-[0.2em] uppercase font-mono">Computer Use & Inspector</span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <button
             onClick={handleTakeScreenshot}
-            className="flex items-center gap-1 text-[10px] font-mono bg-[rgba(0,230,118,0.1)] hover:bg-[rgba(0,230,118,0.2)] text-[#00e676] border border-[rgba(0,230,118,0.3)] px-2 py-0.5 rounded-md transition-all"
+            className="flex items-center gap-1.5 text-[10px] font-mono font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-full transition-all cursor-pointer shadow-sm"
             title="Capture Screenshot"
           >
-            <Camera className="w-3 h-3" />
+            <Camera className="w-3.5 h-3.5" />
             <span>Capture</span>
           </button>
           <button
             onClick={fetchActiveWindow}
             disabled={inspecting}
-            className="flex items-center gap-1 text-[10px] font-mono bg-[rgba(0,229,255,0.1)] hover:bg-[rgba(0,229,255,0.2)] text-[#00e5ff] border border-[rgba(0,229,255,0.3)] px-2 py-0.5 rounded-md transition-all"
+            className="flex items-center gap-1.5 text-[10px] font-mono font-semibold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2.5 py-1 rounded-full transition-all cursor-pointer shadow-sm"
           >
-            <RefreshCw className={`w-3 h-3 ${inspecting ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${inspecting ? 'animate-spin' : ''}`} />
             {inspecting ? 'Scanning...' : 'Inspect'}
           </button>
         </div>
       </div>
 
-      <div className="space-y-1.5 text-xs">
-        <div className="flex items-center justify-between p-1.5 rounded-md bg-[rgba(15,30,56,0.4)] border border-[rgba(0,229,255,0.08)]">
-          <span className="text-[#b0bec5]">Primary Monitor:</span>
-          <span className="font-mono text-[#00e5ff] font-semibold">{hierarchy.primaryResolution}</span>
+      <div className="space-y-2 text-xs">
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/40 border border-white/5 shadow-inner">
+          <span className="text-slate-400 font-medium">Primary Monitor:</span>
+          <span className="font-mono text-cyan-300 font-semibold">{hierarchy.primaryResolution}</span>
         </div>
 
-        <div className="flex items-center justify-between p-1.5 rounded-md bg-[rgba(15,30,56,0.4)] border border-[rgba(0,229,255,0.08)]">
-          <span className="text-[#b0bec5]">Focused Window:</span>
-          <span className="font-mono text-[#00e676] font-semibold truncate max-w-[170px]" title={hierarchy.foregroundWindow}>
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/40 border border-white/5 shadow-inner">
+          <span className="text-slate-400 font-medium">Focused Window:</span>
+          <span className="font-mono text-emerald-400 font-semibold truncate max-w-[220px]" title={hierarchy.foregroundWindow}>
             {hierarchy.foregroundWindow}
           </span>
         </div>
 
-        <div className="flex items-center justify-between p-1.5 rounded-md bg-[rgba(15,30,56,0.4)] border border-[rgba(0,229,255,0.08)]">
-          <span className="text-[#b0bec5]">Process / HWND:</span>
-          <span className="font-mono text-[#ffaa00] font-semibold">
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/40 border border-white/5 shadow-inner">
+          <span className="text-slate-400 font-medium">Process / HWND:</span>
+          <span className="font-mono text-amber-300 font-semibold">
             {hierarchy.processName} (0x{hierarchy.hwnd.toString(16).toUpperCase()})
           </span>
         </div>
 
-        <div className="flex items-center justify-between p-1.5 rounded-md bg-[rgba(15,30,56,0.4)] border border-[rgba(0,229,255,0.08)]">
-          <span className="text-[#b0bec5]">Accessibility Nodes:</span>
-          <span className="font-mono text-[#d500f9] font-semibold">{hierarchy.accessibilityElements} UI elements</span>
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/40 border border-white/5 shadow-inner">
+          <span className="text-slate-400 font-medium">Accessibility Nodes:</span>
+          <span className="font-mono text-indigo-300 font-semibold">{hierarchy.accessibilityElements} UI elements</span>
         </div>
 
         <div className="mt-2 pt-2 border-t border-[rgba(0,229,255,0.1)]">

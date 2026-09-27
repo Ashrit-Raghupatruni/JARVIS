@@ -2,6 +2,9 @@
  * JARVIS Mobile Companion - Network API & WebSocket Client
  */
 
+import { RobustConnectionManager } from '../services/connectionManager';
+import { RuntimeDiagnostics } from '../types/protocol';
+
 export interface SystemTelemetryData {
   timestamp: number;
   cpu_percent: number;
@@ -77,6 +80,7 @@ export class JarvisMobileClient {
   private useSsl: boolean;
   private token: string | null = null;
   private ws: WebSocket | null = null;
+  private connectionManager: RobustConnectionManager | null = null;
 
   constructor(serverHost = "10.0.2.2", serverPort = 8000, useSsl = false) {
     this.serverHost = serverHost;
@@ -88,6 +92,9 @@ export class JarvisMobileClient {
     this.serverHost = host;
     this.serverPort = port;
     this.useSsl = useSsl;
+    if (this.connectionManager) {
+      this.connectionManager.updateConfig({ host, port, useSsl });
+    }
   }
 
   getHost(): string {
@@ -98,9 +105,23 @@ export class JarvisMobileClient {
     return this.serverPort;
   }
 
-
   setAuthToken(token: string) {
     this.token = token;
+    if (this.connectionManager) {
+      this.connectionManager.updateConfig({ token });
+    }
+  }
+
+  getConnectionManager(): RobustConnectionManager {
+    if (!this.connectionManager) {
+      this.connectionManager = new RobustConnectionManager({
+        host: this.serverHost,
+        port: this.serverPort,
+        useSsl: this.useSsl,
+        token: this.token
+      });
+    }
+    return this.connectionManager;
   }
 
   get baseUrl() {
@@ -110,7 +131,54 @@ export class JarvisMobileClient {
 
   get wsUrl() {
     const scheme = this.useSsl ? "wss" : "ws";
-    return `${scheme}://${this.serverHost}:${this.serverPort}/api/v1/mobile/ws/stream`;
+    return `${scheme}://${this.serverHost}:${this.serverPort}/ws`;
+  }
+
+  // ── Unified Core Endpoints ──────────────────────────────────────────────
+  async fetchHealth() {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/health`);
+    return res.json();
+  }
+
+  async fetchSystemStatus(): Promise<RuntimeDiagnostics> {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/system/status`);
+    return res.json();
+  }
+
+  async fetchDeviceInfo(): Promise<Record<string, unknown>> {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/device/info`);
+    return res.json();
+  }
+
+  async pairDeviceUnified(payload: Record<string, unknown>) {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/device/pair`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.token || data.access_token) {
+      this.setAuthToken(data.token || data.access_token);
+    }
+    return data;
+  }
+
+  async sendRootCommand(text: string, conversationId?: string | number | null) {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/command`, {
+      method: "POST",
+      headers: this.getHeaders(),
+      body: JSON.stringify({ text, conversation_id: conversationId })
+    });
+    return res.json();
+  }
+
+  async updateRootSettings(settings: Record<string, unknown>) {
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/settings`, {
+      method: "POST",
+      headers: this.getHeaders(),
+      body: JSON.stringify(settings)
+    });
+    return res.json();
   }
 
   private async fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 8000): Promise<Response> {
@@ -379,6 +447,12 @@ export class JarvisMobileClient {
   sendChatMessage(text: string) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ type: "chat", text }));
+    }
+  }
+
+  sendWebSocketMessage(msg: any) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(msg));
     }
   }
 

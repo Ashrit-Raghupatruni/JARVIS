@@ -152,11 +152,11 @@ export default function KnowledgeHubCard() {
   }
 
   return (
-    <div className="bg-[rgba(10,20,38,0.75)] backdrop-blur-md border border-[rgba(0,229,255,0.18)] rounded-xl p-3 shadow-lg hover:border-[rgba(0,229,255,0.35)] transition-all">
-      <div className="flex items-center justify-between mb-2">
+    <div className="bg-slate-950/40 backdrop-blur-2xl border border-blue-500/20 rounded-2xl p-4 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] hover:border-cyan-500/30 transition-all">
+      <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-3">
         <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-[#00e5ff]" />
-          <span className="text-xs font-semibold text-[#00e5ff] tracking-wider uppercase font-mono">Knowledge Hub (RAG Engine)</span>
+          <FileText className="w-4 h-4 text-cyan-400" />
+          <span className="text-xs font-bold text-slate-200 tracking-[0.2em] uppercase font-mono">Knowledge Hub (RAG Engine)</span>
         </div>
         <label className="flex items-center gap-1 text-[10px] font-mono bg-[rgba(0,229,255,0.12)] hover:bg-[rgba(0,229,255,0.25)] text-[#00e5ff] border border-[rgba(0,229,255,0.3)] px-2 py-0.5 rounded cursor-pointer transition-all">
           <Upload className="w-3 h-3" />

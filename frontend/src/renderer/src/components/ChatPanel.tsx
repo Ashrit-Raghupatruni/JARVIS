@@ -140,30 +140,27 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
             reader.readAsText(file)
           }
         }}
-        className={`flex flex-col glass-heavy rounded-xl overflow-hidden transition-all duration-500 relative w-full ${
+        className={`flex flex-col bg-transparent rounded-2xl overflow-hidden transition-all duration-500 relative w-full ${
           isDragging ? 'border border-cyan-500 bg-slate-950/85' : ''
-        } ${isMinimized ? 'h-12' : 'h-full'}`}
-        style={{
-          boxShadow: '0 0 30px rgba(0, 0, 0, 0.3), 0 0 15px rgba(0, 229, 255, 0.05)'
-        }}
+        } ${isMinimized ? 'h-14' : 'h-full'}`}
       >
         {isDragging && (
-          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 border border-cyan-400 rounded-xl animate-fade-in pointer-events-none">
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 border border-cyan-400 rounded-2xl animate-fade-in pointer-events-none">
             <svg className="w-12 h-12 text-cyan-400 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
             </svg>
-            <span className="text-sm font-medium text-cyan-300 mt-3">Drop file to attach</span>
-            <span className="text-xs text-slate-400 mt-1">Supports source code, logs, text, markdown</span>
+            <span className="text-sm font-medium text-cyan-300 mt-3 font-mono">Drop file to attach</span>
+            <span className="text-xs text-slate-400 mt-1 font-mono">Supports source code, logs, text, markdown</span>
           </div>
         )}
         {/* Header */}
         <div
-          className="flex items-center justify-between px-4 h-12 border-b border-cyan-500/20 cursor-pointer shrink-0"
+          className="flex items-center justify-between px-5 h-14 border-b border-white/5 cursor-pointer shrink-0"
           onClick={() => setIsMinimized(!isMinimized)}
         >
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-            <h2 className="text-sm font-semibold text-slate-200 tracking-wide font-mono">AI CHAT</h2>
+          <div className="flex items-center gap-2.5">
+            <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#00e5ff] animate-pulse" />
+            <h2 className="text-xs font-bold text-slate-200 tracking-[0.2em] font-mono uppercase">AI CONVERSATION</h2>
             
             {/* Connection Status Indicator Pill */}
             <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded tracking-wider border flex items-center gap-1.5 transition-all ${
@@ -278,19 +275,19 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
             </div>
 
             {/* Input */}
-            <div className="px-3 pb-3 pt-1 border-t border-slate-800 shrink-0">
+            <div className="p-4 border-t border-white/5 shrink-0">
               {attachedFile && (
-                <div className="flex items-center justify-between mx-1 mb-2 px-3 py-1.5 rounded bg-slate-900 border border-cyan-500/30 text-xs text-slate-200 animate-fade-in">
-                  <span className="truncate max-w-[85%] font-mono">📄 {attachedFile.name}</span>
+                <div className="flex items-center justify-between mx-1 mb-2 px-3 py-1.5 rounded-xl bg-slate-900/60 border border-cyan-500/30 text-xs text-slate-200 animate-fade-in font-mono">
+                  <span className="truncate max-w-[85%]">📄 {attachedFile.name}</span>
                   <button
                     onClick={() => setAttachedFile(null)}
-                    className="text-slate-400 hover:text-cyan-400 transition-fast"
+                    className="text-slate-400 hover:text-cyan-400 transition"
                   >
                     ✕
                   </button>
                 </div>
               )}
-              <div className="flex items-center gap-2 bg-slate-950/80 rounded-lg px-3 py-1.5 border border-cyan-500/30">
+              <div className="flex items-center gap-2 bg-slate-950/60 rounded-2xl px-4 py-2 border border-blue-500/20 focus-within:border-cyan-400/50 shadow-[0_4px_20px_rgba(0,0,0,0.25)] transition-all">
                 <input
                   ref={inputRef}
                   type="text"
@@ -312,12 +309,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
                       store.setAssistantState('idle')
                     }
                   }}
-                  className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${
+                  className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all cursor-pointer ${
                     assistantState === 'listening'
-                      ? 'bg-rose-500/30 text-rose-400 border border-rose-500/50 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.4)]'
-                      : 'bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                      ? 'bg-rose-500/30 text-rose-300 border border-rose-500/50 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.4)]'
+                      : 'bg-blue-600/30 hover:bg-blue-600/50 text-cyan-200 border border-cyan-400/50 shadow-[0_0_10px_rgba(0,229,255,0.2)]'
                   }`}
-                  title={assistantState === 'listening' ? "Stop Mic (Click or Ctrl+Space)" : "Activate Mic (Click or Ctrl+Space)"}
+                  title={assistantState === 'listening' ? "Stop Mic" : "Activate Mic"}
                 >
                   <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                     <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
@@ -328,15 +325,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onSendMessage }) => {
                 <button
                   onClick={handleSend}
                   disabled={!inputText.trim() && !attachedFile}
-                  className="w-7 h-7 flex items-center justify-center rounded-md bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  className="w-8 h-8 flex items-center justify-center rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-bold disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(0,229,255,0.3)] hover:opacity-90 transition-all cursor-pointer"
                   title="Send Message"
                 >
                   <svg
-                    className="w-3.5 h-3.5 text-cyan-300"
+                    className="w-4 h-4 text-slate-950"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
-                    strokeWidth={2}
+                    strokeWidth={2.5}
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
@@ -428,12 +425,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, formatTime, onIm
       )}
 
       <div
-        className={`max-w-[85%] px-3.5 py-2.5 rounded-xl transition-all duration-200 ${
+        className={`max-w-[85%] px-4 py-3 rounded-2xl transition-all duration-200 ${
           isUser
-            ? 'bg-cyan-950/70 border border-cyan-500/30 text-cyan-100 rounded-tr-none shadow-[0_2px_10px_rgba(0,229,255,0.1)]'
+            ? 'bg-blue-600/30 border border-cyan-400/40 text-cyan-100 rounded-tr-none shadow-[0_0_20px_rgba(0,229,255,0.15)]'
             : isVisionAck
-            ? 'bg-amber-950/60 border border-amber-500/40 text-amber-100 rounded-tl-none shadow-[0_2px_12px_rgba(245,158,11,0.2)]'
-            : 'bg-slate-900/90 border border-slate-800 text-slate-100 rounded-tl-none shadow-[0_2px_10px_rgba(0,0,0,0.3)]'
+            ? 'bg-amber-950/40 border border-amber-500/40 text-amber-100 rounded-tl-none shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+            : 'bg-slate-900/60 border border-white/10 text-slate-100 rounded-tl-none shadow-[0_8px_20px_rgba(0,0,0,0.3)] backdrop-blur-md'
         }`}
       >
         {/* Vision Live Pulse Badge */}

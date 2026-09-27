@@ -166,21 +166,43 @@ manager = RobustConnectionManager()
 
 
 @router.websocket("/ws")
+@router.websocket("/api/ws")
+@router.websocket("/api/v1/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """
     Main WebSocket endpoint for JARVIS communication.
-    Supports non-blocking queue processing during heavy LLM inference.
+    Supports versioned V1 protocol envelope, request correlation, token auth,
+    and non-blocking queue processing during heavy LLM inference.
     """
     app = websocket.app
-    client_id = websocket.query_params.get("client_id") or f"desktop_{id(websocket)}"
-    session = await manager.connect(websocket, client_id=client_id)
+    client_id = websocket.query_params.get("client_id") or f"client_{id(websocket)}"
+    token = websocket.query_params.get("token") or websocket.headers.get("authorization")
+    session_id_param = websocket.query_params.get("session_id")
 
+    # If auth token is provided (e.g. mobile companion client), verify it
+    if token:
+        from backend.services.manager import ServiceManager
+        auth_svc = getattr(app.state, "mobile_auth_service", None) or ServiceManager.get_instance("mobile_auth_service")
+        if auth_svc and hasattr(auth_svc, "verify_token"):
+            auth_payload = auth_svc.verify_token(token)
+            if not auth_payload:
+                logger.warning("Rejecting unauthorized WebSocket connection with invalid token.")
+                await websocket.close(code=4001, reason="Unauthorized companion token")
+                return
+            client_id = auth_payload.get("sub", client_id)
+
+    session = await manager.connect(websocket, client_id=client_id)
     app.state.connection_manager = manager
 
-    # Send initial status
+    # Send initial status envelope (V1 Protocol)
     await manager.send_message(
         websocket,
-        WSMessage(type="status", data={"state": "idle", "message": "JARVIS online", "client_id": client_id}),
+        WSMessage(
+            version="1",
+            type="status",
+            session_id=session_id_param or client_id,
+            data={"state": "idle", "message": "JARVIS online", "client_id": client_id}
+        ),
         client_id=client_id
     )
 
@@ -206,17 +228,29 @@ async def websocket_endpoint(websocket: WebSocket):
                     t_start = time.time()
                     text_cmd = payload.get("text", "") if isinstance(payload, dict) else str(payload)
                     conv_id_arg = payload.get("conversation_id") if isinstance(payload, dict) else None
+                    req_id_arg = payload.get("request_id") if isinstance(payload, dict) else None
+                    sess_id_arg = payload.get("session_id") if isinstance(payload, dict) else (session_id_param or client_id)
                     collected_texts = []
-                    logger.info("📩 [Incoming Message]: '{}'", text_cmd)
+                    logger.info("📩 [Incoming Message] (req_id={}): '{}'", req_id_arg, text_cmd)
 
                     try:
                         if planner and hasattr(planner, "plan_and_execute"):
                             async for msg in planner.plan_and_execute(text_cmd, conversation_id=conv_id_arg):
+                                if isinstance(msg, WSMessage):
+                                    if req_id_arg and not msg.request_id:
+                                        msg.request_id = req_id_arg
+                                    if sess_id_arg and not msg.session_id:
+                                        msg.session_id = sess_id_arg
                                 await manager.send_message(websocket, msg, client_id=client_id)
                                 if hasattr(msg, "data") and isinstance(msg.data, dict) and msg.data.get("text"):
                                     collected_texts.append(msg.data["text"])
                         elif v_agent and hasattr(v_agent, "handle_text_command"):
                             async for response_msg in v_agent.handle_text_command(text_cmd):
+                                if isinstance(response_msg, WSMessage):
+                                    if req_id_arg and not response_msg.request_id:
+                                        response_msg.request_id = req_id_arg
+                                    if sess_id_arg and not response_msg.session_id:
+                                        response_msg.session_id = sess_id_arg
                                 await manager.send_message(websocket, response_msg, client_id=client_id)
                                 if hasattr(response_msg, "data") and isinstance(response_msg.data, dict) and response_msg.data.get("text"):
                                     collected_texts.append(response_msg.data["text"])
@@ -224,7 +258,13 @@ async def websocket_endpoint(websocket: WebSocket):
                             logger.warning("No agent or planner available to process text command: {}", payload)
                     except Exception as exec_err:
                         logger.error("Execution error for '{}': {}", text_cmd, exec_err)
-                        err_msg = WSMessage(type="response", data={"text": f"I apologize, sir. An error occurred: {exec_err}"})
+                        err_msg = WSMessage(
+                            version="1",
+                            type="response",
+                            request_id=req_id_arg,
+                            session_id=sess_id_arg,
+                            data={"text": f"I apologize, sir. An error occurred: {exec_err}"}
+                        )
                         await manager.send_message(websocket, err_msg, client_id=client_id)
                         collected_texts.append(f"Error: {exec_err}")
 
@@ -321,6 +361,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     msg_type = data.get("type", "")
                     msg_data = data.get("data", {})
                     msg_id = data.get("msg_id")
+                    client_req_id = data.get("request_id")
+                    client_sess_id = data.get("session_id") or session_id_param or client_id
 
                     # Handle ACK response from client
                     if msg_type == "ack" and msg_id is not None:
@@ -329,7 +371,13 @@ async def websocket_endpoint(websocket: WebSocket):
                     elif msg_type in ("ping", "heartbeat"):
                         await manager.send_message(
                             websocket,
-                            WSMessage(type="pong", data={"timestamp": time.time()}),
+                            WSMessage(
+                                version="1",
+                                type="pong",
+                                request_id=client_req_id,
+                                session_id=client_sess_id,
+                                data={"timestamp": time.time()}
+                            ),
                             client_id=client_id
                         )
 
@@ -337,13 +385,27 @@ async def websocket_endpoint(websocket: WebSocket):
                         text = msg_data.get("text", "")
                         conv_id = msg_data.get("conversation_id")
                         if text:
-                            # Acknowledge receipt of command back to client
+                            # Acknowledge receipt of command back to client with request_id correlation
                             await manager.send_message(
                                 websocket,
-                                WSMessage(type="ack", data={"received": text}),
+                                WSMessage(
+                                    version="1",
+                                    type="ack",
+                                    request_id=client_req_id,
+                                    session_id=client_sess_id,
+                                    data={"received": text}
+                                ),
                                 client_id=client_id
                             )
-                            await work_queue.put(("text_command", {"text": text, "conversation_id": conv_id}))
+                            await work_queue.put((
+                                "text_command",
+                                {
+                                    "text": text,
+                                    "conversation_id": conv_id,
+                                    "request_id": client_req_id,
+                                    "session_id": client_sess_id
+                                }
+                            ))
 
                     elif msg_type == "push_to_talk_start":
                         while not work_queue.empty():

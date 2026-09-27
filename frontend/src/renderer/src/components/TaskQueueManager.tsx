@@ -126,22 +126,20 @@ export default function TaskQueueManager({
   }
 
   return (
-    <div className="flex flex-col h-full w-full bg-slate-950/90 rounded-xl border border-cyan-500/20 overflow-hidden shadow-2xl backdrop-blur-xl">
+    <div className="flex flex-col h-full w-full bg-slate-950/40 backdrop-blur-2xl rounded-2xl border border-blue-500/20 overflow-hidden shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900/80 border-b border-cyan-500/20">
+      <div className="flex items-center justify-between px-5 py-3.5 bg-slate-950/30 border-b border-white/5">
         <div className="flex items-center gap-2.5">
-          <div className="p-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-            <ListOrdered className="w-4 h-4" />
-          </div>
+          <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#00e5ff] animate-pulse" />
           <div>
-            <div className="text-xs font-bold text-slate-100 uppercase tracking-wider">Task Queue & Scheduler</div>
+            <div className="text-xs font-bold text-slate-200 tracking-[0.2em] uppercase font-mono">Task Queue & Scheduler</div>
             <div className="text-[10px] font-mono text-slate-400">Multi-Task Execution & Priority Reordering</div>
           </div>
         </div>
 
         <button
           onClick={() => setShowAdd(prev => !prev)}
-          className="flex items-center gap-1 px-2.5 py-1 rounded bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-mono transition-all cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600/30 hover:bg-blue-600/50 border border-cyan-400/50 text-cyan-200 hover:text-white text-xs font-mono transition-all shadow-[0_0_15px_rgba(0,229,255,0.2)] cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>Add Task</span>
@@ -149,14 +147,14 @@ export default function TaskQueueManager({
       </div>
 
       {/* Sub-Agent Quota & Long-Horizon Checkpoint Status Bar */}
-      <div className="px-4 py-2 bg-slate-950/90 border-b border-cyan-500/10 flex items-center justify-between text-[10px] font-mono text-slate-400">
+      <div className="px-5 py-2.5 bg-slate-950/20 border-b border-white/5 flex items-center justify-between text-[10px] font-mono text-slate-400">
         <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1">
+          <span className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
             <span>Sandbox Quota: <strong className="text-slate-200">512 MB RSS</strong> | <strong className="text-slate-200">30s CPU</strong></span>
           </span>
-          <span className="text-slate-700">|</span>
-          <span className="flex items-center gap-1">
+          <span className="text-white/10">|</span>
+          <span className="flex items-center gap-1.5">
             <span>Recovery Interlock: <strong className="text-cyan-300">Active Checkpoint</strong></span>
           </span>
         </div>
@@ -171,7 +169,7 @@ export default function TaskQueueManager({
               console.log('Recovery trigger notice:', e);
             }
           }}
-          className="px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-900/50 transition cursor-pointer"
+          className="px-2.5 py-1 rounded-lg bg-blue-950/40 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-900/40 hover:text-white transition cursor-pointer"
         >
           Scan & Resume Goals
         </button>
@@ -179,27 +177,28 @@ export default function TaskQueueManager({
 
       {/* Add Task Drawer */}
 
+      {/* Add Task Drawer */}
       {showAdd && (
-        <div className="p-3 bg-slate-900 border-b border-slate-800 flex flex-col gap-2">
+        <div className="p-4 bg-slate-900/60 border-b border-white/10 backdrop-blur-xl flex flex-col gap-2.5">
           <input
             type="text"
             placeholder="Task Title (e.g. Daily Briefing)"
             value={newTitle}
             onChange={e => setNewTitle(e.target.value)}
-            className="px-2.5 py-1.5 rounded text-xs bg-slate-950 border border-slate-700 text-slate-200 focus:outline-none focus:border-cyan-400"
+            className="px-3 py-2 rounded-xl text-xs bg-slate-950/60 border border-white/10 text-slate-200 focus:outline-none focus:border-cyan-400/60 transition"
           />
           <input
             type="text"
             placeholder="Instruction Command (e.g. Summarize news and open Chrome)"
             value={newCommand}
             onChange={e => setNewCommand(e.target.value)}
-            className="px-2.5 py-1.5 rounded text-xs bg-slate-950 border border-slate-700 text-slate-200 focus:outline-none focus:border-cyan-400"
+            className="px-3 py-2 rounded-xl text-xs bg-slate-950/60 border border-white/10 text-slate-200 focus:outline-none focus:border-cyan-400/60 transition"
           />
           <div className="flex justify-end gap-2 mt-1">
-            <button onClick={() => setShowAdd(false)} className="px-2.5 py-1 text-xs text-slate-400 hover:text-slate-200">
+            <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 transition">
               Cancel
             </button>
-            <button onClick={handleAdd} className="px-3 py-1 rounded text-xs font-bold bg-cyan-500 text-slate-950 hover:bg-cyan-400">
+            <button onClick={handleAdd} className="px-4 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 hover:opacity-90 shadow-[0_0_15px_rgba(0,229,255,0.3)] transition">
               Queue Task
             </button>
           </div>
@@ -207,7 +206,7 @@ export default function TaskQueueManager({
       )}
 
       {/* Task Queue List */}
-      <div className="flex-1 p-3 overflow-y-auto space-y-2.5 custom-scrollbar">
+      <div className="flex-1 p-4 overflow-y-auto space-y-3 custom-scrollbar">
         {items.map((task, idx) => {
           const isRunning = task.status === 'running'
           const isCompleted = task.status === 'completed'
@@ -217,16 +216,16 @@ export default function TaskQueueManager({
           return (
             <div
               key={task.id}
-              className={`p-3 rounded-lg border backdrop-blur-md transition-all flex flex-col gap-2 ${
+              className={`p-3.5 rounded-xl border backdrop-blur-md transition-all flex flex-col gap-2.5 ${
                 isRunning
-                  ? 'bg-cyan-950/40 border-cyan-500/60 shadow-[0_0_15px_rgba(0,229,255,0.15)]'
+                  ? 'bg-blue-950/30 border-cyan-400/50 shadow-[0_0_20px_rgba(0,229,255,0.15)]'
                   : isCompleted
-                  ? 'bg-slate-900/40 border-emerald-500/30'
+                  ? 'bg-slate-900/40 border-emerald-500/20'
                   : isPaused
                   ? 'bg-amber-950/20 border-amber-500/30'
                   : isCancelled
-                  ? 'bg-slate-900/20 border-slate-800 opacity-60'
-                  : 'bg-slate-900/60 border-slate-800'
+                  ? 'bg-slate-900/20 border-white/5 opacity-50'
+                  : 'bg-slate-900/40 border-white/5 hover:border-cyan-500/30'
               }`}
             >
               {/* Task Row Header */}
@@ -277,7 +276,7 @@ export default function TaskQueueManager({
                   {!isCompleted && !isCancelled && (
                     <button
                       onClick={() => handleTogglePause(task)}
-                      className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-cyan-400 transition-all cursor-pointer"
+                      className="p-1.5 rounded-lg bg-slate-900/60 hover:bg-slate-800 text-slate-300 hover:text-cyan-400 border border-white/5 transition-all cursor-pointer"
                       title={isPaused ? 'Resume Task' : 'Pause Task'}
                     >
                       {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
@@ -286,7 +285,7 @@ export default function TaskQueueManager({
                   {!isCompleted && !isCancelled && (
                     <button
                       onClick={() => handleCancelTask(task.id)}
-                      className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-rose-400 transition-all cursor-pointer"
+                      className="p-1.5 rounded-lg bg-slate-900/60 hover:bg-slate-800 text-slate-300 hover:text-rose-400 border border-white/5 transition-all cursor-pointer"
                       title="Cancel Task"
                     >
                       <XCircle className="w-3.5 h-3.5" />
@@ -296,17 +295,17 @@ export default function TaskQueueManager({
               </div>
 
               {/* Progress bar */}
-              <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden border border-slate-800">
+              <div className="w-full bg-slate-950/80 rounded-full h-1.5 overflow-hidden border border-white/5">
                 <div
                   className={`h-full transition-all duration-500 ${
-                    isRunning ? 'bg-cyan-400 shadow-[0_0_8px_#00e5ff]' : isCompleted ? 'bg-emerald-400' : 'bg-amber-400'
+                    isRunning ? 'bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_8px_#00e5ff]' : isCompleted ? 'bg-emerald-400' : 'bg-amber-400'
                   }`}
                   style={{ width: `${Math.round(task.progress * 100)}%` }}
                 />
               </div>
 
               {/* Logs / Result */}
-              {task.result && <div className="text-[10px] font-mono text-emerald-300 bg-emerald-950/30 p-1.5 rounded border border-emerald-500/20">{task.result}</div>}
+              {task.result && <div className="text-[10px] font-mono text-emerald-300 bg-emerald-950/20 p-2 rounded-lg border border-emerald-500/20">{task.result}</div>}
             </div>
           )
         })}

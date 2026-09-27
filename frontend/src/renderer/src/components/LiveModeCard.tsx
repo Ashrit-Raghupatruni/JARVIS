@@ -321,10 +321,10 @@ export default function LiveModeCard() {
   }
 
   return (
-    <div className={`flex flex-col h-full w-full bg-slate-950/90 rounded-xl border transition-all duration-300 overflow-hidden backdrop-blur-xl p-4 gap-4 ${
+    <div className={`flex flex-col h-full w-full bg-slate-950/40 backdrop-blur-2xl rounded-2xl border transition-all duration-300 overflow-hidden p-4 gap-4 ${
       isEnabled
         ? 'border-cyan-400 shadow-[0_0_30px_rgba(0,229,255,0.35)] ring-1 ring-cyan-400/50'
-        : 'border-cyan-500/20 shadow-2xl'
+        : 'border-blue-500/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]'
     }`}>
       {/* Background Dimming Backdrop when Live Mode is active */}
       {isEnabled && (

@@ -28,6 +28,8 @@ export type WSMessageType =
   | 'serious_mode_changed'
   | 'clap_detected'
   | 'live_mode_status'
+  | 'ui_navigation'
+  | 'ui_action'
 
 export interface WSMessage {
   type: WSMessageType

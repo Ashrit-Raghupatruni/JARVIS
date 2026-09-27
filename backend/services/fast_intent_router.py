@@ -156,6 +156,54 @@ class FastIntentRouter:
             re.IGNORECASE
         )
 
+        # 11. UI Navigation
+        self._re_nav_home = re.compile(
+            r"^(?:go\s+to\s+|open\s+|show\s+)?(?:home|dashboard|main\s+screen)$",
+            re.IGNORECASE
+        )
+        self._re_nav_chat = re.compile(
+            r"^(?:open\s+|show\s+|go\s+to\s+)?(?:chat|chat\s+history|conversation)$",
+            re.IGNORECASE
+        )
+        self._re_nav_voice = re.compile(
+            r"^(?:open\s+|show\s+|go\s+to\s+)?(?:voice|voice\s+mode|voice\s+interface)$",
+            re.IGNORECASE
+        )
+        self._re_nav_tasks = re.compile(
+            r"^(?:open\s+|show\s+|go\s+to\s+)?(?:tasks|task\s+queue|my\s+tasks)$",
+            re.IGNORECASE
+        )
+        self._re_nav_pc_control = re.compile(
+            r"^(?:open\s+|show\s+|go\s+to\s+)?(?:pc\s+control|control\s+(?:my\s+)?pc|computer\s+use)$",
+            re.IGNORECASE
+        )
+        self._re_nav_files = re.compile(
+            r"^(?:open\s+|show\s+|go\s+to\s+)?(?:files|file\s+manager|knowledge\s+hub|documents)$",
+            re.IGNORECASE
+        )
+        self._re_nav_automation = re.compile(
+            r"^(?:open\s+|show\s+|go\s+to\s+)?(?:automation|automations|workflows)$",
+            re.IGNORECASE
+        )
+        self._re_nav_system = re.compile(
+            r"^(?:open\s+|show\s+|go\s+to\s+)?(?:system|system\s+info|system\s+diagnostics|diagnostics|telemetry)$",
+            re.IGNORECASE
+        )
+        self._re_nav_settings = re.compile(
+            r"^(?:open\s+|show\s+|go\s+to\s+)?(?:settings|preferences|configuration)$",
+            re.IGNORECASE
+        )
+
+        # 12. Focus Mode
+        self._re_focus_mode_off = re.compile(
+            r"^(?:turn\s+off|disable|deactivate|stop)\s+focus\s+mode$",
+            re.IGNORECASE
+        )
+        self._re_focus_mode_on = re.compile(
+            r"^(?:turn\s+on|enable|activate|start)?\s*focus\s+mode$",
+            re.IGNORECASE
+        )
+
     def classify(self, user_prompt: str) -> FastIntentResult:
         """
         Classifies user prompt into an atomic tool call intent or falls back to Planner.
@@ -371,7 +419,130 @@ class FastIntentRouter:
                 routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
             )
 
-        # G. Open Application
+        # G. UI Navigation
+        if self._re_nav_home.match(cleaned):
+            return FastIntentResult(
+                is_atomic=True,
+                tool_name="navigate_ui",
+                tool_params={"tab": "home"},
+                confidence=1.0,
+                ack_phrase="Navigating to Home screen, sir.",
+                completion_phrase="Home screen active.",
+                routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
+            )
+
+        if self._re_nav_chat.match(cleaned):
+            return FastIntentResult(
+                is_atomic=True,
+                tool_name="navigate_ui",
+                tool_params={"tab": "chat"},
+                confidence=1.0,
+                ack_phrase="Opening Chat, sir.",
+                completion_phrase="Chat view active.",
+                routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
+            )
+
+        if self._re_nav_voice.match(cleaned):
+            return FastIntentResult(
+                is_atomic=True,
+                tool_name="navigate_ui",
+                tool_params={"tab": "voice"},
+                confidence=1.0,
+                ack_phrase="Opening Voice Interface, sir.",
+                completion_phrase="Voice interface active.",
+                routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
+            )
+
+        if self._re_nav_tasks.match(cleaned):
+            return FastIntentResult(
+                is_atomic=True,
+                tool_name="navigate_ui",
+                tool_params={"tab": "tasks"},
+                confidence=1.0,
+                ack_phrase="Opening Tasks Queue, sir.",
+                completion_phrase="Task queue view active.",
+                routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
+            )
+
+        if self._re_nav_pc_control.match(cleaned):
+            return FastIntentResult(
+                is_atomic=True,
+                tool_name="navigate_ui",
+                tool_params={"tab": "pc_control"},
+                confidence=1.0,
+                ack_phrase="Opening PC Control Center, sir.",
+                completion_phrase="PC Control view active.",
+                routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
+            )
+
+        if self._re_nav_files.match(cleaned):
+            return FastIntentResult(
+                is_atomic=True,
+                tool_name="navigate_ui",
+                tool_params={"tab": "files"},
+                confidence=1.0,
+                ack_phrase="Opening Files and Knowledge Hub, sir.",
+                completion_phrase="Files view active.",
+                routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
+            )
+
+        if self._re_nav_automation.match(cleaned):
+            return FastIntentResult(
+                is_atomic=True,
+                tool_name="navigate_ui",
+                tool_params={"tab": "automation"},
+                confidence=1.0,
+                ack_phrase="Opening Automations, sir.",
+                completion_phrase="Automation view active.",
+                routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
+            )
+
+        if self._re_nav_system.match(cleaned):
+            return FastIntentResult(
+                is_atomic=True,
+                tool_name="navigate_ui",
+                tool_params={"tab": "system"},
+                confidence=1.0,
+                ack_phrase="Opening System Diagnostics, sir.",
+                completion_phrase="System diagnostics active.",
+                routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
+            )
+
+        if self._re_nav_settings.match(cleaned):
+            return FastIntentResult(
+                is_atomic=True,
+                tool_name="navigate_ui",
+                tool_params={"tab": "settings"},
+                confidence=1.0,
+                ack_phrase="Opening Settings, sir.",
+                completion_phrase="Settings panel active.",
+                routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
+            )
+
+        # H. Focus Mode Toggle
+        if self._re_focus_mode_off.match(cleaned):
+            return FastIntentResult(
+                is_atomic=True,
+                tool_name="toggle_focus_mode",
+                tool_params={"enable": False},
+                confidence=1.0,
+                ack_phrase="Deactivating Focus Mode, sir.",
+                completion_phrase="Focus Mode deactivated.",
+                routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
+            )
+
+        if self._re_focus_mode_on.match(cleaned):
+            return FastIntentResult(
+                is_atomic=True,
+                tool_name="toggle_focus_mode",
+                tool_params={"enable": True},
+                confidence=1.0,
+                ack_phrase="Activating Focus Mode, sir.",
+                completion_phrase="Focus Mode activated. Notifications muted.",
+                routing_time_ms=round((time.perf_counter() - start_t) * 1000, 3)
+            )
+
+        # I. Open Application
         m_open = self._re_open_app.match(cleaned)
         if m_open:
             app_target = m_open.group(1).strip()

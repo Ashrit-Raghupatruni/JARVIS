@@ -1,37 +1,33 @@
-﻿import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react'
+import React, { useState, useEffect, Suspense, lazy } from 'react'
 import { useAppStore } from '../stores/appStore'
 import TitleBar from './TitleBar'
-import Orb from './Orb'
-import VoiceWave from './VoiceWave'
-import ChatPanel from './ChatPanel'
-import TaskProgress from './TaskProgress'
-import { DynamicContentPanel } from './DynamicContentPanel'
-import { ProactiveGuidanceCard } from './ProactiveGuidanceCard'
+import { JarvisCoreOrb } from './JarvisCoreOrb'
+import { TelemetryGaugesCard } from './TelemetryGaugesCard'
+import { QuickActionsCard } from './QuickActionsCard'
+import { FloatingCommandBar } from './FloatingCommandBar'
+import jarvisBg from '../assets/jarvis-bg.jpg'
 import {
-  Command,
-  ChevronDown,
-  Menu,
+  LayoutDashboard,
   MessageSquare,
-  Sliders,
-  Trash2,
-  Zap,
-  ListOrdered,
-  Globe,
-  Bot,
-  Layers,
-  Maximize2,
-  X,
-  Eye,
-  GripVertical,
+  Mic,
+  CheckSquare,
+  Monitor,
+  Folder,
   Cpu,
-  Sparkles
+  Activity,
+  Settings as SettingsIcon,
+  Sparkles,
+  Command,
+  Trash2
 } from 'lucide-react'
 
-// Lazy load non-immediate tabs & heavy components
+// Lazy load tab views for optimal performance
+const ChatPanel = lazy(() => import('./ChatPanel'))
 const ConversationSidebar = lazy(() =>
   import('./ConversationSidebar').then((m) => ({ default: m.ConversationSidebar }))
 )
 const TaskQueueManager = lazy(() => import('./TaskQueueManager'))
+const TaskProgress = lazy(() => import('./TaskProgress'))
 const LiveModeCard = lazy(() => import('./LiveModeCard'))
 const LivePerceptionVisualizer = lazy(() =>
   import('./LivePerceptionVisualizer').then((m) => ({ default: m.LivePerceptionVisualizer }))
@@ -40,437 +36,401 @@ const ComputerUseCard = lazy(() => import('./ComputerUseCard'))
 const BrowserAutomationCard = lazy(() => import('./BrowserAutomationCard'))
 const KnowledgeHubCard = lazy(() => import('./KnowledgeHubCard'))
 const MemoryGraphCard = lazy(() => import('./MemoryGraphCard'))
-const AdvancedHub = lazy(() =>
-  import('./AdvancedHub').then((m) => ({ default: m.AdvancedHub }))
+const HardwareGauges = lazy(() => import('./HardwareGauges'))
+const LiveDebugInspector = lazy(() =>
+  import('./LiveDebugInspector').then((m) => ({ default: m.LiveDebugInspector }))
 )
-const CommandPalette = lazy(() => import('./CommandPalette'))
 const SettingsPanel = lazy(() => import('./SettingsPanel'))
+const CommandPalette = lazy(() => import('./CommandPalette'))
+const Orb = lazy(() => import('./Orb'))
+const VoiceWave = lazy(() => import('./VoiceWave'))
 
 interface DashboardLayoutProps {
   onSendMessage: (text: string) => void
   onOrbClick: () => void
 }
 
-export type NavTab = 'command' | 'history' | 'queue' | 'live' | 'automation' | 'memory' | 'advanced'
+type TabKey =
+  | 'home'
+  | 'chat'
+  | 'voice'
+  | 'tasks'
+  | 'pc_control'
+  | 'files'
+  | 'automation'
+  | 'system'
+  | 'settings'
 
-const NAV_ITEMS: { id: NavTab; label: string; icon: React.ReactNode }[] = [
-  { id: 'command', label: 'Command Center', icon: <Bot className="w-4 h-4 text-cyan-400" /> },
-  { id: 'history', label: 'Chat History', icon: <MessageSquare className="w-4 h-4 text-cyan-400" /> },
-  { id: 'queue', label: 'Task Queue', icon: <ListOrdered className="w-4 h-4 text-cyan-400" /> },
-  { id: 'live', label: 'Live Mode', icon: <Eye className="w-4 h-4 text-cyan-400" /> },
-  { id: 'automation', label: 'Automation', icon: <Globe className="w-4 h-4 text-cyan-400" /> },
-  { id: 'memory', label: 'Memory Hub', icon: <Layers className="w-4 h-4 text-cyan-400" /> },
-  { id: 'advanced', label: 'Advanced Hub', icon: <Cpu className="w-4 h-4 text-cyan-400" /> }
+interface SidebarItem {
+  id: TabKey
+  label: string
+  icon: React.ElementType
+}
+
+const SIDEBAR_ITEMS: SidebarItem[] = [
+  { id: 'home', label: 'Home', icon: LayoutDashboard },
+  { id: 'chat', label: 'Chat', icon: MessageSquare },
+  { id: 'voice', label: 'Voice', icon: Mic },
+  { id: 'tasks', label: 'Tasks', icon: CheckSquare },
+  { id: 'pc_control', label: 'PC Control', icon: Monitor },
+  { id: 'files', label: 'Files', icon: Folder },
+  { id: 'automation', label: 'Automation', icon: Cpu },
+  { id: 'system', label: 'System', icon: Activity },
+  { id: 'settings', label: 'Settings', icon: SettingsIcon }
 ]
 
+const TAB_METADATA: Record<string, { title: string; subtitle: string; tag: string }> = {
+  chat: { title: 'Conversational Intelligence', subtitle: 'Multi-turn dialog & contextual reasoning', tag: 'SESSION ACTIVE' },
+  voice: { title: 'Voice Interaction Core', subtitle: 'Real-time neural audio & wake-word engine', tag: 'LISTENING ENGINE' },
+  tasks: { title: 'Autonomous Task Queue', subtitle: 'Multi-step action sequencing & execution timeline', tag: 'SCHEDULER READY' },
+  pc_control: { title: 'Computer Control & Perception', subtitle: 'Live screen graph, Win32 UIA tree & failover co-pilot', tag: 'PERCEPTION ONLINE' },
+  files: { title: 'Knowledge Hub & Semantic Memory', subtitle: 'ChromaDB vector store & cross-session memory graph', tag: 'SYNCHRONIZED' },
+  automation: { title: 'Browser & System Automation', subtitle: 'Autonomous web navigation & workflow macros', tag: 'WORKFLOW ENGINE' },
+  system: { title: 'System Diagnostics & Telemetry', subtitle: 'Hardware gauges, process limits & runtime inspector', tag: 'NOMINAL 1.0 HZ' },
+  settings: { title: 'System Configuration', subtitle: 'Voice models, API endpoints & telemetry preferences', tag: 'CONFIGURATION' },
+}
+
 const LoadingFallback: React.FC<{ label: string }> = ({ label }) => (
-  <div className="flex flex-col items-center justify-center h-full min-h-[300px] rounded-xl border border-cyan-500/20 bg-slate-900/40 backdrop-blur-md p-8 text-center animate-pulse">
+  <div className="flex flex-col items-center justify-center h-full min-h-[350px] rounded-2xl border border-cyan-500/20 bg-slate-950/40 backdrop-blur-2xl p-8 text-center animate-pulse">
     <Sparkles className="w-8 h-8 text-cyan-400 mb-2 animate-spin" />
     <span className="text-xs font-mono text-cyan-300 font-bold tracking-wider uppercase">
       Loading {label}...
     </span>
-    <span className="text-[10px] font-mono text-slate-500 mt-1">Initializing module on demand</span>
+    <span className="text-[10px] font-mono text-slate-500 mt-1">Initializing module</span>
   </div>
 )
 
 export default function DashboardLayout({ onSendMessage, onOrbClick }: DashboardLayoutProps) {
-  const {
-    showSettings,
-    toggleSettings,
-    clearMessages,
-    activeConversationId,
-    setActiveConversationId,
-    setMessages
-  } = useAppStore()
+  const activeTab = useAppStore((s) => s.activeTab)
+  const setActiveTab = useAppStore((s) => s.setActiveTab)
+  const isListening = useAppStore((s) => s.isListening)
+  const setListening = useAppStore((s) => s.setListening)
+  const userName = useAppStore((s) => s.userName) || 'Ashrit'
+  const clearMessages = useAppStore((s) => s.clearMessages)
+  const activeConversationId = useAppStore((s) => s.activeConversationId)
+  const setActiveConversationId = useAppStore((s) => s.setActiveConversationId)
+  const setMessages = useAppStore((s) => s.setMessages)
 
   const [isPaletteOpen, setIsPaletteOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<NavTab>('command')
-  const [isNavOpen, setIsNavOpen] = useState(false)
+  const [currentDateStr, setCurrentDateStr] = useState('')
+  const [timeGreeting, setTimeGreeting] = useState('Good Morning,')
 
-  const handleSelectConversation = useCallback(
-    async (convId: string | number) => {
-      setActiveConversationId(convId)
-      try {
-        const res = await fetch(`http://127.0.0.1:8000/api/conversations/${convId}`)
-        if (res.ok) {
-          const data = await res.json()
-          const conv = data.conversation || data
-          if (conv && conv.messages) {
-            const formatted = conv.messages.map((m: any) => ({
-              id: String(m.id || Math.random()),
-              role: m.role,
-              content: m.content,
-              timestamp: m.timestamp || new Date().toISOString()
-            }))
-            setMessages(formatted)
-          }
-        }
-      } catch (e) {
-        console.error('Failed to load conversation history:', e)
+  // Date and Time calculation
+  useEffect(() => {
+    const updateDateTime = () => {
+      const now = new Date()
+      const hour = now.getHours()
+      if (hour < 12) setTimeGreeting('Good Morning,')
+      else if (hour < 17) setTimeGreeting('Good Afternoon,')
+      else setTimeGreeting('Good Evening,')
+
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      setCurrentDateStr(`☼ ${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`)
+    }
+
+    updateDateTime()
+    const timer = setInterval(updateDateTime, 60000)
+    return () => clearInterval(timer)
+  }, [])
+
+  // Keyboard shortcut Ctrl+K for Palette
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setIsPaletteOpen((prev) => !prev)
       }
-    },
-    [setActiveConversationId, setMessages]
-  )
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
-  const handleNewChat = useCallback(() => {
+  const handleToggleListening = () => {
+    onOrbClick()
+    setListening(!isListening)
+  }
+
+  const handleSelectConversation = async (convId: string | number) => {
+    setActiveConversationId(convId)
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/conversations/${convId}`)
+      if (res.ok) {
+        const data = await res.json()
+        const conv = data.conversation || data
+        if (conv && conv.messages) {
+          const formatted = conv.messages.map((m: any) => ({
+            id: String(m.id || Math.random()),
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp || new Date().toISOString()
+          }))
+          setMessages(formatted)
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load conversation history:', e)
+    }
+  }
+
+  const handleNewChat = () => {
     setActiveConversationId(null)
     setMessages([])
-  }, [setActiveConversationId, setMessages])
-
-  // Resizable 70/30 panel split ratio (default 0.70, persisted in localStorage)
-  const [splitRatio, setSplitRatio] = useState<number>(() => {
-    const saved = localStorage.getItem('jarvis_split_ratio')
-    return saved ? Math.min(0.8, Math.max(0.2, parseFloat(saved))) : 0.70
-  })
-
-  const [isDragging, setIsDragging] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  // Drag handler for panel resizing
-  const handleMouseDown = useCallback(() => {
-    setIsDragging(true)
-  }, [])
-
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!isDragging || !containerRef.current) return
-      const rect = containerRef.current.getBoundingClientRect()
-      const offset = e.clientX - rect.left
-      const newRatio = Math.min(0.85, Math.max(0.15, offset / rect.width))
-      setSplitRatio(newRatio)
-      localStorage.setItem('jarvis_split_ratio', newRatio.toString())
-    },
-    [isDragging]
-  )
-
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false)
-  }, [])
-
-  useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove)
-      window.addEventListener('mouseup', handleMouseUp)
-    } else {
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleMouseUp)
-    }
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleMouseUp)
-    }
-  }, [isDragging, handleMouseMove, handleMouseUp])
-
-  // Responsive compact view check
-  const [isCompactView, setIsCompactView] = useState<boolean>(() => {
-    return window.innerWidth < 900 || window.innerHeight < 600
-  })
-
-  useEffect(() => {
-    const handleResize = () => {
-      const isCompact = window.innerWidth < 900 || window.innerHeight < 600
-      setIsCompactView(isCompact)
-    }
-
-    window.addEventListener('resize', handleResize)
-
-    const api = (window as any).electronAPI
-    if (api?.onWindowStateChanged) {
-      const unsub = api.onWindowStateChanged((state: { isMaximized: boolean }) => {
-        if (state.isMaximized) {
-          setIsCompactView(false)
-        } else {
-          const isCompact = window.innerWidth < 900 || window.innerHeight < 600
-          setIsCompactView(isCompact)
-        }
-      })
-      return () => {
-        window.removeEventListener('resize', handleResize)
-        unsub()
-      }
-    }
-
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  const handlePaletteAction = (actionId: string) => {
-    if (actionId === 'open_palette') {
-      setIsPaletteOpen(true)
-    } else if (actionId === 'inspect_screen') {
-      onSendMessage('Inspect my screen and show active windows')
-    } else if (actionId === 'run_benchmarks') {
-      onSendMessage('Run system benchmarks')
-    } else if (actionId === 'trigger_backup') {
-      onSendMessage('Trigger local backup')
-    }
   }
 
-  const activeNavItem = NAV_ITEMS.find((item) => item.id === activeTab) || NAV_ITEMS[0]
-
-  // ── COMPACT RESIZED MODE ────────────────────────────────────────────────
-  if (isCompactView) {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#050811] text-[#e1f5fe] relative overflow-hidden select-none">
-        <div
-          className="absolute top-0 left-0 right-0 h-9 z-50 flex items-center justify-between px-3 bg-slate-950/40 backdrop-blur-md border-b border-cyan-500/10"
-          style={{ WebkitAppRegion: 'drag' } as any}
-        >
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-            <span className="text-[10px] font-mono font-bold tracking-widest text-cyan-300">
-              JARVIS HUD
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
-            <button
-              onClick={() => (window as any).electronAPI?.maximize()}
-              className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 transition-all cursor-pointer shadow-[0_0_8px_rgba(0,229,255,0.3)]"
-            >
-              <Maximize2 className="w-3 h-3" />
-              <span>EXPAND</span>
-            </button>
-            <button
-              onClick={() => (window as any).electronAPI?.close()}
-              className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 transition-all cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-
-        <div className="relative z-10 flex flex-col items-center justify-center p-2">
-          <Orb onOrbClick={onOrbClick} />
-          <div className="mt-1 w-full max-w-[320px]">
-            <VoiceWave />
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // ── FULLSCREEN / MAXIMIZED DASHBOARD MODE ──────────────────────────────
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden select-none relative bg-[#050811] text-[#e1f5fe]">
-      {/* Background Radial Cyan Glow */}
+    <div className="h-screen w-screen flex flex-col overflow-hidden select-none relative bg-slate-950 text-slate-100 font-sans">
+      {/* ── Background Wallpaper with Atmospheric Gradient & Lake Reflection ── */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: 'radial-gradient(circle at 1px 1px, #00e5ff 1px, transparent 0)',
-            backgroundSize: '32px 32px'
-          }}
+        <img
+          src={jarvisBg}
+          alt="JARVIS Horizon"
+          className="w-full h-full object-cover object-center filter brightness-[0.78] contrast-[1.08] saturate-[1.12]"
         />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[850px] h-[850px] rounded-full opacity-15 blur-[160px] bg-[radial-gradient(circle,#00e5ff_0%,transparent_70%)]" />
+        {/* Cinematic Vignette & Deep Twilight Tint */}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-slate-950/70" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_40%,_rgba(2,6,23,0.85)_100%)]" />
       </div>
 
-      {/* Top Title Bar */}
+      {/* ── Top Bar ── */}
       <TitleBar />
 
-      {/* OS Command Bar Header Dock */}
-      <div className="relative z-30 px-4 py-2 bg-slate-950/80 border-b border-cyan-500/20 backdrop-blur-xl flex items-center justify-between gap-2 shadow-lg">
-        {/* Consolidated Top Nav Dropdown Menu */}
-        <div className="relative">
-          <button
-            onClick={() => setIsNavOpen((prev) => !prev)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-cyan-500/30 text-cyan-200 text-xs font-mono font-bold transition-all cursor-pointer shadow-[0_0_12px_rgba(0,229,255,0.2)]"
-          >
-            <Menu className="w-4 h-4 text-cyan-400" />
-            <span>☰ {activeNavItem.label}</span>
-            <ChevronDown
-              className={`w-3.5 h-3.5 text-cyan-400 transition-transform duration-200 ${
-                isNavOpen ? 'rotate-180' : ''
-              }`}
-            />
-          </button>
+      {/* ── Main Application Body ── */}
+      <div className="flex-1 flex overflow-hidden relative z-10">
+        {/* ── Left Translucent Glass Sidebar Navigation ── */}
+        <aside className="w-56 shrink-0 h-full bg-slate-950/40 backdrop-blur-2xl border-r border-blue-500/20 flex flex-col justify-between py-4 px-3 shadow-[4px_0_24px_rgba(0,0,0,0.4)] z-20">
+          <nav className="flex flex-col gap-1.5">
+            {SIDEBAR_ITEMS.map((item) => {
+              const Icon = item.icon
+              const isActive = activeTab === item.id
 
-          {/* Expanded Dropdown Menu items */}
-          {isNavOpen && (
-            <div className="absolute top-full left-0 mt-1.5 w-56 bg-slate-950/95 border border-cyan-500/40 rounded-xl shadow-[0_10px_30px_rgba(0,229,255,0.25)] backdrop-blur-2xl py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-              {NAV_ITEMS.map((item) => (
+              return (
                 <button
                   key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id)
-                    setIsNavOpen(false)
-                  }}
-                  className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-mono text-left transition-colors cursor-pointer ${
-                    activeTab === item.id
-                      ? 'bg-cyan-500/20 text-cyan-300 font-bold border-l-2 border-cyan-400'
-                      : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+                  type="button"
+                  onClick={() => setActiveTab(item.id)}
+                  className={`group relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-xs tracking-wide transition-all duration-200 cursor-pointer text-left ${
+                    isActive
+                      ? 'bg-blue-600/30 text-white border border-cyan-400/50 shadow-[0_0_18px_rgba(0,229,255,0.3)]'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/40 hover:border-cyan-500/20 border border-transparent'
                   }`}
                 >
-                  {item.icon}
-                  <span>{item.label}</span>
+                  {/* Left luminous accent bar when active */}
+                  {isActive && (
+                    <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-cyan-400 shadow-[0_0_8px_#00e5ff]" />
+                  )}
+
+                  <Icon
+                    className={`w-4 h-4 shrink-0 transition-colors ${
+                      isActive ? 'text-cyan-300' : 'text-slate-400 group-hover:text-cyan-400'
+                    }`}
+                  />
+                  <span className="truncate">{item.label}</span>
                 </button>
-              ))}
+              )
+            })}
+          </nav>
+
+          {/* Sidebar Footer Controls */}
+          <div className="pt-3 border-t border-white/5 flex items-center justify-between px-1">
+            <button
+              type="button"
+              onClick={() => setIsPaletteOpen(true)}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-900/60 hover:bg-slate-800 border border-blue-500/20 text-slate-300 hover:text-cyan-300 text-[11px] font-mono transition-colors cursor-pointer"
+              title="Command Palette (Ctrl+K)"
+            >
+              <Command className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Ctrl+K</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={clearMessages}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-900/60 transition-colors cursor-pointer"
+              title="Clear Active Chat"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </aside>
+
+        {/* ── Main View Content Area ── */}
+        <main className="flex-1 h-full overflow-hidden flex flex-col relative">
+          {/* Sub-Page Persistent Glass Header Bar */}
+          {activeTab !== 'home' && (
+            <div className="px-6 pt-4 pb-2 shrink-0 flex items-center justify-between border-b border-white/5 bg-slate-950/20 backdrop-blur-md">
+              <div className="flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_10px_#00e5ff] animate-pulse" />
+                <div>
+                  <h1 className="text-xs font-bold font-mono text-slate-200 tracking-[0.2em] uppercase">
+                    {TAB_METADATA[activeTab]?.title || activeTab}
+                  </h1>
+                  <p className="text-[11px] font-mono text-slate-400">
+                    {TAB_METADATA[activeTab]?.subtitle}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono px-3 py-1 rounded-full bg-blue-950/40 border border-cyan-500/30 text-cyan-300 shadow-[0_0_15px_rgba(0,229,255,0.15)] uppercase">
+                  {TAB_METADATA[activeTab]?.tag}
+                </span>
+              </div>
             </div>
           )}
-        </div>
 
-        {/* Global Right Action Tools */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              const current = useAppStore.getState().seriousMode
-              useAppStore.getState().setSeriousMode(!current)
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono transition-all cursor-pointer ${
-              useAppStore((s) => s.seriousMode)
-                ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Zap className="w-3.5 h-3.5 text-cyan-400" />
-            <span>SERIOUS MODE</span>
-          </button>
+          {/* TAB 1: HOME (Exact match to reference aesthetic) */}
+          {activeTab === 'home' && (
+            <div className="flex-1 flex flex-col justify-between p-6 overflow-hidden relative">
+              {/* Upper Main Workspace Section */}
+              <div className="flex-1 grid grid-cols-12 gap-6 items-center min-h-0">
+                {/* Hero Left: Date, Time Greeting, Name, Quote */}
+                <div className="col-span-12 lg:col-span-4 flex flex-col justify-center select-none pl-2">
+                  {/* Dynamic Date Badge */}
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/60 border border-blue-500/20 backdrop-blur-md w-fit mb-3">
+                    <span className="text-[11px] font-mono font-medium text-cyan-300 tracking-wider">
+                      {currentDateStr}
+                    </span>
+                  </div>
 
-          <button
-            onClick={() => setIsPaletteOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-mono transition-all cursor-pointer"
-          >
-            <Command className="w-3.5 h-3.5" />
-            <span>Palette</span>
-            <kbd className="text-[10px] bg-slate-950 px-1 py-0.2 rounded border border-slate-700 text-slate-300">
-              Ctrl+K
-            </kbd>
-          </button>
+                  {/* Greeting & Name */}
+                  <h1 className="text-3xl lg:text-4xl font-light text-white tracking-tight leading-tight">
+                    {timeGreeting}
+                  </h1>
+                  <h2 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white drop-shadow-[0_0_20px_rgba(0,229,255,0.4)] mt-1">
+                    <span className="bg-gradient-to-r from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent">
+                      {userName}.
+                    </span>
+                  </h2>
 
-          <button
-            onClick={clearMessages}
-            title="Clear Chat"
-            className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-rose-400 transition-all cursor-pointer"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+                  {/* Cyan Glowing Accent Underline */}
+                  <div className="w-20 h-1 bg-gradient-to-r from-cyan-400 via-blue-500 to-transparent rounded-full my-4 shadow-[0_0_10px_#00e5ff]" />
 
-          <button
-            onClick={toggleSettings}
-            title="Settings"
-            className="p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 transition-all cursor-pointer"
-          >
-            <Sliders className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
+                  {/* Quote / Subtitle */}
+                  <p className="text-sm lg:text-base text-slate-300/90 font-normal italic tracking-wide">
+                    "Let's make today productive."
+                  </p>
+                </div>
 
-      {/* Main View Port */}
-      <div className="flex-1 relative z-10 p-3 overflow-hidden">
-        {/* VIEW 1: COMMAND CENTER (Default 70/30 Resizable Split) */}
-        {activeTab === 'command' && (
-          <div ref={containerRef} className="h-full flex items-stretch gap-0 relative overflow-hidden">
-            {/* Left 3D Face / Orb Panel (Default ~70% width) */}
-            <div
-              style={{ width: `${splitRatio * 100}%` }}
-              className="flex flex-col items-center justify-center p-4 rounded-xl border border-cyan-500/20 bg-slate-900/40 backdrop-blur-xl shadow-2xl relative overflow-hidden min-w-[250px]"
-            >
-              <Orb onOrbClick={onOrbClick} />
-              <div className="mt-2 w-full max-w-[360px]">
-                <VoiceWave />
+                {/* Hero Center: Central Floating Luminous JARVIS Core Orb */}
+                <div className="col-span-12 lg:col-span-4 flex items-center justify-center">
+                  <JarvisCoreOrb onToggleListening={handleToggleListening} />
+                </div>
+
+                {/* Hero Right: Telemetry & Quick Actions Cards */}
+                <div className="col-span-12 lg:col-span-4 flex flex-col gap-4 max-h-[82vh] overflow-y-auto custom-scrollbar pr-1">
+                  <TelemetryGaugesCard />
+                  <QuickActionsCard onExecutePrompt={(prompt) => onSendMessage(prompt)} />
+                </div>
               </div>
-              <div className="w-full max-w-2xl mt-4 overflow-y-auto max-h-[340px] custom-scrollbar">
-                <ProactiveGuidanceCard
-                  item={{
-                    guidance_type: 'active_project',
-                    title: 'Proactive Check-In: JARVIS AI OS',
-                    message:
-                      '[Morning Briefing] You have been working on JARVIS AI OS across the last 8 turns.',
-                    action_suggestion: 'Run system integration tests'
-                  }}
-                  onActionClick={(suggestion) => onSendMessage(suggestion)}
+
+              {/* Bottom Floating Command Bar Dock */}
+              <div className="pt-3 pb-1 shrink-0">
+                <FloatingCommandBar
+                  onSendMessage={onSendMessage}
+                  onToggleListening={handleToggleListening}
+                  isListening={isListening}
                 />
-                <DynamicContentPanel />
               </div>
             </div>
+          )}
 
-            {/* Draggable Vertical Splitter Bar */}
-            <div
-              onMouseDown={handleMouseDown}
-              className={`w-3 mx-1 flex items-center justify-center cursor-col-resize hover:bg-cyan-500/30 rounded transition-colors group ${
-                isDragging ? 'bg-cyan-500/40' : 'bg-transparent'
-              }`}
-              title="Drag to resize panels"
-            >
-              <GripVertical className="w-3.5 h-3.5 text-cyan-400/60 group-hover:text-cyan-400" />
-            </div>
-
-            {/* Right Chat & Task Panel (Default ~30% width) */}
-            <div
-              style={{ width: `${(1 - splitRatio) * 100}%` }}
-              className="flex flex-col h-full overflow-hidden gap-3 min-w-[250px]"
-            >
-              <div className="flex-1 min-h-0">
-                <ChatPanel onSendMessage={onSendMessage} />
+          {/* TAB 2: CHAT */}
+          {activeTab === 'chat' && (
+            <Suspense fallback={<LoadingFallback label="Chat" />}>
+              <div className="flex-1 flex h-full overflow-hidden p-4 gap-4">
+                <ConversationSidebar
+                  activeId={activeConversationId}
+                  onSelectConversation={handleSelectConversation}
+                  onNewChat={handleNewChat}
+                />
+                <div className="flex-1 h-full min-w-0 bg-slate-950/40 backdrop-blur-2xl border border-blue-500/20 rounded-2xl overflow-hidden shadow-2xl">
+                  <ChatPanel onSendMessage={onSendMessage} />
+                </div>
               </div>
-              <div className="h-40">
-                <TaskProgress />
+            </Suspense>
+          )}
+
+          {/* TAB 3: VOICE */}
+          {activeTab === 'voice' && (
+            <Suspense fallback={<LoadingFallback label="Voice Interface" />}>
+              <div className="flex-1 flex flex-col items-center justify-center p-6 gap-6">
+                <div className="relative w-80 h-80 rounded-full border border-cyan-500/30 bg-slate-950/60 backdrop-blur-2xl shadow-[0_0_50px_rgba(0,229,255,0.25)] flex items-center justify-center overflow-hidden">
+                  <Orb onOrbClick={onOrbClick} />
+                </div>
+                <div className="w-full max-w-md">
+                  <VoiceWave />
+                </div>
+                <p className="text-xs font-mono text-cyan-300">
+                  Voice recognition active. Speak naturally or click the orb.
+                </p>
               </div>
-            </div>
-          </div>
-        )}
+            </Suspense>
+          )}
 
-        {/* VIEW 2: CHAT HISTORY (Persistent Sidebar + Resumable Chat) */}
-        {activeTab === 'history' && (
-          <Suspense fallback={<LoadingFallback label="Chat History" />}>
-            <div className="h-full flex items-stretch gap-3 overflow-hidden rounded-xl border border-cyan-500/20 bg-slate-900/40 backdrop-blur-xl p-2">
-              <ConversationSidebar
-                activeId={activeConversationId}
-                onSelectConversation={handleSelectConversation}
-                onNewChat={handleNewChat}
-              />
-              <div className="flex-1 h-full min-w-0">
-                <ChatPanel onSendMessage={onSendMessage} />
+          {/* TAB 4: TASKS */}
+          {activeTab === 'tasks' && (
+            <Suspense fallback={<LoadingFallback label="Task Queue" />}>
+              <div className="flex-1 p-4 overflow-y-auto space-y-4 custom-scrollbar">
+                <TaskQueueManager />
+                <div className="max-w-4xl mx-auto">
+                  <TaskProgress />
+                </div>
               </div>
-            </div>
-          </Suspense>
-        )}
+            </Suspense>
+          )}
 
-        {/* VIEW 3: TASK QUEUE & SCHEDULER */}
-        {activeTab === 'queue' && (
-          <Suspense fallback={<LoadingFallback label="Task Queue" />}>
-            <TaskQueueManager />
-          </Suspense>
-        )}
+          {/* TAB 5: PC CONTROL */}
+          {activeTab === 'pc_control' && (
+            <Suspense fallback={<LoadingFallback label="PC Control & Perception" />}>
+              <div className="flex-1 p-4 overflow-y-auto space-y-4 custom-scrollbar">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <ComputerUseCard />
+                  <LivePerceptionVisualizer />
+                </div>
+                <LiveModeCard />
+              </div>
+            </Suspense>
+          )}
 
-        {/* VIEW 4: LIVE MODE */}
-        {activeTab === 'live' && (
-          <Suspense fallback={<LoadingFallback label="Live Mode & Perception" />}>
-            <div className="h-full overflow-y-auto space-y-4 custom-scrollbar">
-              <LiveModeCard />
-              <LivePerceptionVisualizer />
-            </div>
-          </Suspense>
-        )}
+          {/* TAB 6: FILES */}
+          {activeTab === 'files' && (
+            <Suspense fallback={<LoadingFallback label="File System & Knowledge" />}>
+              <div className="flex-1 p-4 overflow-y-auto space-y-4 custom-scrollbar">
+                <KnowledgeHubCard />
+                <MemoryGraphCard />
+              </div>
+            </Suspense>
+          )}
 
-        {/* VIEW 5: DESKTOP & BROWSER AUTOMATION */}
-        {activeTab === 'automation' && (
-          <Suspense fallback={<LoadingFallback label="Automations & Computer Use" />}>
-            <div className="h-full overflow-y-auto space-y-3 custom-scrollbar">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                <ComputerUseCard />
+          {/* TAB 7: AUTOMATION */}
+          {activeTab === 'automation' && (
+            <Suspense fallback={<LoadingFallback label="Automation Workflows" />}>
+              <div className="flex-1 p-4 overflow-y-auto space-y-4 custom-scrollbar">
                 <BrowserAutomationCard />
+                <ComputerUseCard />
               </div>
-              <KnowledgeHubCard />
-            </div>
-          </Suspense>
-        )}
+            </Suspense>
+          )}
 
-        {/* VIEW 6: MEMORY & KNOWLEDGE HUB */}
-        {activeTab === 'memory' && (
-          <Suspense fallback={<LoadingFallback label="Memory & Knowledge Hub" />}>
-            <div className="h-full overflow-y-auto space-y-3 custom-scrollbar">
-              <KnowledgeHubCard />
-              <MemoryGraphCard />
-            </div>
-          </Suspense>
-        )}
+          {/* TAB 8: SYSTEM */}
+          {activeTab === 'system' && (
+            <Suspense fallback={<LoadingFallback label="System Diagnostics" />}>
+              <div className="flex-1 p-4 overflow-y-auto space-y-4 custom-scrollbar">
+                <HardwareGauges />
+                <LiveDebugInspector />
+              </div>
+            </Suspense>
+          )}
 
-        {/* VIEW 7: ADVANCED HUB */}
-        {activeTab === 'advanced' && (
-          <Suspense fallback={<LoadingFallback label="Advanced Hub" />}>
-            <AdvancedHub />
-          </Suspense>
-        )}
+          {/* TAB 9: SETTINGS */}
+          {activeTab === 'settings' && (
+            <Suspense fallback={<LoadingFallback label="Settings" />}>
+              <div className="flex-1 p-4 overflow-y-auto custom-scrollbar flex items-center justify-center">
+                <SettingsPanel />
+              </div>
+            </Suspense>
+          )}
+        </main>
       </div>
 
       {/* Global Command Palette Modal */}
@@ -479,15 +439,12 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
           <CommandPalette
             isOpen={isPaletteOpen}
             onClose={() => setIsPaletteOpen(false)}
-            onSelectAction={handlePaletteAction}
+            onSelectAction={(actionId) => {
+              if (actionId === 'screenshot') onSendMessage('Take a screenshot')
+              else if (actionId === 'lock_pc') onSendMessage('Lock PC')
+              else if (actionId === 'focus_mode') onSendMessage('Toggle focus mode')
+            }}
           />
-        </Suspense>
-      )}
-
-      {/* Global Settings Modal */}
-      {showSettings && (
-        <Suspense fallback={null}>
-          <SettingsPanel />
         </Suspense>
       )}
     </div>

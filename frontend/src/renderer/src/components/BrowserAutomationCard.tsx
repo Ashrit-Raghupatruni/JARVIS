@@ -108,36 +108,36 @@ export default function BrowserAutomationCard() {
   }
 
   return (
-    <div className="bg-[rgba(10,20,38,0.75)] backdrop-blur-md border border-[rgba(0,229,255,0.18)] rounded-xl p-3 shadow-lg hover:border-[rgba(0,229,255,0.35)] transition-all">
-      <div className="flex items-center justify-between mb-2">
+    <div className="bg-slate-950/40 backdrop-blur-2xl border border-blue-500/20 rounded-2xl p-4 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] hover:border-cyan-500/30 transition-all">
+      <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-3">
         <div className="flex items-center gap-2">
-          <Globe className="w-4 h-4 text-[#00e5ff]" />
-          <span className="text-xs font-semibold text-[#00e5ff] tracking-wider uppercase">Browser Research & Automation</span>
+          <Globe className="w-4 h-4 text-cyan-400" />
+          <span className="text-xs font-bold text-slate-200 tracking-[0.2em] uppercase font-mono">Browser Research & Automation</span>
         </div>
-        <div className="flex items-center gap-1 text-[10px] font-mono text-[#00e676] bg-[rgba(0,230,118,0.1)] px-1.5 py-0.5 rounded border border-[rgba(0,230,118,0.2)]">
-          <ShieldCheck className="w-3 h-3" /> Playwright Ready
+        <div className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/30 font-semibold">
+          <ShieldCheck className="w-3.5 h-3.5" /> Playwright Ready
         </div>
       </div>
 
-      <div className="space-y-2 text-xs">
+      <div className="space-y-3 text-xs">
         {/* Address Bar */}
-        <div className="flex items-center gap-1.5 p-1 rounded-lg bg-[rgba(15,30,56,0.5)] border border-[rgba(0,229,255,0.15)]">
-          <Globe className="w-3.5 h-3.5 text-[#00e5ff] ml-1 shrink-0" />
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/60 border border-blue-500/25 shadow-inner">
+          <Globe className="w-4 h-4 text-cyan-400 shrink-0" />
           <input
             type="text"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleNavigate()}
             placeholder="Enter URL to research..."
-            className="w-full bg-transparent font-mono text-[11px] text-[#e1f5fe] focus:outline-none placeholder:text-slate-500"
+            className="w-full bg-transparent font-mono text-xs text-slate-100 focus:outline-none placeholder:text-slate-500"
           />
           <button
             onClick={handleNavigate}
             disabled={loading}
-            className="p-1 text-[#00e5ff] hover:bg-[rgba(0,229,255,0.2)] rounded transition-all"
+            className="p-1.5 text-cyan-300 hover:bg-cyan-500/20 rounded-lg transition-all cursor-pointer"
             title="Navigate"
           >
-            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
           </button>
         </div>
 

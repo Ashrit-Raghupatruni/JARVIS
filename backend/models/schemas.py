@@ -8,6 +8,7 @@ these schemas, enabling strong validation and IDE auto-completion.
 
 from __future__ import annotations
 
+import sys
 import time
 import uuid
 from datetime import datetime, timezone
@@ -61,14 +62,17 @@ class MessageRole(str, Enum):
 
 class WSMessage(BaseModel):
     """
-    Base WebSocket message envelope.
+    Base WebSocket message envelope (Protocol Version 1).
 
     Every message sent through the WebSocket connection conforms to this
     structure. The ``type`` field acts as a discriminator so the receiver
     can deserialise the ``data`` payload into the correct schema.
     """
 
+    version: str = Field(default="1", description="Protocol version (e.g. '1').")
     type: str = Field(..., description="Message type discriminator.")
+    request_id: Optional[str] = Field(default=None, description="Request ID for client correlation.")
+    session_id: Optional[str] = Field(default=None, description="Client session or device identifier.")
     msg_id: Optional[int] = Field(default=None, description="Sequence ID for ACK tracking.")
     data: Dict[str, Any] = Field(default_factory=dict, description="Payload data.")
     timestamp: datetime = Field(
@@ -79,6 +83,7 @@ class WSMessage(BaseModel):
         default_factory=lambda: str(uuid.uuid4()),
         description="Unique message identifier.",
     )
+
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -187,6 +192,38 @@ class SystemStatus(BaseModel):
     active_connections: int = Field(default=0, description="Number of active WebSocket connections.")
     version: str = Field(default="1.0.0", description="Application version.")
     state: AssistantState = Field(default=AssistantState.IDLE, description="Current assistant state.")
+
+
+class RuntimeDiagnostics(BaseModel):
+    """
+    Authoritative runtime configuration and diagnostic model.
+    Derives actual active provider and model; never exposes API keys or secrets.
+    """
+
+    provider: str = Field(default="unknown", description="Active LLM provider (e.g. gemini, ollama, openai, openrouter, groq, nvidia).")
+    model: str = Field(default="unknown", description="Active model identifier.")
+    stt_status: str = Field(default="offline", description="Speech-to-text service status.")
+    stt_model: Optional[str] = Field(default=None, description="STT model name if loaded.")
+    tts_status: str = Field(default="offline", description="Text-to-speech service status.")
+    tts_voice: Optional[str] = Field(default=None, description="TTS voice name.")
+    wake_word_status: str = Field(default="offline", description="Wake-word service status.")
+    wake_word_engine: Optional[str] = Field(default=None, description="Wake-word engine name.")
+    automation_status: str = Field(default="offline", description="Desktop automation service status.")
+    browser_status: str = Field(default="offline", description="Browser automation service status.")
+    screen_status: str = Field(default="offline", description="Screen capture and perception status.")
+    memory_status: str = Field(default="offline", description="Long-term memory service status.")
+    backend_version: str = Field(default="1.0.0", description="Backend semantic version.")
+    uptime: float = Field(default=0.0, description="Uptime in seconds.")
+    active_connections: int = Field(default=0, description="Active WebSocket client connections.")
+    platform: str = Field(default=sys.platform, description="Host operating system.")
+    services: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Per-service status dictionary without credentials."
+    )
+
+
+RuntimeDiagnosticsModel = RuntimeDiagnostics
+
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

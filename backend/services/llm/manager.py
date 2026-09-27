@@ -249,22 +249,46 @@ class LLMService:
 
         return True
 
-    def get_system_prompt(self) -> str:
-        provider = self.primary_provider
-        if provider == "prash":
-            active_model = "prash-local-v0.1"
-        elif provider == "ollama":
-            active_model = self.ollama_model_name
-        elif provider == "gemini":
-            active_model = self.gemini_model_name
-        elif provider == "openrouter":
-            active_model = self.openrouter_model_name
-        elif provider == "groq":
-            active_model = self.groq_model_name
-        elif provider == "nvidia":
-            active_model = self.nvidia_model_name
+    @property
+    def active_provider(self) -> str:
+        return (self.primary_provider or "ollama").lower()
+
+    @property
+    def active_model(self) -> str:
+        p = self.active_provider
+        if p == "prash":
+            return "prash-local-v0.1"
+        elif p == "ollama":
+            return self.ollama_model_name
+        elif p == "gemini":
+            return self.gemini_model_name
+        elif p == "openrouter":
+            return self.openrouter_model_name
+        elif p == "groq":
+            return self.groq_model_name
+        elif p == "nvidia":
+            return self.nvidia_model_name
         else:
-            active_model = self.openai_model_name
+            return self.openai_model_name
+
+    def get_runtime_info(self) -> Dict[str, Any]:
+        return {
+            "provider": self.active_provider,
+            "model": self.active_model,
+            "ollama_available": self.ollama_client is not None,
+            "gemini_available": bool(self.gemini_key),
+            "openai_available": bool(self.openai_key),
+            "openrouter_available": bool(self.openrouter_key),
+            "groq_available": bool(self.groq_key),
+            "nvidia_available": bool(self.nvidia_key),
+            "total_requests": self.total_requests,
+            "total_prompt_tokens": self.total_prompt_tokens,
+            "total_completion_tokens": self.total_completion_tokens,
+        }
+
+    def get_system_prompt(self) -> str:
+        provider = self.active_provider
+        active_model = self.active_model
             
         dynamic_info = f"\n\n[Active Model Information]\nYou are currently running the model '{active_model}' served by the '{provider}' provider. If the user asks which model or provider you are using, retrieve this information and answer them directly."
         return JARVIS_SYSTEM_PROMPT + dynamic_info

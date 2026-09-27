@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAppStore } from '../stores/appStore'
 import { useWebSocket } from '../hooks/useWebSocket'
 import type { Settings } from '../types'
@@ -198,23 +198,24 @@ export default function SettingsPanel() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)' }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md"
       onClick={handleClose}
     >
       <div
-        className="glass-heavy rounded-2xl border border-white/10 w-full max-w-lg mx-4 overflow-hidden animate-fade-in"
+        className="bg-slate-950/75 backdrop-blur-2xl rounded-2xl border border-blue-500/30 w-full max-w-xl mx-4 overflow-hidden shadow-[0_16px_48px_rgba(0,0,0,0.7)] animate-fade-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-          <h2 className="text-lg font-semibold" style={{ color: 'var(--jarvis-text)' }}>
-            JARVIS System Settings
-          </h2>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#00e5ff] animate-pulse" />
+            <h2 className="text-sm font-bold tracking-[0.2em] text-white uppercase font-mono">
+              JARVIS System Settings
+            </h2>
+          </div>
           <button
             onClick={handleClose}
-            className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
-            style={{ color: 'var(--jarvis-text-dim)' }}
+            className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
           >
             <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
               <path
@@ -227,22 +228,22 @@ export default function SettingsPanel() {
         </div>
 
         {/* Tab Selection */}
-        <div className="flex border-b border-white/10 text-xs overflow-x-auto custom-scrollbar">
+        <div className="flex border-b border-white/10 text-xs overflow-x-auto custom-scrollbar bg-slate-950/40">
           <button
-            className={`flex-1 py-3 px-3 text-center border-b-2 font-medium whitespace-nowrap transition-all ${
+            className={`flex-1 py-3 px-3 text-center border-b-2 font-medium whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'general'
-                ? 'border-[var(--jarvis-accent)] text-[var(--jarvis-text)]'
-                : 'border-transparent text-[var(--jarvis-text-dim)] hover:text-white'
+                ? 'border-cyan-400 text-cyan-200 font-bold bg-blue-600/15'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
             onClick={() => setActiveTab('general')}
           >
             General & Voice
           </button>
           <button
-            className={`flex-1 py-3 px-3 text-center border-b-2 font-medium whitespace-nowrap transition-all ${
+            className={`flex-1 py-3 px-3 text-center border-b-2 font-medium whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'display'
-                ? 'border-[var(--jarvis-accent)] text-[var(--jarvis-text)]'
-                : 'border-transparent text-[var(--jarvis-text-dim)] hover:text-white'
+                ? 'border-cyan-400 text-cyan-200 font-bold bg-blue-600/15'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
             onClick={() => setActiveTab('display')}
           >
@@ -358,18 +359,16 @@ export default function SettingsPanel() {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-white/10">
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-white/10 bg-slate-950/60">
           <button
             onClick={handleClose}
-            className="px-4 py-2 rounded-lg text-sm border border-white/10 hover:bg-white/10 transition-colors"
-            style={{ color: 'var(--jarvis-text)' }}
+            className="px-4 py-2 rounded-xl text-xs font-mono font-medium text-slate-300 hover:text-white border border-white/10 hover:bg-white/5 transition-colors cursor-pointer"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            style={{ backgroundColor: 'var(--jarvis-accent)', color: '#0a0e1a' }}
+            className="px-5 py-2 rounded-xl text-xs font-mono font-bold bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-[0_0_15px_rgba(0,229,255,0.4)] hover:brightness-110 active:scale-95 transition-all cursor-pointer"
           >
             Save Changes
           </button>

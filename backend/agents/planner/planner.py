@@ -325,6 +325,18 @@ class PlannerAgent:
                             await mem_svc.add_message_to_conversation(active_conv_id, "assistant", completion_text)
                         except Exception as m_err:
                             logger.debug("Failed to persist assistant msg: {}", m_err)
+
+                    # Dispatch UI Sync Events for Frontend React Store
+                    if fast_intent.tool_name == "navigate_ui":
+                        dest_tab = (safety_decision.validated_args or fast_intent.tool_params).get("tab", "home")
+                        yield WSMessage(type="ui_navigation", data={"tab": dest_tab})
+                    elif fast_intent.tool_name == "toggle_focus_mode":
+                        is_enabled = (safety_decision.validated_args or fast_intent.tool_params).get("enable", True)
+                        yield WSMessage(type="ui_action", data={"action": "focus_mode", "enabled": is_enabled, "message": completion_text})
+                    elif fast_intent.tool_name == "lock_pc":
+                        yield WSMessage(type="ui_action", data={"action": "lock_pc", "message": "Workstation locked"})
+                    elif fast_intent.tool_name == "take_screenshot":
+                        yield WSMessage(type="ui_action", data={"action": "screenshot", "message": "Screenshot captured"})
                     
                     yield WSMessage(type="chat_response", data={"status": "completed", "text": completion_text})
                     _log_self_improving_trace(completion_text, success=True)
@@ -443,6 +455,18 @@ class PlannerAgent:
                                     await mem_svc.add_message_to_conversation(active_conv_id, "assistant", completion_text)
                                 except Exception as m_err:
                                     logger.debug("Failed to persist assistant msg: {}", m_err)
+
+                            # Dispatch UI Sync Events for Frontend React Store
+                            if val_res.tool_name == "navigate_ui":
+                                dest_tab = (safety_decision.validated_args or val_res.parameters).get("tab", "home")
+                                yield WSMessage(type="ui_navigation", data={"tab": dest_tab})
+                            elif val_res.tool_name == "toggle_focus_mode":
+                                is_enabled = (safety_decision.validated_args or val_res.parameters).get("enable", True)
+                                yield WSMessage(type="ui_action", data={"action": "focus_mode", "enabled": is_enabled, "message": completion_text})
+                            elif val_res.tool_name == "lock_pc":
+                                yield WSMessage(type="ui_action", data={"action": "lock_pc", "message": "Workstation locked"})
+                            elif val_res.tool_name == "take_screenshot":
+                                yield WSMessage(type="ui_action", data={"action": "screenshot", "message": "Screenshot captured"})
 
                             yield WSMessage(type="chat_response", data={"status": "completed", "text": completion_text})
                             _log_self_improving_trace(completion_text, success=True)
