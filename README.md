@@ -14,6 +14,12 @@
 
 ---
 
+### 🏎️ Parallel Top-3 Racing LLM Circuit & Zero-Wipeout Task Durability
+- **Parallel Top-3 Provider Racing (`services/llm/racing.py`)** — Simultaneously queries top 3 ranked models via `asyncio.wait(return_when=FIRST_COMPLETED)`, applies a 50ms tie-breaking window, validates against Shannon entropy ($< 6.0$) and error patterns, and instantly cancels (`task.cancel()`) slower candidate streams to conserve compute.
+- **Persistent SQLite WAL Task Queue (`services/task_queue.py`)** — Durable task scheduling backed by SQLite WAL mode. Tasks and manual actions persist across tab switching, page reloads, and application restarts.
+- **Long-Horizon Goal Recovery Engine (`services/long_horizon_checkpoint.py`)** — Automated self-recovery on boot (`/api/v1/developer/recover_interrupted_goals`) detecting interrupted multi-step workflows and resuming cleanly from the exact failure step.
+- **Robust Faster-Whisper Sanitization (`services/voice/stt_manager.py`)** — Filters audio noise and single-character breath artifacts while intelligently deduplicating stutter loops (`"How many How many"`) without losing substantive user questions.
+
 ### 🌐 Client-Independent Platform, Version 1 Protocol & Mobile-First UI
 - **Client-Independent Core Architecture** — Unified FastAPI platform delivering AI capabilities to both Windows Electron desktop and mobile companion applications via identical backend intelligence.
 - **Version 1 WebSocket Protocol (`WS /ws`)** — Standardized `{ version: "1", type, request_id, session_id, timestamp, data }` envelope with end-to-end request correlation, sequence IDs, and strictly typed TypeScript protocol definitions with zero `any`.
@@ -598,12 +604,12 @@ npm run dev
 
 ### Running Automated Tests
 
-#### 1. Backend Master Pytest Suite (16 Suites · 149 Tests)
+#### 1. Backend Master Pytest Suite (35 Suites · 340 Tests)
 ```powershell
 # Run the complete verified backend test suite
 backend\venv\Scripts\python.exe -m pytest backend/tests/ -q
 ```
-*Executes all 16 master test suites covering service container, intent routing, domain agents, 4-tier memory, automation executors, voice pipeline, truthful tool registry, live mode perception, capability expansion, cross-platform safety, biometric security verification, security precedence & hierarchy, and capability registry schema integrity.*
+*Executes all 35 master test suites covering service container, intent routing, domain agents, 4-tier memory, automation executors, voice pipeline, truthful tool registry, live mode perception, capability expansion, cross-platform safety, biometric security verification, security precedence & hierarchy, capability registry schema integrity, Telegram remote service, parallel Top-3 LLM racing circuit, and master durability audit.*
 
 #### 2. Frontend & Route Integration Tests
 ```bash

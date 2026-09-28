@@ -279,7 +279,7 @@ class Settings(BaseSettings):
 
     # ── Clap Listener Settings ───────────────────────────────────────────
     CLAP_ENABLED: bool = Field(
-        default=True,
+        default=False,
         description="Whether to enable the background clap listener.",
     )
     CLAP_MODE: str = Field(

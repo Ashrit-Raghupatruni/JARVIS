@@ -42,9 +42,11 @@ graph TD
 - **Lightweight Lifespan**: `main.py` eagerly boots only fail-closed core essentials (Config, EventBus, ContextManager, TaskQueue, Security Core, FastIntentRouter). 46 heavy and optional services are registered as on-demand lazy factories, eliminating startup bloat and cold-boot hangs.
 - **Circular Dependency Protection & Diagnostics**: Thread-local dependency stack detection raises `CircularDependencyError` on cyclical resolutions. Reverse-initialization graceful shutdown in `shutdown_all()`.
 
-### 2. Multi-Provider LLM Cascade & Streaming (`backend/services/llm/`)
+### 2. Multi-Provider LLM Cascade, Top-3 Racing & Streaming (`backend/services/llm/`)
 - **Modular Provider Architecture**: Unified manager (`backend/services/llm/manager.py`) with dynamic routing across Ollama (Local), Google Gemini, Groq, OpenRouter, and OpenAI.
-- **Circuit Breaker & Health Tracking**: Tracks provider availability with automatic cooldown timers and fallback cascading.
+- **Top-3 Parallel Racing Circuit (`backend/services/llm/racing.py`)**: Executes incoming user prompts concurrently across the top 3 ranked providers using `asyncio.wait(return_when=FIRST_COMPLETED)`. First valid response wins; losing tasks are immediately cancelled (`task.cancel()`) and streams closed (`aclose()`) to conserve user tokens.
+- **Response Validation & Entropy Filter**: Every candidate response is verified: non-null, $>10$ characters, zero error patterns (`timeout`, `quota exceeded`, `connection refused`), and Shannon entropy $< 6.0$ to discard gibberish.
+- **Circuit Breaker, Latency Scoring & Fallback**: Dynamic `speed_score_bonus` (+20 winner, +5 slower valid, -10 failure) updates router rankings. If all top-3 fail, a sequential 4th retry is performed before falling back to local Prash engine.
 - **Unified Tool Calling & Streaming**: Standardized tool schemas (`tool_calling.py`) and token stream filters (`streaming.py`) across all providers.
 
 ### 3. Hierarchical Intent Routing & Fast Paths (`backend/agents/router.py`, `fast_intent_router.py`)
@@ -77,8 +79,8 @@ graph TD
 - **Automation Orchestrator (`orchestrator.py`)**: Multi-step macro recording & playback with persistent JSON workflow storage, RPA sequence executor (`execute_rpa_macro`), and unified sub-executor routing.
 
 ### 7. Multi-Tier Voice & Speech Intelligence (`backend/services/voice/`)
-- **Central Coordinator (`voice_manager.py`)**: Pipeline state machine (`AssistantState`), push-to-talk, self-voice echo suppression, intelligent barge-in, voice commands, and conversation memory persistence.
-- **Speech-to-Text (`stt_manager.py`)**: Faster-Whisper local CTranslate2 engine with thread-safe lazy loading, streaming interim tokens, and hallucination suppression.
+- **Central Coordinator (`voice_manager.py`)**: Pipeline state machine (`AssistantState`), push-to-talk, self-voice echo suppression, intelligent barge-in with monotonic session generation IDs, voice commands, and conversation memory persistence.
+- **Speech-to-Text & Sanitization (`stt_manager.py`)**: Faster-Whisper local CTranslate2 engine with thread-safe lazy loading, streaming interim tokens, and hallucination suppression. Features `is_valid_transcript()` pre-filter (rejects single-character noise `"I"` and non-speech filler) and sentence preservation cleaner repairing stutter repetition loops (e.g. `"How many How many How many"` -> `"How many finger does humans have?"`).
 - **3-Tier Text-to-Speech (`tts_manager.py`)**:
   1. Primary Online: Microsoft Edge-TTS streaming neural voice.
   2. Secondary Local: Piper ONNX offline neural synthesizer.
@@ -86,7 +88,13 @@ graph TD
 - **Wake Word Detection (`wake_word_manager.py`)**: OpenWakeWord ONNX engine with lazy loading, chunk evaluation, and standalone listener lifecycle.
 - **Audio Device Management (`audio_device_manager.py`)**: Safe sounddevice queries, RMS volume calculation, and 5MB bounded PCM buffer management.
 
-### 8. Desktop Perception & Live Mode (`backend/services/perception/`, `live_mode/`, `world_model.py`)
+### 8. Persistent Task Queue & Scheduler Architecture (`backend/services/task_queue.py`)
+- **SQLite WAL Durability**: Replaces volatile in-memory queues with table `persistent_tasks` (`id`, `title`, `command`, `priority`, `status`, `progress`, `logs_json`, `result`, `error`, `created_at`, `updated_at`). Tasks survive page navigation, tab switching, and host restarts.
+- **Durable State Machine**: Formal transitions (`pending` -> `running` -> `paused` / `completed` / `failed` / `cancelled`).
+- **Authoritative REST API**: Dedicated endpoints `/api/v1/tasks` for listing, creating, pausing, resuming, cancelling, and drag-and-drop reordering.
+- **Real-Time Client Synchronization**: Publishes `task.*` events to `EventBus` and broadcasts `task_update` messages via `RobustConnectionManager` over WebSocket, syncing frontend state without polling.
+
+### 9. Desktop Perception & Live Mode (`backend/services/perception/`, `live_mode/`, `world_model.py`)
 - **Differential UIA Scene Graph (`uia_scene_graph.py`)**: Keyed scene caching by `(hwnd, window_title, bounds)` with 2.5s TTL. Fast-bypasses recursive win32 DOM parsing on unchanged foreground windows.
 - **Lazy & Throttled WorldModel (`world_model.py`)**: Deferred window traversal until explicit access. Throttled caching for multi-display topology (5.0s), audio sessions (5.0s), ping connectivity (30.0s), and clipboard inspections (2.0s).
 - **Adaptive Perception Loop (`live_engine.py`)**: Adaptive backoff loop (0.5s active -> 2.5s static backoff). Zero LLM invocation during static observation.
@@ -247,6 +255,14 @@ Result
 | `WS /sync` | WebSocket | Encrypted P2P | Cross-device encrypted peer-to-peer state synchronization |
 | `POST /api/v1/mobile/system/command` | HTTP | Bearer JWT | Remote system actions (lock, shutdown, sleep) with Gatekeeper approval |
 | `POST /api/v1/mobile/approvals/{id}/decision` | HTTP | Ed25519 Sig | Cryptographic biometric signature approval for high-risk system commands |
+| `GET /api/v1/tasks` | HTTP | None / Bearer | Retrieve all persisted tasks with status, progress, logs, and metrics |
+| `POST /api/v1/tasks` | HTTP | None / Bearer | Create and persist a new background task in SQLite WAL |
+| `POST /api/v1/tasks/{id}/pause` | HTTP | None / Bearer | Pause execution of a task with durable state persistence |
+| `POST /api/v1/tasks/{id}/resume` | HTTP | None / Bearer | Resume execution of a paused task |
+| `DELETE /api/v1/tasks/{id}` | HTTP | None / Bearer | Cancel and terminate a task with SQLite state update |
+| `POST /api/v1/tasks/reorder` | HTTP | None / Bearer | Reorder task queue priorities with durable persistence |
+| `POST /api/v1/developer/recover_interrupted_goals` | HTTP | None / Admin | Self-recover interrupted goal checkpoints across reboots |
+| `GET /router/racing` | HTTP | None | Live metrics for Top-3 LLM Racing Circuit (wins, aborts, latencies) |
 
 ---
 

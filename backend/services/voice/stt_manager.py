@@ -19,14 +19,48 @@ import numpy as np
 from loguru import logger
 
 
+NOISE_WORDS = {
+    "uh", "um", "ah", "er", "hmm", "shh", "oh", "watching", "subtitles",
+    "[music]", "[applause]", "you", "thanks for watching", "thank you for watching"
+}
+
+
+def is_valid_transcript(text: str) -> bool:
+    """Validates that a transcript contains substantive, non-noise human speech."""
+    if not text:
+        return False
+    t = text.strip()
+    alnum = re.sub(r"[\W_]+", "", t)
+    # Reject single-character or empty alphanumeric transcripts (e.g. 'I', 'a', '.')
+    if len(alnum) <= 1:
+        return False
+    if t.lower() in NOISE_WORDS:
+        return False
+    words = [w.lower().strip(".,!?") for w in t.split() if w.strip(".,!?")]
+    if not words:
+        return False
+    # Reject pure repetitive stutter without substantive words (e.g. 'who who who')
+    if len(words) >= 3 and len(set(words)) == 1:
+        return False
+    return True
+
+
 def clean_whisper_hallucinations(text: str) -> str:
-    """Removes common Whisper static hallucinations and repeated-word loops."""
+    """Removes common Whisper static hallucinations, hyphenated stutters, and repeated-word loops."""
     if not text:
         return ""
 
     text = text.strip()
 
-    # 1. Hallucinated repeated single words (e.g. "hi, hi, hi", "you, you, you")
+    # 1. Hyphenated stutter loops (e.g. "Who-who-who" -> "Who")
+    text = re.sub(
+        r"\b([a-zA-Z]+)(?:-[a-zA-Z]+)+\b",
+        lambda m: m.group(1) if len(set(m.group(0).lower().split("-"))) == 1 else m.group(0),
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    # 2. Hallucinated repeated single words (e.g. "hi, hi, hi", "you, you, you")
     words = text.split()
     if len(words) >= 3:
         unique_words = set(w.lower().strip(".,!?") for w in words)
@@ -34,17 +68,32 @@ def clean_whisper_hallucinations(text: str) -> str:
             logger.warning("Detected word repetition hallucination: '{}'", text)
             return list(unique_words)[0].capitalize()
 
-    # 2. Hallucinated repeated phrases (e.g. "thank you thank you thank you")
+    # 3. Hallucinated repeated phrases (e.g. "thank you thank you thank you")
     phrases = re.findall(r"\b(\w+\s+\w+)\b", text.lower())
     if phrases:
         from collections import Counter
         counts = Counter(phrases)
         most_common, count = counts.most_common(1)[0]
-        if count >= 3 and (count * 2) >= len(words) * 0.6:
+        phrase_words = set(most_common.split())
+        words_cleaned = set(w.lower().strip(".,!?") for w in words)
+        if count >= 3 and words_cleaned == phrase_words:
             logger.warning("Detected phrase repetition hallucination: '{}'", text)
             return most_common.capitalize()
 
-    return text
+    # 4. Collapse consecutive duplicate words or multi-word phrases with comma or whitespace
+    # (e.g. "How many How many", "How many, how many", "open open")
+    prev = None
+    cleaned = text
+    while prev != cleaned:
+        prev = cleaned
+        cleaned = re.sub(r"\b((?:\w+[\s,]+){0,3}\w+)[,\s]+\1\b", r"\1", cleaned, flags=re.IGNORECASE)
+
+    # 5. Clean up any duplicated leading words
+    cleaned_words = cleaned.split()
+    if len(cleaned_words) >= 2 and cleaned_words[0].lower().strip(".,!?") == cleaned_words[1].lower().strip(".,!?"):
+        cleaned = " ".join(cleaned_words[1:])
+
+    return cleaned.strip()
 
 
 class STTManager:
@@ -228,6 +277,9 @@ class STTManager:
                 language="en",
                 temperature=0.0,
                 condition_on_previous_text=False,
+                repetition_penalty=1.2,
+                no_repeat_ngram_size=3,
+                hallucination_silence_threshold=1.5,
                 vad_filter=True,
                 vad_parameters={
                     "min_silence_duration_ms": 250,
@@ -281,6 +333,9 @@ class STTManager:
                     language="en",
                     temperature=0.0,
                     condition_on_previous_text=False,
+                    repetition_penalty=1.2,
+                    no_repeat_ngram_size=3,
+                    hallucination_silence_threshold=1.5,
                     vad_filter=True,
                     vad_parameters={
                         "min_silence_duration_ms": 250,

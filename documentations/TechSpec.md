@@ -1,6 +1,6 @@
 # 📐 Technical Specification (TechSpec)
 
-This document provides the high-level technical specifications, stack requirements, component boundaries, and performance benchmarks for JARVIS. **Last Updated:** September 27, 2026
+This document provides the high-level technical specifications, stack requirements, component boundaries, and performance benchmarks for JARVIS. **Last Updated:** September 28, 2026
 
 ---
 
@@ -15,8 +15,10 @@ This document provides the high-level technical specifications, stack requiremen
 | **3D Render Engine** | Three.js (r164), WebGL 2, `GLTFLoader`, `MeshoptDecoder`, Custom PBR Shaders |
 | **3D Asset** | `facecap.glb` (332.8 KB, Three.js dev examples) with ARKit morph targets |
 | **Backend Core** | Python 3.10+, FastAPI, Uvicorn, Asyncio Event Loop, Loguru |
-| **Database** | SQLite3 with WAL (Write-Ahead Logging) and FTS5 Full-Text Search |
+| **Database** | SQLite3 with WAL (Write-Ahead Logging), FTS5 Full-Text Search, and `aiosqlite` |
 | **Diagnostics Model** | Authoritative `RuntimeDiagnosticsModel` (provider, model, services, uptime, no secrets) |
+| **LLM Provider Racing** | `LLMRacingCircuit` (Top-3 concurrent provider execution, Shannon entropy $< 6.0$, task abort) |
+| **Task Persistence** | `TaskQueueManager` (SQLite WAL `persistent_tasks`, REST `/api/v1/tasks`, zero tab-wipeout) |
 | **Failover Supervisor** | `LiveModeFailoverSupervisor` with single-agent `asyncio.Lock()` mutual exclusion |
 | **Hermes Execution Layer**| 12-Pillar `HermesBridgeService`, `HermesDesktopAgent`, `HermesGeneralAgent`, `HermesOrchestrator` |
 | **Image Generation** | `ImageGeneratorService` (Google Imagen 3 + Pollinations AI fallback) |
@@ -153,6 +155,46 @@ Empirically measured runtime performance on host Windows 11 machine:
 - **Interactive Inline Approval**: Push interactive cards with `[✅ Approve Action]` and `[❌ Deny Action]` inline keyboard buttons. Tapping unblocks or denies pending `MobileGatewayService` / `MobileBridgeService` execution promises.
 - **Debounce Buffer**: 2.0s rate-limiting gap and 10s duplicate alert suppression.
 - **UI Integration**: `TelegramIntegrationCard.tsx` inside Desktop Settings `Integrations` tab.
+
+---
+
+## 8. Master Reliability, Task Durability & LLM Racing Specification (September 28, 2026)
+
+### 1. Parallel Top-3 LLM Racing Circuit (`backend/services/llm/racing.py`)
+- **Execution Mechanism**: Queries ranked list from `LLMRouter`, slices top 3 providers, and executes simultaneously using `asyncio.wait(return_when=FIRST_COMPLETED)`.
+- **Validation Pipeline**:
+  - Length check: $\text{length} > 10$ characters.
+  - Error suppression: Rejects strings containing `timeout`, `connection refused`, `quota exceeded`, `429`.
+  - Shannon Entropy Filter: Computes token/character entropy $H(X) = -\sum p(x) \log_2 p(x)$. Rejects any candidate with $H(X) \ge 6.0$ to eliminate repetitive loops or garbage tokens.
+- **Immediate Task Abort**: Once the winner is validated, remaining 2 running tasks are immediately cancelled (`task.cancel()`) and generator streams closed (`aclose()`).
+- **Tie-Breaking SLA**: 50ms temporal window. If two providers return valid responses within 50ms, priority is awarded to the provider with higher historical router ranking.
+- **Sequential Fallback**: If all 3 fail, invokes a 4th ranked provider sequentially before falling back to local Prash engine.
+
+### 2. SQLite Persistent Task Queue (`persistent_tasks` Table)
+```sql
+CREATE TABLE IF NOT EXISTS persistent_tasks (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    command TEXT,
+    priority INTEGER DEFAULT 1,
+    status TEXT NOT NULL,           -- pending | running | paused | completed | failed | cancelled
+    progress REAL DEFAULT 0.0,
+    logs_json TEXT DEFAULT '[]',
+    result TEXT,
+    error TEXT,
+    peak_memory_mb REAL DEFAULT 0.0,
+    cpu_time_seconds REAL DEFAULT 0.0,
+    created_at REAL NOT NULL,
+    updated_at REAL NOT NULL
+);
+```
+- **Zero-Wipeout Lifecycle**: Frontend `TaskQueueManager.tsx` queries `/api/v1/tasks` upon component mount. Navigation between `Chat`, `Voice`, `Home`, and `Tasks` preserves 100% of user and scheduled tasks.
+- **Real-Time Synchronization**: Backend emits `task_update` WebSocket messages to all active clients upon state transition, keeping progress bars and badges updated with zero polling.
+
+### 3. Voice Pipeline Hardening & STT Sanitization
+- **Transcript Validation (`is_valid_transcript`)**: Rejects single-character transcripts (`"I"`), punctuation, and non-speech filler before planner invocation.
+- **Full Sentence Preservation**: `clean_whisper_hallucinations` collapses consecutive repeated n-grams (`"How many How many How many"` $\rightarrow$ `"How many"`) without truncating the following substantive sentence (`"finger does humans have?"`).
+- **Prash Fail-Safe Timeout**: Enforces 2.5s maximum CPU execution time for Prash local inference, immediately falling through to LLM racing if exceeded.
 
 
 

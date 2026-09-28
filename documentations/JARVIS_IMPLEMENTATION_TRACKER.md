@@ -317,6 +317,9 @@
 | **Phase 25** | **12-Pillar Hermes Bridge & Dual Agents** | **COMPLETED** | ✅ Done | ✅ `test_image_generation_and_desktop_agent.py` | ✅ `HermesDesktopAgent` (Win32 foreground/paste), `HermesGeneralAgent` (69 tools), CLI sync |
 | **Phase 26** | **Chat Image Generation & Lightbox Studio** | **COMPLETED** | ✅ Done | ✅ `test_image_generation_and_desktop_agent.py` | ✅ Imagen 3 / Pollinations AI dual-engine, local disk cache, ChatPanel lightbox preview |
 | **Phase 27** | **Client-Independent Core & Mobile-First Platform** | **COMPLETED** | ✅ Done | ✅ `test_routes.py` & `test_all_11_os_capabilities.py` | ✅ Unified REST/WS endpoints, V1 protocol envelope, RobustConnectionManager, 0 TS errors |
+| **Phase 28** | **Telegram Remote Bot & Security Gateway** | **COMPLETED** | ✅ Done | ✅ `test_telegram_remote_service.py` | ✅ Long-polling daemon, 6-digit PIN pairing, inline approvals, remote lock & screenshot |
+| **Phase 29** | **Parallel Top-3 LLM Racing Circuit** | **COMPLETED** | ✅ Done | ✅ `test_racing_circuit.py` | ✅ Concurrent Top-3 provider racing, 50ms tie-breaking, Shannon entropy (<6.0) filter, loser cancel |
+| **Phase 30** | **Master Reliability, Task Durability & STT Fix** | **COMPLETED** | ✅ Done | ✅ `test_reliability_audit.py` & `test_canonical_contracts_and_bypasses.py` | ✅ SQLite WAL persistent task queue, long-horizon goal recovery, Whisper stutter loop fix, ChromaDB isolation |
 
 ---
 
@@ -325,7 +328,7 @@
 backend\venv\Scripts\python.exe -m pytest backend/tests/ -q
 ```
 ```text
-298 passed in 116.16s (100% Pass Rate · 31 Master Test Suites · 0 Failures · 0 Regressions)
+340 passed in 122.36s (100% Pass Rate · 35 Master Test Suites · 0 Failures · 0 Regressions)
 ```
 ```powershell
 npx tsc --noEmit (frontend & mobile_app)

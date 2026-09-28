@@ -56,8 +56,20 @@ class MobileAuthService:
         self._revoked_devices: set = set()
         self._revoked_tokens: set = set()
 
-        # Initialize real Ed25519 asymmetric cryptographic keypair
-        self._private_key = ed25519.Ed25519PrivateKey.generate()
+        # Initialize or load persistent Ed25519 asymmetric cryptographic keypair
+        self.server_key_file = self.data_dir / "server_identity.key"
+        if self.server_key_file.exists():
+            try:
+                with open(self.server_key_file, "rb") as f:
+                    self._private_key = ed25519.Ed25519PrivateKey.from_private_bytes(f.read())
+            except Exception as e:
+                logger.warning("Could not load server_identity.key: {}. Generating new persistent key.", e)
+                self._private_key = ed25519.Ed25519PrivateKey.generate()
+                self._save_server_key()
+        else:
+            self._private_key = ed25519.Ed25519PrivateKey.generate()
+            self._save_server_key()
+
         self._public_key = self._private_key.public_key()
         raw_pub = self._public_key.public_bytes(
             encoding=serialization.Encoding.Raw,
@@ -67,6 +79,25 @@ class MobileAuthService:
 
         logger.info("MobileAuthService initialized (Loaded {} trusted devices, Ed25519 PubKey={})",
                     len(self._trusted_devices), self._server_public_key_b64[:12] + "...")
+
+    def _save_server_key(self) -> None:
+        """Persist server private key to disk with restricted permissions."""
+        try:
+            raw_priv = self._private_key.private_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PrivateFormat.Raw,
+                encryption_algorithm=serialization.NoEncryption()
+            )
+            with open(self.server_key_file, "wb") as f:
+                f.write(raw_priv)
+            if os.name != "nt":
+                os.chmod(self.server_key_file, 0o600)
+        except Exception as e:
+            logger.error("Error saving server_identity.key: {}", e)
+
+    def get_server_public_key(self) -> str:
+        """Return base64-encoded server Ed25519 public key."""
+        return self._server_public_key_b64
 
     def _load_trusted_devices(self) -> Dict[str, Dict[str, Any]]:
         """Load registered paired devices from local trusted_devices.json."""
@@ -169,7 +200,10 @@ class MobileAuthService:
             return None
 
         # If cryptographic challenge response was provided, verify client's signature
-        if client_public_key and client_signature:
+        if client_public_key or client_signature:
+            if not (client_public_key and client_signature):
+                logger.warning("Pairing failed: Incomplete cryptographic credentials from client {}", device_id)
+                return None
             nonce = session.get("nonce", "")
             expected_msg = f"JARVIS_CLIENT_PAIR:{session_id}:{nonce}:{device_id}"
             if not self.verify_client_signature(client_public_key, expected_msg, client_signature):

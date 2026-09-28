@@ -22,6 +22,14 @@ def bootstrap_core_services(app: Any, event_bus: Optional[EventBus] = None) -> E
     if event_bus is None:
         event_bus = EventBus()
 
+    # Suppress incompatible ChromaDB PostHog telemetry signature mismatch
+    try:
+        import chromadb.telemetry.product.posthog as ch_ph
+        ch_ph.Posthog.capture = lambda self, *args, **kwargs: None
+        ch_ph.Posthog._direct_capture = lambda self, *args, **kwargs: None
+    except Exception:
+        pass
+
     from backend.utils.logger import register_event_bus_sink
     register_event_bus_sink(event_bus)
 
@@ -156,7 +164,7 @@ def register_lazy_factories(event_bus: EventBus, connection_manager: Optional[An
 
     def _make_wake_word_service():
         from backend.services.voice import WakeWordManager
-        return WakeWordManager()
+        return WakeWordManager(eager_load=True)
     ServiceManager.register_factory("wake_word_service", _make_wake_word_service)
 
     def _make_clap_service():

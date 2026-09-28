@@ -235,9 +235,11 @@ async def test_telegram_lock_workstation_command(clean_telegram_service):
 
     svc._send_message = mock_send
 
-    with patch("subprocess.Popen") as mock_popen:
+    from backend.services.tool_registry import ToolRegistry
+    with patch.object(ToolRegistry, "execute_tool", new_callable=AsyncMock) as mock_exec:
+        mock_exec.return_value = {"success": True, "status": "success", "message": "Workstation locked."}
         await svc._handle_lock_command("999888777")
-        mock_popen.assert_called_once_with(["rundll32.exe", "user32.dll,LockWorkStation"], shell=False)
+        mock_exec.assert_called_once_with("lock_pc", {})
 
     assert "Workstation Locked" in sent_messages[0]["text"]
 

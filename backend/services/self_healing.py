@@ -8,6 +8,7 @@ so JARVIS NEVER repeats the same mistake twice.
 """
 
 import os
+import sys
 import shutil
 import time
 from pathlib import Path
@@ -23,6 +24,7 @@ class SelfHealingEngine:
         self.data_dir = data_dir or Path("data")
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.learned_recoveries: Dict[str, str] = {}
+        self.recovery_attempts: Dict[str, int] = {}
         logger.info("SelfHealingEngine initialized.")
 
     def diagnose_and_recover(
@@ -34,8 +36,24 @@ class SelfHealingEngine:
     ) -> Dict[str, Any]:
         """
         Diagnose a failed system/application/UI action and execute automated recovery.
+        Enforces a maximum of 2 recovery attempts per target to prevent infinite retry loops.
         """
-        logger.warning("🚑 Self-Healing Intercept: Action '{}' failed with: '{}'", failed_action, error_message)
+        attempt_key = f"{failed_action}:{target_name.lower().strip()}"
+        current_attempts = self.recovery_attempts.get(attempt_key, 0)
+        if current_attempts >= 2:
+            logger.warning("⚠️ Self-Healing threshold reached (max 2 attempts) for '{}'. Failing fast.", attempt_key)
+            return {
+                "recovered": False,
+                "failed_action": failed_action,
+                "target_name": target_name,
+                "error_diagnosed": f"Maximum recovery attempts exceeded (previous: {error_message})",
+                "recovery_strategy": "fail_fast",
+                "recovered_path": "",
+                "timestamp": time.time()
+            }
+        self.recovery_attempts[attempt_key] = current_attempts + 1
+
+        logger.warning("🚑 Self-Healing Intercept (Attempt {}/2): Action '{}' failed with: '{}'", self.recovery_attempts[attempt_key], failed_action, error_message)
         
         lower_err = error_message.lower()
         lower_target = target_name.lower()
@@ -46,28 +64,44 @@ class SelfHealingEngine:
 
         # 1. Executable / Application Path Moved or Renamed
         if "not found" in lower_err or "system cannot find the file" in lower_err or "no such file" in lower_err:
-            found_path = shutil.which(target_name) or shutil.which(f"{target_name}.exe")
+            try:
+                from backend.services.automation.desktop_executor import _resolve_app_path
+                found_path = _resolve_app_path(target_name)
+            except Exception:
+                found_path = None
+
             if not found_path:
-                # Search Common Program directories
+                found_path = shutil.which(target_name) or shutil.which(f"{target_name}.exe")
+
+            if not found_path:
+                # Shallow search in common program directories (depth <= 2)
                 search_roots = []
                 if sys.platform == "win32":
                     pf = os.environ.get("ProgramFiles", r"C:\Program Files")
-                    pf86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
                     local_app = os.environ.get("LOCALAPPDATA", os.path.expanduser("~\\AppData\\Local"))
-                    search_roots.extend([pf, pf86, local_app])
+                    search_roots.extend([pf, local_app])
                 else:
-                    search_roots.extend(["/usr/bin", "/usr/local/bin", "/opt", os.path.expanduser("~/.local/bin")])
+                    search_roots.extend(["/usr/bin", "/usr/local/bin", os.path.expanduser("~/.local/bin")])
 
+                exe_name = f"{target_name}.exe" if sys.platform == "win32" else target_name
                 for search_root in search_roots:
-                    if os.path.exists(search_root):
-                        pattern = f"**/{target_name}.exe" if sys.platform == "win32" else f"**/{target_name}"
-                        try:
-                            matches = list(Path(search_root).glob(pattern))
-                            if matches:
-                                found_path = str(matches[0])
-                                break
-                        except Exception:
-                            continue
+                    if not os.path.exists(search_root):
+                        continue
+                    try:
+                        cand_direct = os.path.join(search_root, exe_name)
+                        if os.path.exists(cand_direct):
+                            found_path = cand_direct
+                            break
+                        for entry in os.scandir(search_root):
+                            if entry.is_dir():
+                                cand_sub = os.path.join(entry.path, exe_name)
+                                if os.path.exists(cand_sub):
+                                    found_path = cand_sub
+                                    break
+                        if found_path:
+                            break
+                    except Exception:
+                        continue
             
             if found_path:
                 recovered_path = found_path
@@ -135,7 +169,9 @@ class SelfHealingEngine:
             success = False
 
         # 6. Default Recovery Fallback (Fails closed if genuine recovery was not achieved)
-        if not success:
+        if success:
+            self.recovery_attempts.pop(attempt_key, None)
+        else:
             recovery_strategy = "mobile_gatekeeper_ask"
             logger.warning("⚠️ All local recovery cascades exhausted for '{}'. Requesting Mobile Gatekeeper confirmation.", target_name)
 

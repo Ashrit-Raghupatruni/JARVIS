@@ -1,6 +1,6 @@
 # 📋 Project Capability Directory & System Roadmap
 
-This document outlines the capabilities, completed features, active work, and upcoming roadmap of the **JARVIS Personal AI Operating System**. **Last Updated:** August 8, 2026
+This document outlines the capabilities, completed features, active work, and upcoming roadmap of the **JARVIS Personal AI Operating System**. **Last Updated:** September 28, 2026
 
 ---
 
@@ -81,7 +81,13 @@ This document outlines the capabilities, completed features, active work, and up
 - [x] In-Chat Image Generation Engine (`ImageGeneratorService` with Imagen 3 / Pollinations AI & Lightbox UI)
 - [x] Synchronized Hermes CLI API keys and configs (`~/.hermes/.env` and `AppData/Local/hermes/.env`)
 - [x] 69 Executable System Tools in Truthful Tool Registry (100% verified executable handlers)
-- [x] 298/298 Passing Tests across 30 test files with zero regressions
+- [x] Telegram Remote Bot Gateway (`TelegramRemoteService`) with pairing PIN, inline approvals, and remote lock/screenshot
+- [x] Top-3 Parallel Racing LLM Provider Selection Circuit (`LLMRacingCircuit`) with entropy check and loser cancel
+- [x] Persistent SQLite WAL Task Queue (`TaskQueueManager.tsx` & `task_queue.py`) with zero-wipeout navigation
+- [x] Long-Horizon Goal Continuity & Automated Recovery Engine (`LongHorizonCheckpointService`)
+- [x] Speech-to-Text Whisper Stutter Filtering & Question Preservation (`stt_manager.py`)
+- [x] ChromaDB PostHog Isolation Monkeypatch (`manager.py`, `bootstrap.py`)
+- [x] 340/340 Passing Tests across 35 test files with zero regressions
 
 ---
 
@@ -196,7 +202,32 @@ Expanded JARVIS's capability surface across multimodal generation, specialized t
   - Consolidated 3-tier TTS fallback architecture (`Edge-TTS` -> `Piper Local ONNX` -> `SAPI SpVoice`).
   - Implemented lazy-loaded `ServiceManager` with fast startup and deterministic lifecycle.
   - Verified full master test suite of 12 test files with **116/116 tests passing (100% pass rate)**.
+---
 
+## 7. Live Mode Failover, Dual Hermes Agents & Image Generation Milestone (September 26, 2026)
 
+- [x] **Live Mode Failover Architecture & Supervisor**: Built `backend/services/live_mode/failover_controller.py` with single-agent `_control_lock = asyncio.Lock()`, dynamic step status tracking, and failover trigger handoffs.
+- [x] **Dual Hermes Agents**: Implemented `HermesDesktopAgent` with Win32 `AttachThreadInput` foregrounding and `HermesGeneralAgent` function calling across 69 tools.
+- [x] **12-Pillar Hermes Bridge**: Built `backend/services/hermes_bridge.py` binding desktop, web, system, and vision control with WebSocket progress reporting.
+- [x] **In-Chat Image Generation**: Implemented Google Imagen 3 with Pollinations AI fallback and frontend Lightbox preview modal.
+- [x] **Verification**: 12/12 new tests passing in `test_image_generation_and_desktop_agent.py` (298/298 master suite).
 
+---
 
+## 8. Telegram Remote Bot & Security Bridge Milestone (September 27, 2026)
+
+- [x] **Telegram Remote Control**: Built `backend/services/telegram_service.py` with long-polling daemon, authorized user gate, and secure PIN pairing mode.
+- [x] **Interactive Telegram Approvals**: Integrated inline `[Approve]` and `[Deny]` buttons for high-risk desktop operations with cryptographic callbacks.
+- [x] **Remote Commands**: Implemented `/status`, `/tasks`, `/lock`, `/open <app>`, `/screenshot`, `/cancel <id>`.
+- [x] **Verification**: 17/17 tests passing in `test_telegram_remote_service.py`.
+
+---
+
+## 9. Master Reliability Audit, Durability & Parallel LLM Racing Milestone (September 28, 2026)
+
+- [x] **Parallel Top-3 Racing LLM Circuit**: Built `backend/services/llm/racing.py` concurrently querying top 3 providers via `asyncio.wait(return_when=FIRST_COMPLETED)`, 50ms tie-breaking window, Shannon entropy validation ($< 6.0$), and immediate loser cancellation.
+- [x] **Persistent SQLite WAL Task Queue**: Built `backend/services/task_queue.py` and `frontend/src/components/TaskQueueManager.tsx` ensuring tasks survive page navigation, tab switching, and process restarts.
+- [x] **Long-Horizon Goal Recovery**: Fixed singleton import `long_horizon_manager` and built self-recovery endpoint `/api/v1/developer/recover_interrupted_goals`.
+- [x] **Whisper STT Repetition & Stutter Fix**: Filtered multi-token stutter loops and noise artifacts while preserving full questions (`is_valid_transcript`, `clean_whisper_hallucinations`).
+- [x] **ChromaDB PostHog Isolation**: Monkeypatched PostHog 7.15+ capture signature incompatibility preventing boot crash.
+- [x] **Master Verification Suite**: 340/340 tests passing across 35 test files (100% pass rate in 122.36s).

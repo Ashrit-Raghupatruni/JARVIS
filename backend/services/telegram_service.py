@@ -473,49 +473,65 @@ class TelegramRemoteService:
         )
 
     async def _handle_lock_command(self, chat_id: str) -> None:
-        """Lock the host Windows workstation immediately."""
+        """Lock the host Windows workstation immediately via ToolRegistry."""
         try:
-            subprocess.Popen(["rundll32.exe", "user32.dll,LockWorkStation"], shell=False)
-            await self._send_message(chat_id, "🔒 *Workstation Locked*\n\nWindows workstation display locked successfully.")
+            from backend.services.manager import ServiceManager
+            from backend.services.tool_registry import ToolRegistry
+            tr = ServiceManager.get_instance("tool_registry") or ToolRegistry()
+            res = await tr.execute_tool("lock_pc", {})
+            if res.get("success", False):
+                await self._send_message(chat_id, "🔒 *Workstation Locked*\n\nWindows workstation display locked successfully.")
+            else:
+                await self._send_message(chat_id, f"❌ Failed to lock workstation: {res.get('error', 'Unknown error')}")
         except Exception as e:
             logger.error("Failed to lock workstation: {}", e)
             await self._send_message(chat_id, f"❌ Failed to lock workstation: {e}")
 
     async def _handle_screenshot_command(self, chat_id: str) -> None:
-        """Capture on-demand screen preview and send as a Telegram photo."""
-        from backend.services.manager import ServiceManager
-        gateway = ServiceManager.get_instance("mobile_gateway_service")
-        if not gateway:
-            from backend.services.mobile_gateway import MobileGatewayService
-            gateway = MobileGatewayService()
-
-        preview = gateway.capture_screen_preview()
-        if not preview.image_base64:
-            await self._send_message(chat_id, "⚠️ Desktop screenshot capture unavailable (missing display dependencies).")
-            return
-
+        """Capture on-demand screen preview via ToolRegistry and send as a Telegram photo."""
         try:
-            raw_b64 = preview.image_base64.split(",", 1)[-1]
+            from backend.services.manager import ServiceManager
+            from backend.services.tool_registry import ToolRegistry
+            tr = ServiceManager.get_instance("tool_registry") or ToolRegistry()
+            res = await tr.execute_tool("take_screenshot", {})
+            img_b64 = None
+            if res.get("success", False) and isinstance(res.get("data"), dict):
+                img_b64 = res["data"].get("image_base64")
+            elif res.get("image_base64"):
+                img_b64 = res.get("image_base64")
+
+            if not img_b64:
+                gateway = ServiceManager.get_instance("mobile_gateway_service")
+                if gateway:
+                    preview = gateway.capture_screen_preview()
+                    img_b64 = preview.image_base64
+
+            if not img_b64:
+                await self._send_message(chat_id, "⚠️ Desktop screenshot capture unavailable (missing display dependencies).")
+                return
+
+            raw_b64 = img_b64.split(",", 1)[-1]
             img_bytes = base64.b64decode(raw_b64)
             await self._send_photo(
                 chat_id,
                 img_bytes,
-                caption=f"📸 *Workstation Screen Snapshot*\nWindow: `{preview.active_window_title}`"
+                caption="📸 *Workstation Screen Snapshot*"
             )
         except Exception as e:
             logger.error("Failed to transmit screenshot photo via Telegram: {}", e)
             await self._send_message(chat_id, f"❌ Failed to transmit screenshot: {e}")
 
     async def _handle_app_launch(self, chat_id: str, app_name: str) -> None:
-        """Launch whitelisted desktop application via AutomationService."""
+        """Launch whitelisted desktop application via ToolRegistry."""
         # Sanitize against shell operators
         if any(c in app_name for c in ["&", ";", "|", ">", "<", "`", "$", "\n", "\r"]):
             await self._send_message(chat_id, "❌ Invalid application name: shell operators are strictly prohibited.")
             return
 
-        from backend.services.automation import AutomationService
-        auto_svc = AutomationService()
-        res = await auto_svc.open_application(app_name)
+        from backend.services.manager import ServiceManager
+        from backend.services.tool_registry import ToolRegistry
+        tr = ServiceManager.get_instance("tool_registry") or ToolRegistry()
+        res = await tr.execute_tool("open_application", {"app_name": app_name})
         if res.get("success", False):
             await self._send_message(chat_id, f"🚀 *Launched Application:* `{app_name}`")
         else:

@@ -50,13 +50,28 @@ async def get_agent_dashboard(request: Request) -> Dict[str, Any]:
 
 @router.get("/memory_explorer")
 async def get_memory_explorer_data(request: Request) -> Dict[str, Any]:
-    """Return Knowledge Graph and Vector DB memory explorer statistics."""
+    """Return Knowledge Graph and Vector DB memory explorer statistics truthfully."""
+    mem_svc = getattr(request.app.state, "memory_service", None)
+    node_count = 0
+    entities = 0
+    relations = 0
+    if mem_svc:
+        try:
+            if hasattr(mem_svc, "get_stats"):
+                stats = mem_svc.get_stats()
+                node_count = stats.get("node_count", 0)
+                entities = stats.get("entities", 0)
+                relations = stats.get("relations", 0)
+            elif hasattr(mem_svc, "count"):
+                node_count = mem_svc.count()
+        except Exception:
+            pass
     return {
         "chroma_collection": "rag_documents",
-        "vector_node_count": 142,
-        "knowledge_graph_entities": 38,
-        "knowledge_graph_relations": 86,
-        "memory_health": "Optimal"
+        "vector_node_count": node_count,
+        "knowledge_graph_entities": entities,
+        "knowledge_graph_relations": relations,
+        "memory_health": "Healthy" if mem_svc else "Degraded"
     }
 
 
@@ -84,7 +99,7 @@ async def get_plugins_dashboard(request: Request) -> Dict[str, Any]:
 
 @router.get("/performance")
 async def get_performance_dashboard(request: Request) -> Dict[str, Any]:
-    """Return system RAM, CPU, VRAM, Disk, Battery, and LLM latency metrics."""
+    """Return system RAM, CPU, VRAM, Disk, Battery, and LLM latency metrics truthfully."""
     cpu_pct = psutil.cpu_percent(interval=None)
     ram = psutil.virtual_memory()
     
@@ -96,18 +111,43 @@ async def get_performance_dashboard(request: Request) -> Dict[str, Any]:
         disk_used_gb = round(disk.used / (1024**3), 1)
         disk_total_gb = round(disk.total / (1024**3), 1)
     except Exception:
-        disk_pct = 45.0
-        disk_used_gb = 212.0
-        disk_total_gb = 512.0
+        disk_pct = 0.0
+        disk_used_gb = 0.0
+        disk_total_gb = 0.0
 
     # Battery
     try:
         battery = psutil.sensors_battery()
-        battery_pct = battery.percent if battery else 100
-        battery_plugged = battery.power_plugged if battery else True
+        battery_pct = battery.percent if battery else None
+        battery_plugged = battery.power_plugged if battery else None
     except Exception:
-        battery_pct = 100
-        battery_plugged = True
+        battery_pct = None
+        battery_plugged = None
+
+    # GPU / VRAM measurement (truthful, no fabrication)
+    gpu_vram_used_gb = None
+    gpu_vram_total_gb = None
+    try:
+        import torch
+        if torch.cuda.is_available():
+            gpu_vram_used_gb = round(torch.cuda.memory_allocated() / (1024**3), 2)
+            gpu_vram_total_gb = round(torch.cuda.get_device_properties(0).total_memory / (1024**3), 2)
+    except Exception:
+        pass
+
+    # Redis cache measurement
+    redis_cache_hit_ratio = None
+    try:
+        redis_client = getattr(request.app.state, "redis_client", None)
+        if redis_client:
+            info = redis_client.info("stats")
+            hits = info.get("keyspace_hits", 0)
+            misses = info.get("keyspace_misses", 0)
+            total = hits + misses
+            if total > 0:
+                redis_cache_hit_ratio = f"{round((hits / total) * 100, 1)}%"
+    except Exception:
+        pass
 
     return {
         "cpu_usage_percent": cpu_pct,
@@ -119,22 +159,34 @@ async def get_performance_dashboard(request: Request) -> Dict[str, Any]:
         "disk_total_gb": disk_total_gb,
         "battery_percent": battery_pct,
         "battery_plugged": battery_plugged,
-        "gpu_vram_used_gb": 1.2,
-        "gpu_vram_total_gb": 8.0,
-        "avg_llm_latency_seconds": 0.35,
-        "redis_cache_hit_ratio": "94.2%"
+        "gpu_vram_used_gb": gpu_vram_used_gb,
+        "gpu_vram_total_gb": gpu_vram_total_gb,
+        "avg_llm_latency_seconds": None,
+        "redis_cache_hit_ratio": redis_cache_hit_ratio
     }
 
 
 @router.post("/screen_inspector")
 async def inspect_screen(request: Request) -> Dict[str, Any]:
-    """Return real-time active window title, HWND, process name, and accessibility count."""
+    """Return real-time active window title, HWND, process name, and display resolution."""
+    # Measure native display resolution truthfully
+    resolution = "unavailable"
+    try:
+        import ctypes
+        w = ctypes.windll.user32.GetSystemMetrics(0)
+        h = ctypes.windll.user32.GetSystemMetrics(1)
+        if w and h:
+            resolution = f"{w}x{h}"
+    except Exception:
+        pass
+
     screen_svc = getattr(request.app.state, "screen_service", None)
     if screen_svc:
         try:
             info = screen_svc.get_active_window_info()
+            info["resolution"] = resolution
             return {"status": "success", "window": info}
-        except Exception as e:
+        except Exception:
             pass
     
     # Fallback win32 inspection
@@ -150,38 +202,33 @@ async def inspect_screen(request: Request) -> Dict[str, Any]:
                 "hwnd": hwnd,
                 "title": title,
                 "process_name": proc_name,
-                "accessibility_elements_count": 42,
-                "resolution": "1920x1080",
+                "accessibility_elements_count": None,
+                "resolution": resolution,
                 "focused": True
             }
         }
     except Exception:
         return {
-            "status": "success",
+            "status": "error",
+            "message": "Screen inspection unavailable in current environment",
             "window": {
-                "hwnd": 0x102E4,
-                "title": "JARVIS AI OS Terminal",
-                "process_name": "WindowsTerminal.exe",
-                "accessibility_elements_count": 38,
-                "resolution": "1920x1080",
-                "focused": True
+                "hwnd": 0,
+                "title": "Desktop Workspace",
+                "process_name": "system",
+                "accessibility_elements_count": None,
+                "resolution": resolution,
+                "focused": False
             }
         }
 
 
 @router.post("/take_screenshot")
 async def take_screenshot(request: Request) -> Dict[str, Any]:
-    """Capture desktop screenshot and return status + image data."""
-    try:
-        from PIL import ImageGrab
-        import io, base64
-        img = ImageGrab.grab()
-        buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=75)
-        b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
-        return {"status": "success", "image_base64": f"data:image/jpeg;base64,{b64}"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+    """Capture desktop screenshot via canonical ToolRegistry gateway."""
+    from backend.services.manager import ServiceManager
+    from backend.services.tool_registry import ToolRegistry
+    tr = ServiceManager.get_instance("tool_registry") or ToolRegistry()
+    return await tr.execute_tool("take_screenshot", {})
 
 
 @router.post("/browser_action")

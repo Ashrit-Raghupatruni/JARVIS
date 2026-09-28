@@ -71,10 +71,13 @@ class WSMessage(BaseModel):
 
     version: str = Field(default="1", description="Protocol version (e.g. '1').")
     type: str = Field(..., description="Message type discriminator.")
+    success: bool = Field(default=True, description="Whether the operation/event succeeded.")
     request_id: Optional[str] = Field(default=None, description="Request ID for client correlation.")
+    correlation_id: Optional[str] = Field(default=None, description="Correlation identifier linking requests and responses.")
     session_id: Optional[str] = Field(default=None, description="Client session or device identifier.")
     msg_id: Optional[int] = Field(default=None, description="Sequence ID for ACK tracking.")
     data: Dict[str, Any] = Field(default_factory=dict, description="Payload data.")
+    error: Optional[Dict[str, Any]] = Field(default=None, description="Structured error details if success is False.")
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         description="UTC timestamp of when the message was created.",
@@ -83,6 +86,72 @@ class WSMessage(BaseModel):
         default_factory=lambda: str(uuid.uuid4()),
         description="Unique message identifier.",
     )
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  Canonical Command, Response & Tool Result Envelopes (V1 Unified Protocol)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+class CommandSource(str, Enum):
+    """Origin of a command entering the JARVIS core."""
+
+    DESKTOP = "desktop"
+    ANDROID = "android"
+    TELEGRAM = "telegram"
+    REST = "rest"
+    VOICE = "voice"
+    INTERNAL = "internal"
+
+
+class CommandEnvelope(BaseModel):
+    """
+    Canonical Command Envelope across all ingress channels (Desktop, Mobile, Telegram, REST).
+    Guarantees strict runtime validation before reaching FastIntentRouter and Planner.
+    """
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    version: str = Field(default="1")
+    source: CommandSource = Field(default=CommandSource.INTERNAL)
+    type: str = Field(..., description="Action or command discriminator (e.g. 'command', 'action', 'voice_start').")
+    text: Optional[str] = Field(default=None, description="Natural language prompt or typed text.")
+    payload: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Command arguments or payload data.")
+    timestamp: float = Field(default_factory=time.time)
+    client_id: Optional[str] = Field(default=None)
+    correlation_id: Optional[str] = Field(default=None)
+    session_id: Optional[str] = Field(default=None)
+
+
+class ResponseEnvelope(BaseModel):
+    """
+    Canonical Response Envelope across all egress channels.
+    """
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    version: str = Field(default="1")
+    type: str = Field(..., description="Response discriminator: 'response', 'error', 'event', 'status', 'approval_required'.")
+    success: bool = Field(default=True)
+    data: Any = Field(default=None)
+    error: Optional[Dict[str, Any]] = Field(default=None)
+    correlation_id: Optional[str] = Field(default=None)
+    request_id: Optional[str] = Field(default=None)
+    session_id: Optional[str] = Field(default=None)
+    timestamp: float = Field(default_factory=time.time)
+
+
+class ToolResultContract(BaseModel):
+    """
+    Canonical Tool Result Contract returned by ToolRegistry and all executed tools.
+    Guarantees consistent 'success' and 'status' fields so no consumer misinterprets outcomes.
+    """
+
+    success: bool
+    status: str
+    tool_name: str
+    data: Optional[Any] = None
+    result: Optional[Any] = None
+    error: Optional[str] = None
+    message: Optional[str] = None
 
 
 

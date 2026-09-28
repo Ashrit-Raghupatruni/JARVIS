@@ -544,10 +544,15 @@ class FastIntentRouter:
 
         # I. Open Application
         m_open = self._re_open_app.match(cleaned)
+        generic_app_nouns = {"application", "applications", "app", "apps", "program", "programs", "software", "window", "windows", "it", "one"}
         if m_open:
             app_target = m_open.group(1).strip()
-            # Ensure target is a single bounded app name (<= 3 words, no punctuation verbs)
-            if len(app_target.split()) <= 3 and not any(w in app_target for w in ["the", "this", "file", "folder", "document"]):
+            # Ensure target is a single bounded app name (<= 3 words, not generic noun, no punctuation verbs)
+            if (
+                len(app_target.split()) <= 3
+                and app_target.lower() not in generic_app_nouns
+                and not any(w in app_target.lower() for w in ["the", "this", "file", "folder", "document"])
+            ):
                 return FastIntentResult(
                     is_atomic=True,
                     tool_name="open_application",
@@ -562,7 +567,7 @@ class FastIntentRouter:
         m_close = self._re_close_app.match(cleaned)
         if m_close:
             app_target = m_close.group(1).strip()
-            if len(app_target.split()) <= 3:
+            if len(app_target.split()) <= 3 and app_target.lower() not in generic_app_nouns:
                 return FastIntentResult(
                     is_atomic=True,
                     tool_name="close_application",

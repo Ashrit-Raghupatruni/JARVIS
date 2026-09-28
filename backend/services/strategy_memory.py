@@ -73,19 +73,28 @@ class StrategyMemoryService:
             return ranked[0]
         return {"strategy": "win32_uia", "confidence": 0.95, "name": "Default Win32 UIA"}
 
-    def record_task_strategy_outcome(self, task_name: str, strategy_id: str, success: bool, failure_reason: str = "") -> None:
+    def record_task_strategy_outcome(
+        self,
+        task_name: str = "",
+        strategy_id: str = "",
+        success: bool = True,
+        failure_reason: str = "",
+        **kwargs: Any
+    ) -> None:
         """Record task-specific strategy outcome to avoid repeating known failed strategies."""
-        t_key = task_name.lower().strip()
+        actual_task = task_name or kwargs.get("task", "")
+        actual_strategy = strategy_id or kwargs.get("strategy", "")
+        t_key = str(actual_task).lower().strip()
         task_memory = self.strategies.setdefault("_task_history", {})
         
         entry = task_memory.get(t_key, {"successful_strategy": None, "failed_strategies": []})
         if success:
-            entry["successful_strategy"] = strategy_id
-            self.update_strategy_outcome("ui_automation", strategy_id, reward=1.0)
+            entry["successful_strategy"] = actual_strategy
+            self.update_strategy_outcome("ui_automation", actual_strategy, reward=1.0)
         else:
-            if strategy_id not in entry.get("failed_strategies", []):
-                entry.setdefault("failed_strategies", []).append(strategy_id)
-            self.update_strategy_outcome("ui_automation", strategy_id, reward=-2.0)
+            if actual_strategy not in entry.get("failed_strategies", []):
+                entry.setdefault("failed_strategies", []).append(actual_strategy)
+            self.update_strategy_outcome("ui_automation", actual_strategy, reward=-2.0)
             
         task_memory[t_key] = entry
         self.strategies["_task_history"] = task_memory

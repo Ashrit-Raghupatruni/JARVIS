@@ -178,7 +178,7 @@ class VoiceManager:
         self._has_speech = False
         self._played_ack = False
         self._last_speech_time = 0.0
-        self._speech_silence_timeout = 0.55  # 0.55s silence window for instant speech completion
+        self._speech_silence_timeout = 0.85  # 0.85s natural silence window for speech completion
         self._rolling_audio_history: list[bytes] = []
         self._session_id = 0
         self._is_running = False
@@ -272,47 +272,53 @@ class VoiceManager:
                 removed = self._rolling_audio_history.pop(0)
                 total_bytes -= len(removed)
 
-        # 1. Wake word detection in SLEEPING, IDLE, and PROCESSING states
+        # 1. Wake word detection in SLEEPING, IDLE, ERROR, and PROCESSING states
         if (
             self.wake_word
-            and getattr(self.wake_word, "is_loaded", False)
-            and self._state in [AssistantState.SLEEPING, AssistantState.IDLE, AssistantState.PROCESSING]
+            and self._state in [AssistantState.SLEEPING, AssistantState.IDLE, AssistantState.PROCESSING, AssistantState.ERROR]
         ):
-            try:
-                detected = self.wake_word.process_audio(chunk)
-                if detected:
-                    logger.info(f"Wake word detected in state: {self._state.value}!")
-                    if self._state == AssistantState.SPEAKING:
-                        self._cancel_speech = True
-                        if self.tts:
-                            self.tts.cancel_playback()
+            if not getattr(self.wake_word, "is_loaded", False):
+                try:
+                    await self.wake_word.load_model()
+                except Exception as load_err:
+                    logger.warning(f"Wake word model lazy load error: {load_err}")
 
-                    self._session_id += 1
-                    self.state = AssistantState.LISTENING
-                    self._audio_buffer = list(self._rolling_audio_history)
-                    self._rolling_audio_history.clear()
-                    self._listening_start_time = time.time()
-                    self._last_speech_time = time.time()
-                    self._has_speech = False
-                    self._played_ack = False
+            if getattr(self.wake_word, "is_loaded", False):
+                try:
+                    detected = self.wake_word.process_audio(chunk)
+                    if detected:
+                        logger.info(f"Wake word detected in state: {self._state.value}!")
+                        if self._state == AssistantState.SPEAKING:
+                            self._cancel_speech = True
+                            if self.tts:
+                                self.tts.cancel_playback()
 
-                    yield WSMessage(
-                        type="status",
-                        data=StatusMessage(state=AssistantState.LISTENING).model_dump(),
-                    )
-                    yield WSMessage(
-                        type="wake_word",
-                        data={"detected": True},
-                    )
-                    return
-            except Exception as e:
-                logger.error(f"Wake word processing error: {e}")
+                        self._session_id += 1
+                        self.state = AssistantState.LISTENING
+                        self._audio_buffer.clear()
+                        self._rolling_audio_history.clear()
+                        self._listening_start_time = time.time()
+                        self._last_speech_time = time.time()
+                        self._has_speech = False
+                        self._played_ack = True
+
+                        yield WSMessage(
+                            type="status",
+                            data=StatusMessage(state=AssistantState.LISTENING).model_dump(),
+                        )
+                        yield WSMessage(
+                            type="wake_word",
+                            data={"detected": True},
+                        )
+                        return
+                except Exception as e:
+                    logger.error(f"Wake word processing error: {e}")
 
         # 2. Listening state processing
         if self._state == AssistantState.LISTENING:
             self._audio_buffer.append(chunk)
 
-            vad_threshold = max(450.0, 800.0 * (1.2 - self.mic_sensitivity * 0.5))
+            vad_threshold = max(180.0, 450.0 * (1.2 - self.mic_sensitivity * 0.7))
             if energy > vad_threshold:
                 if not self._has_speech:
                     logger.info("Speech detected, listening...")
@@ -332,20 +338,8 @@ class VoiceManager:
                     async for msg in self._process_speech():
                         yield msg
             else:
-                if elapsed > 1.5 and not self._played_ack and not self._push_to_talk_active:
-                    self._played_ack = True
-                    ack = random.choice(SERIOUS_ACKNOWLEDGMENTS if self.serious_mode else ACKNOWLEDGMENTS)
-                    yield WSMessage(
-                        type="response",
-                        data=ResponseMessage(text=ack).model_dump(),
-                    )
-                    async for tts_msg in self._speak(ack):
-                        yield tts_msg
-
-                    self.state = AssistantState.LISTENING
-                    self._listening_start_time = time.time()
-                    self._last_speech_time = time.time()
-                elif elapsed > self._silence_timeout:
+                if elapsed > (15.0 if self._push_to_talk_active else self._silence_timeout):
+                    self._push_to_talk_active = False
                     next_idle_state = (
                         AssistantState.SLEEPING
                         if (self.wake_word and getattr(self.wake_word, "is_loaded", False))
@@ -473,12 +467,17 @@ class VoiceManager:
                 transcript = ""
 
             transcript = transcript.strip()
+            from backend.services.voice.stt_manager import clean_whisper_hallucinations, is_valid_transcript
+            transcript = clean_whisper_hallucinations(transcript)
+            # Remove any leading wake word invocation (e.g. "hey jarvis", "jarvis")
+            transcript = re.sub(r"^(?:hey\s+)?jarvis[,:\s]*", "", transcript, flags=re.IGNORECASE).strip()
+            transcript = clean_whisper_hallucinations(transcript)
 
             if self._session_id != session_id:
                 return
 
-            if not transcript or transcript.lower() in ["", "subtitles", "[music]", "watching", "[applause]"]:
-                logger.debug(f"Empty or noise transcript: '{transcript}'")
+            if not is_valid_transcript(transcript):
+                logger.debug(f"Invalid or noise transcript rejected: '{transcript}'")
                 next_state = (
                     AssistantState.SLEEPING
                     if (self.wake_word and getattr(self.wake_word, "is_loaded", False))
@@ -637,10 +636,9 @@ class VoiceManager:
                     if self._session_id != session_id:
                         return
                     yield planner_msg
-                    if hasattr(planner_msg, "type") and planner_msg.type == "response":
-                        response_text = planner_msg.data.get("text", "")
-                    elif isinstance(planner_msg, dict) and planner_msg.get("type") == "response":
-                        response_text = planner_msg.get("data", {}).get("text", "")
+                    extracted = self._extract_response_text(planner_msg)
+                    if extracted:
+                        response_text = extracted
             else:
                 response_text = f"Processed voice input: '{transcript}'"
                 yield WSMessage(type="response", data=ResponseMessage(text=response_text).model_dump())
@@ -727,9 +725,10 @@ class VoiceManager:
             if audio_bytes and not self._cancel_speech:
                 import base64
                 audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+                format_type = "wav" if getattr(self.tts, "last_provider_used", "") in ["piper", "sapi"] else "mp3"
                 yield WSMessage(
                     type="tts_audio",
-                    data={"audio": audio_b64, "format": "mp3"},
+                    data={"audio": audio_b64, "format": format_type},
                 )
         except Exception as e:
             logger.error(f"TTS failed: {e}")
@@ -738,6 +737,25 @@ class VoiceManager:
             return
         self._is_speaking = False
         self._cancel_speech = False
+
+    def _extract_response_text(self, msg: Any) -> str:
+        """Safely extract assistant reply text from WSMessage or dict (response or chat_response)."""
+        msg_type = ""
+        msg_data = {}
+        if hasattr(msg, "type"):
+            msg_type = msg.type
+            msg_data = msg.data if isinstance(msg.data, dict) else (msg.data.model_dump() if hasattr(msg.data, "model_dump") else {})
+        elif isinstance(msg, dict):
+            msg_type = msg.get("type", "")
+            msg_data = msg.get("data", {})
+
+        if msg_type == "response":
+            return str(msg_data.get("text") or msg_data.get("content") or "").strip()
+        elif msg_type == "chat_response":
+            status = msg_data.get("status")
+            if status == "completed" or (msg_data.get("text") and status != "executing"):
+                return str(msg_data.get("text") or msg_data.get("content") or "").strip()
+        return ""
 
     async def handle_text_command(self, text: str) -> AsyncGenerator[WSMessage, None]:
         """Handle a text command (typed, not spoken)."""
@@ -750,10 +768,9 @@ class VoiceManager:
         if self.planner and hasattr(self.planner, "plan_and_execute"):
             async for msg in self.planner.plan_and_execute(text):
                 yield msg
-                if hasattr(msg, "type") and msg.type == "response":
-                    response_text = msg.data.get("text", "")
-                elif isinstance(msg, dict) and msg.get("type") == "response":
-                    response_text = msg.get("data", {}).get("text", "")
+                extracted = self._extract_response_text(msg)
+                if extracted:
+                    response_text = extracted
 
         # Persist conversation to memory
         if response_text:

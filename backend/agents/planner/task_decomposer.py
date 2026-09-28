@@ -302,12 +302,12 @@ class TaskDecomposer:
             return
 
         # Fast-Path 0D: Local News & Web Search Intent Intercept
-        if any(p in lower_msg for p in ["local news", "latest news", "search news", "open chrome and search"]):
+        if "open chrome and search" in lower_msg or "open chrome to search" in lower_msg:
             import webbrowser, urllib.parse
-            q_terms = lower_msg.replace("search the web for", "").replace("search news", "").replace("open chrome and search for", "").replace("open chrome and", "").replace("search for", "").strip()
-            if not q_terms or "news" in q_terms:
-                search_url = "https://www.google.com/search?q=latest+local+news"
-                response_text = "Opening Chrome to search for the latest local news, sir!"
+            q_terms = lower_msg.replace("open chrome and search for", "").replace("open chrome and search", "").replace("open chrome to search for", "").replace("open chrome to search", "").strip()
+            if not q_terms:
+                search_url = "https://www.google.com/search?q=latest+news"
+                response_text = "Opening Chrome to search for the latest news, sir!"
             else:
                 search_url = f"https://www.google.com/search?q={urllib.parse.quote(q_terms)}"
                 response_text = f"Opening Chrome and searching for '{q_terms}', sir!"
@@ -322,6 +322,27 @@ class TaskDecomposer:
             if conversation_history is None:
                 planner._conversation_history = history
             yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=None).model_dump())
+            return
+
+        elif any(p in lower_msg for p in ["local news", "latest news", "search news", "today's headlines", "top headlines"]):
+            from backend.services.online_research_engine import online_research_engine
+            q_terms = lower_msg.replace("search the web for", "").replace("search news about", "").replace("search news for", "").replace("search news", "").replace("what is the latest news about", "").replace("latest news on", "").replace("latest news", "").replace("local news", "").strip()
+            query = f"latest news {q_terms}".strip()
+            yield WSMessage(type="status", data=StatusMessage(state=AssistantState.EXECUTING).model_dump())
+            research_result = online_research_engine.search_web(query)
+            clean_res = research_result[:500].strip() if research_result else "No recent articles could be retrieved."
+            response_text = f"Here is the latest intelligence on '{query}':\n\n{clean_res}"
+
+            yield WSMessage(type="status", data=StatusMessage(state=AssistantState.SPEAKING).model_dump())
+            history.append({"role": "assistant", "content": response_text})
+            if conversation_history is None:
+                planner._conversation_history = history
+            if active_conv_id and mem_svc:
+                try:
+                    await mem_svc.add_message_to_conversation(active_conv_id, "assistant", response_text)
+                except Exception:
+                    pass
+            yield WSMessage(type="response", data=ResponseMessage(text=response_text, conversation_id=str(active_conv_id) if active_conv_id is not None else None).model_dump())
             return
 
         # Fast-Path 0D: System Integration Test Execution Intercept

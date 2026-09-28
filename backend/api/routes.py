@@ -9,7 +9,7 @@ import time
 import asyncio
 from typing import Optional, Dict, Any, List
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -74,24 +74,70 @@ async def health_check():
 @router.get("/health/ready")
 @router.get("/api/health/ready")
 @router.get("/api/v1/health/ready")
+@router.get("/readiness")
+@router.get("/api/readiness")
 async def readiness_check(request: Request):
-    """Readiness check: verifies essential bootstrap services are available."""
+    """Readiness check: verifies essential bootstrap subsystems (ToolRegistry, SafetyGatekeeper, EventBus, IntentRouter)."""
     from backend.services.manager import ServiceManager
     
-    # Core essential services that must be present
-    core_ready = True
     reasons = []
+    components: Dict[str, str] = {}
 
-    # Check ServiceManager
-    if not ServiceManager:
-        core_ready = False
-        reasons.append("ServiceManager not initialized")
+    # 1. ToolRegistry
+    try:
+        from backend.services.tool_registry import ToolRegistry
+        tr = ServiceManager.get_instance("tool_registry") or ToolRegistry()
+        tools = tr.get_all_tools()
+        if len(tools) > 0:
+            components["tool_registry"] = f"ready ({len(tools)} tools)"
+        else:
+            components["tool_registry"] = "degraded (0 tools)"
+            reasons.append("ToolRegistry has 0 registered tools")
+    except Exception as e:
+        components["tool_registry"] = f"error: {e}"
+        reasons.append(f"ToolRegistry initialization error: {e}")
+
+    # 2. SafetyGatekeeper
+    try:
+        from backend.services.safety_gatekeeper import SafetyGatekeeper
+        sg = ServiceManager.get_instance("safety_gatekeeper") or SafetyGatekeeper()
+        eval_test = sg.evaluate_tool_call("lock_pc", {})
+        if eval_test is not None:
+            components["safety_gatekeeper"] = "ready"
+        else:
+            components["safety_gatekeeper"] = "degraded"
+            reasons.append("SafetyGatekeeper evaluation returned None")
+    except Exception as e:
+        components["safety_gatekeeper"] = f"error: {e}"
+        reasons.append(f"SafetyGatekeeper error: {e}")
+
+    # 3. EventBus
+    try:
+        from backend.utils.event_bus import EventBus
+        components["event_bus"] = "ready"
+    except Exception as e:
+        components["event_bus"] = f"error: {e}"
+        reasons.append(f"EventBus error: {e}")
+
+    # 4. FastIntentRouter
+    try:
+        from backend.services.fast_intent_router import fast_intent_router
+        if fast_intent_router:
+            components["intent_router"] = "ready"
+        else:
+            components["intent_router"] = "unavailable"
+    except Exception as e:
+        components["intent_router"] = f"error: {e}"
+
+    core_ready = len(reasons) == 0
 
     return {
         "status": "ok" if core_ready else "degraded",
-        "readiness": "ready" if core_ready else "unready",
-        "core_backend": "HEALTHY",
+        "ready": core_ready,
+        "readiness": "ready" if core_ready else "degraded",
+        "core_backend": "HEALTHY" if core_ready else "DEGRADED",
         "uptime": round(time.time() - _start_time, 2),
+        "components": components,
         "reasons": reasons
     }
 
@@ -696,6 +742,19 @@ async def get_router_metrics(request: Request):
         return {"status": "error", "message": str(e)}
 
 
+@router.get("/router/racing")
+@router.get("/api/v1/router/racing")
+async def get_racing_metrics(request: Request):
+    """Retrieve telemetry from the Parallel Racing LLM Provider Selection circuit."""
+    app = request.app
+    llm_svc = getattr(app.state, "llm_service", None)
+    if not llm_svc and hasattr(app.state, "voice_agent") and hasattr(app.state.voice_agent, "llm_service"):
+        llm_svc = app.state.voice_agent.llm_service
+    if not llm_svc or not hasattr(llm_svc, "racing_circuit"):
+        return {"status": "error", "message": "Racing circuit not active"}
+    return {"status": "ok", "racing": llm_svc.racing_circuit.get_metrics()}
+
+
 @router.get("/brain/memories")
 async def get_brain_memories(request: Request):
     """Get summaries of all stored semantic knowledge, preferences, corrections, and workflows."""
@@ -1145,15 +1204,108 @@ async def recover_interrupted_goals_endpoint():
     """Scans and recovers interrupted goal checkpoints on reboot/request."""
     try:
         from backend.services.long_horizon_checkpoint import long_horizon_manager
-        recovered = long_horizon_manager.recover_interrupted_goals()
+        recovered = await long_horizon_manager.recover_interrupted_goals()
         return {
             "status": "success",
             "recovered_count": len(recovered),
-            "recovered_goals": [g.to_dict() for g in recovered]
+            "recovered_goals": [g if isinstance(g, dict) else g.to_dict() for g in recovered]
         }
     except Exception as e:
         logger.error(f"Error recovering interrupted goals: {e}")
-        return {"status": "error", "message": str(e)}
+        raise HTTPException(status_code=500, detail={"status": "error", "message": str(e)})
+
+
+# ── Persistent Task Queue & Background Jobs REST APIs ───────────────────────
+
+class CreateTaskRequest(BaseModel):
+    title: str
+    command: Optional[str] = None
+    priority: Optional[int] = 1
+
+class ReorderTasksRequest(BaseModel):
+    order: List[str]
+
+@router.get("/api/v1/tasks")
+async def get_tasks_endpoint():
+    """Retrieve all persistent tasks with status, progress, logs, and metrics."""
+    try:
+        from backend.services.task_queue import task_queue_manager
+        tasks = await task_queue_manager.get_all_tasks()
+        return {"status": "success", "tasks": tasks}
+    except Exception as e:
+        logger.error(f"Failed to fetch tasks: {e}")
+        raise HTTPException(status_code=500, detail={"status": "error", "message": str(e)})
+
+@router.post("/api/v1/tasks")
+async def create_task_endpoint(req: CreateTaskRequest):
+    """Create and persist a new user or autonomous task."""
+    try:
+        from backend.services.task_queue import task_queue_manager
+        task = await task_queue_manager.create_task(
+            title=req.title,
+            command=req.command or req.title,
+            priority=req.priority or 1
+        )
+        return {"status": "success", "task": task}
+    except Exception as e:
+        logger.error(f"Failed to create task: {e}")
+        raise HTTPException(status_code=500, detail={"status": "error", "message": str(e)})
+
+@router.post("/api/v1/tasks/{task_id}/pause")
+async def pause_task_endpoint(task_id: str):
+    """Pause execution of a task."""
+    try:
+        from backend.services.task_queue import task_queue_manager
+        task = await task_queue_manager.pause_task(task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail={"status": "error", "message": f"Task '{task_id}' not found"})
+        return {"status": "success", "task": task}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to pause task {task_id}: {e}")
+        raise HTTPException(status_code=500, detail={"status": "error", "message": str(e)})
+
+@router.post("/api/v1/tasks/{task_id}/resume")
+async def resume_task_endpoint(task_id: str):
+    """Resume execution of a paused task."""
+    try:
+        from backend.services.task_queue import task_queue_manager
+        task = await task_queue_manager.resume_task(task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail={"status": "error", "message": f"Task '{task_id}' not found"})
+        return {"status": "success", "task": task}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to resume task {task_id}: {e}")
+        raise HTTPException(status_code=500, detail={"status": "error", "message": str(e)})
+
+@router.delete("/api/v1/tasks/{task_id}")
+async def cancel_task_endpoint(task_id: str):
+    """Cancel and terminate a task."""
+    try:
+        from backend.services.task_queue import task_queue_manager
+        cancelled = await task_queue_manager.cancel_task_async(task_id)
+        if not cancelled:
+            raise HTTPException(status_code=404, detail={"status": "error", "message": f"Task '{task_id}' not found"})
+        return {"status": "success", "task_id": task_id, "cancelled": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to cancel task {task_id}: {e}")
+        raise HTTPException(status_code=500, detail={"status": "error", "message": str(e)})
+
+@router.post("/api/v1/tasks/reorder")
+async def reorder_tasks_endpoint(req: ReorderTasksRequest):
+    """Reorder task queue priorities."""
+    try:
+        from backend.services.task_queue import task_queue_manager
+        await task_queue_manager.reorder_tasks(req.order)
+        return {"status": "success", "order": req.order}
+    except Exception as e:
+        logger.error(f"Failed to reorder tasks: {e}")
+        raise HTTPException(status_code=500, detail={"status": "error", "message": str(e)})
 
 
 # ── Prash Teacher-Student Distillation & Benchmarking REST APIs ─────────────

@@ -19,6 +19,7 @@ from backend.services.llm.tool_calling import (
 class OllamaProvider:
     def __init__(self, service):
         self.service = service
+        self.total_requests: int = 0
 
     async def process_message(
         self,
@@ -44,14 +45,18 @@ class OllamaProvider:
                 full_text = ""
                 current_tool_calls: Dict[int, Dict[str, Any]] = {}
 
+                tools_list = self.service.get_tools(query_str)
+                tools_arg = tools_list if tools_list else None
+                tool_choice_arg = "auto" if tools_arg else None
+
                 # Attempt to use tools — some Ollama models support function calling
                 try:
                     try:
                         stream = await self.service.ollama_client.chat.completions.create(
                             model=self.service.ollama_model_name,
                             messages=messages,
-                            tools=self.service.get_tools(query_str),
-                            tool_choice="auto",
+                            tools=tools_arg,
+                            tool_choice=tool_choice_arg,
                             stream=True,
                             temperature=0.7,
                             max_tokens=4096,
@@ -61,8 +66,8 @@ class OllamaProvider:
                             stream = await self.service.ollama_client.chat.completions.create(
                                 model=self.service.ollama_model_name,
                                 messages=messages,
-                                tools=self.service.get_tools(query_str),
-                                tool_choice="auto",
+                                tools=tools_arg,
+                                tool_choice=tool_choice_arg,
                                 stream=True,
                                 temperature=0.7,
                                 max_tokens=4096,

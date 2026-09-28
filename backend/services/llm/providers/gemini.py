@@ -18,6 +18,7 @@ from backend.services.llm.tool_calling import (
 class GeminiProvider:
     def __init__(self, service):
         self.service = service
+        self.total_requests: int = 0
 
     async def process_message(
         self,

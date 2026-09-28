@@ -13,7 +13,7 @@ import {
   User
 } from 'lucide-react-native';
 
-export type MobileTab = 'home' | 'chat' | 'apps' | 'profile';
+export type MobileTab = 'home' | 'chat' | 'apps' | 'files' | 'approvals' | 'profile';
 
 interface FloatingBottomDockProps {
   activeTab: MobileTab;

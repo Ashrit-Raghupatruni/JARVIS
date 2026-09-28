@@ -106,7 +106,7 @@ async def simple_completion_impl(
                     fallback_count += 1
                     
                 messages = [
-                    {"role": "system", "content": system_prompt or self.get_system_prompt()},
+                    {"role": "system", "content": system_prompt or service.get_system_prompt()},
                     {"role": "user", "content": prompt},
                 ]
 
@@ -151,7 +151,7 @@ async def simple_completion_impl(
                                 config=types.GenerateContentConfig(
                                     temperature=temperature,
                                     max_output_tokens=max_tokens,
-                                    system_instruction=system_prompt or self.get_system_prompt()
+                                    system_instruction=system_prompt or service.get_system_prompt()
                                 )
                             ),
                             timeout=15.0
@@ -165,7 +165,7 @@ async def simple_completion_impl(
                                     config=types.GenerateContentConfig(
                                         temperature=temperature,
                                         max_output_tokens=max_tokens,
-                                        system_instruction=system_prompt or self.get_system_prompt()
+                                        system_instruction=system_prompt or service.get_system_prompt()
                                     )
                                 ),
                                 timeout=15.0

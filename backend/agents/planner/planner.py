@@ -306,7 +306,7 @@ class PlannerAgent:
                     from backend.services.manager import ServiceManager
                     strat_mem = ServiceManager.get_instance("strategy_memory")
                     if strat_mem and hasattr(strat_mem, "record_task_strategy_outcome"):
-                        strat_mem.record_task_strategy_outcome(task=user_message, strategy="fast_path_direct_execution", success=True)
+                        strat_mem.record_task_strategy_outcome(task_name=user_message, strategy_id="fast_path_direct_execution", success=True)
                     
                     completion_text = fast_intent.completion_phrase
                     if not completion_text:
@@ -379,7 +379,15 @@ class PlannerAgent:
                     pass
 
                 augmented_prompt = f"{context_prefix}{user_message}" if context_prefix else user_message
-                prash_resp, is_confident, meta = await prash_eng.generate(augmented_prompt, max_tokens=128, temperature=0.1)
+                try:
+                    prash_resp, is_confident, meta = await asyncio.wait_for(
+                        prash_eng.generate(augmented_prompt, max_tokens=128, temperature=0.1),
+                        timeout=2.5
+                    )
+                except (asyncio.TimeoutError, TimeoutError, Exception) as p_err:
+                    logger.debug("Prash inference deferred ({}), proceeding to standard routing", p_err)
+                    prash_resp, is_confident, meta = "", False, {"entropy": 999.0}
+
                 entropy = meta.get("entropy", 999.0) if isinstance(meta, dict) else 999.0
 
                 # Check confidence threshold (mean Shannon entropy <= 1.05 and validate_response passed)
@@ -1054,7 +1062,11 @@ class PlannerAgent:
             elif func_name == "open_url":
                 return await self.browser.open_url(func_args.get("url", ""))
             elif func_name == "search_web":
-                return await self.browser.search_web(func_args.get("query", ""))
+                from backend.services.online_research_engine import online_research_engine
+                q = func_args.get("query", "")
+                if q.startswith("http://") or q.startswith("https://"):
+                    return online_research_engine.extract_url_content(q)
+                return online_research_engine.search_web(q)
             elif func_name == "play_music":
                 return await self.browser.play_music(func_args.get("query", ""))
             elif func_name == "browser_navigate":

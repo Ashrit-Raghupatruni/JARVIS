@@ -1,6 +1,6 @@
 # 📑 JARVIS AI Operating System — Master Status Registry (`JARVIS_MASTER_STATUS.md`)
 
-*Last Updated: 2026-09-27 | Verified Master Ground-Truth Audit*
+*Last Updated: 2026-09-28 | Verified Master Ground-Truth Audit*
 
 This document serves as the **single authoritative source of truth** for the current operational state, verified components, known bugs, decorative stubs, pending work, and architectural improvement recommendations across the entire JARVIS codebase. 
 
@@ -55,7 +55,10 @@ backend\venv\Scripts\python.exe -m pytest backend/tests/ -q
 | [`test_capability_registry_schema.py`](file:///c:/Users/ashri/JARVIS/backend/tests/test_capability_registry_schema.py) | 3 | **PASSED** | Multidimensional schema v2.0.0 validation, valid enum constraints, and physical file existence verification. |
 | [`test_image_generation_and_desktop_agent.py`](file:///c:/Users/ashri/JARVIS/backend/tests/test_image_generation_and_desktop_agent.py) | 12 | **PASSED** | Image generation with Imagen 3 / Pollinations fallback, Live Mode Failover Supervisor single-agent locking, Hermes Bridge 12-pillar execution, and dual Hermes agents. |
 | [`test_telegram_remote_service.py`](file:///c:/Users/ashri/JARVIS/backend/tests/test_telegram_remote_service.py) | 17 | **PASSED** | Telegram bot remote control, user auth gate, pairing PIN mode, inline [Approve]/[Deny] callback resolution, rate limiting, and network resilience. |
-| **TOTAL** | **315** | **100%** | **0 Failures · 0 Regressions across 32 Test Suites** |
+| [`test_racing_circuit.py`](file:///c:/Users/ashri/JARVIS/backend/tests/test_racing_circuit.py) | 12 | **PASSED** | Parallel Top-3 LLM provider racing, 50ms tie-breaking, Shannon entropy (<6.0) validation, immediate cancellation, sequential fallback. |
+| [`test_canonical_contracts_and_bypasses.py`](file:///c:/Users/ashri/JARVIS/backend/tests/test_canonical_contracts_and_bypasses.py) | 6 | **PASSED** | API canonical contracts, fast-path bypasses, strict schema adherence, and verified execution boundaries. |
+| [`test_reliability_audit.py`](file:///c:/Users/ashri/JARVIS/backend/tests/test_reliability_audit.py) | 7 | **PASSED** | SQLite WAL task queue persistence across tab switch/reload, long-horizon recovery, ChromaDB isolation, STT sanitization & stutter loops. |
+| **TOTAL** | **340** | **100%** | **0 Failures · 0 Regressions across 35 Test Suites** |
 
 ---
 
@@ -85,12 +88,20 @@ backend\venv\Scripts\python.exe -m pytest backend/tests/ -q
 | **Robust Mobile Connection Manager (`mobile_app/src/services/`)** | **(a) Real and working** | Exponential backoff (1s–30s + jitter), heartbeat ping/pong keep-alive, foreground lifecycle hooks, and observable state machine. |
 | **Mobile-First UI Modernization (`mobile_app/src/`)** | **(a) Real and working** | 5-Tab floating bottom dock, state-driven `JarvisMobileCoreOrb`, `HeaderGreeting`, `QuickActionsBentoGrid`, and `#02040a` void theme. |
 | **Desktop UI Design Harmonization (`frontend/src/`)** | **(a) Real and working** | Unified glassmorphic dark theme and floating HUD across all 9 pages with 0 TypeScript compiler errors. |
+| **Top-3 Parallel Racing LLM Circuit (`services/llm/racing.py`)** | **(a) Real and working** | Fires identical prompts concurrently to top-3 ranked providers via `asyncio.wait(return_when=FIRST_COMPLETED)`. 50ms tie-breaking window, Shannon entropy (<6.0) validation, immediate cancellation of slow streams, and single sequential 4th retry. Tested in `test_racing_circuit.py`. |
+| **Persistent SQLite WAL Task Queue (`services/task_queue.py`, `TaskQueueManager.tsx`)** | **(a) Real and working** | Durable SQLite WAL `persistent_tasks` storage, REST API (`GET/POST/PAUSE/RESUME/DELETE/REORDER`), optimistic UI, and WebSocket `task_update` sync. Tasks survive page navigation, tab switching, and system reboots. Tested in `test_reliability_audit.py`. |
+| **Long-Horizon Goal Continuity & Recovery Engine (`services/long_horizon_checkpoint.py`)** | **(a) Real and working** | Singleton `long_horizon_manager` with `recover_interrupted_goals()` automated self-recovery for crashed/rebooted workflows and SQLite WAL step checkpointing. Tested in `test_reliability_audit.py`. |
+| **Robust STT Filtering & Sentence Preservation (`services/voice/stt_manager.py`)** | **(a) Real and working** | Discards single-character/noise transcripts (`is_valid_transcript`), repairs Whisper multi-token stutter loops, and preserves complete substantive questions. Tested in `test_reliability_audit.py`. |
+| **ChromaDB Telemetry Incompatibility Isolation (`bootstrap.py`, `memory/manager.py`)** | **(a) Real and working** | Clean monkeypatching of PostHog 7.15+ signature mismatch eliminating `TypeError: capture() takes 1 positional argument but 3 were given` at boot. Tested in `test_reliability_audit.py`. |
 
 ---
 
 ## 2. 📋 Ground-Truth Capabilities & Future Roadmap
 
 - **Core AI & Request Router**: ✅ WORKING / VERIFIED
+- **Parallel Top-3 Racing LLM Circuit & Zero-Stall Router**: ✅ WORKING / VERIFIED
+- **Persistent SQLite WAL Task Queue & Zero-Wipeout Navigation**: ✅ WORKING / VERIFIED
+- **Long-Horizon Multi-Day Task Continuity & Checkpoint Recovery**: ✅ WORKING / VERIFIED
 - **Truthful Tool Registry (69 Executable Tools)**: ✅ WORKING / VERIFIED
 - **Live Mode Failover Architecture & Single-Agent Locking**: ✅ WORKING / VERIFIED
 - **Hermes Bridge & Dual Agents (Desktop + General)**: ✅ WORKING / VERIFIED
@@ -99,7 +110,7 @@ backend\venv\Scripts\python.exe -m pytest backend/tests/ -q
 - **Unified 4-Tier Memory (Working, Long-Term, Episodic, Semantic)**: ✅ WORKING / VERIFIED
 - **Consolidated Automation (Desktop, Browser, UIA, Verifier, Macro Orchestrator)**: ✅ WORKING / VERIFIED
 - **3-Tier Neural Voice (Edge-TTS + Piper ONNX + SAPI Fallback)**: ✅ WORKING / VERIFIED
-- **Speech STT (Faster-Whisper Lazy Loaded) & Wake Word (OpenWakeWord)**: ✅ WORKING / VERIFIED
+- **Speech STT (Faster-Whisper Lazy Loaded, Stutter Filtered) & Wake Word**: ✅ WORKING / VERIFIED
 - **Live Mode Desktop Perception & Differential UIA Scene Graph**: ✅ WORKING / VERIFIED
 - **Backend Hand Tracking CV Worker (MediaPipe Debounced)**: ✅ WORKING / VERIFIED
 - **Fast Non-Blocking n8n Workflow Integration**: ✅ WORKING / VERIFIED

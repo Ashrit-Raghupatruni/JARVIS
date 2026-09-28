@@ -118,8 +118,9 @@ class BrowserExecutor:
             from playwright.async_api import async_playwright
 
             self._playwright = await async_playwright().start()
+            is_headless = os.getenv("HEADLESS_BROWSER", "true").lower() in ("true", "1", "yes")
             self._browser = await self._playwright.chromium.launch(
-                headless=False,
+                headless=is_headless,
                 args=[
                     "--disable-blink-features=AutomationControlled",
                     "--no-first-run",

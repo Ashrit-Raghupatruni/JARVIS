@@ -23,7 +23,10 @@ export default function App() {
   const isSiriWidget = window.location.hash === '#siri'
 
   const sendAudioRef = useRef<(data: ArrayBuffer) => void>(() => {})
-  const { playAudioChunk, startMicCapture, stopMicCapture, stopPlayback, isCapturing } = useAudio((data) => sendAudioRef.current(data))
+  const handleAudioData = useCallback((data: ArrayBuffer) => {
+    sendAudioRef.current(data)
+  }, [])
+  const { playAudioChunk, startMicCapture, stopMicCapture, stopPlayback, isCapturing } = useAudio(handleAudioData)
   const { sendMessage, sendAudio } = useWebSocket(playAudioChunk)
 
   useEffect(() => {

@@ -5,7 +5,6 @@ import { JarvisCoreOrb } from './JarvisCoreOrb'
 import { TelemetryGaugesCard } from './TelemetryGaugesCard'
 import { QuickActionsCard } from './QuickActionsCard'
 import { FloatingCommandBar } from './FloatingCommandBar'
-import jarvisBg from '../assets/jarvis-bg.jpg'
 import {
   LayoutDashboard,
   MessageSquare,
@@ -180,16 +179,60 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden select-none relative bg-slate-950 text-slate-100 font-sans">
-      {/* ── Background Wallpaper with Atmospheric Gradient & Lake Reflection ── */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        <img
-          src={jarvisBg}
-          alt="JARVIS Horizon"
-          className="w-full h-full object-cover object-center filter brightness-[0.78] contrast-[1.08] saturate-[1.12]"
-        />
-        {/* Cinematic Vignette & Deep Twilight Tint */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-slate-950/70" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_40%,_rgba(2,6,23,0.85)_100%)]" />
+      {/* ── Atmospheric Cybernetic Landscape Backdrop (Clean Vector Horizon, No Phantom UI) ── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 bg-gradient-to-b from-[#020510] via-[#050b1a] to-[#02040a]">
+        {/* Central Luminous Nebula Glow behind the Jarvis Core Orb */}
+        <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-[700px] h-[500px] rounded-full bg-[radial-gradient(ellipse_at_center,_rgba(0,229,255,0.12)_0%,_rgba(30,58,138,0.18)_40%,_transparent_75%)] blur-2xl pointer-events-none" />
+
+        {/* Subtle Ambient Horizon Aurora */}
+        <div className="absolute bottom-[18%] left-0 right-0 h-48 bg-gradient-to-t from-cyan-950/20 via-blue-900/10 to-transparent pointer-events-none" />
+
+        {/* Crisp Vector Mountain Landscape Silhouette */}
+        <svg
+          className="absolute bottom-0 left-0 right-0 w-full h-[32%] min-h-[160px] opacity-75"
+          viewBox="0 0 1440 320"
+          preserveAspectRatio="none"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* Back Distant Peaks */}
+          <path
+            d="M0,220 L120,180 L240,210 L380,150 L520,200 L680,130 L840,190 L980,140 L1120,180 L1260,130 L1380,170 L1440,160 L1440,320 L0,320 Z"
+            fill="url(#distantMountainGrad)"
+          />
+          {/* Mid Ridge Peaks */}
+          <path
+            d="M0,250 L160,200 L320,240 L460,180 L620,230 L760,170 L920,220 L1080,165 L1240,210 L1380,185 L1440,200 L1440,320 L0,320 Z"
+            fill="url(#midMountainGrad)"
+          />
+          {/* Front Foreground Ridge */}
+          <path
+            d="M0,280 L180,240 L360,270 L540,230 L720,265 L900,225 L1080,260 L1260,235 L1440,265 L1440,320 L0,320 Z"
+            fill="url(#frontMountainGrad)"
+          />
+          <defs>
+            <linearGradient id="distantMountainGrad" x1="720" y1="130" x2="720" y2="320" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#0d1b2a" stopOpacity="0.8" />
+              <stop offset="0.6" stopColor="#08101e" stopOpacity="0.95" />
+              <stop offset="1" stopColor="#02040a" />
+            </linearGradient>
+            <linearGradient id="midMountainGrad" x1="720" y1="165" x2="720" y2="320" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#0b1728" stopOpacity="0.9" />
+              <stop offset="0.7" stopColor="#060c18" />
+              <stop offset="1" stopColor="#02040a" />
+            </linearGradient>
+            <linearGradient id="frontMountainGrad" x1="720" y1="225" x2="720" y2="320" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#070e1b" />
+              <stop offset="1" stopColor="#010307" />
+            </linearGradient>
+          </defs>
+        </svg>
+
+        {/* Ambient Lake / Surface Reflection Line */}
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent" />
+
+        {/* Cinematic Vignette */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_45%,_rgba(2,6,23,0.85)_100%)] pointer-events-none" />
       </div>
 
       {/* ── Top Bar ── */}
@@ -354,8 +397,14 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
           {activeTab === 'voice' && (
             <Suspense fallback={<LoadingFallback label="Voice Interface" />}>
               <div className="flex-1 flex flex-col items-center justify-center p-6 gap-6">
+                {/* Legacy Three.js Arc Reactor Orb commented out as requested */}
+                {/*
                 <div className="relative w-80 h-80 rounded-full border border-cyan-500/30 bg-slate-950/60 backdrop-blur-2xl shadow-[0_0_50px_rgba(0,229,255,0.25)] flex items-center justify-center overflow-hidden">
                   <Orb onOrbClick={onOrbClick} />
+                </div>
+                */}
+                <div className="flex items-center justify-center">
+                  <JarvisCoreOrb onToggleListening={handleToggleListening} />
                 </div>
                 <div className="w-full max-w-md">
                   <VoiceWave />
@@ -425,7 +474,7 @@ export default function DashboardLayout({ onSendMessage, onOrbClick }: Dashboard
           {/* TAB 9: SETTINGS */}
           {activeTab === 'settings' && (
             <Suspense fallback={<LoadingFallback label="Settings" />}>
-              <div className="flex-1 p-4 overflow-y-auto custom-scrollbar flex items-center justify-center">
+              <div className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar flex justify-center">
                 <SettingsPanel />
               </div>
             </Suspense>

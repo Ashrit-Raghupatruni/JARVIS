@@ -88,6 +88,10 @@ class PrashEngine:
             ``True`` if all components loaded successfully, ``False`` on
             any error (the engine will remain unavailable).
         """
+        if self._loaded and self._available:
+            logger.debug("PrashEngine already initialized and loaded. Skipping redundant init.")
+            return True
+
         try:
             logger.info("Initialising Prash engine …")
 
@@ -298,7 +302,8 @@ class PrashEngine:
             logger.info("Loaded {} unique valid vocabulary words from training corpus", len(self.valid_vocab))
 
             self._available = True
-            logger.info("✓ Prash engine initialised successfully")
+            self._loaded = True
+            logger.info("✓ Prash engine initialised and loaded successfully")
             return True
 
         except Exception as exc:
@@ -330,9 +335,9 @@ class PrashEngine:
         cleaned_words = [w.strip(".,!?\"'()[]{}:;`~<>\\/") for w in words]
         cleaned_words = [w for w in cleaned_words if w]  # Filter out empty strings
         
-        # 2. Reject single-letter gibberish words (except 'a' and 'i')
+        # 2. Reject single-letter gibberish words (except 'a', 'i', or digits)
         for w in cleaned_words:
-            if len(w) == 1 and w not in ("a", "i"):
+            if len(w) == 1 and w not in ("a", "i") and not w.isdigit():
                 logger.info(f"Prash validation failed: contains single-letter gibberish '{w}'")
                 return False
                 
@@ -345,21 +350,39 @@ class PrashEngine:
         # 4. Reject highly repetitive responses (low unique word ratio)
         if len(cleaned_words) >= 5:
             unique_ratio = len(set(cleaned_words)) / len(cleaned_words)
-            if unique_ratio < 0.6:
+            if unique_ratio < 0.5:
                 logger.info(f"Prash validation failed: unique word ratio {unique_ratio:.2f} is too low")
                 return False
                 
-        # 5. Check if all generated words and prompt words are in the training vocabulary
+        # 5. Check if generated words and prompt words are compatible with training vocabulary
         if hasattr(self, "valid_vocab") and self.valid_vocab:
-            # Check prompt words (if prompt contains unknown domain words, Prash cannot be confident)
+            # Check prompt words (only switch to primary LLM if prompt has zero semantic overlap)
             query_words = [w.strip(".,!?\"'()[]{}:;`~<>\\/") for w in query.lower().split() if len(w.strip(".,!?\"'()[]{}:;`~<>\\/")) > 2]
-            for qw in query_words:
-                if qw not in self.valid_vocab:
-                    logger.info(f"Prash validation failed: prompt word '{qw}' is not in Prash vocabulary — switching to primary LLM")
+            if len(query_words) >= 3:
+                known_prompt_words = sum(
+                    1 for qw in query_words
+                    if qw in self.valid_vocab or any(qw in vw or vw in qw for vw in self.valid_vocab)
+                )
+                if known_prompt_words == 0:
+                    logger.info("Prash validation failed: prompt has no overlap with Prash vocabulary — switching to primary LLM")
                     return False
 
+            common_subwords = {
+                "ing", "ed", "ly", "tion", "uting", "able", "ment", "ness",
+                "er", "est", "th", "st", "nd", "rd", "app", "cmd", "os", "ai"
+            }
             for w in cleaned_words:
-                if w not in self.valid_vocab and not w.isdigit():
+                if w.isdigit() or w in common_subwords or w in self.valid_vocab:
+                    continue
+                # Stemming check (strip common suffixes)
+                matched = False
+                for suff in ("ing", "ed", "es", "s", "ly", "tion"):
+                    if w.endswith(suff) and len(w) > len(suff) + 2:
+                        stem = w[:-len(suff)]
+                        if stem in self.valid_vocab or any(stem in vw for vw in self.valid_vocab):
+                            matched = True
+                            break
+                if not matched and not any(vw in w or w in vw for vw in self.valid_vocab if len(vw) >= 4):
                     logger.info(f"Prash validation failed: generated word '{w}' is not in training vocabulary")
                     return False
                     

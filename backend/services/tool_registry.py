@@ -98,6 +98,10 @@ class ToolRegistry:
             tools = [t for t in tools if t.is_executable]
         return tools
 
+    def get_all_tools(self) -> List[ToolMetadata]:
+        """Return all registered tools (alias for list_tools)."""
+        return self.list_tools()
+
     def get_registered_tools(self, executable_only: bool = False) -> List[Dict[str, Any]]:
         """Return registered tools as dictionaries."""
         tools = self.list_tools(executable_only=executable_only)
@@ -164,27 +168,39 @@ class ToolRegistry:
         """
         if not name or not isinstance(name, str):
             return {
+                "success": False,
                 "status": "error",
                 "tool_name": str(name),
-                "error": "Invalid tool name provided."
+                "error": "Invalid tool name provided.",
+                "data": None,
+                "result": None,
+                "message": "Invalid tool name provided."
             }
 
         tool = self.get_tool(name)
         if not tool:
             logger.warning("Tool '{}' is not registered in ToolRegistry.", name)
             return {
+                "success": False,
                 "status": "error",
                 "tool_name": name,
-                "error": f"Tool '{name}' is not registered in ToolRegistry."
+                "error": f"Tool '{name}' is not registered in ToolRegistry.",
+                "data": None,
+                "result": None,
+                "message": f"Tool '{name}' is not registered in ToolRegistry."
             }
 
         if kwargs is None:
             kwargs = {}
         elif not isinstance(kwargs, dict):
             return {
+                "success": False,
                 "status": "error",
                 "tool_name": name,
-                "error": f"Tool arguments must be a dictionary, got {type(kwargs).__name__}."
+                "error": f"Tool arguments must be a dictionary, got {type(kwargs).__name__}.",
+                "data": None,
+                "result": None,
+                "message": f"Tool arguments must be a dictionary, got {type(kwargs).__name__}."
             }
 
         logger.info("🔧 ToolRegistry executing tool '{}' with args: {}", name, _sanitize_args_for_logging(kwargs))
@@ -192,9 +208,13 @@ class ToolRegistry:
         if tool.handler is None:
             logger.warning("Tool '{}' has no execution handler.", name)
             return {
+                "success": False,
                 "status": "error",
                 "tool_name": name,
-                "error": f"Tool '{name}' has no execution handler."
+                "error": f"Tool '{name}' has no execution handler.",
+                "data": None,
+                "result": None,
+                "message": f"Tool '{name}' has no execution handler."
             }
 
         # 1. Parameter schema validation (required fields)
@@ -203,10 +223,15 @@ class ToolRegistry:
             if isinstance(required_fields, list):
                 missing_fields = [f for f in required_fields if f not in kwargs or kwargs[f] is None]
                 if missing_fields:
+                    err_msg = f"Missing required parameter(s): {', '.join(missing_fields)}"
                     return {
+                        "success": False,
                         "status": "error",
                         "tool_name": name,
-                        "error": f"Missing required parameter(s): {', '.join(missing_fields)}"
+                        "error": err_msg,
+                        "data": None,
+                        "result": None,
+                        "message": err_msg
                     }
 
         # 2. Inspect handler signature for required positional args and filter extra kwargs if necessary
@@ -224,10 +249,15 @@ class ToolRegistry:
                         and p_name not in kwargs
                     ]
                     if missing_sig_args:
+                        err_msg = f"Missing required parameter(s) for handler: {', '.join(missing_sig_args)}"
                         return {
+                            "success": False,
                             "status": "error",
                             "tool_name": name,
-                            "error": f"Missing required parameter(s) for handler: {', '.join(missing_sig_args)}"
+                            "error": err_msg,
+                            "data": None,
+                            "result": None,
+                            "message": err_msg
                         }
                     filtered_kwargs = {k: v for k, v in kwargs.items() if k in valid_params}
             except (ValueError, TypeError):
@@ -241,9 +271,13 @@ class ToolRegistry:
                 raw_result = await asyncio.to_thread(tool.handler, **filtered_kwargs)
             else:
                 return {
+                    "success": False,
                     "status": "error",
                     "tool_name": name,
-                    "error": f"Handler for tool '{name}' is not callable."
+                    "error": f"Handler for tool '{name}' is not callable.",
+                    "data": None,
+                    "result": None,
+                    "message": f"Handler for tool '{name}' is not callable."
                 }
 
             if inspect.iscoroutine(raw_result):
@@ -251,17 +285,38 @@ class ToolRegistry:
 
             # 4. Result normalization
             if isinstance(raw_result, dict):
-                if raw_result.get("status") == "error":
+                is_denied = raw_result.get("status") == "denied"
+                is_err = raw_result.get("status") == "error" or raw_result.get("success") is False
+                if is_denied:
+                    err_msg = raw_result.get("error") or raw_result.get("message") or "Tool execution was denied."
                     return {
+                        "success": False,
+                        "status": "denied",
+                        "tool_name": name,
+                        "error": err_msg,
+                        "data": raw_result.get("data") if "data" in raw_result else raw_result,
+                        "result": raw_result,
+                        "message": raw_result.get("message") or err_msg
+                    }
+                if is_err:
+                    err_msg = raw_result.get("error") or raw_result.get("message") or "Tool execution reported an error."
+                    return {
+                        "success": False,
                         "status": "error",
                         "tool_name": name,
-                        "error": raw_result.get("error") or raw_result.get("message") or "Tool execution reported an error.",
-                        "result": raw_result
+                        "error": err_msg,
+                        "data": raw_result.get("data") if "data" in raw_result else raw_result,
+                        "result": raw_result,
+                        "message": raw_result.get("message") or err_msg
                     }
                 res = {
+                    "success": True,
                     "status": "success",
                     "tool_name": name,
+                    "data": raw_result.get("data") if "data" in raw_result else raw_result,
                     "result": raw_result,
+                    "error": None,
+                    "message": raw_result.get("message")
                 }
                 for k, v in raw_result.items():
                     if k not in res:
@@ -269,16 +324,24 @@ class ToolRegistry:
                 return res
 
             return {
+                "success": True,
                 "status": "success",
                 "tool_name": name,
-                "result": raw_result
+                "data": raw_result,
+                "result": raw_result,
+                "error": None,
+                "message": None
             }
         except Exception as e:
             logger.error("Error executing tool '{}': {}", name, e)
             return {
+                "success": False,
                 "status": "error",
                 "tool_name": name,
-                "error": str(e)
+                "error": str(e),
+                "data": None,
+                "result": None,
+                "message": str(e)
             }
 
     def _register_default_tools(self) -> None:
@@ -1232,6 +1295,41 @@ class ToolRegistry:
             risk_level="low",
             parameters={"type": "object", "properties": {}},
             handler=_screenshot_handler
+        )
+
+        self.register(
+            name="screenshot",
+            description="Alias for take_screenshot. Captures high-resolution primary display snapshot, saves to local artifacts, and returns base64 image.",
+            category="system",
+            risk_level="low",
+            parameters={"type": "object", "properties": {}},
+            handler=_screenshot_handler
+        )
+
+        async def _system_shutdown_handler(action: str = "shutdown", delay_seconds: int = 5):
+            import subprocess, sys
+            if sys.platform != "win32":
+                return {"status": "error", "error": "Shutdown is only supported on Windows host."}
+            flag = "/s" if action == "shutdown" else "/r"
+            subprocess.Popen(["shutdown", flag, "/t", str(delay_seconds)], shell=False)
+            return {"status": "success", "action": action, "delay_seconds": delay_seconds, "message": f"Host {action} initiated in {delay_seconds} seconds."}
+
+        self.register(
+            name="system_shutdown",
+            description="Initiates graceful Windows host shutdown.",
+            category="system",
+            risk_level="critical",
+            parameters={"type": "object", "properties": {"delay_seconds": {"type": "integer", "default": 5}}},
+            handler=lambda delay_seconds=5: _system_shutdown_handler(action="shutdown", delay_seconds=delay_seconds)
+        )
+
+        self.register(
+            name="system_restart",
+            description="Initiates graceful Windows host restart.",
+            category="system",
+            risk_level="critical",
+            parameters={"type": "object", "properties": {"delay_seconds": {"type": "integer", "default": 5}}},
+            handler=lambda delay_seconds=5: _system_shutdown_handler(action="restart", delay_seconds=delay_seconds)
         )
 
         self.register(

@@ -30,13 +30,16 @@ export const GeneralSettingsTab: React.FC<GeneralSettingsTabProps> = ({
   localSettings,
   setLocalSettings
 }) => {
+  const voice = localSettings?.voice || ({} as any)
+  const ai = localSettings?.ai || ({} as any)
+
   return (
     <div className="space-y-6">
       {/* Voice & Serious Mode Section */}
       <section>
         <h3 className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center justify-between" style={{ color: 'var(--jarvis-accent)' }}>
           <span>Voice & Serious Mode</span>
-          {localSettings.voice.seriousMode && (
+          {voice.seriousMode && (
             <span className="text-[10px] bg-rose-950 border border-rose-500 text-rose-300 px-2 py-0.5 rounded font-mono font-bold tracking-widest animate-pulse">
               SERIOUS MODE ACTIVE
             </span>
@@ -236,11 +239,11 @@ export const GeneralSettingsTab: React.FC<GeneralSettingsTabProps> = ({
           </div>
           <div>
             <label className="block text-xs mb-1.5" style={{ color: 'var(--jarvis-text-dim)' }}>
-              Temperature: {localSettings.ai.temperature.toFixed(1)}
+              Temperature: {(localSettings.ai?.temperature ?? 0.7).toFixed(1)}
             </label>
             <input
               type="range" min="0" max="1" step="0.1"
-              value={localSettings.ai.temperature}
+              value={localSettings.ai?.temperature ?? 0.7}
               onChange={(e) => setLocalSettings({ ...localSettings, ai: { ...localSettings.ai, temperature: parseFloat(e.target.value) } })}
               className="w-full accent-[var(--jarvis-accent)]"
             />

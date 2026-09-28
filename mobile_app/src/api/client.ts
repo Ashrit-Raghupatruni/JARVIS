@@ -131,7 +131,7 @@ export class JarvisMobileClient {
 
   get wsUrl() {
     const scheme = this.useSsl ? "wss" : "ws";
-    return `${scheme}://${this.serverHost}:${this.serverPort}/ws`;
+    return `${scheme}://${this.serverHost}:${this.serverPort}/api/v1/mobile/ws`;
   }
 
   // ── Unified Core Endpoints ──────────────────────────────────────────────
@@ -379,50 +379,35 @@ export class JarvisMobileClient {
     onMessage: (msg: any) => void,
     onStatusChange?: (connected: boolean) => void
   ) {
-    if (this.ws) {
-      try {
-        this.ws.close();
-      } catch {}
-      this.ws = null;
+    const mgr = this.getConnectionManager();
+
+    if (onStatusChange) {
+      mgr.subscribeState((state) => {
+        onStatusChange(state === 'connected');
+      });
     }
 
-    try {
-      this.ws = new WebSocket(this.wsUrl);
-    } catch (e) {
-      console.error("[JarvisMobile] WebSocket creation error:", e);
-      if (onStatusChange) onStatusChange(false);
-      return;
-    }
-
-    this.ws.onopen = () => {
-      console.log("[JarvisMobile] Connected to desktop WebSocket");
-      if (onStatusChange) onStatusChange(true);
-    };
-
-    this.ws.onmessage = (e) => {
+    mgr.subscribeMessage((msg: any) => {
       try {
-        const payload = JSON.parse(e.data);
-        if (payload.type === "telemetry") {
-          onTelemetry(payload.data);
+        if (msg && msg.type === "telemetry" && msg.data) {
+          onTelemetry(msg.data);
         } else {
-          onMessage(payload);
+          onMessage(msg);
         }
       } catch (err) {
-        console.error("[JarvisMobile] Error parsing WS frame:", err);
+        console.error("[JarvisMobile] Error in message callback:", err);
       }
-    };
+    });
 
-    this.ws.onerror = (err) => {
-      console.warn("[JarvisMobile] WebSocket error event:", err);
-    };
-
-    this.ws.onclose = () => {
-      console.log("[JarvisMobile] Disconnected from WebSocket");
-      if (onStatusChange) onStatusChange(false);
-    };
+    if (!mgr.isConnected()) {
+      mgr.connect();
+    }
   }
 
   disconnectWebSocket() {
+    if (this.connectionManager) {
+      this.connectionManager.disconnect();
+    }
     if (this.ws) {
       try {
         this.ws.close();
@@ -439,19 +424,18 @@ export class JarvisMobileClient {
   }
 
   sendAudioInput(audioBase64: string) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ type: "audio", audio_base64: audioBase64 }));
-    }
+    this.sendWebSocketMessage({ type: "audio", audio_base64: audioBase64 });
   }
 
   sendChatMessage(text: string) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ type: "chat", text }));
-    }
+    this.sendWebSocketMessage({ type: "chat", text, query: text });
   }
 
   sendWebSocketMessage(msg: any) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+    const mgr = this.getConnectionManager();
+    if (mgr.isConnected()) {
+      mgr.sendMessage(msg);
+    } else if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(msg));
     }
   }

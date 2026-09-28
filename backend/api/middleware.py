@@ -39,8 +39,11 @@ def setup_middleware(app: FastAPI) -> None:
     async def log_requests(request: Request, call_next: Callable) -> Response:
         start_time = time.time()
         
-        # Skip logging for health checks and WebSocket upgrades
-        if request.url.path in ("/", "/health", "/favicon.ico"):
+        # Skip noisy logging for high-frequency polling, health checks, and favicon
+        if request.url.path in (
+            "/", "/health", "/favicon.ico", "/api/ui/performance", 
+            "/health/ready", "/api/health/ready", "/readiness", "/api/readiness"
+        ):
             return await call_next(request)
 
         logger.debug(f"→ {request.method} {request.url.path}")

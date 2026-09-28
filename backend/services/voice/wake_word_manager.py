@@ -24,23 +24,39 @@ class WakeWordManager:
     is detected above the confidence threshold. Lazy-loads models on demand.
     """
 
-    def __init__(self, threshold: float = 0.35) -> None:
+    def __init__(self, threshold: Optional[float] = None, eager_load: bool = False) -> None:
         """
         Initialise the wake word manager.
 
         Args:
             threshold: Confidence threshold (0.0–1.0) above which a detection is triggered.
+            eager_load: Whether to load the model immediately upon initialization.
         """
-        self.threshold = threshold
+        from backend.config import get_settings
+        settings = get_settings()
+        if threshold is None:
+            sens = float(getattr(settings, "WAKE_WORD_SENSITIVITY", 0.5) or 0.5)
+            custom_thresh = getattr(settings, "WAKE_WORD_THRESHOLD", None)
+            if custom_thresh is not None and float(custom_thresh) < 0.35:
+                threshold = float(custom_thresh)
+            else:
+                # 0.5 sensitivity maps to 0.28 threshold for openwakeword (responsive & clean)
+                threshold = max(0.15, min(0.45, 0.46 - (sens * 0.36)))
+        self.threshold = float(threshold)
         self._model = None
         self._is_loaded = False
         self._warned_not_loaded = False
         self._last_detection_time: float = 0.0
         self._cooldown_seconds: float = 2.0  # Prevent rapid re-triggers
-        self._selected_model: str = "hey_jarvis"
+        self._selected_model: str = getattr(settings, "WAKE_WORD", "hey_jarvis")
         self._listener_running: bool = False
         self._load_lock = threading.Lock()
-        logger.info("WakeWordManager created — threshold={}", threshold)
+        logger.info("WakeWordManager created — threshold={}, model={}", self.threshold, self._selected_model)
+        if eager_load:
+            try:
+                self._load_model_sync(self._selected_model)
+            except Exception as e:
+                logger.warning("WakeWordManager eager load failed: {}", e)
 
     # ── Lifecycle ────────────────────────────────────────────────────────
 
@@ -133,15 +149,26 @@ class WakeWordManager:
             return False
 
         try:
+            if len(audio_chunk) % 2 != 0:
+                audio_chunk = audio_chunk[:len(audio_chunk) - (len(audio_chunk) % 2)]
+            if len(audio_chunk) == 0:
+                return False
+
             audio_array = np.frombuffer(audio_chunk, dtype=np.int16)
             prediction = self._model.predict(audio_array)
 
             for model_name, score in prediction.items():
-                if score >= self.threshold:
+                score_val = float(score)
+                if score_val > 0.10:
+                    logger.debug(
+                        "Wake word candidate: model={}, score={:.3f}, threshold={:.3f}",
+                        model_name, score_val, self.threshold,
+                    )
+                if score_val >= self.threshold:
                     self._last_detection_time = now
                     logger.info(
-                        "Wake word detected! model={}, score={:.3f}, threshold={}",
-                        model_name, score, self.threshold,
+                        "🔥 Wake word detected! model={}, score={:.3f}, threshold={:.3f}",
+                        model_name, score_val, self.threshold,
                     )
                     self.reset()
                     return True

@@ -127,11 +127,29 @@ async def generate_qr_pairing(device_name: str = "Mobile Companion", auth_svc=De
     init_res = auth_svc.initiate_pairing(device_name, "mobile_qr_client")
     session_id = init_res.pairing_session_id
     code = init_res.pairing_code
-    qr_payload = f"jarvis_pair://{session_id}:{code}"
+
+    # Discover best local LAN IPv4 address for mobile Wi-Fi connection
+    import socket
+    local_ip = "127.0.0.1"
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        pass
+
+    from backend.config import get_settings
+    settings = get_settings()
+    port = settings.SERVER_PORT or 8000
+
+    qr_payload = f"jarvis_pair://{local_ip}:{port}:{session_id}:{code}"
     return {
         "pairing_session_id": session_id,
         "pairing_code": code,
         "qr_payload": qr_payload,
+        "host": local_ip,
+        "port": port,
         "expires_in": 300
     }
 
@@ -149,10 +167,15 @@ async def scan_qr_pairing(payload: Dict[str, Any], auth_svc=Depends(get_mobile_a
         raise HTTPException(status_code=400, detail="Invalid QR code payload format")
     
     parts = qr_payload.replace("jarvis_pair://", "").split(":")
-    if len(parts) != 2:
+    if len(parts) == 4:
+        # jarvis_pair://host:port:session_id:code
+        _, _, session_id, code = parts
+    elif len(parts) == 2:
+        # jarvis_pair://session_id:code
+        session_id, code = parts
+    else:
         raise HTTPException(status_code=400, detail="Malformed QR code session payload")
     
-    session_id, code = parts[0], parts[1]
     res = auth_svc.confirm_pairing(session_id, code, device_id)
     if not res:
         raise HTTPException(status_code=401, detail="QR code pairing session expired or invalid")
@@ -263,17 +286,18 @@ async def get_telemetry(gateway_svc=Depends(get_mobile_gateway_service)):
 
 @mobile_router.post("/system/command")
 async def execute_remote_command(req: RemoteCommandRequest, gateway_svc=Depends(get_mobile_gateway_service)):
-    """Execute remote desktop command (shutdown, restart, lock, sleep, open_app)."""
+    """Execute remote desktop command (shutdown, restart, lock, sleep, open_app, screenshot) via canonical ToolRegistry."""
     cmd = req.command.lower()
     logger.info("Executing remote desktop command from mobile: {}", cmd)
 
     try:
-        import subprocess
+        from backend.services.manager import ServiceManager
+        from backend.services.tool_registry import ToolRegistry
+        tr = ServiceManager.get_instance("tool_registry") or ToolRegistry()
 
         if cmd in ("shutdown", "restart"):
             logger.info("🛡️ Mobile Security Gatekeeper: Remote {} requested. Enforcing safety gate...", cmd)
             from backend.services.safety_gatekeeper import SafetyGatekeeper, SecurityDecisionType
-            from backend.services.manager import ServiceManager
             sg = ServiceManager.get_instance("safety_gatekeeper") or SafetyGatekeeper()
             gate_eval = sg.evaluate_tool_call(f"system_{cmd}", {"target": "host_pc"})
             if not gate_eval.allowed or gate_eval.decision == SecurityDecisionType.DENY:
@@ -306,13 +330,16 @@ async def execute_remote_command(req: RemoteCommandRequest, gateway_svc=Depends(
                     "message": "Gateway service approval unavailable; cannot execute critical system shutdown"
                 }
 
-            flag = "/s" if cmd == "shutdown" else "/r"
-            subprocess.Popen(["shutdown", flag, "/t", "5"], shell=False)
-            return {"status": f"{cmd}_initiated", "seconds": 5, "approved": True}
+            tool_res = await tr.execute_tool(f"system_{cmd}", {"delay_seconds": 5})
+            return {"status": f"{cmd}_initiated", "seconds": 5, "approved": True, "result": tool_res}
 
         elif cmd == "lock":
-            subprocess.Popen(["rundll32.exe", "user32.dll,LockWorkStation"], shell=False)
-            return {"status": "workstation_locked"}
+            res = await tr.execute_tool("lock_pc", {})
+            return {"status": "workstation_locked", "success": res.get("success", False), "result": res}
+
+        elif cmd in ("screenshot", "take_screenshot"):
+            res = await tr.execute_tool("take_screenshot", {})
+            return {"status": "screenshot_captured", "success": res.get("success", False), "result": res}
 
         elif cmd == "open_app":
             raw_app = str(req.params.get("app_name", "notepad")).strip()
@@ -320,10 +347,8 @@ async def execute_remote_command(req: RemoteCommandRequest, gateway_svc=Depends(
             if any(char in raw_app for char in ["&", ";", "|", ">", "<", "`", "$", "\n", "\r"]):
                 raise HTTPException(status_code=400, detail="Invalid application name: shell operators disallowed")
 
-            from backend.services.automation import AutomationService
-            auto_svc = AutomationService()
-            res = await auto_svc.open_application(raw_app)
-            return {"status": "application_opened", "app": raw_app, "result": res}
+            res = await tr.execute_tool("open_application", {"app_name": raw_app})
+            return {"status": "application_opened", "app": raw_app, "success": res.get("success", False), "result": res}
 
         else:
             return {"status": "command_received", "command": cmd}

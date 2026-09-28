@@ -103,8 +103,16 @@ export const SleekHomeScreen: React.FC<SleekHomeScreenProps> = ({ onNavigateTab 
         {/* Header Greeting */}
         <HeaderGreeting
           userName="Ashrit"
-          hasUnreadNotification={true}
-          onPressNotification={() => Alert.alert('Notifications', 'All laptop systems nominal. Laptop battery at 87%.')}
+          hasUnreadNotification={Boolean(telemetry && telemetry.battery_percent !== undefined && telemetry.battery_percent <= 20)}
+          onPressNotification={() => {
+            const bat = telemetry?.battery_percent !== undefined ? `${telemetry.battery_percent}%` : 'Unavailable';
+            const cpu = telemetry?.cpu_percent !== undefined ? `${telemetry.cpu_percent}%` : 'Unavailable';
+            const ram = telemetry?.ram_percent !== undefined ? `${telemetry.ram_percent}%` : 'Unavailable';
+            Alert.alert(
+              'System Telemetry',
+              `Host Status: Online\nBattery: ${bat}\nCPU Load: ${cpu}\nRAM Usage: ${ram}`
+            );
+          }}
           onPressSettings={() => onNavigateTab && onNavigateTab('pairing')}
         />
 

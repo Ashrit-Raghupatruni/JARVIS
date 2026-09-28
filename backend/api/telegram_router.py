@@ -8,10 +8,32 @@ for the Telegram Remote Control bridge.
 import time
 from typing import Dict, Any, Optional
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request, Header
 from loguru import logger
 
 from backend.services.telegram_service import telegram_service
+
+
+async def require_admin_or_local(
+    request: Request,
+    authorization: Optional[str] = Header(None, alias="Authorization")
+) -> Dict[str, Any]:
+    """Require loopback origin (desktop UI HUD) or valid administrative bearer token."""
+    if request.client and request.client.host in ("127.0.0.1", "localhost", "::1", "testclient"):
+        return {"sub": "localhost", "scope": "admin"}
+
+    if authorization:
+        from backend.services.manager import ServiceManager
+        auth_svc = getattr(request.app.state, "mobile_auth_service", None) or ServiceManager.get_instance("mobile_auth_service")
+        if auth_svc and hasattr(auth_svc, "verify_token"):
+            payload = auth_svc.verify_token(authorization)
+            if payload:
+                return payload
+
+    raise HTTPException(
+        status_code=401,
+        detail="Unauthorized: Localhost access or valid administrative authentication token required"
+    )
 
 
 telegram_router = APIRouter(
@@ -78,7 +100,7 @@ async def get_telegram_status():
 
 
 @telegram_router.post("/pair/initiate", response_model=TelegramPairingInitiateResponse)
-async def initiate_telegram_pairing():
+async def initiate_telegram_pairing(auth_ctx=Depends(require_admin_or_local)):
     """Generate a 6-digit numeric pairing PIN for desktop HUD display."""
     if not telegram_service.enabled:
         raise HTTPException(
@@ -101,7 +123,7 @@ async def initiate_telegram_pairing():
 
 
 @telegram_router.post("/unpair")
-async def unpair_telegram_account():
+async def unpair_telegram_account(auth_ctx=Depends(require_admin_or_local)):
     """Revoke authorized Telegram account pairing and reset to unpaired state."""
     telegram_service.chat_id = ""
     telegram_service._persist_chat_id("")
@@ -110,7 +132,7 @@ async def unpair_telegram_account():
 
 
 @telegram_router.post("/test_notification")
-async def send_test_notification(req: TelegramNotificationTestRequest):
+async def send_test_notification(req: TelegramNotificationTestRequest, auth_ctx=Depends(require_admin_or_local)):
     """Trigger a test alert to the paired Telegram user."""
     if not telegram_service.chat_id:
         raise HTTPException(

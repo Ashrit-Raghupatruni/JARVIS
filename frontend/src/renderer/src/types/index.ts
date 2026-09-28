@@ -15,6 +15,7 @@ export type WSMessageType =
   | 'audio_data'
   | 'transcript'
   | 'response'
+  | 'chat_response'
   | 'tts_audio'
   | 'status'
   | 'command_result'

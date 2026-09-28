@@ -139,49 +139,54 @@ async def handle_mobile_ws(websocket: WebSocket):
                 logger.info("📱 Mobile action received: '{}'", act)
 
                 if act == "lock_pc":
-                    logger.info("🔒 Locking workstation from mobile command...")
+                    logger.info("🔒 Locking workstation via ToolRegistry from mobile command...")
                     try:
                         tr = ServiceManager.get_instance("tool_registry")
-                        if tr and hasattr(tr, "execute_tool"):
-                            res = await tr.execute_tool("lock_pc", {})
-                            await websocket.send_json({
-                                "type": "response",
-                                "status": "success" if res.get("success", False) else "error",
-                                "message": res.get("message") or ("🔒 Desktop Workstation Locked" if res.get("success") else res.get("error", "Lock failed"))
-                            })
-                        elif sys.platform == "win32":
-                            ctypes.windll.user32.LockWorkStation()
-                            await websocket.send_json({
-                                "type": "response",
-                                "status": "success",
-                                "message": "🔒 Desktop Workstation Locked"
-                            })
-                        else:
-                            await websocket.send_json({
-                                "type": "response",
-                                "status": "error",
-                                "message": f"Lock workstation is not supported on {sys.platform}"
-                            })
+                        if not tr:
+                            from backend.services.tool_registry import ToolRegistry
+                            tr = ToolRegistry()
+                        res = await tr.execute_tool("lock_pc", {})
+                        await websocket.send_json({
+                            "type": "response",
+                            "status": "success" if res.get("success", False) else "error",
+                            "success": bool(res.get("success", False)),
+                            "message": res.get("message") or ("🔒 Desktop Workstation Locked" if res.get("success") else res.get("error", "Lock failed"))
+                        })
                     except Exception as e:
-                        await websocket.send_json({"type": "response", "status": "error", "message": str(e)})
+                        await websocket.send_json({"type": "response", "status": "error", "success": False, "message": str(e)})
 
-                elif act == "screenshot":
-                    logger.info("📸 Capturing desktop screenshot for mobile UI...")
+                elif act in ("screenshot", "take_screenshot"):
+                    logger.info("📸 Capturing desktop screenshot via ToolRegistry for mobile UI...")
                     try:
-                        screenshot = ImageGrab.grab()
-                        screenshot.thumbnail((800, 450))
-                        buffer = io.BytesIO()
-                        screenshot.save(buffer, format="JPEG", quality=65)
-                        img_b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+                        tr = ServiceManager.get_instance("tool_registry")
+                        if not tr:
+                            from backend.services.tool_registry import ToolRegistry
+                            tr = ToolRegistry()
+                        res = await tr.execute_tool("take_screenshot", {})
+                        img_b64 = None
+                        if res.get("success", False) and isinstance(res.get("data"), dict):
+                            img_b64 = res["data"].get("image_base64")
+                        elif res.get("image_base64"):
+                            img_b64 = res.get("image_base64")
+
+                        if not img_b64:
+                            screenshot = ImageGrab.grab()
+                            screenshot.thumbnail((800, 450))
+                            buffer = io.BytesIO()
+                            screenshot.save(buffer, format="JPEG", quality=65)
+                            img_b64 = f"data:image/jpeg;base64,{base64.b64encode(buffer.getvalue()).decode('utf-8')}"
+
                         await websocket.send_json({
                             "type": "screenshot",
                             "status": "success",
-                            "image": f"data:image/jpeg;base64,{img_b64}"
+                            "success": True,
+                            "image": img_b64
                         })
                     except Exception as e:
                         await websocket.send_json({
                             "type": "response",
                             "status": "error",
+                            "success": False,
                             "message": f"Screenshot failed: {e}"
                         })
 
@@ -259,7 +264,25 @@ async def handle_mobile_ws(websocket: WebSocket):
                 geo_res = await geofence_service.evaluate_gps_update(dev_id, lat, lon)
                 await websocket.send_json({"type": "geofence_status", "data": geo_res})
 
-            # ── 2. REAL MOBILE AUDIO / VOICE STREAMING ──────────────────
+            # ── 2. VOICE STREAMING & PUSH-TO-TALK LIFECYCLE ─────────────
+            elif msg_type in ("push_to_talk_start", "voice_start"):
+                logger.info("🎙️ Mobile voice/PTT start received")
+                await websocket.send_json({
+                    "type": "voice_state",
+                    "status": "listening",
+                    "success": True,
+                    "message": "JARVIS listening..."
+                })
+
+            elif msg_type in ("push_to_talk_stop", "voice_stop"):
+                logger.info("🎙️ Mobile voice/PTT stop received")
+                await websocket.send_json({
+                    "type": "voice_state",
+                    "status": "stopped",
+                    "success": True,
+                    "message": "JARVIS voice listening stopped"
+                })
+
             elif msg_type in ("audio", "voice", "voice_input") or "audio_base64" in message:
                 audio_data_b64 = message.get("audio_base64") or message.get("data", "")
                 logger.info("🎙️ Mobile audio packet received ({} bytes b64)...", len(audio_data_b64))
@@ -384,7 +407,9 @@ async def handle_mobile_ws(websocket: WebSocket):
                 await websocket.send_json({
                     "type": "chat_response",
                     "status": "completed",
+                    "success": True,
                     "text": answer,
+                    "message": answer,
                     "audio_base64": audio_b64
                 })
 
@@ -393,6 +418,8 @@ async def handle_mobile_ws(websocket: WebSocket):
 
     except WebSocketDisconnect:
         logger.info("📱 Mobile companion WebSocket disconnected cleanly")
+    except (RuntimeError, ConnectionResetError, OSError) as e:
+        logger.info("📱 Mobile companion WebSocket connection closed ({}): {}", type(e).__name__, e)
     except Exception as e:
         logger.warning("Mobile WS loop exception: {}", e)
     finally:

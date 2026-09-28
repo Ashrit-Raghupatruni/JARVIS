@@ -166,6 +166,27 @@ export function useWebSocket(onTtsAudio?: (data: ArrayBuffer) => void): UseWebSo
           break
         }
 
+        case 'chat_response': {
+          const data = message.data as any
+          const store = useAppStore.getState()
+          if (data?.status === 'executing' && data?.text) {
+            store.setThinkingText(data.text)
+          } else if (data?.text) {
+            const assistantMsg: ConversationMessage = {
+              id: generateId(),
+              role: 'assistant',
+              content: data.text,
+              timestamp: message.timestamp
+            }
+            store.addMessage(assistantMsg)
+            if (data.conversation_id) {
+              store.setActiveConversationId(data.conversation_id)
+            }
+            store.setThinkingText('')
+          }
+          break
+        }
+
         case 'serious_mode_changed': {
           const enabled = Boolean((message.data as any)?.enabled)
           const store = useAppStore.getState()

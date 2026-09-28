@@ -26,6 +26,7 @@ export type MessageListener = (msg: ServerMessage) => void;
 export interface ConnectionConfig {
   host: string;
   port: number;
+  path?: string;
   useSsl?: boolean;
   token?: string | null;
   clientId?: string;
@@ -54,6 +55,7 @@ export class RobustConnectionManager {
 
   constructor(config: ConnectionConfig) {
     this.config = {
+      path: '/api/v1/mobile/ws',
       useSsl: false,
       clientId: `mobile_${Math.random().toString(36).substring(2, 9)}`,
       heartbeatIntervalMs: 15000,
@@ -125,7 +127,8 @@ export class RobustConnectionManager {
     if (this.config.token) params.set('token', this.config.token);
 
     const queryStr = params.toString() ? `?${params.toString()}` : '';
-    const wsUrl = `${scheme}://${this.config.host}:${this.config.port}/ws${queryStr}`;
+    const wsPath = this.config.path || '/api/v1/mobile/ws';
+    const wsUrl = `${scheme}://${this.config.host}:${this.config.port}${wsPath}${queryStr}`;
 
     this.setState(this.reconnectAttempt > 0 ? 'reconnecting' : 'connecting');
 
@@ -303,7 +306,7 @@ export class RobustConnectionManager {
     this.pendingRequests.clear();
   }
 
-  public send(message: ClientMessage): boolean {
+  public send(message: ClientMessage | Record<string, unknown>): boolean {
     if (!this.isConnected() || !this.ws) {
       console.warn('[ConnectionManager] Cannot send message: WebSocket is not open.');
       return false;
@@ -316,6 +319,10 @@ export class RobustConnectionManager {
       console.error('[ConnectionManager] Failed to send message:', err);
       return false;
     }
+  }
+
+  public sendMessage(message: any): boolean {
+    return this.send(message);
   }
 
   public sendCommandCorrelated(text: string, conversationId?: string | number | null, timeoutMs = 25000): Promise<ServerMessage> {

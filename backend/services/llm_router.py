@@ -70,6 +70,9 @@ class LLMRoutingEngine:
             for p in self.circuit_state
         }
 
+        # Racing circuit dynamic speed score bonuses (+20 winner, +5 slower valid, -10 failure)
+        self.speed_score_bonus: Dict[str, float] = {p: 0.0 for p in self.circuit_state}
+
         # Client Initializations
         self.clients = {}
         self._init_clients()
@@ -162,8 +165,11 @@ class LLMRoutingEngine:
             await self.db_engine.dispose()
         logger.info("LLM Router Engine shut down successfully")
 
-    async def get_ranked_providers(self) -> List[str]:
-        """Rank providers based on dynamic utility scoring."""
+    async def get_ranked_providers(self, limit: Optional[int] = None) -> List[str]:
+        """
+        Rank providers based on dynamic utility scoring, incorporating historical latency,
+        success rate, cost penalties, and racing circuit speed bonuses.
+        """
         scores = {}
         for p, client in self.clients.items():
             if not client:
@@ -185,8 +191,14 @@ class LLMRoutingEngine:
             throughput = self.metrics[p]["throughput"]
             cost = self.costs.get(p, 0.0)
 
-            # Score formula
-            score = (success_rate * 60.0) + (1.0 / latency * 15.0) + (throughput * 0.1) - (cost * 8.0)
+            # Score formula with racing speed bonus (+20 winner, +5 slower valid, -10 failure)
+            score = (
+                (success_rate * 60.0)
+                + (1.0 / latency * 15.0)
+                + (throughput * 0.1)
+                - (cost * 8.0)
+                + self.speed_score_bonus.get(p, 0.0)
+            )
             
             # Primary provider bias (Ollama #1, Groq #2, OpenAI optional)
             if p == "ollama":
@@ -217,7 +229,60 @@ class LLMRoutingEngine:
             logger.info("LLMRoutingEngine: LOCAL_ONLY active — strictly isolated to local engines: {}", ranked)
 
         logger.debug(f"LLM Provider Rankings: { {p: round(scores.get(p, 0.0), 2) for p in ranked} }")
-        return ranked
+        return ranked[:limit] if limit is not None else ranked
+
+    async def update_racing_rankings(
+        self,
+        winner: Optional[str],
+        slower_valid: List[str],
+        failures: List[Dict[str, Any]],
+        latencies: Dict[str, float]
+    ) -> None:
+        """
+        Post-race rankings updates according to the racing specification:
+        - Winner: +20 points to speed score, increment success count, update latency moving average
+        - Losers (slower valid responses): No penalty, +5 participation points
+        - Failures (timeout/error): -10 points, mark for circuit breaker check
+        - Update latency moving average for each provider
+        """
+        if winner:
+            self.speed_score_bonus[winner] = self.speed_score_bonus.get(winner, 0.0) + 20.0
+            win_lat = latencies.get(winner, 1.0)
+            await self.record_metric(
+                provider=winner,
+                model=self._get_model_name(winner),
+                latency=win_lat,
+                throughput=None,
+                cost=self.costs.get(winner, 0.0),
+                success=True
+            )
+
+        for p in slower_valid:
+            self.speed_score_bonus[p] = self.speed_score_bonus.get(p, 0.0) + 5.0
+            p_lat = latencies.get(p, 1.0)
+            await self.record_metric(
+                provider=p,
+                model=self._get_model_name(p),
+                latency=p_lat,
+                throughput=None,
+                cost=self.costs.get(p, 0.0),
+                success=True
+            )
+
+        for fail_item in failures:
+            p = fail_item["provider"]
+            err_msg = fail_item.get("error_msg", "Race candidate failure")
+            self.speed_score_bonus[p] = self.speed_score_bonus.get(p, 0.0) - 10.0
+            p_lat = latencies.get(p, 15.0)
+            await self.record_metric(
+                provider=p,
+                model=self._get_model_name(p),
+                latency=p_lat,
+                throughput=0.0,
+                cost=0.0,
+                success=False,
+                error_msg=err_msg
+            )
 
     def evaluate_response_quality(self, response_text: str, user_prompt: str) -> bool:
         """
@@ -264,6 +329,14 @@ class LLMRoutingEngine:
     ) -> None:
         """Update local metrics state, manage circuit breakers, and log to SQLite database."""
         success_val = 1 if success else 0
+
+        # Dynamically register provider metrics if not in default catalog
+        if provider not in self.circuit_state:
+            self.circuit_state[provider] = "CLOSED"
+            self.consecutive_failures[provider] = 0
+            self.last_tripped[provider] = 0.0
+            self.metrics[provider] = {"latency": 1.0, "throughput": 30.0, "success_rate": 1.0}
+            self.speed_score_bonus[provider] = 0.0
 
         # Update local rolling metrics
         alpha = 0.3  # Exponential moving average factor

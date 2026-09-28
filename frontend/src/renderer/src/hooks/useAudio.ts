@@ -88,6 +88,9 @@ export function useAudio(
     playbackAnimFrameRef.current = requestAnimationFrame(monitorPlaybackLevel)
   }, [setAudioLevel])
 
+  const onAudioDataRef = useRef(onAudioData)
+  onAudioDataRef.current = onAudioData
+
   const startMicCapture = useCallback(async () => {
     // Guard against starting capture if already capturing
     if (streamRef.current) {
@@ -97,10 +100,10 @@ export function useAudio(
 
     try {
       console.log('[Audio] Requesting microphone access...')
+      // Avoid hard sampleRate constraints on Windows drivers that throw OverconstrainedError
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
-          sampleRate: 16000,
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true
@@ -124,7 +127,7 @@ export function useAudio(
       analyserRef.current = analyser
       source.connect(analyser)
 
-      // ScriptProcessor for capturing raw audio data
+      // ScriptProcessor for capturing raw 16kHz audio data (resampled by AudioContext)
       const bufferSize = 4096
       const processor = ctx.createScriptProcessor(bufferSize, 1, 1)
       processorRef.current = processor
@@ -137,23 +140,27 @@ export function useAudio(
           const s = Math.max(-1, Math.min(1, inputData[i]))
           pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7fff
         }
-        onAudioData?.(pcmData.buffer)
+        onAudioDataRef.current?.(pcmData.buffer)
       }
 
       source.connect(processor)
-      processor.connect(ctx.destination)
+      // Connect to silent gain node so Web Audio keeps processor alive without echoing through speakers
+      const silentGain = ctx.createGain()
+      silentGain.gain.value = 0
+      processor.connect(silentGain)
+      silentGain.connect(ctx.destination)
 
       // Start level monitoring
       monitorLevel()
       setIsCapturing(true)
 
-      console.log('[Audio] Mic capture started successfully')
+      console.log('[Audio] Mic capture started successfully (16kHz PCM stream active)')
     } catch (err) {
       console.error('[Audio] Failed to start mic capture:', err)
       setIsCapturing(false)
       throw err
     }
-  }, [getOrCreateAudioContext, monitorLevel, onAudioData])
+  }, [getOrCreateAudioContext, monitorLevel])
 
   const stopMicCapture = useCallback(() => {
     // Stop animation frame

@@ -1,6 +1,6 @@
 # JARVIS — Comprehensive Status, Tech Stack, & Features Overview
 
-This document serves as the single source of truth for JARVIS's current capabilities, system architecture, tech stack, and development status. **Last Updated:** September 27, 2026
+This document serves as the single source of truth for JARVIS's current capabilities, system architecture, tech stack, and development status. **Last Updated:** September 28, 2026
 
 ---
 
@@ -227,6 +227,34 @@ Full architectural consolidation and ground-truth documentation audit completed:
 - **Verification Matrix**:
   - **315/315 Pytest passed** (100% pass rate across 32 test files).
   - 17 dedicated tests in `test_telegram_remote_service.py` covering auth, pairing, commands, approvals, and debouncing.
+
+---
+
+## 🛡️ Master Reliability Audit, Durability & Parallel LLM Racing (September 28, 2026)
+
+- **Parallel Racing LLM Provider Selection (Top-3 Circuit)**:
+  - `LLMRacingCircuit` (`backend/services/llm/racing.py`) dynamically fires requests concurrently across the top 3 ranked providers using `asyncio.wait(return_when=FIRST_COMPLETED)`.
+  - Shannon entropy thresholding ($< 6.0$), non-null checks, and error pattern filters (`timeout`, `quota exceeded`, `connection refused`) ensure only high-signal responses win.
+  - Losing tasks are aborted immediately via `task.cancel()` and stream `aclose()`.
+  - Sequential 4th provider retry if all 3 fail before falling back to local Prash engine.
+- **Persistent SQLite WAL Task Queue & Zero-Wipeout Navigation**:
+  - `TaskQueueManager` (`backend/services/task_queue.py`) persists tasks to SQLite table `persistent_tasks` with full state durability (`pending`, `running`, `paused`, `completed`, `failed`, `cancelled`).
+  - Full REST API suite at `/api/v1/tasks` (GET list, POST create, POST pause, POST resume, DELETE cancel, POST reorder).
+  - `TaskQueueManager.tsx` loads authoritative tasks on mount and syncs progress live via WebSocket (`task_update`). Tasks permanently survive tab switches and application restarts.
+- **Long-Horizon Goal Continuity & Checkpoint Self-Recovery**:
+  - Global singleton `long_horizon_manager = LongHorizonCheckpointService()` in `backend/services/long_horizon_checkpoint.py`.
+  - `POST /api/v1/developer/recover_interrupted_goals` self-recovers dangling goals on reboot and resumes from intermediate checkpoints.
+- **Voice Pipeline STT Hardening & Full Sentence Preservation**:
+  - Repaired `clean_whisper_hallucinations` in `backend/services/voice/stt_manager.py` to eliminate repetition loops while preserving full user queries (`"How many finger does humans have?"`).
+  - Added `is_valid_transcript()` pre-filter discarding single-character noise (`"I"`) and filler tokens.
+  - Wrapped Prash neural inference in `planner.py` with 2.5s fail-safe timeout.
+- **ChromaDB Telemetry Monkeypatch & Socket Fault Tolerance**:
+  - Resolved PostHog 7.15+ `TypeError: capture()` incompatibility in `bootstrap.py` and `memory/manager.py`.
+  - Cleanly handles `WinError 64` / `10053` socket resets in `websocket.py` and `mobile_ws.py`.
+- **Verification Matrix**:
+  - **340/340 Pytest passed** (100% pass rate across 35 test files).
+  - 45 dedicated reliability tests passing across `test_racing_circuit.py`, `test_voice_architecture.py`, `test_canonical_contracts_and_bypasses.py`, `test_performance_and_resource_reliability.py`, and `test_reliability_audit.py`.
+  - Frontend Vite build: **0 errors** (2.62s build time).
 
 
 

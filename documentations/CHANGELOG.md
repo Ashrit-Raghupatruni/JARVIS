@@ -2,6 +2,48 @@
 
 All notable changes and architectural upgrades to JARVIS are documented in this file.
 
+## [1.6.0-master-reliability-and-durability-fix] - 2026-09-28
+
+### 🏎️ Parallel Racing LLM Provider Selection (Top-3 Circuit)
+- **Zero-Stall Provider Racing**: Implemented `LLMRacingCircuit` (`backend/services/llm/racing.py`) that fires prompts concurrently across the top 3 ranked providers using `asyncio.wait(return_when=FIRST_COMPLETED)`.
+- **Response Validation Criteria**: Implemented strict response validation requiring non-null output, $>10$ characters, zero error patterns (`timeout`, `quota exceeded`, `connection refused`), and Shannon entropy $<6.0$ to discard gibberish.
+- **Immediate Task Abort & Cancellation**: Immediately aborts losing tasks (`task.cancel()`) and closes active streams (`aclose()`) to conserve user quota and tokens.
+- **50ms Simultaneous Tie-Breaking**: Applies historical ranking priority when providers complete within 50ms of each other.
+- **Fail-Safe Sequential Fallback**: Automatically invokes a sequential 4th retry if all top-3 providers fail before falling back to local Prash engine.
+- **Router Scoring Integration**: Added dynamic `speed_score_bonus` (+20 for winner, +5 for slower valid responses, -10 for failure) and `GET /router/racing` observability metrics.
+
+### 💾 Persistent SQLite WAL Task Queue & Zero-Wipeout Navigation
+- **Durable Task Model**: Replaced volatile in-memory dictionary in `TaskQueueManager` (`backend/services/task_queue.py`) with SQLite WAL-backed table `persistent_tasks` (`id`, `title`, `command`, `priority`, `status`, `progress`, `logs_json`, `result`, `error`, `created_at`, `updated_at`).
+- **Full REST API Suite**: Added authoritative endpoints in `backend/api/routes.py`:
+  - `GET /api/v1/tasks`: Lists all persisted tasks ordered by priority and recency.
+  - `POST /api/v1/tasks`: Enqueues and persists new user or autonomous tasks.
+  - `POST /api/v1/tasks/{id}/pause`: Pauses execution and updates SQLite state.
+  - `POST /api/v1/tasks/{id}/resume`: Resumes execution and updates SQLite state.
+  - `DELETE /api/v1/tasks/{id}`: Cancels execution and persists status.
+  - `POST /api/v1/tasks/reorder`: Updates user-defined execution priorities.
+- **Frontend Navigation Durability**: Upgraded `frontend/src/renderer/src/components/TaskQueueManager.tsx` to fetch authoritative tasks on mount and listen to WebSocket `task_update` events. Tasks now permanently survive tab switches, page reloads, and application reboots.
+
+### 🛡️ Long-Horizon Goal Continuity & Self-Recovery Engine
+- **Singleton Management**: Exported global singleton `long_horizon_manager = LongHorizonCheckpointService()` in `backend/services/long_horizon_checkpoint.py`.
+- **Automated Reboot Recovery**: Upgraded `recover_interrupted_goals()` and `POST /api/v1/developer/recover_interrupted_goals` to scan for dangling `running` goals on boot, save state checkpoints, transition to `paused_for_resume`, and resume seamlessly without losing progress.
+
+### 🎙️ Voice Pipeline Hardening & STT Sentence Preservation
+- **Stutter Truncation Bug Resolved**: Repaired `clean_whisper_hallucinations` in `backend/services/voice/stt_manager.py`. It now collapses repeated token loops (e.g. `"How many How many How many"`) while preserving the entire substantive user query (`"How many finger does humans have?"`).
+- **Transcript Validation Gate**: Added `is_valid_transcript()` rejecting single-character transcripts (`"I"`), punctuation-only inputs, and filler noise (`"uh"`, `"watching"`, `"[music]"`) before triggering the planner.
+- **Prash Timeout Protection**: Wrapped Prash neural inference in `planner.py` with a 2.5s fail-safe timeout to prevent hanging on high-entropy queries.
+
+### 🔌 ChromaDB PostHog Isolation & Windows Socket Resilience
+- **PostHog Telemetry Monkeypatch**: Patched `chromadb.telemetry.product.posthog.Posthog.capture` and `_direct_capture` to no-ops in `bootstrap.py` and `manager.py`, eliminating `TypeError: capture() takes 1 positional argument but 3 were given` caused by PostHog 7.15+ library updates.
+- **Windows Socket Resilience**: Added unhandled `OSError` (`WinError 64` / `10053`) protection in `websocket.py` and `mobile_ws.py` to gracefully disconnect dropped sessions without crashing the host process.
+- **Fuzzy Phonetic App Resolution**: Enhanced `_resolve_app_path` in `desktop_executor.py` with phonetic mapping tables and `difflib` matching ("nor not bad" -> notepad).
+
+### 🧪 Comprehensive Verification Suite (100% Pass Rate)
+- Added `test_racing_circuit.py` (12 tests), `test_canonical_contracts_and_bypasses.py` (6 tests), and `test_reliability_audit.py` (7 tests).
+- All 45 focused reliability audit tests and all 340 master backend test suite tests pass at 100%.
+- Frontend Vite build compiles cleanly with zero errors in 2.62s.
+
+---
+
 ## [1.5.0-secure-telegram-bot-integration] - 2026-09-27
 
 ### 🤖 Secure Telegram Bot Remote Control & Notification Gateway

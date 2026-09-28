@@ -39,7 +39,7 @@ export default function App() {
     switch (activeTab) {
       case 'home':
         return <SleekHomeScreen onNavigateTab={(tab) => {
-          if (tab === 'chat' || tab === 'apps' || tab === 'profile') {
+          if (tab === 'chat' || tab === 'apps' || tab === 'files' || tab === 'approvals' || tab === 'profile') {
             setActiveTab(tab as MobileTab);
           } else if (tab === 'control') {
             setActiveTab('apps');
@@ -51,6 +51,10 @@ export default function App() {
         return <ChatScreen />;
       case 'apps':
         return <ControlScreen />;
+      case 'files':
+        return <FileExplorerScreen />;
+      case 'approvals':
+        return <ApprovalsScreen />;
       case 'profile':
         return <PairingScreen />;
       default:

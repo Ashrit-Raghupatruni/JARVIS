@@ -8,7 +8,7 @@ interface QRPairingModalProps {
 }
 
 export const QRPairingModal: React.FC<QRPairingModalProps> = ({ isOpen, onClose }) => {
-  const [pairingData, setPairingData] = useState<{ session_id: string; code: string; payload: string } | null>(null)
+  const [pairingData, setPairingData] = useState<{ session_id: string; code: string; payload: string; host?: string; port?: number } | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [isPaired, setIsPaired] = useState<boolean>(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -30,7 +30,9 @@ export const QRPairingModal: React.FC<QRPairingModalProps> = ({ isOpen, onClose 
         setPairingData({
           session_id: data.pairing_session_id,
           code: data.pairing_code,
-          payload: data.qr_payload || `jarvis_pair://${data.pairing_session_id}:${data.pairing_code}`
+          payload: data.qr_payload || `jarvis_pair://${data.pairing_session_id}:${data.pairing_code}`,
+          host: data.host,
+          port: data.port
         })
       } else {
         setErrorMessage('Backend refused QR generation. Ensure JARVIS Python backend is running.')
@@ -135,9 +137,14 @@ export const QRPairingModal: React.FC<QRPairingModalProps> = ({ isOpen, onClose 
                 </div>
               )}
 
-              <div className="text-center font-mono mt-1">
+              <div className="text-center font-mono mt-1 space-y-1">
                 <span className="text-[11px] text-slate-400 block uppercase tracking-wider">Pairing PIN</span>
                 <span className="text-xl text-cyan-300 font-extrabold tracking-widest">{pairingData?.code}</span>
+                {pairingData?.host && (
+                  <span className="text-[10px] text-slate-400 block font-mono">
+                    Wi-Fi Address: <strong className="text-cyan-400 font-bold">{pairingData.host}:{pairingData.port || 8000}</strong>
+                  </span>
+                )}
               </div>
             </div>
           )}

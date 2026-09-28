@@ -389,3 +389,7 @@ class LongHorizonCheckpointService:
             "checkpoint_id": chk["checkpoint_id"],
         }
 
+
+# Global Singleton Long-Horizon Checkpoint Manager
+long_horizon_manager = LongHorizonCheckpointService()
+

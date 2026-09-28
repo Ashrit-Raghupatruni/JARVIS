@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React from 'react'
+import { JarvisCoreOrb } from './JarvisCoreOrb'
+
+/*
+// ============================================================================
+// [LEGACY THREE.JS ARC REACTOR ORB - COMMENTED OUT AS REQUESTED]
+// ============================================================================
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../stores/appStore'
 import { createOrbScene, type OrbSceneApi } from '../lib/orbScene'
 import { IdleHUD } from './IdleHUD'
@@ -6,11 +13,7 @@ import { RotateCw, Pause } from 'lucide-react'
 
 type CameraState = 'off' | 'starting' | 'on' | 'error'
 
-interface OrbProps {
-  onOrbClick?: () => void
-}
-
-const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
+const LegacyOrb: React.FC<OrbProps> = ({ onOrbClick }) => {
   const assistantState = useAppStore((s) => s.assistantState)
   const audioLevel = useAppStore((s) => s.audioLevel)
   const pushToTalkActive = useAppStore((s) => s.pushToTalkActive)
@@ -59,14 +62,11 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-between relative overflow-hidden select-none p-2">
-      {/* ── Active Visual Container (Fills Hero Area) ────────────────────────── */}
       <div className="w-full flex-1 flex items-center justify-center relative overflow-hidden">
-        {/* State 1: Idle Circular Tech HUD (Ambient / Passive Display) */}
         {activeVisual === 'hud' && (
           <IdleHUD onOrbClick={onOrbClick} />
         )}
 
-        {/* State 2: Classic 3D Arc Reactor Orb */}
         {activeVisual === 'reactor' && (
           <div
             onClick={onOrbClick}
@@ -77,7 +77,6 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
         )}
       </div>
 
-      {/* Sleek Green Hacker Mode Switcher & 3D Rotation Bar */}
       <div className="mt-2 flex items-center gap-2 z-30">
         <button
           type="button"
@@ -118,7 +117,6 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
           ARC REACTOR
         </button>
 
-        {/* 3D ROTATION TOGGLE BUTTON */}
         <button
           type="button"
           onClick={toggle3DRotation}
@@ -153,6 +151,25 @@ const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
           CONNECTION LOST
         </span>
       )}
+    </div>
+  )
+}
+// ============================================================================
+*/
+
+interface OrbProps {
+  onOrbClick?: () => void
+}
+
+/**
+ * Modern Jarvis Core Orb Wrapper.
+ * The legacy Three.js Arc Reactor and IdleHUD have been commented out above
+ * to prevent visual clutter and CPU overhead.
+ */
+const Orb: React.FC<OrbProps> = ({ onOrbClick }) => {
+  return (
+    <div className="flex items-center justify-center p-2">
+      <JarvisCoreOrb onToggleListening={onOrbClick} />
     </div>
   )
 }

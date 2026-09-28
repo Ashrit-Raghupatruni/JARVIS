@@ -76,6 +76,12 @@ class MemoryManager:
         try:
             os.environ["ANONYMIZED_TELEMETRY"] = "False"
             os.environ["CHROMA_TELEMETRY"] = "False"
+            try:
+                import chromadb.telemetry.product.posthog as ch_ph
+                ch_ph.Posthog.capture = lambda self, *args, **kwargs: None
+                ch_ph.Posthog._direct_capture = lambda self, *args, **kwargs: None
+            except Exception:
+                pass
             import chromadb
             from chromadb.config import Settings
             from chromadb.utils import embedding_functions
@@ -354,7 +360,7 @@ class MemoryManager:
                     session.add(conv)
                     await session.flush()
                     for msg in messages:
-                        db_msg = DbMessage(
+                        db_msg = Message(
                             conversation_id=conv.id,
                             role=msg.get("role", "user"),
                             content=msg.get("content", ""),

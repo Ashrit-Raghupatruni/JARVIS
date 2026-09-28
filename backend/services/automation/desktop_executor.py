@@ -13,6 +13,7 @@ Consolidated low-level Win32 and PyAutoGUI execution module:
 from __future__ import annotations
 
 import asyncio
+import difflib
 import io
 import json
 import os
@@ -133,14 +134,41 @@ def _resolve_user_path(path: str) -> str:
     return path.replace("{user}", os.getenv("USERNAME", os.getenv("USER", "user")))
 
 
+PHONETIC_APP_ALIASES: Dict[str, str] = {
+    "nor not bad": "notepad",
+    "not bad": "notepad",
+    "note pad": "notepad",
+    "notepads": "notepad",
+    "notbad": "notepad",
+    "nor notpad": "notepad",
+    "no bad": "notepad",
+    "croam": "chrome",
+    "chrom": "chrome",
+    "google chrom": "chrome",
+    "google chrome": "chrome",
+    "vs code": "vscode",
+    "visual studio code": "vscode",
+    "vscod": "vscode",
+    "termial": "terminal",
+    "windows terminal": "terminal",
+    "calulator": "calculator",
+    "cal": "calculator",
+    "spotfy": "spotify",
+    "file explorer": "explorer",
+    "my files": "explorer",
+}
+
+
 def _resolve_app_path(app_name: str) -> Optional[str]:
     """
     Search for an application executable or shortcut on Windows.
+    Supports phonetic aliases, fuzzy matching, registry lookups, and Start Menu shortcuts.
     Returns the absolute path (to .exe or .lnk), or None if not found.
     """
-    app_key = app_name.lower().strip()
+    raw_key = app_name.lower().strip()
+    app_key = PHONETIC_APP_ALIASES.get(raw_key, raw_key)
 
-    # 1. Check hardcoded APP_PATHS
+    # 1. Check hardcoded APP_PATHS (exact or phonetic)
     if app_key in APP_PATHS:
         resolved = _resolve_user_path(APP_PATHS[app_key])
         if resolved.startswith("ms-settings:") or " --" in resolved or " /" in resolved:
@@ -148,10 +176,27 @@ def _resolve_app_path(app_name: str) -> Optional[str]:
         if os.path.exists(resolved):
             return resolved
 
+    # 1b. Fuzzy match against hardcoded APP_PATHS keys
+    stripped_key = app_key.replace(" ", "")
+    candidate_keys = list(APP_PATHS.keys())
+    close_matches = difflib.get_close_matches(app_key, candidate_keys, n=1, cutoff=0.55)
+    if not close_matches:
+        close_stripped = difflib.get_close_matches(
+            stripped_key, [k.replace(" ", "") for k in candidate_keys], n=1, cutoff=0.45
+        )
+        if close_stripped:
+            matched_stripped = close_stripped[0]
+            close_matches = [k for k in candidate_keys if k.replace(" ", "") == matched_stripped]
+    if close_matches:
+        resolved = _resolve_user_path(APP_PATHS[close_matches[0]])
+        if resolved.startswith("ms-settings:") or " --" in resolved or " /" in resolved or os.path.exists(resolved):
+            logger.info("Fuzzy matched app '{}' -> '{}' ({})", app_name, close_matches[0], resolved)
+            return resolved
+
     # 2. Check Windows Registry App Paths
     try:
         import winreg
-        names = [app_name, f"{app_name}.exe"]
+        names = [app_key, f"{app_key}.exe", raw_key, f"{raw_key}.exe"]
         for name in names:
             for root in [winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER]:
                 key_path = f"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\{name}"
@@ -165,7 +210,7 @@ def _resolve_app_path(app_name: str) -> Optional[str]:
     except Exception as e:
         logger.debug(f"Registry lookup failed for '{app_name}': {e}")
 
-    # 3. Check Start Menu shortcuts
+    # 3. Check Start Menu shortcuts (Exact substring + Fuzzy match)
     try:
         user_profile = os.environ.get("USERPROFILE", "")
         start_menu_paths = [
@@ -173,14 +218,31 @@ def _resolve_app_path(app_name: str) -> Optional[str]:
             os.path.join(user_profile, "AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs")
         ]
 
+        shortcut_map: Dict[str, str] = {}
         for base_path in start_menu_paths:
             if not os.path.exists(base_path):
                 continue
             for p in Path(base_path).rglob("*.lnk"):
-                if app_key in p.stem.lower():
+                stem_lower = p.stem.lower()
+                if app_key in stem_lower or raw_key in stem_lower:
                     return str(p)
+                shortcut_map[stem_lower] = str(p)
+
+        if shortcut_map:
+            close_stems = difflib.get_close_matches(app_key, list(shortcut_map.keys()), n=1, cutoff=0.55)
+            if not close_stems and stripped_key:
+                close_stems = difflib.get_close_matches(stripped_key, list(shortcut_map.keys()), n=1, cutoff=0.45)
+            if close_stems:
+                matched_lnk = shortcut_map[close_stems[0]]
+                logger.info("Fuzzy matched Start Menu shortcut '{}' -> '{}'", app_name, matched_lnk)
+                return matched_lnk
     except Exception as e:
         logger.debug(f"Start Menu lookup failed for '{app_name}': {e}")
+
+    # 4. Check system PATH via shutil.which
+    which_match = shutil.which(app_key) or shutil.which(f"{app_key}.exe")
+    if which_match:
+        return which_match
 
     return None
 

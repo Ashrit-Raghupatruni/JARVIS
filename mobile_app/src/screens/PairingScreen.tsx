@@ -83,13 +83,25 @@ export default function PairingScreen() {
   const handleQRPairing = async (customPayload?: string) => {
     const payloadToUse = (typeof customPayload === 'string' ? customPayload : qrPayload).trim();
     if (!payloadToUse) {
-      Alert.alert("QR Error", "Please enter or paste the QR pairing payload (e.g. jarvis_pair://sess_...:123456)");
+      Alert.alert("QR Error", "Please enter or paste the QR pairing payload (e.g. jarvis_pair://10.7.131.38:8000:sess_...:123456)");
       return;
     }
 
     setLoading(true);
     try {
-      saveConnection();
+      if (payloadToUse.startsWith('jarvis_pair://')) {
+        const parts = payloadToUse.replace('jarvis_pair://', '').split(':');
+        if (parts.length === 4) {
+          const [extractedHost, extractedPort] = parts;
+          setHost(extractedHost);
+          setPort(extractedPort);
+          mobileClient.setServerAddress(extractedHost, parseInt(extractedPort, 10) || 8000);
+        } else {
+          saveConnection();
+        }
+      } else {
+        saveConnection();
+      }
       const res = await mobileClient.pairWithQR(payloadToUse, deviceName);
       if (res && (res.access_token || res.token || res.status === 'paired')) {
         setIsPaired(true);

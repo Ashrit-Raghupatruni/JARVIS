@@ -136,12 +136,13 @@ class RobustConnectionManager:
 
             await websocket.send_json(data_json)
             return True
-        except (WebSocketDisconnect, RuntimeError, ConnectionResetError) as e:
-            logger.info("Connection closed during send: {}", e)
+        except (WebSocketDisconnect, RuntimeError, ConnectionResetError, OSError) as e:
+            logger.info("Connection closed during send ({}): client disconnected", type(e).__name__)
             self.disconnect(websocket, client_id)
             return False
         except Exception as e:
             logger.error("Failed to send WebSocket message: {}", e)
+            self.disconnect(websocket, client_id)
             return False
 
     async def broadcast(self, message: WSMessage) -> None:
@@ -179,6 +180,18 @@ async def websocket_endpoint(websocket: WebSocket):
     token = websocket.query_params.get("token") or websocket.headers.get("authorization")
     session_id_param = websocket.query_params.get("session_id")
 
+    # Verify authentication: loopback clients (desktop app) are allowed without token;
+    # non-loopback clients MUST provide a valid verified token.
+    is_local = (
+        websocket.client is None
+        or websocket.client.host in ("127.0.0.1", "localhost", "::1", "testclient")
+    )
+    if not is_local and not token:
+        logger.warning("Rejecting remote WebSocket connection from {}: missing authorization token.",
+                       websocket.client.host if websocket.client else "unknown")
+        await websocket.close(code=4001, reason="Authentication token required for remote connections")
+        return
+
     # If auth token is provided (e.g. mobile companion client), verify it
     if token:
         from backend.services.manager import ServiceManager
@@ -190,6 +203,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.close(code=4001, reason="Unauthorized companion token")
                 return
             client_id = auth_payload.get("sub", client_id)
+        elif not is_local:
+            logger.warning("Auth service unavailable to verify remote WebSocket connection.")
+            await websocket.close(code=4001, reason="Authentication service unavailable")
+            return
 
     session = await manager.connect(websocket, client_id=client_id)
     app.state.connection_manager = manager

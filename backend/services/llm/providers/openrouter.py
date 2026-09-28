@@ -18,6 +18,7 @@ from backend.services.llm.tool_calling import (
 class OpenRouterProvider:
     def __init__(self, service):
         self.service = service
+        self.total_requests: int = 0
 
     async def process_message(
         self,
@@ -48,8 +49,10 @@ class OpenRouterProvider:
                     "max_tokens": 4096,
                 }
                 if use_tools:
-                    kwargs["tools"] = self.service.get_tools(query_str)
-                    kwargs["tool_choice"] = "auto"
+                    tools_list = self.service.get_tools(query_str)
+                    if tools_list:
+                        kwargs["tools"] = tools_list
+                        kwargs["tool_choice"] = "auto"
 
                 try:
                     stream = await self.service.openrouter_client.chat.completions.create(**kwargs)

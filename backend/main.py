@@ -243,13 +243,13 @@ async def toggle_live_mode_global(request: Request, enable: bool = True):
 @app.post("/api/system/lock")
 @app.get("/api/system/lock")
 async def system_lock_global():
-    """Execute native Windows LockWorkStation."""
-    import ctypes
-    try:
-        res = ctypes.windll.user32.LockWorkStation()
-        return {"status": "success", "locked": bool(res), "message": "Workstation locked successfully."}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+    """Execute workstation lock via canonical ToolRegistry gateway."""
+    from backend.services.manager import ServiceManager
+    tr = ServiceManager.get_instance("tool_registry")
+    if not tr:
+        from backend.services.tool_registry import ToolRegistry
+        tr = ToolRegistry()
+    return await tr.execute_tool("lock_pc", {})
 
 
 # ── Global Chat History Endpoints ───────────────────────────

@@ -23,12 +23,51 @@ export type AssistantState =
 
 export type AgentStepStatus = 'pending' | 'running' | 'completed' | 'failed';
 
+export type CommandSource = 'desktop' | 'android' | 'telegram' | 'rest' | 'voice' | 'internal';
+
+export interface CommandEnvelope {
+  id: string;
+  version: ProtocolVersion;
+  source: CommandSource;
+  type: string;
+  text?: string;
+  payload?: Record<string, unknown>;
+  timestamp: number;
+  client_id?: string;
+  correlation_id?: string;
+  session_id?: string;
+}
+
+export interface ResponseEnvelope {
+  id: string;
+  version: ProtocolVersion;
+  type: 'response' | 'error' | 'event' | 'status' | 'approval_required';
+  success: boolean;
+  data?: unknown;
+  error?: {
+    code: string;
+    message: string;
+    details?: unknown;
+  } | null;
+  correlation_id?: string;
+  request_id?: string;
+  session_id?: string;
+  timestamp: number;
+}
+
 export interface BaseProtocolEnvelope {
   version: ProtocolVersion;
   id?: string;
   msg_id?: number;
   request_id?: string;
+  correlation_id?: string;
   session_id?: string;
+  success?: boolean;
+  error?: {
+    code: string;
+    message: string;
+    details?: unknown;
+  } | null;
   timestamp: string;
 }
 
